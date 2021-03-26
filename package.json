@@ -1,0 +1,39 @@
+{
+  "name": "primitive-v2-core",
+  "version": "0.0.1",
+  "description": "Primitive V2 protocol contracts.",
+  "main": "index.js",
+  "keywords": [
+    "primitive",
+    "v2",
+    "ethereum"
+  ],
+  "repository": "https://github.com/primitivefinance/primitive-v2-core.git",
+  "author": "Primitive",
+  "license": "GNU",
+  "private": true,
+  "homepage": "https://primitive.finance",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@typechain/ethers-v5": "^6.0.5",
+    "@typechain/hardhat": "^1.0.1",
+    "@types/chai": "^4.2.15",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^14.14.36",
+    "chai": "^4.3.4",
+    "hardhat": "^2.1.2",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.6",
+    "solhint": "^3.3.4",
+    "solhint-plugin-prettier": "^0.0.5",
+    "ts-generator": "^0.1.1",
+    "ts-node": "^9.1.1",
+    "typechain": "^4.0.3",
+    "typescript": "^4.2.3"
+  }
+}
