@@ -1,0 +1,73 @@
+pragma solidity 0.7.6;
+
+
+import {ICallback} from "./PrimitiveEngine.sol";
+import "./IPrimitiveEngine.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+
+contract PrimitiveHouse is ICallback {
+    using SafeERC20 for IERC20;
+
+    address public constant NO_CALLER = address(21);
+    IPrimitiveEngine public engine;
+
+    address public CALLER = NO_CALLER;
+    uint private reentrant;
+
+    constructor() {}
+
+    modifier lock() {
+        require(reentrant != 1, "locked");
+        reentrant = 1;
+        _;
+        reentrant = 0;
+    }
+
+    modifier executionLock() {
+        require(reentrant == 1, "Not guarded");
+        require(CALLER != NO_CALLER, "No caller set");
+        require(address(engine) == msg.sender, "Engine not sender");
+        _;
+    }
+
+    function initialize(address engine_) public {
+        require(address(engine) == address(0), "Already initialized");
+        engine = IPrimitiveEngine(engine_);
+    }
+
+    function addDirect(uint nonce, uint deltaX, uint deltaY) public lock {
+        CALLER = msg.sender;
+        engine.directDeposit(msg.sender, nonce, deltaX, deltaY);
+    }
+
+    function removeDirect(uint nonce, uint deltaX, uint deltaY) public lock {
+        CALLER = msg.sender;
+        engine.directWithdrawal(msg.sender, nonce, deltaX, deltaY);
+    }
+
+    function addLiquidity(uint nonce, uint deltaL) public lock {
+        CALLER = msg.sender;
+        engine.addBoth(msg.sender, nonce, deltaL);
+    }
+    
+
+    function addXYCallback(uint deltaX, uint deltaY) public override executionLock {
+        IERC20 TX1 = IERC20(engine.TX1());
+        IERC20 TY2 = IERC20(engine.TY2());
+        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
+    function directDepositCallback(uint deltaX, uint deltaY) public override {
+        addXYCallback(deltaX, deltaY);
+    }
+
+    function withdrawalCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {
+        return CALLER;
+    }
+
+    function getCaller() public view override returns (address) {
+        return CALLER;
+    }
+
+}

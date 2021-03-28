@@ -68,6 +68,36 @@ function percentage(val: string, percentage: number, add: boolean): number {
   )
 }
 
+interface Position {
+  owner: string
+  nonce: number
+  BX1: BigNumber
+  BY2: BigNumber
+  liquidity: BigNumber
+  unlocked: boolean
+}
+
+async function logPosition(engine: Contract, owner: string, nonce: number): Promise<Position> {
+  const pos = await engine.getPosition(owner, nonce)
+  const position: Position = {
+    owner: pos.owner,
+    nonce: pos.nonce,
+    BX1: toBN(pos.BX1),
+    BY2: toBN(pos.BY2),
+    liquidity: toBN(pos.liquidity),
+    unlocked: pos.unlocked,
+  }
+  console.log(`
+    owner: ${pos.owner},
+    nonce: ${pos.nonce},
+    BX1: ${formatEther(pos.BX1)},
+    BY2: ${formatEther(pos.BY2)},
+    liquidity: ${formatEther(pos.liquidity)},
+    unlocked: ${pos.unlocked}
+  `)
+  return position
+}
+
 interface SwapXOutput {
   FXR1: BigNumber
   FXR2: BigNumber
@@ -103,15 +133,29 @@ function getDeltaY(deltaX: string, invariantInt128: string, fee: string, params:
 describe('Primitive Engine', function () {
   let fixture: EngineFixture
   let r1: BigNumberish, r2: BigNumberish, strike: BigNumberish, sigma: BigNumberish, time: BigNumberish
-  let engine: Contract, nonce: number
-  let [signer] = waffle.provider.getWallets()
+  let engine: Contract, house: Contract, TX1: Contract, TY2: Contract, nonce: number
+  let [signer, signer2] = waffle.provider.getWallets()
   const loadFixture = createFixtureLoader([signer], waffle.provider)
 
   beforeEach(async function () {
     fixture = await loadFixture(engineFixture)
     engine = fixture.engine
+    house = fixture.house
+    TX1 = fixture.TX1
+    TY2 = fixture.TY2
     let deltaX = parseEther('1')
     let deltaY = parseEther('100')
+    // mint tokens
+    let wad = parseEther('25000')
+    let guy = signer.address
+    await TX1.mint(guy, wad)
+    await TY2.mint(guy, wad)
+    // approve tokens
+    wad = ethers.constants.MaxUint256
+    guy = house.address
+    await TX1.approve(guy, wad)
+    await TY2.approve(guy, wad)
+
     nonce = 0
     r1 = parseEther('1')
     r2 = parseEther('100')
@@ -123,7 +167,9 @@ describe('Primitive Engine', function () {
     // init liquidity and balances
     await engine.start(deltaX, deltaY)
     // add some liquidity
-    await engine.addBoth(nonce, parseEther('1'))
+    await expect(house.addLiquidity(nonce, parseEther('1000'))).to.emit(engine, 'AddedBoth')
+    // remove some liquidity to get BX1 and BY2 balances.
+    await expect(engine.removeBoth(nonce, parseEther('500'))).to.emit(engine, 'RemovedBoth')
   })
 
   it('Gets the cdf', async function () {
@@ -211,7 +257,7 @@ describe('Primitive Engine', function () {
         postInvariant:  ${utils.convertFromInt(postInvariant)}
         actual:         ${actual.toString()}
     `)
-    await expect(engine.addBoth(nonce, deltaL)).to.emit(engine, 'AddedBoth')
+    await expect(house.addLiquidity(nonce, deltaL)).to.emit(engine, 'AddedBoth')
     const pos = await engine.getPosition(signer.address, nonce)
     console.log(`
       owner: ${pos.owner}
@@ -304,7 +350,7 @@ describe('Primitive Engine', function () {
       postInvariant:  ${utils.convertFromInt(postInvariant)}
       postActualI:    ${postActualI.toString()}
     `)
-    await expect(engine.addX(deltaX, minDeltaY), 'Engine:AddX').to.emit(engine, 'AddedX')
+    await expect(engine.addX(signer.address, nonce, deltaX, minDeltaY), 'Engine:AddX').to.emit(engine, 'AddedX')
     expect(postR1, 'check FXR1').to.be.eq((await engine.getCapital()).RX1)
     //expect(postR2, 'check FXR2').to.be.eq((await engine.getCapital()).RX2) // FIX
   })
@@ -347,7 +393,7 @@ describe('Primitive Engine', function () {
       postInvariant:  ${utils.convertFromInt(postInvariant)}
       postActualI:    ${postActualI.toString()}
     `)
-    await expect(engine.removeX(deltaX, maxDeltaY), 'Engine:RemoveX').to.emit(engine, 'RemovedX')
+    await expect(engine.removeX(signer.address, nonce, deltaX, maxDeltaY), 'Engine:RemoveX').to.emit(engine, 'RemovedX')
     expect(postR1, 'check FXR1').to.be.eq((await engine.getCapital()).RX1)
     //expect(postR2, 'check FXR2').to.be.eq((await engine.getCapital()).RX2) // FIX
     const FXR2 = (await engine.getCapital()).RX2
@@ -355,5 +401,37 @@ describe('Primitive Engine', function () {
     console.log(`
       actualDeltaY:   ${formatEther(actualDeltaY)}
     `)
+
+    await logPosition(engine, signer.address, 0)
+  })
+
+  it('Fail AddX: No X balance', async function () {
+    await expect(engine.addX(signer2.address, 0, parseEther('0.1'), '0')).to.be.revertedWith('Not enough X')
+  })
+
+  it('Fail RemoveX: No Y balance', async function () {
+    await expect(engine.removeX(signer2.address, 0, parseEther('0.1'), ethers.constants.MaxUint256)).to.be.revertedWith(
+      'Not enough Y'
+    )
+  })
+
+  it('Fail RemoveBoth: No L balance', async function () {
+    await expect(engine.connect(signer2).removeBoth(0, parseEther('0.1'))).to.be.revertedWith('Not enough L')
+  })
+
+  it('DirectDeposit: Adds X and Y directly', async function () {
+    const amount = parseEther('200')
+    await expect(house.addDirect(nonce, amount, amount)).to.emit(engine, 'PositionUpdated')
+    await logPosition(engine, signer.address, nonce)
+  })
+
+  it('DirectWithdrawl: Removes X and Y directly', async function () {
+    const amount = parseEther('200')
+    // add direct
+    await expect(house.addDirect(nonce, amount, amount)).to.emit(engine, 'PositionUpdated')
+    await logPosition(engine, signer.address, nonce)
+    // remove direct
+    await expect(house.removeDirect(nonce, amount, amount)).to.emit(engine, 'PositionUpdated')
+    await logPosition(engine, signer.address, nonce)
   })
 })
