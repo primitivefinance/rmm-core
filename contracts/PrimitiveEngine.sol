@@ -61,8 +61,6 @@ contract PrimitiveEngine {
         bool unlocked;
     }
 
-    enum UpdatePosition {ADD_LIQUIDITY, REMOVE_LIQUIDITY, ADD_BX1, ADD_BX2}
-
     address public immutable TX1;
     address public immutable TY2;
 
@@ -138,6 +136,7 @@ contract PrimitiveEngine {
         pos.BX1 = nextPos.BX1;
         pos.BY2 = nextPos.BY2;
         pos.liquidity = nextPos.liquidity;
+        pos.unlocked = false;
         delete activePosition;
     }
 
@@ -160,7 +159,6 @@ contract PrimitiveEngine {
         // Commit state updates
         emit PositionUpdated(msg.sender, activePosition);
         _updatePosition(owner, nonce);
-        activePosition.unlocked = false;
         return true;
     }
 
@@ -187,7 +185,6 @@ contract PrimitiveEngine {
         // Commit state updates
         emit PositionUpdated(msg.sender, activePosition);
         _updatePosition(owner, nonce);
-        activePosition.unlocked = false;
         return true;
     }
 
