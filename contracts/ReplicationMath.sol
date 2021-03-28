@@ -7,13 +7,17 @@ pragma solidity 0.7.6;
 
 import "./ABDKMath64x64.sol";
 
+
+import "hardhat/console.sol";
+
 library ReplicationMath {
     using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
 
     uint256 internal constant YEAR = 31449600; // 1 year in seconds
     uint256 internal constant MANTISSA = 10**8;
     uint256 internal constant DENOMINATOR = 10**18; // wei
-    uint256 internal constant PERCENTAGE = 10**3;
+    uint256 internal constant PERCENTAGE = 10**4;
+    int128 internal constant PERCENTAGE_INT = 184467440737095516160000;
 
     // ===== Unit Conversion =====
 
@@ -34,6 +38,11 @@ library ReplicationMath {
         return numerator.div(denominator);
     }
 
+    function percentageUInt(int128 denorm) internal pure returns (uint) {
+        uint numerator = denorm.mul(PERCENTAGE_INT).toUInt();
+        return numerator;
+    }
+
     /**
      * @dev Converts second units into an int128 with units of years.
      */
@@ -52,14 +61,20 @@ library ReplicationMath {
         y = x > 0 ? (x).toUInt() : uint256(0);
     }
 
+    function fromIntToWei(int128 x) internal pure returns (uint y) {
+        y = fromInt(x) * 1e18 / MANTISSA;
+    } 
+
     // ===== Math ======
 
-    function getProportionalVolatility(uint sigma, uint time) internal pure returns (int128 vol) {
+    function getProportionalVolatility(uint sigma, uint time) internal view returns (int128 vol) {
         // sigma * sqrt(t)
-        vol = percentageInt128(sigma).mul((secondsToYears(time)).sqrt());
+        int128 sqrtTime = secondsToYears(time).sqrt();
+        int128 SX1 = (sigma).fromUInt();
+        vol = SX1.mul(sqrtTime);
     }
 
-    function getTradingFunction(uint reserve0, uint strike, uint sigma, uint time) internal pure returns (int128 reserve1) {
+    function getTradingFunction(uint reserve0, uint strike, uint sigma, uint time) internal view returns (int128 reserve1) {
         int128 k = fromWeiToInt128(strike);
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
@@ -68,11 +83,11 @@ library ReplicationMath {
         int128 phi = getCDF(one);
         int128 reserve = fromWeiToInt128(reserve0);
         // CDF^-1(1-x) - sigma*sqrt(t)
-        int128 input = (one.div(phi)).mul(one.sub(reserve)).sub(vol);
+        int128 input = (one.div(phi)).mul(one.sub(reserve)).mul(PERCENTAGE_INT).sub(vol).div(PERCENTAGE_INT);
         reserve1 = k.mul(getCDF(input)); 
     }
 
-    function getConstant(uint reserve0, uint reserve1, uint strike, uint sigma, uint time) internal pure returns (int128) {
+    function getConstant(uint reserve0, uint reserve1, uint strike, uint sigma, uint time) internal view returns (int128) {
         int128 reserve2 = getTradingFunction(reserve0, strike, sigma, time);
         int128 k = fromWeiToInt128(reserve1).sub(reserve2);
         return k;

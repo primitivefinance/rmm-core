@@ -8,9 +8,14 @@ pragma solidity 0.7.6;
 import "./ReplicationMath.sol";
 import "./ABDKMath64x64.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine {
+    using ABDKMath64x64 for int128;
+    using ReplicationMath for int128;
 
     uint public constant INIT_SUPPLY = 10 ** 21;
+    uint public constant FEE = 10 ** 3;
 
     event Update(uint R1, uint R2, uint blockNumber);
     event AddedBoth(address indexed from, uint deltaX, uint deltaY, uint liquidity);
@@ -34,44 +39,56 @@ contract PrimitiveEngine {
         require(sigma_ > 0, "Sigma is 0");
         strike = strike_;
         sigma = sigma_;
-        time = time_; 
+        time = time_;
+        liquidity = INIT_SUPPLY;
     }
 
     /**
      * @notice  Updates R to new values for X and Y.
      */
-    function _update(uint deltaX, uint deltaY) public {
-        r1 = deltaX;
-        r2 = deltaY;
-        emit Update(deltaX, deltaY, block.number);
+    function _update(uint postR1, uint postR2) public {
+        r1 = postR1;
+        r2 = postR2;
+        emit Update(postR1, postR2, block.number);
     }
 
-    function addBoth(uint deltaX, uint deltaY) public returns (uint, uint, uint) {
-        if(r1 == 0 && r2 == 0) {
-            _update(deltaX, deltaY);
-            liquidity = INIT_SUPPLY;
-            return (deltaX, deltaY, INIT_SUPPLY);
-        }
+    function start(uint deltaX, uint deltaY) public returns (bool) {
+        // if first time liquidity is added, mint the initial supply
+        require(r1 == 0 && r2 == 0, "Already initialized");
+        _update(deltaX, deltaY);
+        liquidity = INIT_SUPPLY;
+        return true;
+    }
+
+    function addBoth(uint deltaL) public returns (uint, uint, uint) {
+        uint liquidity_ = liquidity; // gas savings
+        require(liquidity_ > 0, "Not bound");
+        uint r1_ = r1;
+        uint r2_ = r2;
+        uint deltaX = deltaL * r1_ / liquidity_;
+        uint deltaY = deltaL * r2_ / liquidity_;
+        require(deltaX > 0 && deltaY > 0, "Delta is 0");
         uint postR1 = r1 + deltaX;
         uint postR2 = r2 + deltaY;
         int128 invariant = getInvariant(postR1, postR2);
         require(invariant >= invariantLast(), "Invalid invariant");
-        uint liquidity_ = liquidity; // gas savings
-        uint minted = liquidity_ * (deltaX * r1 - 1) - liquidity_;
-        liquidity += minted;
+        liquidity += deltaL;
         _update(postR1, postR2);
-        emit AddedBoth(msg.sender, deltaX, deltaY, minted);
-        return (postR1, postR2, minted);
+        emit AddedBoth(msg.sender, deltaX, deltaY, deltaL);
+        return (postR1, postR2, deltaL);
     }
 
     function removeBoth(uint deltaL) public returns (uint, uint) {
         uint liquidity_ = liquidity; // gas savings
-        uint deltaX = ( 1 - ( ( liquidity_ - deltaL ) / liquidity_ ) ) * r1;
-        uint deltaY = ( 1 - ( ( liquidity_ - deltaL ) / liquidity_ ) ) * r2;
-        uint postR1 = r1 - deltaX;
-        uint postR2 = r2 - deltaY;
+        uint r1_ = r1;
+        uint r2_ = r2;
+        uint deltaX = deltaL * r1_ / liquidity_;
+        uint deltaY = deltaL * r2_ / liquidity_;
+        require(deltaX > 0 && deltaY > 0, "Delta is 0");
+        uint postR1 = r1_ - deltaX;
+        uint postR2 = r2_ - deltaY;
         int128 postInvariant = getInvariant(postR1, postR2);
-        require(postInvariant >= invariantLast(), "Invalid invariant");
+        require(invariantLast() >= postInvariant, "Invalid invariant");
         _update(postR1, postR2);
         liquidity -= deltaL;
         emit RemovedBoth(msg.sender, deltaX, deltaY, deltaL);
@@ -83,16 +100,25 @@ contract PrimitiveEngine {
      * @return  Amount of Y removed.
      */
     function addX(uint deltaX, uint minDeltaY) public returns (uint) {
-        // amount of Y that must be removed.
-        uint actualY = getOutputAmount(deltaX);
-        require(actualY >= minDeltaY, "Not enough Y removed");
-        uint postR1 = r1 + deltaX;
-        uint postR2 = r2 - actualY;
-        int128 invariant = getInvariant(postR1, postR2);
-        require(invariant >= invariantLast(), "Invalid invariant");
+        // I = FXR2 - FX(R1)
+        // I + FX(R1) = FXR2
+        // R2a - R2b = -deltaY
+        uint256 r2_ = r2; // gas savings
+        int128 invariant = invariantLast(); //gas savings
+        int128 FXR1 = _getOutputR2(deltaX); // r1 + deltaX
+        uint256 FXR2 = invariant.add(FXR1).fromIntToWei();
+        uint256 deltaY =  FXR2 > r2_ ? FXR2 - r2_ : r2_ - FXR2;
+        deltaY -= deltaY / FEE;
+
+        require(deltaY >= minDeltaY, "Not enough Y removed");
+        uint256 postR1 = r1 + deltaX;
+        uint256 postR2 = r2_ - deltaY;
+        int128 postInvariant = getInvariant(postR1, postR2);
+        require(postInvariant >= invariant, "Invalid invariant");
+
         _update(postR1, postR2);
-        emit AddedX(msg.sender, deltaX, actualY);
-        return actualY;
+        emit AddedX(msg.sender, deltaX, deltaY);
+        return deltaY;
     }
 
     /**
@@ -100,15 +126,22 @@ contract PrimitiveEngine {
      * @return  Amount of Y added.
      */
     function removeX(uint deltaX, uint maxDeltaY) public returns (uint) {
-        uint actualY = getInputAmount(deltaX);
-        require(maxDeltaY >= actualY, "Too much Y added");
+        // I = FXR2 - FX(R1)
+        // I + FX(R1) = FXR2
+        uint256 r2_ = r2; // gas savings
+        int128 invariant = invariantLast(); //gas savings
+        int128 FXR1 = _getInputR2(deltaX); // r1 - deltaX
+        uint256 FXR2 = invariant.add(FXR1).fromIntToWei();
+        uint256 deltaY =  FXR2 > r2_ ? FXR2 - r2_ : r2_ - FXR2;
+        deltaY += deltaY / FEE;
+        require(maxDeltaY >= deltaY, "Too much Y added");
         uint postR1 = r1 - deltaX;
-        uint postR2 = r2 + actualY;
-        int128 invariant = getInvariant(postR1, postR2);
-        require(invariant >= invariantLast(), "Invalid invariant");
+        uint postR2 = r2_ + deltaY;
+        int128 postInvariant = getInvariant(postR1, postR2);
+        require(postInvariant >= invariant, "Invalid invariant");
         _update(postR1, postR2);
-        emit RemovedX(msg.sender, deltaX, actualY);
-        return actualY;
+        emit RemovedX(msg.sender, deltaX, deltaY);
+        return deltaY;
     }
 
     // ===== Swap and Liquidity Math =====
@@ -141,7 +174,7 @@ contract PrimitiveEngine {
     }
 
     /**
-     * @notice  Fetches a new R2 from an increased R1.
+     * @notice  Fetches a new R2 from an increased R1. F(R1).
      */
     function _getOutputR2(uint deltaX) public view returns (int128) {
         uint r1_ = r1 + deltaX; // new reserve1 value.
@@ -152,7 +185,7 @@ contract PrimitiveEngine {
      * @notice  Fetches a new R2 from a decreased R1.
      */
     function _getInputR2(uint deltaX) public view returns (int128) {
-        uint r1_ = r1 + deltaX; // new reserve1 value.
+        uint r1_ = r1 - deltaX; // new reserve1 value.
         return ReplicationMath.getTradingFunction(r1_, strike, sigma, time);
     }
 

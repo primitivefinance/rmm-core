@@ -9,7 +9,6 @@ const { createFixtureLoader } = waffle
 
 const YEAR = 31449600
 const DENOMINATOR = 2 ** 64
-const PERCENTAGE = 1000
 
 function toBN(val: BigNumberish): BigNumber {
   return BigNumber.from(val.toString())
@@ -28,9 +27,9 @@ function getTradingFunction(r1: string, strike: string, sigma: string, time: str
   const one = 1
   const phi = utils.std_n_cdf(one)
   const reserve = weiToNumber(r1)
-  const input = (1 / phi) * (1 - reserve) - vol / PERCENTAGE
+  const input = ((1 / phi) * (1 - reserve) * utils.PERCENTAGE - vol) / utils.PERCENTAGE
   const r2 = K * utils.std_n_cdf(input)
-  return r2
+  return parseFloat(r2.toString())
 }
 
 interface Parameters {
@@ -49,17 +48,56 @@ function getOutputAmount(params: Parameters, deltaX: string): number {
 }
 
 function getInvariant(params: Parameters): number {
-  const k = toBN(params.r2).sub(
-    parseEther(
-      getTradingFunction(
-        params.r1.toString(),
-        params.strike.toString(),
-        params.sigma.toString(),
-        params.time.toString()
-      ).toString()
-    )
+  const input = getTradingFunction(
+    params.r1.toString(),
+    params.strike.toString(),
+    params.sigma.toString(),
+    params.time.toString()
   )
+  const k = toBN(params.r2).sub(parseEther(input > 0.0001 ? input.toString() : '0'))
   return weiToNumber(k.toString())
+}
+
+function percentage(val: string, percentage: number, add: boolean): number {
+  val = parseEther(val).toString()
+  return weiToNumber(
+    toBN(val)
+      .mul(add ? 100 + percentage : 100 - percentage)
+      .div(100)
+      .toString()
+  )
+}
+
+interface SwapXOutput {
+  FXR1: BigNumber
+  FXR2: BigNumber
+  deltaY: BigNumber
+  feePaid: BigNumber
+}
+
+/**
+ * @notice Returns the amount of Y removed by adding X.
+ * @param deltaX The amount of X to add or remove, can be negative.
+ * @param invariantInt128 The previous invariant value.
+ * @param fee The amount of Y kept as a fee.
+ * @param params Parameters of the engine, including strike,time,sigma,r1,r2
+ * @returns Next R1 amount
+ * @returns Next R2 amount
+ * @returns Amount of Y output
+ */
+function getDeltaY(deltaX: string, invariantInt128: string, fee: string, params: Parameters): SwapXOutput {
+  const r1 = params.r1.toString()
+  const r2 = params.r2.toString()
+  const invariant = parseEther(utils.convertFromInt(invariantInt128).toString())
+  let FXR1 = toBN(r1).add(deltaX)
+  const FX = parseEther(getTradingFunction(FXR1.toString(), params.strike, params.sigma, params.time).toString())
+  let FXR2 = invariant.add(FX)
+  let deltaY = FXR2.gt(r2) ? FXR2.sub(r2) : toBN(r2).sub(FXR2)
+  let feePaid = deltaY.div(fee)
+  const yToX = toBN(deltaX).isNegative()
+  deltaY = yToX ? deltaY.add(feePaid) : deltaY.sub(feePaid)
+  FXR2 = yToX ? toBN(r2.toString()).add(deltaY) : toBN(r2.toString()).sub(deltaY)
+  return { FXR1, FXR2, deltaY, feePaid }
 }
 
 describe('Primitive Engine', function () {
@@ -72,24 +110,20 @@ describe('Primitive Engine', function () {
   beforeEach(async function () {
     fixture = await loadFixture(engineFixture)
     engine = fixture.engine
+    let deltaX = parseEther('1')
+    let deltaY = parseEther('100')
     r1 = parseEther('1')
     r2 = parseEther('100')
     strike = parseEther('25')
-    sigma = 0.1 * PERCENTAGE
+    sigma = 0.1 * utils.PERCENTAGE
     time = 31449600 //one year
+    // init params
     await engine.initialize(strike, sigma, time)
-    await engine.addBoth(r1, r2)
+    // init liquidity and balances
+    await engine.start(deltaX, deltaY)
+    // add some liquidity
+    await engine.addBoth(parseEther('1'))
   })
-
-  function percentage(val: string, percentage: number, add: boolean): number {
-    val = parseEther(val).toString()
-    return weiToNumber(
-      toBN(val)
-        .mul(add ? 100 + percentage : 100 - percentage)
-        .div(100)
-        .toString()
-    )
-  }
 
   it('Gets the cdf', async function () {
     const cdf = await engine.getCDF(1)
@@ -103,9 +137,9 @@ describe('Primitive Engine', function () {
   })
 
   it('Gets the proportional volatility', async function () {
-    const rawVol = toBN(await engine.proportionalVol()).mul(PERCENTAGE)
+    const rawVol = toBN(await engine.proportionalVol()).mul(utils.PERCENTAGE)
     const vol = utils.convertFromPercentageInt((await engine.proportionalVol()).toString())
-    const actual = getProportionalVol(sigma.toString(), time.toString())
+    const actual = getProportionalVol(sigma.toString(), time.toString()) * utils.PERCENTAGE
     console.log(`
         denom:  ${DENOMINATOR.toString()}
         raw:    ${rawVol.toString()}
@@ -135,8 +169,8 @@ describe('Primitive Engine', function () {
     const deltaY = await engine.getOutputAmount(deltaX)
     const params: Parameters = {
       strike: strike.toString(),
-      r1: r1.toString(),
-      r2: r2.toString(),
+      r1: await engine.r1(),
+      r2: await engine.r2(),
       sigma: sigma.toString(),
       time: time.toString(),
     }
@@ -153,8 +187,10 @@ describe('Primitive Engine', function () {
 
   it('Add both X and Y', async function () {
     const invariant = await engine.invariantLast()
-    const deltaX = parseEther('2')
-    const deltaY = parseEther('1')
+    const liquidity = await engine.liquidity()
+    const deltaL = parseEther('1')
+    const deltaX = deltaL.mul(await engine.r1()).div(liquidity)
+    const deltaY = deltaL.mul(await engine.r2()).div(liquidity)
     const postR1 = deltaX.add(await engine.r1())
     const postR2 = deltaY.add(await engine.r2())
     const postInvariant = await engine.getInvariant(postR1, postR2)
@@ -171,21 +207,30 @@ describe('Primitive Engine', function () {
         postInvariant:  ${utils.convertFromInt(postInvariant)}
         actual:         ${actual.toString()}
     `)
-    await expect(engine.addBoth(deltaX, deltaY)).to.emit(engine, 'AddedBoth')
+    await expect(engine.addBoth(deltaL)).to.emit(engine, 'AddedBoth')
   })
 
   it('Remove both X and Y', async function () {
+    // then remove it
     const invariant = await engine.invariantLast()
     const liquidity = await engine.liquidity()
     const deltaL = toBN(liquidity).sub(await engine.INIT_SUPPLY())
-    const deltaX = toBN(1)
-      .sub(toBN(liquidity).sub(deltaL).div(liquidity))
-      .mul(await engine.r1())
-    const deltaY = toBN(1)
-      .sub(toBN(liquidity).sub(deltaL).div(liquidity))
-      .mul(await engine.r2())
-    const postR1 = deltaX.add(await engine.r1())
-    const postR2 = deltaY.add(await engine.r2())
+    const deltaX = deltaL.mul(await engine.r1()).div(liquidity)
+    const deltaY = deltaL.mul(await engine.r2()).div(liquidity)
+    const postR1 = toBN(await engine.r1()).sub(deltaX)
+    const postR2 = toBN(await engine.r2()).sub(deltaY)
+    const postLiquidity = toBN(liquidity).sub(deltaL)
+    console.log(`
+      r1: ${formatEther(await engine.r1())}
+      r2: ${formatEther(await engine.r2())}
+      liquidity: ${formatEther(liquidity)}
+      deltaL: ${formatEther(deltaL)}
+      deltaX: ${formatEther(deltaX)}
+      deltaY: ${formatEther(deltaY)}
+      postR1: ${formatEther(postR1)}
+      postR2: ${formatEther(postR2)}
+      postLiquidity: ${formatEther(postLiquidity)}
+    `)
     const postInvariant = await engine.getInvariant(postR1, postR2)
     const params: Parameters = {
       strike: strike.toString(),
@@ -196,10 +241,96 @@ describe('Primitive Engine', function () {
     }
     const actual = getInvariant(params)
     console.log(`
-        invariant:      ${utils.convertFromInt(invariant)}
-        postInvariant:  ${utils.convertFromInt(postInvariant)}
-        actual:         ${actual.toString()}
+      invariant:      ${utils.convertFromInt(invariant)}
+      postInvariant:  ${utils.convertFromInt(postInvariant)}
+      actual:         ${actual.toString()}
     `)
-    await expect(engine.removeBoth(deltaY)).to.emit(engine, 'RemovedBoth')
+    await expect(engine.removeBoth(deltaL)).to.emit(engine, 'RemovedBoth')
+    console.log(`
+      r1: ${formatEther(await engine.r1())}
+      r2: ${formatEther(await engine.r2())}
+      liquidity: ${formatEther(await engine.liquidity())}
+      invariantLast: ${formatEther(await engine.invariantLast())}
+    `)
+  })
+
+  it('AddX: Swap X to Y', async function () {
+    const r1_ = await engine.r1()
+    const r2_ = await engine.r2()
+    const invariant = await engine.invariantLast()
+    const fee = await engine.FEE()
+    const deltaX = parseEther('0.2')
+    const params: Parameters = {
+      strike: strike.toString(),
+      r1: r1_,
+      r2: r2_,
+      sigma: sigma.toString(),
+      time: time.toString(),
+    }
+    const output: SwapXOutput = getDeltaY(deltaX.toString(), invariant.toString(), fee.toString(), params)
+    const minDeltaY = output.deltaY
+    const postR1 = output.FXR1
+    const postR2 = output.FXR2
+
+    const postParams: Parameters = {
+      strike: strike.toString(),
+      r1: postR1.toString(),
+      r2: postR2.toString(),
+      sigma: sigma.toString(),
+      time: time.toString(),
+    }
+    const postInvariant = await engine.getInvariant(postR1, postR2)
+    const postActualI = getInvariant(postParams)
+    console.log(`
+      deltaY:         ${formatEther(minDeltaY)}
+      feePaid:        ${formatEther(output.feePaid)}
+      postR2:         ${formatEther(postR2)}
+      invariant:      ${utils.convertFromInt(invariant)}
+      postInvariant:  ${utils.convertFromInt(postInvariant)}
+      postActualI:    ${postActualI.toString()}
+    `)
+    await expect(engine.addX(deltaX, minDeltaY), 'Engine:AddX').to.emit(engine, 'AddedX')
+    expect(postR1, 'check FXR1').to.be.eq(await engine.r1())
+    //expect(postR2, 'check FXR2').to.be.eq(await engine.r2()) // FIX
+  })
+
+  it('RemoveX: Swap Y to X', async function () {
+    const r1_ = await engine.r1()
+    const r2_ = await engine.r2()
+    const invariant = await engine.invariantLast()
+    const fee = await engine.FEE()
+    const deltaX = parseEther('0.2')
+    const params: Parameters = {
+      strike: strike.toString(),
+      r1: r1_,
+      r2: r2_,
+      sigma: sigma.toString(),
+      time: time.toString(),
+    }
+    const output: SwapXOutput = getDeltaY(deltaX.mul(-1).toString(), invariant.toString(), fee.toString(), params)
+    const maxDeltaY = ethers.constants.MaxUint256 // FIXL output.deltaY
+    const postR1 = output.FXR1
+    const postR2 = output.FXR2
+
+    const postParams: Parameters = {
+      strike: strike.toString(),
+      r1: postR1.toString(),
+      r2: postR2.toString(),
+      sigma: sigma.toString(),
+      time: time.toString(),
+    }
+    const postInvariant = await engine.getInvariant(postR1, postR2)
+    const postActualI = getInvariant(postParams)
+    console.log(`
+      deltaY:         ${formatEther(maxDeltaY)}
+      feePaid:        ${formatEther(output.feePaid)}
+      postR2:         ${formatEther(postR2)}
+      invariant:      ${utils.convertFromInt(invariant)}
+      postInvariant:  ${utils.convertFromInt(postInvariant)}
+      postActualI:    ${postActualI.toString()}
+    `)
+    await expect(engine.removeX(deltaX, maxDeltaY), 'Engine:RemoveX').to.emit(engine, 'RemovedX')
+    expect(postR1, 'check FXR1').to.be.eq(await engine.r1())
+    //expect(postR2, 'check FXR2').to.be.eq(await engine.r2()) // FIX
   })
 })

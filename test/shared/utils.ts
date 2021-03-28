@@ -1,9 +1,10 @@
 import { Wallet, Contract, BigNumber } from 'ethers'
 
 export const MANTISSA = 10 ** 9
+export const PERCENTAGE = 10 ** 4
 
 export function convertFromPercentageInt(value: string): number {
-  return convertFromInt(BigNumber.from(value).mul(1000).toString())
+  return convertFromInt(BigNumber.from(value).mul(PERCENTAGE).toString())
 }
 
 export function convertFromInt(value: string): number {
