@@ -8,21 +8,31 @@ pragma abicoder v2;
 
 import "./ReplicationMath.sol";
 import "./ABDKMath64x64.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "hardhat/console.sol";
 
+interface ICallback {
+    function addXYCallback(uint deltaX, uint deltaY) external;
+    function directDepositCallback(uint deltaX, uint deltaY) external;
+    function withdrawalCallback(uint deltaX, uint deltaY) external returns (address);
+    function getCaller() external returns (address);
+}
+
 contract PrimitiveEngine {
+    using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using ReplicationMath for int128;
 
     uint public constant INIT_SUPPLY = 10 ** 21;
     uint public constant FEE = 10 ** 3;
 
+    event PositionUpdated(address indexed from, Position pos);
     event Update(uint R1, uint R2, uint blockNumber);
-    event AddedBoth(address indexed from, uint deltaX, uint deltaY);
-    event RemovedBoth(address indexed from, uint deltaX, uint deltaY);
-    event AddedX(address indexed from, uint deltaX, uint deltaY);
-    event RemovedX(address indexed from, uint deltaX, uint deltaY);
+    event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
+    event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
+    event AddedX(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
+    event RemovedX(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
 
     struct Calibration {
         uint256 strike;
@@ -53,14 +63,27 @@ contract PrimitiveEngine {
 
     enum UpdatePosition {ADD_LIQUIDITY, REMOVE_LIQUIDITY, ADD_BX1, ADD_BX2}
 
+    address public immutable TX1;
+    address public immutable TY2;
+
     Accumulator public accumulator;
     Calibration public calibration;
     Capital public capital;
-
     Position public activePosition;
     mapping(bytes32 => Position) public positions;
 
-    constructor() {}
+    constructor(address risky, address riskFree) {
+        TX1 = risky;
+        TY2 = riskFree;
+    }
+
+    function getBX1() public view returns (uint) {
+        return IERC20(TX1).balanceOf(address(this));
+    }
+
+    function getBY2() public view returns (uint) {
+        return IERC20(TY2).balanceOf(address(this));
+    }
 
     function initialize(uint strike_, uint32 sigma_, uint32 time_) public {
         require(calibration.time == 0, "Already initialized");
@@ -107,8 +130,8 @@ contract PrimitiveEngine {
         _;
     }
 
-    function _updatePosition(uint nonce) internal lock {
-        Position storage pos = _getPosition(msg.sender, nonce);
+    function _updatePosition(address owner, uint nonce) internal lock {
+        Position storage pos = _getPosition(owner, nonce);
         Position memory nextPos = activePosition;
         require(pos.owner == nextPos.owner, "Not owner");
         require(pos.nonce == nextPos.nonce, "Not nonce");
@@ -118,8 +141,58 @@ contract PrimitiveEngine {
         delete activePosition;
     }
 
-    function addBoth(uint nonce, uint deltaL) public returns (uint, uint) {
-        activePosition = _getPosition(msg.sender, nonce);
+    function directDeposit(address owner, uint nonce, uint deltaX, uint deltaY) public returns (bool) {
+        activePosition = _getPosition(owner, nonce);
+
+        // Update state
+        activePosition.unlocked = true;
+        activePosition.BX1 += deltaX;
+        activePosition.BY2 += deltaY;
+
+        { // avoids stack too deep errors
+        uint preBX1 = getBX1();
+        uint preBY2 = getBY2();
+        ICallback(msg.sender).directDepositCallback(deltaX, deltaY);
+        require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
+        require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
+        }
+
+        // Commit state updates
+        emit PositionUpdated(msg.sender, activePosition);
+        _updatePosition(owner, nonce);
+        activePosition.unlocked = false;
+        return true;
+    }
+
+    function directWithdrawal(address owner, uint nonce, uint deltaX, uint deltaY) public returns (bool) {
+        activePosition = _getPosition(owner, nonce);
+
+        // Update state
+        activePosition.unlocked = true;
+        require(activePosition.BX1 >= deltaX, "Not enough X");
+        require(activePosition.BY2 >= deltaY, "Not enough Y");
+        activePosition.BX1 -= deltaX;
+        activePosition.BY2 -= deltaY;
+
+        { // avoids stack too deep errors
+        uint preBX1 = getBX1();
+        uint preBY2 = getBY2();
+        address caller = ICallback(msg.sender).withdrawalCallback(deltaX, deltaY);
+        IERC20(TX1).safeTransfer(caller, deltaX);
+        IERC20(TY2).safeTransfer(caller, deltaY);
+        require(preBX1 - deltaX >= getBX1(), "Not enough TX1");
+        require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
+        }
+
+        // Commit state updates
+        emit PositionUpdated(msg.sender, activePosition);
+        _updatePosition(owner, nonce);
+        activePosition.unlocked = false;
+        return true;
+    }
+
+    function addBoth(address owner, uint nonce, uint deltaL) public returns (uint, uint) {
+        activePosition = _getPosition(owner, nonce);
 
         Capital storage cap = capital;
         uint liquidity = cap.liquidity; // gas savings
@@ -139,9 +212,19 @@ contract PrimitiveEngine {
         activePosition.unlocked = true;
         activePosition.liquidity += deltaL;
 
+        // Check balances and trigger callback
+        { // avoids stack too deep errors
+        uint preBX1 = getBX1();
+        uint preBY2 = getBY2();
+        ICallback(msg.sender).addXYCallback(deltaX, deltaY);
+        require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
+        require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
+        }
+        
+        // Commit state updates
         _update(postR1, postR2);
-        _updatePosition(nonce);
-        emit AddedBoth(msg.sender, deltaX, deltaY);
+        _updatePosition(owner, nonce);
+        emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
 
@@ -163,15 +246,18 @@ contract PrimitiveEngine {
         require(invariantLast() >= postInvariant, "Invalid invariant");
 
         // Update state
+        require(cap.liquidity >= deltaL, "Above max burn");
         cap.liquidity -= deltaL;
         activePosition.unlocked = true;
+        require(activePosition.liquidity >= deltaL, "Not enough L");
         activePosition.liquidity -= deltaL;
         activePosition.BX1 += deltaX;
         activePosition.BY2 += deltaY;
-
+        
+        // Commit state updates
         _update(postR1, postR2);
-        _updatePosition(nonce);
-        emit RemovedBoth(msg.sender, deltaX, deltaY);
+        _updatePosition(msg.sender, nonce);
+        emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
 
@@ -179,7 +265,9 @@ contract PrimitiveEngine {
      * @notice  Updates the reserves after adding X and removing Y.
      * @return  Amount of Y removed.
      */
-    function addX(uint deltaX, uint minDeltaY) public returns (uint) {
+    function addX(address owner, uint nonce, uint deltaX, uint minDeltaY) public returns (uint) {
+        activePosition = _getPosition(owner, nonce);
+
         // I = FXR2 - FX(R1)
         // I + FX(R1) = FXR2
         // R2a - R2b = -deltaY
@@ -198,8 +286,15 @@ contract PrimitiveEngine {
         int128 postInvariant = getInvariant(postR1, postR2);
         require(postInvariant >= invariant, "Invalid invariant");
 
+        // Update State
+        activePosition.unlocked = true;
+        require(activePosition.BX1 >= deltaX, "Not enough X");
+        activePosition.BX1 -= deltaX;
+        activePosition.BY2 += deltaY;
+
         _update(postR1, postR2);
-        emit AddedX(msg.sender, deltaX, deltaY);
+        _updatePosition(owner, nonce);
+        emit AddedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
     }
 
@@ -207,7 +302,9 @@ contract PrimitiveEngine {
      * @notice  Updates the reserves after removing X and adding Y.
      * @return  Amount of Y added.
      */
-    function removeX(uint deltaX, uint maxDeltaY) public returns (uint) {
+    function removeX(address owner, uint nonce, uint deltaX, uint maxDeltaY) public returns (uint) {
+        activePosition = _getPosition(owner, nonce);
+
         // I = FXR2 - FX(R1)
         // I + FX(R1) = FXR2
         Capital storage cap = capital;
@@ -224,9 +321,16 @@ contract PrimitiveEngine {
         uint postR2 = RX2 + deltaY;
         int128 postInvariant = getInvariant(postR1, postR2);
         require(postInvariant >= invariant, "Invalid invariant");
+
+        // Update State
+        activePosition.unlocked = true;
+        activePosition.BX1 += deltaX;
+        require(activePosition.BY2 >= deltaY, "Not enough Y");
+        activePosition.BY2 -= deltaY;
         
         _update(postR1, postR2);
-        emit RemovedX(msg.sender, deltaX, deltaY);
+        _updatePosition(owner, nonce);
+        emit RemovedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
     }
 
