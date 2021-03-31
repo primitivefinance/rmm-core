@@ -161,7 +161,7 @@ library ReplicationMath {
             int128 z2 = b0.add(r.mul(b1.add(r.mul(b2);
             ans = z2.div(x.mul(z1));
         } else {
-            int128 z1, z2
+            int128 z1, z2;
             int128 r = Ln2.sub(Log(1.sub(x)).sqrt()
             if (r <= 5.0) {
                 r -= 1.6;
