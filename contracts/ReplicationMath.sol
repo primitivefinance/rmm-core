@@ -136,6 +136,7 @@ library ReplicationMath {
     }
 
     function getInvErrorFunction(int128 x) internal pure returns (int128) {
+        // Inverse CDF
         int128 a0 = 0x3f9948bd; // 1.1975323115670912564578e0
         int128 a1 = 0x423c4a6f; // 4.7072688112383978012285e1
         int128 a2 = 0x442e4403; // 6.9706266534389598238465e2
@@ -154,7 +155,7 @@ library ReplicationMath {
         int128 f0 = 0x3fb504f3; // 1.414213562373095048801689e0
         int128 f1 = 0x3f592997; // 8.482908416595164588112026e-1
         int128 f2 = 0x3e464bb0; // 1.936480946950659106176712e-1
-        }
+        
         bool sign = false;
         if (x < 0) {
             x = -x;
