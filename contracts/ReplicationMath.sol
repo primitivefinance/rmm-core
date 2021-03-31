@@ -170,7 +170,7 @@ library ReplicationMath {
         } else {
             int128 z1;
             int129 z2;
-            int128 r = Ln2.sub(Log(1.sub(x)).sqrt()
+            int128 r = LogN(2).sub(Log(1.sub(x)).sqrt(); // need log and natural log
             if (r <= 5.0) {
                 r = r.sub(1.6);
                 z1 = c0.add(r.mul(c1.add(r.mul(c2))));
