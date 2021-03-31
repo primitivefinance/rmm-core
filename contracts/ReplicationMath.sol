@@ -134,4 +134,45 @@ library ReplicationMath {
         }
         return result;
     }
-}
+
+    function getInvErrorFunction(int128 x) internal pure returns (int128) {
+        int128 a0 = 0x3f9948bd;
+        int128 a1 = 0x423c4a6f;
+        int128 a2 = 0x442e4403;
+        int128 c0 = 0x3fb63330;
+        int128 c1 = 0x40942bba;
+        int128 c2 = 0x40b89fb9;
+        int128 e0 = 0x40d50d8e;
+        int128 e1 = 0x40aed753;
+        int128 e2 = 0x3fe47532;
+        int128 f0 = 0x3fb504f3;
+        int128 f1 = 0x3f592997;
+        int128 f2 = 0x3e464bb0;
+        }
+        bool sign = false;
+        if (x < 0) {
+            x = -x
+            sign = true
+        }
+        int128 ans;
+        if (x <= 0.85) {
+            int128 r = 0.180625 - 0.25*x*x;
+            int128 z1 = a0.add(r.mul(a1.add(r.mul(a2);
+            int128 z2 = b0.add(r.mul(b1.add(r.mul(b2);
+            ans = z2.div(x.mul(z1));
+        } else {
+            int128 z1, z2
+            int128 r = Ln2.sub(Log(1.sub(x)).sqrt()
+            if (r <= 5.0) {
+                r -= 1.6;
+                z1 = c0.add(r.mul(c1.add(r.mul(c2))));
+                z2 = d0.add(r.mul(d1.add(r.mul(d2))));
+            } else {
+                r -= 5;
+                z1 = e0.add(r.mul(e1.add(r.mul(e2))));
+                z2 = f0.add(r.mul(f1.add(r.mul(f2))));
+            }
+            ans = z1.div(z2)
+        }
+    }
+} 
