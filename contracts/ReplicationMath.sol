@@ -136,7 +136,7 @@ library ReplicationMath {
     }
 
     function getInvErrorFunction(int128 x) internal pure returns (int128) {
-        // Inverse CDF
+        // Inverse
         int128 a0 = 0x3f9948bd; // 1.1975323115670912564578e0
         int128 a1 = 0x423c4a6f; // 4.7072688112383978012285e1
         int128 a2 = 0x442e4403; // 6.9706266534389598238465e2
@@ -163,7 +163,7 @@ library ReplicationMath {
         }
         int128 ans;
         if (x <= 0.85) {
-            int128 r = 0.180625 - 0.25*x*x;
+            int128 r = 0.180625.sub(0.25.mul(x.mul(x)));
             int128 z1 = a0.add(r.mul(a1.add(r.mul(a2);
             int128 z2 = b0.add(r.mul(b1.add(r.mul(b2);
             ans = z2.div(x.mul(z1));
@@ -172,11 +172,11 @@ library ReplicationMath {
             int129 z2;
             int128 r = Ln2.sub(Log(1.sub(x)).sqrt()
             if (r <= 5.0) {
-                r -= 1.6;
+                r = r.sub(1.6);
                 z1 = c0.add(r.mul(c1.add(r.mul(c2))));
                 z2 = d0.add(r.mul(d1.add(r.mul(d2))));
             } else {
-                r -= 5;
+                r = r.sub(5);
                 z1 = e0.add(r.mul(e1.add(r.mul(e2))));
                 z2 = f0.add(r.mul(f1.add(r.mul(f2))));
             }
