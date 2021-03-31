@@ -151,8 +151,8 @@ library ReplicationMath {
         }
         bool sign = false;
         if (x < 0) {
-            x = -x
-            sign = true
+            x = -x;
+            sign = true;
         }
         int128 ans;
         if (x <= 0.85) {
@@ -172,7 +172,8 @@ library ReplicationMath {
                 z1 = e0.add(r.mul(e1.add(r.mul(e2))));
                 z2 = f0.add(r.mul(f1.add(r.mul(f2))));
             }
-            ans = z1.div(z2)
+            ans = z1.div(z2);
         }
+        return ans;
     }
 } 
