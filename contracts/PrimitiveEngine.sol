@@ -6,8 +6,14 @@ pragma abicoder v2;
  * @author  Primitive
  */
 
-import "./ReplicationMath.sol";
-import "./ABDKMath64x64.sol";
+import "./libraries/ABDKMath64x64.sol";
+import "./libraries/BlackScholes.sol";
+import "./libraries/CumulativeNormalDistribution.sol";
+import "./libraries/Calibration.sol";
+import "./libraries/ReplicationMath.sol";
+import "./libraries/Position.sol";
+import "./libraries/Reserve.sol";
+import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "hardhat/console.sol";
@@ -20,31 +26,26 @@ interface ICallback {
 }
 
 contract PrimitiveEngine {
-    using SafeERC20 for IERC20;
-    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for *;
+    using BlackScholes for int128;
+    using CumulativeNormalDistribution for int128;
     using ReplicationMath for int128;
+    using Units for *;
+    using Calibration for mapping(bytes32 => Calibration.Data);
+    using Position for mapping(bytes32 => Position.Data);
+    using Reserve for mapping(bytes32 => Reserve.Data);
+    using SafeERC20 for IERC20;
 
-    uint public constant INIT_SUPPLY = 10 ** 21;
+    uint public constant INIT_SUPPLY = 10 ** 18;
     uint public constant FEE = 10 ** 3;
 
-    event PositionUpdated(address indexed from, Position pos);
+    event PositionUpdated(address indexed from, Position.Data pos);
+    event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration);
     event Update(uint R1, uint R2, uint blockNumber);
     event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
     event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
     event AddedX(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
     event RemovedX(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
-
-    struct Calibration {
-        uint256 strike;
-        uint32 sigma;
-        uint32 time;
-    }
-
-    struct Capital {
-        uint RX1;
-        uint RX2;
-        uint liquidity;
-    }
 
     struct Accumulator {
         uint ARX1;
@@ -52,23 +53,21 @@ contract PrimitiveEngine {
         uint blockNumberLast;
     }
 
-    struct Position {
-        address owner;
-        uint nonce;
-        uint BX1;
-        uint BY2;
-        uint liquidity;
-        bool unlocked;
-    }
-
     address public immutable TX1;
     address public immutable TY2;
 
+    bytes32[] public allPools;
     Accumulator public accumulator;
-    Calibration public calibration;
-    Capital public capital;
-    Position public activePosition;
-    mapping(bytes32 => Position) public positions;
+    Position.Data public activePosition;
+    Calibration.Data public calibration; // temp, fix
+    mapping(bytes32 => Calibration.Data) public settings;
+    mapping(bytes32 => Reserve.Data) public reserves;
+    mapping(bytes32 => Position.Data) public positions;
+
+    modifier lock() {
+        require(activePosition.unlocked, "Position.Data locked");
+        _;
+    }
 
     constructor(address risky, address riskFree) {
         TX1 = risky;
@@ -83,30 +82,40 @@ contract PrimitiveEngine {
         return IERC20(TY2).balanceOf(address(this));
     }
 
-    function initialize(uint strike_, uint32 sigma_, uint32 time_) public {
-        require(calibration.time == 0, "Already initialized");
-        require(time_ > 0, "Time is 0");
-        require(strike_ > 0, "Strike is 0");
-        require(sigma_ > 0, "Sigma is 0");
-        calibration = Calibration({
-            strike: strike_,
-            sigma: sigma_,
-            time: time_
+    function create(Calibration.Data memory self, uint assetPrice) public {
+        require(self.time > 0, "Time is 0");
+        require(self.sigma > 0, "Sigma is 0");
+        require(self.strike > 0, "Strike is 0");
+        // Fetch the pool id and set its calibration data
+        bytes32 pid = getPoolId(self);
+        settings[pid] = Calibration.Data({
+            strike: self.strike,
+            sigma: self.sigma,
+            time: self.time
         });
-        capital = Capital({
-            RX1: 0,
-            RX2: 0,
+        // Call Delta = CDF(d1)
+        int128 delta = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
+        // Set x = 1 - delta
+        uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
+        // Set y = F(x)
+        uint RY2 = ReplicationMath.getTradingFunction(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
+        reserves[pid] = Reserve.Data({
+            RX1: RX1,
+            RY2: RY2,
             liquidity: INIT_SUPPLY
         });
+        allPools.push(pid);
+        emit Update(RX1, RY2, block.number);
+        emit Create(msg.sender, pid, self);
     }
 
     /**
      * @notice  Updates R to new values for X and Y.
      */
-    function _update(uint postR1, uint postR2) public {
-        Capital storage cap = capital;
-        cap.RX1 = postR1;
-        cap.RX2 = postR2;
+    function _update(bytes32 pid, uint postR1, uint postR2) public {
+        Reserve.Data storage res = reserves[pid];
+        res.RX1 = postR1;
+        res.RY2 = postR2;
 
         Accumulator storage acc = accumulator;
         acc.ARX1 += postR1;
@@ -115,22 +124,10 @@ contract PrimitiveEngine {
         emit Update(postR1, postR2, block.number);
     }
 
-    function start(uint deltaX, uint deltaY) public returns (bool) {
-        // if first time liquidity is added, mint the initial supply
-        Capital memory cap = capital;
-        require(cap.RX1 == 0 && cap.RX2 == 0, "Already initialized");
-        _update(deltaX, deltaY);
-        return true;
-    }
-
-    modifier lock() {
-        require(activePosition.unlocked, "Position locked");
-        _;
-    }
 
     function _updatePosition(address owner, uint nonce) internal lock {
-        Position storage pos = _getPosition(owner, nonce);
-        Position memory nextPos = activePosition;
+        Position.Data storage pos = _getPosition(owner, nonce);
+        Position.Data memory nextPos = activePosition;
         require(pos.owner == nextPos.owner, "Not owner");
         require(pos.nonce == nextPos.nonce, "Not nonce");
         pos.BX1 = nextPos.BX1;
@@ -188,24 +185,24 @@ contract PrimitiveEngine {
         return true;
     }
 
-    function addBoth(address owner, uint nonce, uint deltaL) public returns (uint, uint) {
+    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint, uint) {
         activePosition = _getPosition(owner, nonce);
 
-        Capital storage cap = capital;
-        uint liquidity = cap.liquidity; // gas savings
+        Reserve.Data storage res = reserves[pid];
+        uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
-        uint RX1 = cap.RX1;
-        uint RX2 = cap.RX2;
+        uint RX1 = res.RX1;
+        uint RY2 = res.RY2;
         uint deltaX = deltaL * RX1 / liquidity;
-        uint deltaY = deltaL * RX2 / liquidity;
+        uint deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
         uint postR1 = RX1 + deltaX;
-        uint postR2 = RX2 + deltaY;
-        int128 postInvariant = getInvariant(postR1, postR2);
-        require(postInvariant >= invariantLast(), "Invalid invariant");
+        uint postR2 = RY2 + deltaY;
+        int128 postInvariant = getInvariant(pid, postR1, postR2, liquidity);
+        require(postInvariant >= invariantLast(pid), "Invalid invariant");
         
         // Update State
-        cap.liquidity += deltaL;
+        res.liquidity += deltaL;
         activePosition.unlocked = true;
         activePosition.liquidity += deltaL;
 
@@ -219,32 +216,32 @@ contract PrimitiveEngine {
         }
         
         // Commit state updates
-        _update(postR1, postR2);
+        _update(pid, postR1, postR2);
         _updatePosition(owner, nonce);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
 
-    function removeBoth(uint nonce, uint deltaL) public returns (uint, uint) {
+    function removeBoth(bytes32 pid, uint nonce, uint deltaL) public returns (uint, uint) {
         activePosition = _getPosition(msg.sender, nonce);
 
-        Capital storage cap = capital;
-        uint liquidity = cap.liquidity; // gas savings
+        Reserve.Data storage res = reserves[pid];
+        uint liquidity = res.liquidity; // gas savings
 
         require(liquidity > 0, "Not bound");
-        uint RX1 = cap.RX1;
-        uint RX2 = cap.RX2;
+        uint RX1 = res.RX1;
+        uint RY2 = res.RY2;
         uint deltaX = deltaL * RX1 / liquidity;
-        uint deltaY = deltaL * RX2 / liquidity;
+        uint deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
         uint postR1 = RX1 - deltaX;
-        uint postR2 = RX2 - deltaY;
-        int128 postInvariant = getInvariant(postR1, postR2);
-        require(invariantLast() >= postInvariant, "Invalid invariant");
+        uint postR2 = RY2 - deltaY;
+        int128 postInvariant = getInvariant(pid, postR1, postR2, liquidity);
+        require(invariantLast(pid) >= postInvariant, "Invalid invariant");
 
         // Update state
-        require(cap.liquidity >= deltaL, "Above max burn");
-        cap.liquidity -= deltaL;
+        require(res.liquidity >= deltaL, "Above max burn");
+        res.liquidity -= deltaL;
         activePosition.unlocked = true;
         require(activePosition.liquidity >= deltaL, "Not enough L");
         activePosition.liquidity -= deltaL;
@@ -252,7 +249,7 @@ contract PrimitiveEngine {
         activePosition.BY2 += deltaY;
         
         // Commit state updates
-        _update(postR1, postR2);
+        _update(pid, postR1, postR2);
         _updatePosition(msg.sender, nonce);
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
@@ -260,27 +257,31 @@ contract PrimitiveEngine {
 
     /**
      * @notice  Updates the reserves after adding X and removing Y.
-     * @return  Amount of Y removed.
+     * @return  deltaY Amount of Y removed.
      */
-    function addX(address owner, uint nonce, uint deltaX, uint minDeltaY) public returns (uint) {
+    function addX(bytes32 pid, address owner, uint nonce, uint deltaX, uint minDeltaY) public returns (uint deltaY) {
         activePosition = _getPosition(owner, nonce);
 
         // I = FXR2 - FX(R1)
         // I + FX(R1) = FXR2
         // R2a - R2b = -deltaY
-        Capital storage cap = capital;
-        uint256 RX1 = cap.RX1; // gas savings
-        uint256 RX2 = cap.RX2; // gas savings
-        int128 invariant = invariantLast(); //gas savings
-        int128 FXR1 = _getOutputR2(deltaX); // r1 + deltaX
-        uint256 FXR2 = invariant.add(FXR1).fromIntToWei();
-        uint256 deltaY =  FXR2 > RX2 ? FXR2 - RX2 : RX2 - FXR2;
-        deltaY -= deltaY / FEE;
+        Reserve.Data storage res = reserves[pid];
+        uint256 RX1 = res.RX1; // gas savings
+        uint256 RY2 = res.RY2; // gas savings
+        uint256 liquidity = res.liquidity; // gas savings
+        int128 invariant = invariantLast(pid); //gas savings
+        { // scope for calculating deltaY, avoids stack too deep errors
+        int128 FXR1 = _getOutputR2(pid, deltaX); // F(r1 + deltaX)
+        uint256 FXR2 = invariant.add(FXR1).parseUnits();
+        deltaY =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
+        console.log(deltaY);
+        //deltaY -= deltaY / FEE;
+        }
 
         require(deltaY >= minDeltaY, "Not enough Y removed");
         uint256 postR1 = RX1 + deltaX;
-        uint256 postR2 = RX2 - deltaY;
-        int128 postInvariant = getInvariant(postR1, postR2);
+        uint256 postR2 = RY2 - deltaY;
+        int128 postInvariant = getInvariant(pid, postR1, postR2, liquidity);
         require(postInvariant >= invariant, "Invalid invariant");
 
         // Update State
@@ -289,7 +290,8 @@ contract PrimitiveEngine {
         activePosition.BX1 -= deltaX;
         activePosition.BY2 += deltaY;
 
-        _update(postR1, postR2);
+        bytes32 pid_ = pid;
+        _update(pid_, postR1, postR2);
         _updatePosition(owner, nonce);
         emit AddedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
@@ -297,26 +299,29 @@ contract PrimitiveEngine {
 
     /**
      * @notice  Updates the reserves after removing X and adding Y.
-     * @return  Amount of Y added.
+     * @return  deltaY Amount of Y added.
      */
-    function removeX(address owner, uint nonce, uint deltaX, uint maxDeltaY) public returns (uint) {
+    function removeX(bytes32 pid, address owner, uint nonce, uint deltaX, uint maxDeltaY) public returns (uint deltaY) {
         activePosition = _getPosition(owner, nonce);
 
         // I = FXR2 - FX(R1)
         // I + FX(R1) = FXR2
-        Capital storage cap = capital;
-        uint256 RX1 = cap.RX1; // gas savings
-        uint256 RX2 = cap.RX2; // gas savings
-        int128 invariant = invariantLast(); //gas savings
-        int128 FXR1 = _getInputR2(deltaX); // r1 - deltaX
-        uint256 FXR2 = invariant.add(FXR1).fromIntToWei();
-        uint256 deltaY =  FXR2 > RX2 ? FXR2 - RX2 : RX2 - FXR2;
+        Reserve.Data storage res = reserves[pid];
+        uint256 RX1 = res.RX1; // gas savings
+        uint256 RY2 = res.RY2; // gas savings
+        uint256 liquidity = res.liquidity; // gas savings
+        int128 invariant = invariantLast(pid); //gas savings
+        { // scope for calculating deltaY, avoids stack too deep errors
+        int128 FXR1 = _getInputR2(pid, deltaX); // r1 - deltaX
+        uint256 FXR2 = invariant.add(FXR1).parseUnits();
+        deltaY =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
         deltaY += deltaY / FEE;
+        }
 
         require(maxDeltaY >= deltaY, "Too much Y added");
         uint postR1 = RX1 - deltaX;
-        uint postR2 = RX2 + deltaY;
-        int128 postInvariant = getInvariant(postR1, postR2);
+        uint postR2 = RY2 + deltaY;
+        int128 postInvariant = getInvariant(pid, postR1, postR2, liquidity);
         require(postInvariant >= invariant, "Invalid invariant");
 
         // Update State
@@ -325,7 +330,8 @@ contract PrimitiveEngine {
         require(activePosition.BY2 >= deltaY, "Not enough Y");
         activePosition.BY2 -= deltaY;
         
-        _update(postR1, postR2);
+        bytes32 pid_ = pid;
+        _update(pid_, postR1, postR2);
         _updatePosition(owner, nonce);
         emit RemovedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
@@ -333,9 +339,9 @@ contract PrimitiveEngine {
 
     // ===== Swap and Liquidity Math =====
 
-    function getInvariant(uint postR1, uint postR2) public view returns (int128) {
-        Calibration memory cal = calibration;
-        int128 invariant = ReplicationMath.getConstant(postR1, postR2, cal.strike, cal.sigma, cal.time);
+    function getInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        int128 invariant = ReplicationMath.getConstant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
         return invariant;
     }
 
@@ -343,20 +349,22 @@ contract PrimitiveEngine {
      * @notice  Fetches the amount of y which must leave the R2 to preserve the invariant.
      * @dev     R1 = x, R2 = y
      */
-    function getOutputAmount(uint deltaX) public view returns (uint) {
-        uint scaled = _getOutputR2Scaled(deltaX);
-        uint RX2 = capital.RX2; // gas savings
-        uint deltaY = scaled > RX2 ? scaled - RX2 : RX2 - scaled;
+    function getOutputAmount(bytes32 pid, uint deltaX) public view returns (uint) {
+        uint scaled = _getOutputR2Scaled(pid, deltaX);
+        Reserve.Data memory res = reserves[pid];
+        uint RY2 = res.RY2; // gas savings
+        uint deltaY = scaled > RY2 ? scaled - RY2 : RY2 - scaled;
         return deltaY;
     }
 
     /**
      * @notice  Fetches the amount of y which must enter the R2 to preserve the invariant.
      */
-    function getInputAmount(uint deltaX) public view returns (uint) {
-        uint scaled = _getInputR2Scaled(deltaX);
-        uint RX2 = capital.RX2; // gas savings
-        uint deltaY = scaled > RX2 ? scaled - RX2 : RX2 - scaled;
+    function getInputAmount(bytes32 pid, uint deltaX) public view returns (uint) {
+        uint scaled = _getInputR2Scaled(pid, deltaX);
+        Reserve.Data memory res = reserves[pid];
+        uint RY2 = res.RY2; // gas savings
+        uint deltaY = scaled > RY2 ? scaled - RY2 : RY2 - scaled;
         return deltaY;
 
     }
@@ -364,28 +372,30 @@ contract PrimitiveEngine {
     /**
      * @notice  Fetches a new R2 from an increased R1. F(R1).
      */
-    function _getOutputR2(uint deltaX) public view returns (int128) {
-        Calibration memory cal = calibration;
-        uint RX1 = capital.RX1 + deltaX; // new reserve1 value.
-        return ReplicationMath.getTradingFunction(RX1, cal.strike, cal.sigma, cal.time);
+    function _getOutputR2(bytes32 pid, uint deltaX) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        uint RX1 = res.RX1 + deltaX; // new reserve1 value.
+        return ReplicationMath.getTradingFunction(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /**
      * @notice  Fetches a new R2 from a decreased R1.
      */
-    function _getInputR2(uint deltaX) public view returns (int128) {
-        Calibration memory cal = calibration;
-        uint RX1 = capital.RX1 - deltaX; // new reserve1 value.
-        return ReplicationMath.getTradingFunction(RX1, cal.strike, cal.sigma, cal.time);
+    function _getInputR2(bytes32 pid, uint deltaX) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        uint RX1 = res.RX1 - deltaX; // new reserve1 value.
+        return ReplicationMath.getTradingFunction(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    function _getOutputR2Scaled(uint deltaX) public view returns (uint) {
-        uint scaled = ReplicationMath.fromInt(_getOutputR2(deltaX)) * 1e18 / ReplicationMath.MANTISSA;
+    function _getOutputR2Scaled(bytes32 pid, uint deltaX) public view returns (uint) {
+        uint scaled = Units.fromInt(_getOutputR2(pid, deltaX)) * 1e18 / Units.MANTISSA;
         return scaled;
     }
 
-    function _getInputR2Scaled(uint deltaX) public view returns (uint) {
-        uint scaled = ReplicationMath.fromInt(_getInputR2(deltaX)) * 1e18 / ReplicationMath.MANTISSA;
+    function _getInputR2Scaled(bytes32 pid, uint deltaX) public view returns (uint) {
+        uint scaled = Units.fromInt(_getInputR2(pid, deltaX)) * 1e18 / Units.MANTISSA;
         return scaled;
     }
 
@@ -393,24 +403,25 @@ contract PrimitiveEngine {
     // ==== Math Library Entry Points ====
     function getCDF(uint x) public view returns (int128) {
         int128 z = ABDKMath64x64.fromUInt(x);
-        return ReplicationMath.getCDF(z);
+        return z.getCDF();
     }
 
-    function proportionalVol() public view returns (int128) {
-        Calibration memory cal = calibration;
+    function proportionalVol(bytes32 pid) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
         return ReplicationMath.getProportionalVolatility(cal.sigma, cal.time);
     }
 
-    function tradingFunction() public view returns (int128) {
-        Calibration memory cal = calibration;
-        return ReplicationMath.getTradingFunction(capital.RX1, cal.strike, cal.sigma, cal.time);
+    function tradingFunction(bytes32 pid) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        return ReplicationMath.getTradingFunction(res.RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     // ===== View ===== 
 
-    function _getPosition(address owner, uint nonce) internal returns (Position storage) {
+    function _getPosition(address owner, uint nonce) internal returns (Position.Data storage) {
         bytes32 pid = keccak256(abi.encodePacked(owner, nonce));
-        Position storage pos = positions[pid];
+        Position.Data storage pos = positions[pid];
         if(pos.owner == address(0)) {
             pos.owner = owner;
             pos.nonce = nonce;
@@ -418,29 +429,47 @@ contract PrimitiveEngine {
         return pos;
     }
 
-    function getPosition(address owner, uint nonce) public view returns (Position memory) {
-        bytes32 pid = keccak256(abi.encodePacked(owner, nonce));
-        Position memory pos = positions[pid]; 
-        return pos;
+    function getPosition(address owner, uint nonce) public view returns (Position.Data memory) {
+        return positions[Position.getPositionId(owner, nonce)];
     }
 
-    function invariantLast() public view returns (int128) {
-        Calibration memory cal = calibration;
-        return ReplicationMath.getConstant(capital.RX1, capital.RX2, cal.strike, cal.sigma, cal.time);
+    function invariantLast(bytes32 pid) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        return ReplicationMath.getConstant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    function getCapital() public view returns (Capital memory) {
-        Capital memory cap = capital;
-        return cap; 
+    function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
+        Reserve.Data memory res = reserves[pid];
+        return res; 
     }
 
-    function getAccumulator() public view returns (Accumulator memory) {
+    function getAccumulator(bytes32 pid) public view returns (Accumulator memory) {
         Accumulator memory acc = accumulator;
         return acc; 
     }
 
-    function getCalibration() public view returns (Calibration memory) {
-        Calibration memory cal = calibration;
+    function getCalibration(bytes32 pid) public view returns (Calibration.Data memory) {
+        Calibration.Data memory cal = settings[pid];
         return cal; 
+    }
+
+    function getPoolId(Calibration.Data memory self) public view returns(bytes32 pid) {
+        pid = keccak256(
+            abi.encodePacked(
+                self.time,
+                self.sigma,
+                self.strike
+            )
+        );
+    }
+
+    function getInverseCDFTest() public view returns (int128 y) {
+        int128 p = 0x4000000000000830; // 0.25
+        y = p.getInverseCDF();
+    }
+
+    function getCallDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
+        y = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
     }
 }

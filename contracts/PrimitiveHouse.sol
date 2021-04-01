@@ -45,9 +45,9 @@ contract PrimitiveHouse is ICallback {
         engine.directWithdrawal(msg.sender, nonce, deltaX, deltaY);
     }
 
-    function addLiquidity(uint nonce, uint deltaL) public lock {
+    function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
-        engine.addBoth(msg.sender, nonce, deltaL);
+        engine.addBoth(pid, msg.sender, nonce, deltaL);
     }
     
 

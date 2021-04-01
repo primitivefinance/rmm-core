@@ -1,16 +1,3 @@
-import { Wallet, Contract, BigNumber } from 'ethers'
-
-export const MANTISSA = 10 ** 9
-export const PERCENTAGE = 10 ** 4
-
-export function convertFromPercentageInt(value: string): number {
-  return convertFromInt(BigNumber.from(value).mul(PERCENTAGE).toString())
-}
-
-export function convertFromInt(value: string): number {
-  return Number(BigNumber.from(value).mul(MANTISSA).div(BigNumber.from(2).pow(64))) / MANTISSA
-}
-
 function cdf(x, mean, variance) {
   return 0.5 * (1 + erf((x - mean) / Math.sqrt(2 * variance)))
 }
@@ -36,4 +23,16 @@ function erf(x) {
 
 export function std_n_cdf(x) {
   return cdf(x, 0, 1)
+}
+
+export function inverse_std_n_cdf(x) {
+  const q = x - 0.5
+  const r = Math.pow(x, 2)
+  const a0 = 0.151015506
+  const a1 = -0.530357263
+  const a2 = 1.365020123
+  const b0 = 0.132089632
+  const b1 = -0.760732499
+  const result = q * (a2 + (a1 * r + a0) / (Math.pow(r, 2) + b1 * r + b0))
+  return result
 }
