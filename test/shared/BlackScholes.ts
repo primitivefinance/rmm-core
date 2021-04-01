@@ -1,4 +1,4 @@
-import { std_n_cdf } from './CumulativeDistributionFunction'
+import { std_n_cdf } from './CumulativeNormalDistribution'
 import { Calibration } from './Engine'
 import { YEAR, PERCENTAGE, Wei, formatEther } from './Units'
 
