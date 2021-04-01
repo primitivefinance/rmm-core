@@ -1,4 +1,5 @@
-pragma solidity 0.7.6;
+// SPDX-License-Identifier: GPL-3.0-only
+pragma solidity 0.8.0;
 pragma abicoder v2;
 
 /**
@@ -14,7 +15,7 @@ import "./libraries/ReplicationMath.sol";
 import "./libraries/Position.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/Units.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "hardhat/console.sol";
 
@@ -116,7 +117,7 @@ contract PrimitiveEngine {
         Reserve.Data storage res = reserves[pid];
         res.RX1 = postR1;
         res.RY2 = postR2;
-
+        // add new reserves to cumulative reserves
         Accumulator storage acc = accumulator;
         acc.ARX1 += postR1;
         acc.ARX2 += postR2;
