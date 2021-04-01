@@ -53,9 +53,9 @@ library ReplicationMath {
     /**
      * @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
      */
-    function getConstant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal view returns (int128) {
+    function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal view returns (int128) {
         int128 reserve2 = getTradingFunction(RX1, liquidity, strike, sigma, time);
-        int128 k = RY2.parseUnits().sub(reserve2);
-        return k;
+        int128 invariant = RY2.parseUnits().sub(reserve2);
+        return invariant;
     }
 }

@@ -430,14 +430,14 @@ contract PrimitiveEngine {
         return pos;
     }
 
-    function getPosition(address owner, uint nonce) public view returns (Position.Data memory) {
-        return positions[Position.getPositionId(owner, nonce)];
-    }
-
     function invariantLast(bytes32 pid) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         return ReplicationMath.getConstant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+    }
+
+    function getPosition(address owner, uint nonce) public view returns (Position.Data memory) {
+        return positions[Position.getPositionId(owner, nonce)];
     }
 
     function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
@@ -464,6 +464,8 @@ contract PrimitiveEngine {
             )
         );
     }
+
+    // ===== Test =====
 
     function getInverseCDFTest() public view returns (int128 y) {
         int128 p = 0x4000000000000830; // 0.25
