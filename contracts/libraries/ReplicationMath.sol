@@ -34,6 +34,7 @@ library ReplicationMath {
     }
 
     /**
+     * @notice  Fetches RY2 using RX1.
      * @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
      */
     function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal view returns (int128 RY2) {

@@ -41,9 +41,10 @@ asbtract contract Tier2Engine {
     }
 
     /**
-     * @notice  Calculates the amount of Y that must leave the pool to preserve the invariant.
+     * @notice  Swap X -> Y. Calculates the amount of Y that must leave the pool to preserve the invariant.
+     * @dev     X enters the pool.
      */
-    function calcOutput(uint uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
+    function calcOutput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
         RX1 = RX1 + deltaX;
         uint postRY2 = calcRY2(RX1, liquidity, strike, sigma, time).fromInt() * 1e18 / Units.MANTISSA;
         deltaY = postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2;

@@ -13,9 +13,10 @@ library Units {
     using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
 
     uint256 internal constant YEAR = 31449600; // 1 year in seconds
-    uint256 internal constant MANTISSA = 10**8;
     uint256 internal constant DENOMINATOR = 10**18; // wei
+    uint256 internal constant MANTISSA = 10**8;
     uint256 internal constant PERCENTAGE = 10**4;
+    int128 internal constant MANTISSA_INT = 18446744073709500000000000000;
     int128 internal constant PERCENTAGE_INT = 184467440737095516160000;
 
     // ===== Unit Conversion =====
