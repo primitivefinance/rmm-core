@@ -36,14 +36,14 @@ contract PrimitiveHouse is ICallback {
         engine = IPrimitiveEngine(engine_);
     }
 
-    function addDirect(uint nonce, uint deltaX, uint deltaY) public lock {
+    function deposit(uint nonce, uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
-        engine.directDeposit(msg.sender, nonce, deltaX, deltaY);
+        engine.deposit(msg.sender, nonce, deltaX, deltaY);
     }
 
-    function removeDirect(uint nonce, uint deltaX, uint deltaY) public lock {
+    function withdraw(uint nonce, uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
-        engine.directWithdrawal(msg.sender, nonce, deltaX, deltaY);
+        engine.withdraw(msg.sender, nonce, deltaX, deltaY);
     }
 
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
@@ -51,7 +51,7 @@ contract PrimitiveHouse is ICallback {
         engine.addBoth(pid, msg.sender, nonce, deltaL);
     }
     
-
+    // ===== Callback Implementations =====
     function addXYCallback(uint deltaX, uint deltaY) public override executionLock {
         IERC20 TX1 = IERC20(engine.TX1());
         IERC20 TY2 = IERC20(engine.TY2());
@@ -59,7 +59,22 @@ contract PrimitiveHouse is ICallback {
         if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
+    function removeXYCallback(uint deltaX, uint deltaY) public override executionLock {
+        IERC20 TX1 = IERC20(engine.TX1());
+        IERC20 TY2 = IERC20(engine.TY2());
+        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
     function depositCallback(uint deltaX, uint deltaY) public override {
+        addXYCallback(deltaX, deltaY);
+    }
+
+    function addXCallback(uint deltaX, uint deltaY) public override {
+        addXYCallback(deltaX, deltaY);
+    }
+
+    function removeXCallback(uint deltaX, uint deltaY) public override {
         addXYCallback(deltaX, deltaY);
     }
 

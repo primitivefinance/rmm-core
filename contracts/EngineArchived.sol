@@ -342,7 +342,7 @@ contract PrimitiveEngine {
 
     function getInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
-        int128 invariant = ReplicationMath.getConstant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
+        int128 invariant = ReplicationMath.calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
         return invariant;
     }
 
@@ -435,7 +435,7 @@ contract PrimitiveEngine {
     function invariantLast(bytes32 pid) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        return ReplicationMath.getConstant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return ReplicationMath.calcInvariant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {

@@ -26,7 +26,7 @@ library ReplicationMath {
     /**
      * @return  vol Implied Vol * Sqrt(T-t)
      */
-    function getProportionalVolatility(uint sigma, uint time) internal view returns (int128 vol) {
+    function getProportionalVolatility(uint sigma, uint time) internal pure returns (int128 vol) {
         // sigma * sqrt(t)
         int128 sqrtTime = time.toYears().sqrt();
         int128 SX1 = sigma.fromUInt();
@@ -37,7 +37,7 @@ library ReplicationMath {
      * @notice  Fetches RY2 using RX1.
      * @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
      */
-    function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal view returns (int128 RY2) {
+    function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RY2) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
@@ -54,7 +54,7 @@ library ReplicationMath {
     /**
      * @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
      */
-    function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal view returns (int128) {
+    function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128) {
         int128 reserve2 = getTradingFunction(RX1, liquidity, strike, sigma, time);
         int128 invariant = RY2.parseUnits().sub(reserve2);
         return invariant;

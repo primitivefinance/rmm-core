@@ -18,15 +18,15 @@ interface IPrimitiveEngine {
     function addX(bytes32 pid, address owner, uint nonce, uint deltaX, uint minDeltaY) external returns (uint);
     function removeX(bytes32 pid, address owner, uint nonce, uint deltaX, uint maxDeltaY) external returns (uint);
 
-    function directDeposit(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
-    function directWithdrawal(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
+    function deposit(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
+    function withdraw(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
     
     // ===== View =====
-    function getInvariant(uint postR1, uint postR2) external view returns (int128);
-    function getOutputAmount(uint deltaX) external view returns (uint);
-    function getInputAmount(uint deltaX) external view returns (uint);
+    function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
+    function getOutputAmount(bytes32 pid, uint deltaX) external view returns (uint);
+    function getInputAmount(bytes32 pid, uint deltaX) external view returns (uint);
     function getPosition(address owner, uint nonce) external view returns (Position memory);
-    function invariantLast() external view returns (int128);
+    function getInvariantLast() external view returns (int128);
     function getBX1() external view returns (uint);
     function getBY2() external view returns (uint);
     function TX1() external view returns (address);

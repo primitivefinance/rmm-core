@@ -9,6 +9,9 @@ pragma solidity 0.8.0;
 import "../PrimitiveEngine.sol";
 
 contract TestEngine is PrimitiveEngine {
+    using ReplicationMath for *;
+    using BlackScholes for *;
+    using CumulativeNormalDistribution for *;
 
     constructor(address risky, address riskFree) PrimitiveEngine(risky, riskFree) {}
 
