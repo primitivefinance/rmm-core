@@ -2,6 +2,7 @@ import { ethers, waffle } from 'hardhat'
 import { Wallet, Contract, BigNumber } from 'ethers'
 import { deployContract, link } from 'ethereum-waffle'
 import Engine from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
+import EngineTest from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
 import Token from '../../artifacts/contracts/Token.sol/Token.json'
 import House from '../../artifacts/contracts/PrimitiveHouse.sol/PrimitiveHouse.json'
 
