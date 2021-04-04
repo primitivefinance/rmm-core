@@ -59,11 +59,11 @@ contract PrimitiveHouse is ICallback {
         if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function directDepositCallback(uint deltaX, uint deltaY) public override {
+    function depositCallback(uint deltaX, uint deltaY) public override {
         addXYCallback(deltaX, deltaY);
     }
 
-    function withdrawalCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {
+    function withdrawCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {
         return CALLER;
     }
 

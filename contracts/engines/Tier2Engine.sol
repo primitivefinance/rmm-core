@@ -17,7 +17,7 @@ asbtract contract Tier2Engine {
     /**
      * @notice  Calculates the Replication invariant: R2 - K * CDF(CDF^-1(1 - x) - sigma*sqrt(T-t))
      */
-    function calcInvariant(
+    function _calcInvariant(
         uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time
     ) internal pure returns (int128 invariant) {
         invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, time);
@@ -26,7 +26,7 @@ asbtract contract Tier2Engine {
     /**
      * @notice  Calculates the RY2 reserve, which is a function of RX1.
      */
-    function calcRY2(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RY2) {
+    function _calcRY2(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RY2) {
         RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
     }
 
@@ -34,9 +34,9 @@ asbtract contract Tier2Engine {
      * @notice  Swap Y -> X. Calculates the amount of Y that must enter the pool to preserve the invariant.
      * @dev     X leaves the pool.
      */
-    function calcInput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
+    function _calcInput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
         RX1 = RX1 - deltaX;
-        uint postRY2 = calcRY2(RX1, liquidity, strike, sigma, time).fromInt() * 1e18 / Units.MANTISSA;
+        uint postRY2 = _calcRY2(RX1, liquidity, strike, sigma, time).parseUnits();
         deltaY = postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2;
     }
 
@@ -44,9 +44,11 @@ asbtract contract Tier2Engine {
      * @notice  Swap X -> Y. Calculates the amount of Y that must leave the pool to preserve the invariant.
      * @dev     X enters the pool.
      */
-    function calcOutput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
+    function _calcOutput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
         RX1 = RX1 + deltaX;
-        uint postRY2 = calcRY2(RX1, liquidity, strike, sigma, time).fromInt() * 1e18 / Units.MANTISSA;
+        uint postRY2 = _calcRY2(RX1, liquidity, strike, sigma, time).parseUnits();
         deltaY = postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2;
     }
+
+    function create() public virtual {}
 }
