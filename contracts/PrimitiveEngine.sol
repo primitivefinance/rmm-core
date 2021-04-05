@@ -78,13 +78,17 @@ contract PrimitiveEngine is Tier2Engine {
     mapping(bytes32 => Position.Data) public positions;
 
     modifier lock() {
-        require(activePosition.unlocked, "Position.Data locked");
+        require(activePosition.unlocked || activeMargin.unlocked, "Position and Margin locked");
         _;
     }
 
     constructor(address risky, address riskFree) {
         TX1 = risky;
         TY2 = riskFree;
+    }
+
+    function test() public override {
+
     }
 
     function getBX1() public view returns (uint) {
@@ -187,7 +191,7 @@ contract PrimitiveEngine is Tier2Engine {
 
         // Commit state updates
         emit Deposited(owner, nonce, deltaX, deltaY);
-        emit PositionUpdated(msg.sender, activePosition);
+        emit MarginUpdated(msg.sender, activeMargin);
         _updateMargin(owner, nonce);
         return true;
     }
@@ -242,7 +246,7 @@ contract PrimitiveEngine is Tier2Engine {
         uint postR1 = RX1 + deltaX;
         uint postR2 = RY2 + deltaY;
         int128 postInvariant = calcInvariant(pid, postR1, postR2, liquidity);
-        require(postInvariant >= getInvariantLast(pid), "Invalid invariant");
+        require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
         
         // Update State
         res.liquidity += deltaL;
@@ -294,7 +298,7 @@ contract PrimitiveEngine is Tier2Engine {
         postR1 = RX1 - deltaX;
         postR2 = RY2 - deltaY;
         int128 postInvariant = calcInvariant(pid_, postR1, postR2, liquidity);
-        require(getInvariantLast(pid_) >= postInvariant, "Invalid invariant");
+        require(uint(0) >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Update state
@@ -344,7 +348,6 @@ contract PrimitiveEngine is Tier2Engine {
         int128 FXR1 = _getOutputRY2(pid, deltaX); // F(r1 + deltaX)
         uint256 FXR2 = invariant.add(FXR1).parseUnits();
         deltaY =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
-        console.log(deltaY);
         //deltaY -= deltaY / FEE;
         }
 
@@ -352,7 +355,7 @@ contract PrimitiveEngine is Tier2Engine {
         uint256 postR1 = RX1 + deltaX;
         uint256 postR2 = RY2 - deltaY;
         int128 postInvariant = calcInvariant(pid, postR1, postR2, liquidity);
-        require(postInvariant >= invariant, "Invalid invariant");
+        require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
 
         // Update State
         activeMargin.unlocked = true;
@@ -408,7 +411,7 @@ contract PrimitiveEngine is Tier2Engine {
         uint postR1 = RX1 - deltaX;
         uint postR2 = RY2 + deltaY;
         int128 postInvariant = calcInvariant(pid, postR1, postR2, liquidity);
-        require(postInvariant >= invariant, "Invalid invariant");
+        require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
 
         // Update State
         activeMargin.unlocked = true;
@@ -513,7 +516,8 @@ contract PrimitiveEngine is Tier2Engine {
     function getInvariantLast(bytes32 pid) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        return _calcInvariant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        int128 invariant = _calcInvariant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return invariant;
     }
 
     function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {

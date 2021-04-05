@@ -27,12 +27,15 @@ export function std_n_cdf(x) {
 
 export function inverse_std_n_cdf(x) {
   const q = x - 0.5
-  const r = Math.pow(x, 2)
+  const r = Math.pow(q, 2)
   const a0 = 0.151015506
   const a1 = -0.530357263
   const a2 = 1.365020123
   const b0 = 0.132089632
   const b1 = -0.760732499
-  const result = q * (a2 + (a1 * r + a0) / (Math.pow(r, 2) + b1 * r + b0))
+  const numerator = a1 * r + a0
+  const denominator = Math.pow(r, 2) + b1 * r + b0
+  const input = a2 + numerator / denominator
+  const result = q * input
   return result
 }

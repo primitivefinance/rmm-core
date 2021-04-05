@@ -9,12 +9,21 @@ export const MANTISSA = 10 ** 9
 export const PERCENTAGE = 10 ** 4
 export const YEAR = 31449600
 
-export function convertFromPercentageInt(value: BigNumberish): number {
-  return convertFromInt(toBN(value).mul(PERCENTAGE).toString())
+export function fromPercentageInt(value: BigNumberish): number {
+  return fromInt(toBN(value).mul(PERCENTAGE).toString())
 }
 
-export function convertFromInt(value: BigNumberish): number {
-  return Number(toBN(MANTISSA).mul(value).div(BigNumber.from(2).pow(64))) / MANTISSA
+export function fromInt(value: BigNumberish): number {
+  const val = toBN(value.toString()).gt(0) ? value : '0'
+  const numerator = parseEther('1').mul(val)
+  const denominator = BigNumber.from(2).pow(64)
+  const input = numerator.div(denominator)
+  const output = input.div(MANTISSA)
+  return parseFloat(output.toString())
+}
+
+export function fromMantissa(value: number): number {
+  return value / MANTISSA
 }
 
 export function parseWei(x: BigNumberish): Wei {
@@ -82,4 +91,10 @@ export function percentage(val: string, percentage: number, add: boolean): numbe
       .div(100)
       .toString()
   ).float
+}
+
+export function fromWithin(val: Wei, range: number): [number, number] {
+  const low = (val.float * (1 - range)) / 100
+  const high = (val.float * (1 + range)) / 100
+  return [low, high]
 }

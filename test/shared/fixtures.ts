@@ -2,8 +2,8 @@ import { ethers, waffle } from 'hardhat'
 import { Wallet, Contract, BigNumber } from 'ethers'
 import { deployContract, link } from 'ethereum-waffle'
 import Engine from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
-import EngineTest from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
-import Token from '../../artifacts/contracts/Token.sol/Token.json'
+import TestEngine from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
+import Token from '../../artifacts/contracts/test/Token.sol/Token.json'
 import House from '../../artifacts/contracts/PrimitiveHouse.sol/PrimitiveHouse.json'
 
 const overrides = { gasLimit: 9500000 }
@@ -35,7 +35,7 @@ export interface EngineFixture extends HouseFixture {
 
 export async function engineFixture([wallet]: Wallet[], provider: any): Promise<EngineFixture> {
   const { house, TX1, TY2 } = await houseFixture([wallet], provider)
-  const engine = await deployContract(wallet, Engine, [TX1.address, TY2.address], overrides)
+  const engine = await deployContract(wallet, TestEngine, [TX1.address, TY2.address], overrides)
   await house.initialize(engine.address)
   return { engine, house, TX1, TY2 }
 }

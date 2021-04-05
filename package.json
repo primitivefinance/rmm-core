@@ -15,7 +15,8 @@
   "homepage": "https://primitive.finance",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "test:logs": "hardhat test --logs"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -31,6 +32,7 @@
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",
     "hardhat": "^2.1.2",
+    "hardhat-tracer": "^1.0.0-alpha.3",
     "prettier": "^2.2.1",
     "prettier-plugin-solidity": "^1.0.0-beta.6",
     "solhint": "^3.3.4",

@@ -43,10 +43,10 @@ library ReplicationMath {
         int128 vol = getProportionalVolatility(sigma, time);
         int128 one = uint(1).fromUInt();
         // CDF
-        int128 reserve = (RX1 * 10 ** 18 / liquidity).parseUnits();
+        int128 reserve = ((RX1 * 10 ** 18) / liquidity).parseUnits();
         int128 phi = one.sub(reserve).getInverseCDF();
         // CDF^-1(1-x) - sigma*sqrt(t)
-        int128 input = (one.div(phi)).mul(Units.PERCENTAGE_INT).sub(vol).div(Units.PERCENTAGE_INT);
+        int128 input = phi.mul(Units.PERCENTAGE_INT).sub(vol).div(Units.PERCENTAGE_INT);
         // K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
         RY2 = k.mul(input.getCDF()); 
     }
