@@ -50,6 +50,16 @@ contract PrimitiveHouse is ICallback {
         CALLER = msg.sender;
         engine.addBoth(pid, msg.sender, nonce, deltaL);
     }
+
+    function addX(bytes32 pid, uint nonce, uint deltaX, uint minDeltaY) public lock {
+        CALLER = msg.sender;
+        engine.addX(pid, msg.sender, nonce, deltaX, minDeltaY);
+    }
+
+    function removeX(bytes32 pid, uint nonce, uint deltaX, uint maxDeltaY) public lock {
+        CALLER = msg.sender;
+        engine.removeX(pid, msg.sender, nonce, deltaX, maxDeltaY);
+    }
     
     // ===== Callback Implementations =====
     function addXYCallback(uint deltaX, uint deltaY) public override executionLock {
@@ -71,11 +81,11 @@ contract PrimitiveHouse is ICallback {
     }
 
     function addXCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
+        addXYCallback(deltaX, uint(0));
     }
 
     function removeXCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
+        addXYCallback(uint(0), deltaY);
     }
 
     function withdrawCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {

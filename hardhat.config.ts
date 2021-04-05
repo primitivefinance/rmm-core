@@ -2,6 +2,7 @@ import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import 'prettier-plugin-solidity'
+import 'hardhat-tracer'
 
 export default {
   networks: {

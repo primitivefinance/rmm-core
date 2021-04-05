@@ -9,6 +9,7 @@ pragma solidity 0.8.0;
 import "../PrimitiveEngine.sol";
 
 contract TestEngine is PrimitiveEngine {
+    using Units for *;
     using ReplicationMath for *;
     using BlackScholes for *;
     using CumulativeNormalDistribution for *;
@@ -24,7 +25,7 @@ contract TestEngine is PrimitiveEngine {
 
     function icdf(uint x) public view returns (int128 y) {
         //int128 p = 0x4000000000000830; // 0.25
-        int128 p = ABDKMath64x64.fromUInt(x);
+        int128 p = x.parseUnits();
         y = p.getInverseCDF();
     }
 

@@ -1,9 +1,16 @@
-import { Wei, toBN, formatEther, parseEther, parseWei, convertFromInt, BigNumber } from './Units'
+import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber } from './Units'
 import { Contract } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
 
+export const ERC20EVents = {
+  EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
+}
+
 export const EngineEvents = {
+  DEPOSITED: 'Deposited',
+  WITHDRAWN: 'Withdrawn',
   POSITION_UPDATED: 'PositionUpdated',
+  MARGIN_UPDATED: 'MarginUpdated',
   CREATE: 'Create',
   UPDATE: 'Update',
   ADDED_BOTH: 'AddedBoth',
@@ -65,6 +72,34 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
   return position
 }
 
+export interface Margin {
+  owner: string
+  nonce: number
+  BX1: Wei
+  BY2: Wei
+  unlocked: boolean
+}
+
+export async function getMargin(engine: Contract, owner: string, nonce: number, log?: boolean): Promise<Margin> {
+  const mar = await engine.getMargin(owner, nonce)
+  const margin: Margin = {
+    owner: mar.owner,
+    nonce: mar.nonce,
+    BX1: new Wei(mar.BX1),
+    BY2: new Wei(mar.BY2),
+    unlocked: mar.unlocked,
+  }
+  if (log)
+    console.log(`
+      owner: ${mar.owner},
+      nonce: ${mar.nonce},
+      BX1: ${formatEther(mar.BX1)},
+      BY2: ${formatEther(mar.BY2)},
+      unlocked: ${mar.unlocked}
+    `)
+  return margin
+}
+
 export interface Calibration {
   strike: BigNumber
   sigma: number
@@ -93,8 +128,8 @@ export interface PoolParams {
 }
 
 export async function getPoolParams(engine: Contract, poolId: string, log?: boolean): Promise<PoolParams> {
-  const reserve: Reserve = await getReserve(engine, poolId)
-  const calibration: Calibration = await getCalibration(engine, poolId)
+  const reserve: Reserve = await getReserve(engine, poolId, log)
+  const calibration: Calibration = await getCalibration(engine, poolId, log)
   return { reserve, calibration }
 }
 
@@ -108,7 +143,8 @@ export function getOutputAmount(params: PoolParams, deltaX: Wei): Wei {
   const RX1: Wei = params.reserve.RX1.add(deltaX)
   const RY2: Wei = params.reserve.RY2
   const liquidity: Wei = params.reserve.liquidity
-  const PostRY2: Wei = parseWei(getTradingFunction(RX1, liquidity, params.calibration).toString())
+  const TF: number = getTradingFunction(RX1, liquidity, params.calibration)
+  const PostRY2: Wei = parseWei(TF.toString())
   const deltaY = PostRY2.gt(RY2.raw) ? PostRY2.sub(RY2.raw) : RY2.sub(PostRY2)
   return deltaY
 }
@@ -134,12 +170,12 @@ export function getDeltaY(deltaX: Wei, invariantInt128: string, fee: Wei, params
   const RX1: Wei = params.reserve.RX1
   const RY2: Wei = params.reserve.RY2
   const liquidity: Wei = params.reserve.liquidity
-  const invariant: Wei = parseWei(convertFromInt(invariantInt128))
+  const invariant: Wei = parseWei(fromInt(invariantInt128))
   let FXR1 = RX1.add(deltaX)
   const FX = parseWei(getTradingFunction(FXR1, liquidity, params.calibration).toString())
   let FYR2 = invariant.add(FX)
   let deltaY = FYR2.gt(RY2) ? FYR2.sub(RY2) : RY2.sub(FYR2)
-  let feePaid = deltaY.div(fee)
+  let feePaid = parseWei('0') //deltaY.div(fee)
   const yToX = deltaX.raw.isNegative()
   deltaY = yToX ? deltaY.add(feePaid) : deltaY.sub(feePaid)
   FYR2 = yToX ? RY2.add(deltaY) : RY2.sub(deltaY)
