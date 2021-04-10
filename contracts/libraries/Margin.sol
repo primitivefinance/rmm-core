@@ -13,8 +13,6 @@ library Margin {
     struct Data {
         // the address which can withdraw balances
         address owner;
-        // the nonce of the margin position, which is iterated for each engine
-        uint nonce;
         // Balance of X, the RISKY, or underlying asset.
         uint BX1;
         // Balance of Y, the RISK-FREE, or "quote" asset, a stablecoin.
@@ -28,18 +26,24 @@ library Margin {
      * @dev     Used across all Engines.
      */
     function fetch(
-        mapping(bytes32 => Data) storage pos,
-        address owner,
-        uint nonce
+        mapping(bytes32 => Data) storage mar,
+        address owner
     ) internal returns (Data storage) {
-        return pos[getMarginId(owner, nonce)];
+        return mar[getMarginId(owner)];
+    }
+
+    function update(Data storage mar, uint BX1, uint BY2) internal returns (Data storage) {
+        mar.BX1 = BX1;
+        mar.BY2 = BY2;
+        mar.unlocked = false;
+        return mar;
     }
 
     /**
-     * @notice  Fetches the margin position Id, which is an encoded `owner` and `nonce` bytes32.
+     * @notice  Fetches the margin position Id, which is an encoded `owner`.
      * @return  The margin position Id as a bytes32.
      */
-    function getMarginId(address owner, uint nonce) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(owner, nonce));
+    function getMarginId(address owner) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(owner));
     }
 }
