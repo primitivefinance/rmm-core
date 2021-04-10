@@ -17,6 +17,8 @@ library Reserve {
         uint RY2;
         // Total liquidity shares, also the quantity of options replicated, open interest. 
         uint liquidity;
+        // Total liquidity shares available for borrowing.
+        uint float;
     }
 
     /**

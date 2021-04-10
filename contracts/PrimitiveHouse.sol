@@ -84,9 +84,19 @@ contract PrimitiveHouse is ICallback {
         addXYCallback(deltaX, uint(0));
     }
 
+    
     function removeXCallback(uint deltaX, uint deltaY) public override {
         addXYCallback(uint(0), deltaY);
     }
+
+    function borrowCallback(bytes32 pid, uint deltaL, uint maxPremium) public override {
+        addXYCallback(deltaL, uint(0));
+    }
+
+    function repayCallback(bytes32 pid, uint deltaL) public override {
+        addXYCallback(deltaL, uint(0));
+    }
+
 
     function withdrawCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {
         return CALLER;

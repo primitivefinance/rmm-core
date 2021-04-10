@@ -103,7 +103,8 @@ contract PrimitiveEngine {
         reserves[pid] = Reserve.Data({
             RX1: RX1,
             RY2: RY2,
-            liquidity: INIT_SUPPLY
+            liquidity: INIT_SUPPLY,
+            float: 0
         });
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
