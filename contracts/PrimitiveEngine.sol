@@ -50,8 +50,8 @@ contract PrimitiveEngine is Tier2Engine {
     uint public constant INIT_SUPPLY = 10 ** 18;
     uint public constant FEE = 10 ** 3;
 
-    event Deposited(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
-    event Withdrawn(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
+    event Deposited(address indexed from, uint deltaX, uint deltaY);
+    event Withdrawn(address indexed from, uint deltaX, uint deltaY);
     event PositionUpdated(address indexed from, Position.Data pos);
     event MarginUpdated(address indexed from, Margin.Data mar);
     event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration);
@@ -79,8 +79,8 @@ contract PrimitiveEngine is Tier2Engine {
     mapping(bytes32 => Margin.Data) public margins;
     mapping(bytes32 => Position.Data) public positions;
 
-    modifier lock() {
-        require(activePosition.unlocked || activeMargin.unlocked, "Position and Margin locked");
+    modifier lock(Margin.Data memory next) {
+        require(activePosition.unlocked || next.unlocked, "Position and Margin locked");
         _;
     }
 
@@ -162,27 +162,23 @@ contract PrimitiveEngine is Tier2Engine {
     /**
      * @notice  Commits transiently set `activeMargin` to state of margins[encodePacked(owner,nonce)].
      */
-    function _updateMargin(address owner, uint nonce) internal lock {
-        Margin.Data storage mar = _getMargin(owner, nonce);
-        Margin.Data memory next = activeMargin;
+    function _updateMargin(address owner, Margin.Data memory next) internal lock(next) {
+        Margin.Data storage mar = _getMargin(owner);
         require(mar.owner == next.owner, "Not owner");
-        require(mar.nonce == next.nonce, "Not nonce");
-        mar.BX1 = next.BX1;
-        mar.BY2 = next.BY2;
-        mar.unlocked = false;
-        delete activeMargin;
+        mar.update(next.BX1, next.BY2);
     }
 
     /**
      * @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
      */
-    function deposit(address owner, uint nonce, uint deltaX, uint deltaY) public returns (bool) {
-        activeMargin = _getMargin(owner, nonce); // deleted in _updatePosition() call
-        activeMargin.unlocked = true;
+    function deposit(address owner, uint deltaX, uint deltaY) public returns (bool) {
+        Margin.Data memory margin_ = getMargin(owner);
 
         // Update state
-        if(deltaX > 0) activeMargin.BX1 += deltaX;
-        if(deltaY > 0) activeMargin.BY2 += deltaY;
+        if(deltaX > 0) margin_.BX1 += deltaX;
+        if(deltaY > 0) margin_.BY2 += deltaY;
+        _updateMargin(owner, margin_);
+
 
         { // avoids stack too deep errors
         uint preBX1 = getBX1();
@@ -193,41 +189,38 @@ contract PrimitiveEngine is Tier2Engine {
         }
 
         // Commit state updates
-        emit Deposited(owner, nonce, deltaX, deltaY);
-        emit MarginUpdated(msg.sender, activeMargin);
-        _updateMargin(owner, nonce);
+        emit Deposited(owner, deltaX, deltaY);
+        emit MarginUpdated(msg.sender, margin_);
         return true;
     }
 
     /**
      * @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
      */
-    function withdraw(address owner, uint nonce, uint deltaX, uint deltaY) public returns (bool) {
-        activeMargin = _getMargin(owner, nonce); // deleted in _updatePosition() call
-        activeMargin.unlocked = true;
+    function withdraw(uint deltaX, uint deltaY) public returns (bool) {
+        Margin.Data memory margin_ = getMargin(msg.sender);
 
         // Update state
-        if(deltaX > 0) activeMargin.BX1 -= deltaX;
-        if(deltaY > 0) activeMargin.BY2 -= deltaY;
+        if(deltaX > 0) margin_.BX1 -= deltaX;
+        if(deltaY > 0) margin_.BY2 -= deltaY;
+        _updateMargin(msg.sender, margin_);
 
         { // avoids stack too deep errors
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
-        address caller = ICallback(msg.sender).withdrawCallback(deltaX, deltaY);
         if(deltaX > 0) {
-            IERC20(TX1).safeTransfer(caller, deltaX);
+            IERC20(TX1).safeTransfer(msg.sender, deltaX);
             require(preBX1 - deltaX >= getBX1(), "Not enough TX1");
         }
         if(deltaY > 0) {
-            IERC20(TY2).safeTransfer(caller, deltaY);
+            IERC20(TY2).safeTransfer(msg.sender, deltaY);
             require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
         }
         }
 
         // Commit state updates
-        emit Withdrawn(owner, nonce, deltaX, deltaY);
-        emit MarginUpdated(msg.sender, activeMargin);
-        _updateMargin(owner, nonce);
+        emit Withdrawn(msg.sender, deltaX, deltaY);
+        emit MarginUpdated(msg.sender, margin_);
         return true;
     }
 
@@ -237,7 +230,7 @@ contract PrimitiveEngine is Tier2Engine {
      * @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
      */
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint, uint) {
-        activeMargin = _getMargin(owner, nonce);
+        activeMargin = _getMargin(owner);
         activePosition = _getPosition(owner, nonce);
         Reserve.Data storage res = reserves[pid];
 
@@ -274,7 +267,7 @@ contract PrimitiveEngine is Tier2Engine {
         // Commit state updates
         _update(pid, postR1, postR2);
         _updatePosition(owner, nonce);
-        _updateMargin(owner, nonce);
+        _updateMargin(owner);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -283,7 +276,7 @@ contract PrimitiveEngine is Tier2Engine {
      * @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `owner`.
      */
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint postR1, uint postR2) {
-        activeMargin = _getMargin(msg.sender, nonce);
+        activeMargin = _getMargin(msg.sender);
         activePosition = _getPosition(msg.sender, nonce);
 
         Reserve.Data storage res = reserves[pid];
@@ -328,7 +321,7 @@ contract PrimitiveEngine is Tier2Engine {
         // Commit state updates
         _update(pid, postR1, postR2);
         _updatePosition(msg.sender, nonce);
-        _updateMargin(msg.sender, nonce);
+        _updateMargin(msg.sender);
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -380,7 +373,7 @@ contract PrimitiveEngine is Tier2Engine {
      * @return  deltaY Amount of Y removed.
      */
     function addX(bytes32 pid, address owner, uint nonce, uint deltaX, uint minDeltaY) public returns (uint deltaY) {
-        activeMargin = _getMargin(owner, nonce);
+        activeMargin = _getMargin(owner);
         activePosition = _getPosition(owner, nonce);
 
         // I = FXR2 - FX(R1)
@@ -427,7 +420,7 @@ contract PrimitiveEngine is Tier2Engine {
         bytes32 pid_ = pid;
         _update(pid_, postR1, postR2);
         _updatePosition(owner, nonce);
-        _updateMargin(owner, nonce);
+        _updateMargin(owner);
         emit AddedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
     }
@@ -437,7 +430,7 @@ contract PrimitiveEngine is Tier2Engine {
      * @return  deltaY Amount of Y added.
      */
     function removeX(bytes32 pid, address owner, uint nonce, uint deltaX, uint maxDeltaY) public returns (uint deltaY) {
-        activeMargin = _getMargin(owner, nonce);
+        activeMargin = _getMargin(owner);
         activePosition = _getPosition(owner, nonce);
 
         // I = FXR2 - FX(R1)
@@ -483,7 +476,7 @@ contract PrimitiveEngine is Tier2Engine {
         bytes32 pid_ = pid;
         _update(pid_, postR1, postR2);
         _updatePosition(owner, nonce);
-        _updateMargin(owner, nonce);
+        _updateMargin(owner);
         emit RemovedX(msg.sender, nonce, deltaX, deltaY);
         return deltaY;
     }
@@ -519,11 +512,10 @@ contract PrimitiveEngine is Tier2Engine {
         return pos;
     }
 
-    function _getMargin(address owner, uint nonce) internal returns (Margin.Data storage) {
-        Margin.Data storage mar = margins.fetch(owner, nonce);
+    function _getMargin(address owner) internal returns (Margin.Data storage) {
+        Margin.Data storage mar = margins.fetch(owner);
         if(mar.owner == address(0)) {
             mar.owner = owner;
-            mar.nonce = nonce;
         }
         return mar;
     }
@@ -587,8 +579,8 @@ contract PrimitiveEngine is Tier2Engine {
         return pos; 
     }
 
-    function getMargin(address owner, uint nonce) public view returns (Margin.Data memory) {
-        Margin.Data memory mar = margins[Margin.getMarginId(owner, nonce)];
+    function getMargin(address owner) public view returns (Margin.Data memory) {
+        Margin.Data memory mar = margins[Margin.getMarginId(owner)];
         return mar;
     }
 
