@@ -30,6 +30,8 @@ interface ICallback {
     function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
     function addXCallback(uint deltaX, uint deltaY) external;
     function removeXCallback(uint deltaX, uint deltaY) external;
+    function borrowCallback(bytes32 pid, uint deltaL, uint maxPremium) external;
+    function repayCallback(bytes32 pid, uint deltaL) external;
     function getCaller() external returns (address);
 }
 
@@ -51,7 +53,7 @@ contract PrimitiveEngine is Tier2Engine {
     event Deposited(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
     event Withdrawn(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
     event PositionUpdated(address indexed from, Position.Data pos);
-    event MarginUpdated(address indexed from, Margin.Data pos);
+    event MarginUpdated(address indexed from, Margin.Data mar);
     event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration);
     event Update(uint R1, uint R2, uint blockNumber);
     event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
@@ -119,7 +121,8 @@ contract PrimitiveEngine is Tier2Engine {
         reserves[pid] = Reserve.Data({
             RX1: RX1,
             RY2: RY2,
-            liquidity: INIT_SUPPLY
+            liquidity: INIT_SUPPLY,
+            float: 0
         });
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
@@ -228,6 +231,8 @@ contract PrimitiveEngine is Tier2Engine {
         return true;
     }
 
+    // ===== Liquidity =====
+
     /**
      * @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
      */
@@ -327,6 +332,48 @@ contract PrimitiveEngine is Tier2Engine {
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
+
+    function lend(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
+        activePosition = _getPosition(msg.sender, nonce);
+        activePosition.loaned = true;
+        Reserve.Data storage res = reserves[pid];
+        res.liquidity -= deltaL;
+        res.float += deltaL;
+        _updatePosition(msg.sender, nonce);
+        return deltaL;
+    }
+
+    function borrow(bytes32 pid, address owner, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
+        Reserve.Data storage res = reserves[pid];
+        activePosition = _getPosition(owner, nonce);
+        activePosition.borrowed = true;
+        res.float -= deltaL;
+        activePosition.liquidity += deltaL;
+        uint preBX1 = getBX1();
+        ICallback(msg.sender).borrowCallback(pid, deltaL, maxPremium); // remove liquidity, pull in premium token.
+        uint postBX1 = getBX1();
+        uint assetPrice = 0;
+        uint value = 0; // get value
+        uint difference = assetPrice > value ? assetPrice - value : value - assetPrice; // get difference between lp value and asset value.
+        require(difference >= postBX1 - preBX1, "Not enough premium");
+        _updatePosition(owner, nonce);
+        return deltaL;
+    }
+
+    function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint) {
+        Reserve.Data storage res = reserves[pid];
+        activePosition = _getPosition(owner, nonce);
+        ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
+        activePosition.liquidity -= deltaL;
+        res.float += deltaL;
+        if(activePosition.liquidity == 0) {
+            activePosition.borrowed = false;
+        }
+        _updatePosition(owner, nonce);
+        return deltaL;
+    }
+
+    // ===== Swaps =====
 
     /**
      * @notice  Updates the reserves after adding X and removing Y.
@@ -542,7 +589,7 @@ contract PrimitiveEngine is Tier2Engine {
 
     function getMargin(address owner, uint nonce) public view returns (Margin.Data memory) {
         Margin.Data memory mar = margins[Margin.getMarginId(owner, nonce)];
-        return mar; 
+        return mar;
     }
 
     function getPoolId(Calibration.Data memory self) public view returns(bytes32 pid) {

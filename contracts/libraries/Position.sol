@@ -23,6 +23,10 @@ library Position {
         uint liquidity;
         // Transiently set as true when a position is being edited.
         bool unlocked;
+        // Set when liquidity is locked for the owner and unlocked for borrowers.
+        bool loaned;
+        // Set when liquidity shares are borrowed.
+        bool borrowed;
     }
 
     /**

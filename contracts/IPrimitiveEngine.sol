@@ -17,7 +17,6 @@ interface IPrimitiveEngine {
     function removeBoth(bytes32 pid, uint nonce, uint deltaL) external returns (uint, uint);
     function addX(bytes32 pid, address owner, uint nonce, uint deltaX, uint minDeltaY) external returns (uint);
     function removeX(bytes32 pid, address owner, uint nonce, uint deltaX, uint maxDeltaY) external returns (uint);
-
     function deposit(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
     function withdraw(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
     
