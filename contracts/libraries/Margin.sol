@@ -32,7 +32,7 @@ library Margin {
         return mar[getMarginId(owner)];
     }
 
-    function update(Data storage mar, uint BX1, uint BY2) internal returns (Data storage) {
+    function edit(Data storage mar, uint BX1, uint BY2) internal returns (Data storage) {
         mar.BX1 = BX1;
         mar.BY2 = BY2;
         mar.unlocked = false;
