@@ -161,8 +161,6 @@ contract PrimitiveEngine is Tier2Engine {
      */
     function _updatePosition(address owner, Position.Data memory next) internal lockPosition {
         Position.Data storage pos = _getPosition(owner, _NONCE, _POOL_ID);
-        require(pos.owner == next.owner, "Not owner");
-        require(pos.nonce == next.nonce, "Not nonce");
         pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.loan);
     }
 
@@ -171,9 +169,10 @@ contract PrimitiveEngine is Tier2Engine {
      */
     function _updateMargin(address owner, Margin.Data memory next) internal lockMargin(next) {
         Margin.Data storage mar = _getMargin(owner);
-        require(mar.owner == next.owner, "Not owner");
         mar.edit(next.BX1, next.BY2);
     }
+
+    // ===== Margin =====
 
     /**
      * @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
@@ -345,6 +344,8 @@ contract PrimitiveEngine is Tier2Engine {
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
+
+    // ===== Lending =====
 
     /**
      * @notice  Increases a position's float and decreses its liquidity.

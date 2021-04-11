@@ -23,6 +23,7 @@ export interface Reserve {
   RX1: Wei
   RY2: Wei
   liquidity: Wei
+  float: Wei
 }
 
 export async function getReserve(engine: Contract, poolId: string, log?: boolean): Promise<Reserve> {
@@ -31,12 +32,14 @@ export async function getReserve(engine: Contract, poolId: string, log?: boolean
     RX1: new Wei(res.RX1),
     RY2: new Wei(res.RY2),
     liquidity: new Wei(res.liquidity),
+    float: new Wei(res.float),
   }
   if (log)
     console.log(`
       RX1: ${formatEther(res.RX1)},
       RY2: ${formatEther(res.RY2)},
       liquidity: ${formatEther(res.liquidity)},
+      float: ${formatEther(res.float)}
     `)
   return reserve
 }
@@ -47,6 +50,8 @@ export interface Position {
   BX1: Wei
   BY2: Wei
   liquidity: Wei
+  float: Wei
+  loan: Wei
   unlocked: boolean
 }
 
@@ -58,6 +63,8 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
     BX1: new Wei(pos.BX1),
     BY2: new Wei(pos.BY2),
     liquidity: new Wei(pos.liquidity),
+    float: new Wei(pos.float),
+    loan: new Wei(pos.loan),
     unlocked: pos.unlocked,
   }
   if (log)
@@ -67,6 +74,8 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
       BX1: ${formatEther(pos.BX1)},
       BY2: ${formatEther(pos.BY2)},
       liquidity: ${formatEther(pos.liquidity)},
+      float: ${formatEther(pos.float)},
+      loan: ${formatEther(pos.loan)}
       unlocked: ${pos.unlocked}
     `)
   return position
@@ -74,7 +83,6 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
 
 export interface Margin {
   owner: string
-  nonce: number
   BX1: Wei
   BY2: Wei
   unlocked: boolean
@@ -84,7 +92,6 @@ export async function getMargin(engine: Contract, owner: string, nonce: number, 
   const mar = await engine.getMargin(owner, nonce)
   const margin: Margin = {
     owner: mar.owner,
-    nonce: mar.nonce,
     BX1: new Wei(mar.BX1),
     BY2: new Wei(mar.BY2),
     unlocked: mar.unlocked,
@@ -92,7 +99,6 @@ export async function getMargin(engine: Contract, owner: string, nonce: number, 
   if (log)
     console.log(`
       owner: ${mar.owner},
-      nonce: ${mar.nonce},
       BX1: ${formatEther(mar.BX1)},
       BY2: ${formatEther(mar.BY2)},
       unlocked: ${mar.unlocked}
@@ -184,6 +190,7 @@ export function getDeltaY(deltaX: Wei, invariantInt128: string, fee: Wei, params
       RX1: FXR1,
       RY2: FYR2,
       liquidity: params.reserve.liquidity,
+      float: params.reserve.float,
     },
     calibration: params.calibration,
   }
@@ -192,7 +199,7 @@ export function getDeltaY(deltaX: Wei, invariantInt128: string, fee: Wei, params
 }
 
 export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
-  const { RX1, RY2, liquidity } = params.reserve
+  const { RX1, RY2, liquidity, float } = params.reserve
   const deltaX = deltaL.mul(RX1).div(liquidity)
   const deltaY = deltaL.mul(RY2).div(liquidity)
   const postRX1 = deltaX.add(RX1)
@@ -203,6 +210,7 @@ export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams,
       RX1: postRX1,
       RY2: postRY2,
       liquidity: postLiquidity,
+      float: float,
     },
     calibration: params.calibration,
   }

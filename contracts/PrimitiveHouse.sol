@@ -36,14 +36,14 @@ contract PrimitiveHouse is ICallback {
         engine = IPrimitiveEngine(engine_);
     }
 
-    function deposit(uint nonce, uint deltaX, uint deltaY) public lock {
+    function deposit(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
-        engine.deposit(msg.sender, nonce, deltaX, deltaY);
+        engine.deposit(msg.sender, deltaX, deltaY);
     }
 
-    function withdraw(uint nonce, uint deltaX, uint deltaY) public lock {
+    function withdraw(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
-        engine.withdraw(msg.sender, nonce, deltaX, deltaY);
+        engine.withdraw(deltaX, deltaY);
     }
 
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
@@ -51,14 +51,14 @@ contract PrimitiveHouse is ICallback {
         engine.addBoth(pid, msg.sender, nonce, deltaL);
     }
 
-    function addX(bytes32 pid, uint nonce, uint deltaX, uint minDeltaY) public lock {
+    function addX(bytes32 pid, uint deltaX, uint minDeltaY) public lock {
         CALLER = msg.sender;
-        engine.addX(pid, msg.sender, nonce, deltaX, minDeltaY);
+        engine.addX(pid, msg.sender, deltaX, minDeltaY);
     }
 
-    function removeX(bytes32 pid, uint nonce, uint deltaX, uint maxDeltaY) public lock {
+    function removeX(bytes32 pid, uint deltaX, uint maxDeltaY) public lock {
         CALLER = msg.sender;
-        engine.removeX(pid, msg.sender, nonce, deltaX, maxDeltaY);
+        engine.removeX(pid, msg.sender, deltaX, maxDeltaY);
     }
     
     // ===== Callback Implementations =====

@@ -13,12 +13,20 @@ interface IPrimitiveEngine {
         bool unlocked;
     }
     // ==== State =====
+
+    // Liquidity
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) external returns (uint, uint);
-    function removeBoth(bytes32 pid, uint nonce, uint deltaL) external returns (uint, uint);
-    function addX(bytes32 pid, address owner, uint nonce, uint deltaX, uint minDeltaY) external returns (uint);
-    function removeX(bytes32 pid, address owner, uint nonce, uint deltaX, uint maxDeltaY) external returns (uint);
-    function deposit(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
-    function withdraw(address owner, uint nonce, uint deltaX, uint deltaY) external returns (bool);
+    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) external returns (uint, uint);
+    // Swaps
+    function addX(bytes32 pid, address owner, uint deltaX, uint minDeltaY) external returns (uint);
+    function removeX(bytes32 pid, address owner, uint deltaX, uint maxDeltaY) external returns (uint);
+    // Margin
+    function deposit(address owner, uint deltaX, uint deltaY) external returns (bool);
+    function withdraw(uint deltaX, uint deltaY) external returns (bool);
+    // Lending
+    function lend(bytes32 pid, uint nonce, uint deltaL) external returns (uint);
+    function borrow(bytes32 pid, address owner, uint nonce, uint deltaL, uint maxPremium) external returns (uint);
+    function repay(bytes32 pid, address owner, uint nonce, uint deltaL) external returns (uint);
     
     // ===== View =====
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
