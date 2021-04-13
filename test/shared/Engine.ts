@@ -2,7 +2,7 @@ import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber } from
 import { Contract } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
 
-export const ERC20EVents = {
+export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
 }
 
@@ -88,8 +88,8 @@ export interface Margin {
   unlocked: boolean
 }
 
-export async function getMargin(engine: Contract, owner: string, nonce: number, log?: boolean): Promise<Margin> {
-  const mar = await engine.getMargin(owner, nonce)
+export async function getMargin(engine: Contract, owner: string, log?: boolean): Promise<Margin> {
+  const mar = await engine.getMargin(owner)
   const margin: Margin = {
     owner: mar.owner,
     BX1: new Wei(mar.BX1),
