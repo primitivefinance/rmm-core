@@ -34,7 +34,8 @@ import {
   getPosition,
   getPoolParams,
   addBoth,
-  ERC20EVents,
+  ERC20Events,
+  getMargin,
 } from './shared/Engine'
 import { engineFixture, EngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -190,6 +191,56 @@ describe('Primitive Engine', function () {
     })
   })
 
+  describe('Margin', function () {
+    it('Fail House::AddX: No X balance', async function () {
+      await expect(engine.withdraw(parseWei('100').raw, parseWei('100').raw)).to.emit(engine, EngineEvents.WITHDRAWN)
+      await expect(house.addX(poolId, parseWei('0.1').raw, '0')).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
+    })
+
+    it('Fail House::RemoveX: No Y balance', async function () {
+      await expect(engine.withdraw(parseWei('100').raw, parseWei('100').raw)).to.emit(engine, EngineEvents.WITHDRAWN)
+      await expect(house.removeX(poolId, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
+        ERC20Events.EXCEEDS_BALANCE
+      )
+    })
+
+    it('House::Deposit: Adds X and Y directly', async function () {
+      // before: deposit 100
+      // withdraw 100
+      await engine.withdraw(parseWei('100').raw, parseWei('100').raw)
+      const amount = parseWei('200').raw
+      // deposit 200
+      await expect(house.deposit(amount, amount))
+        .to.emit(engine, EngineEvents.MARGIN_UPDATED)
+        .to.emit(engine, EngineEvents.DEPOSITED)
+        .withArgs(signer.address, amount, amount)
+      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
+      expect(owner).to.be.eq(signer.address)
+      expect(BX1.raw).to.be.eq(amount)
+      expect(BY2.raw).to.be.eq(amount)
+      expect(unlocked).to.be.eq(false)
+    })
+
+    it('Engine::Withdraw: Removes X and Y directly', async function () {
+      // before: deposit 100
+      const amount = parseWei('100').raw
+      // remove 100
+      await expect(engine.withdraw(amount, amount))
+        .to.emit(engine, EngineEvents.MARGIN_UPDATED)
+        .to.emit(engine, EngineEvents.WITHDRAWN)
+        .withArgs(signer.address, amount, amount)
+      // deposit 100
+      await house.deposit(amount, amount)
+      // remove 100
+      await expect(() => engine.withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
+      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
+      expect(owner).to.be.eq(signer.address)
+      expect(BX1.raw).to.be.eq(0)
+      expect(BY2.raw).to.be.eq(0)
+      expect(unlocked).to.be.eq(false)
+    })
+  })
+
   describe('Liquidity', function () {
     it('Engine::AddBoth: Add both X and Y', async function () {
       const invariant = await engine.getInvariantLast(poolId)
@@ -238,6 +289,10 @@ describe('Primitive Engine', function () {
       liquidity: ${formatEther((await engine.getReserve(poolId)).liquidity)}
       invariantLast: ${formatEther(await engine.getInvariantLast(poolId))}
     `)
+    })
+
+    it('Fail Engine::RemoveBoth: No L balance', async function () {
+      await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
     })
   })
 
@@ -299,39 +354,6 @@ describe('Primitive Engine', function () {
       console.log(`
       actualDeltaY:   ${formatEther(actualDeltaY)}
     `)
-    })
-  })
-
-  describe('Margin', function () {
-    it('Fail House::AddX: No X balance', async function () {
-      await expect(engine.withdraw(parseWei('100').raw, parseWei('100').raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-      await expect(house.addX(poolId, parseWei('0.1').raw, '0')).to.be.revertedWith(ERC20EVents.EXCEEDS_BALANCE)
-    })
-
-    it('Fail House::RemoveX: No Y balance', async function () {
-      await expect(engine.withdraw(parseWei('100').raw, parseWei('100').raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-      await expect(house.removeX(poolId, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
-        ERC20EVents.EXCEEDS_BALANCE
-      )
-    })
-
-    it('Fail Engine::RemoveBoth: No L balance', async function () {
-      await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
-    })
-
-    it('House::Deposit: Adds X and Y directly', async function () {
-      const amount = parseWei('200').raw
-      await expect(house.deposit(amount, amount)).to.emit(engine, EngineEvents.MARGIN_UPDATED)
-    })
-
-    it('Engine::Withdraw: Removes X and Y directly', async function () {
-      const amount = parseWei('200').raw
-      // add direct
-      await expect(house.deposit(amount, amount)).to.emit(engine, EngineEvents.MARGIN_UPDATED)
-      // remove direct
-      await expect(engine.withdraw(amount, amount))
-        .to.emit(engine, EngineEvents.MARGIN_UPDATED)
-        .to.emit(engine, EngineEvents.WITHDRAWN)
     })
   })
 })
