@@ -16,7 +16,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "test:logs": "hardhat test --logs"
+    "test:logs": "hardhat test --logs",
+    "sim": "npx hardhat run ./src/scripts/run.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
