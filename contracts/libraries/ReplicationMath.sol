@@ -64,8 +64,8 @@ library ReplicationMath {
         int128 k = strike.parseUnits();
         int128 r = rfRate.percentage();
         // 2r / (2r + sigma^2)
-        int128 exponent = r.mul(2).div(r.mul(2).add(sigma.pow(2)));
-        int128 input = RX1.pow(exponent.parseUnits());
+        int128 exponent = r.mul(2).div(r.mul(2).add(sigma.percentage().pow(2)));
+        int128 input = RX1.parseUnits().pow(exponent.parseUnits());
         // RY2 = K - K * RX1^(2r / (2r + sigma^2))
         RY2 = k.sub(k.mul(input));
     }
