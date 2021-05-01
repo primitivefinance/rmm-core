@@ -55,8 +55,8 @@ contract PureArbitrageur is Agent {
     emit SwapInRisky(deltaX, deltaY);
   }
 
-  function swapAmountInRiskless(uint deltaX) external {
-    uint deltaY = model.swapAmountInRiskless(deltaX);
+  function swapAmountOutRisky(uint deltaX) external {
+    uint deltaY = model.swapAmountOutRisky(deltaX);
     emit SwapOutRiskFree(deltaX, deltaY);
   }
 
@@ -90,7 +90,7 @@ contract PureArbitrageur is Agent {
       model.swapAmountInRisky(1);
       tookStep = true;
     } else if (BY2 > feed) {
-      model.swapAmountInRiskless(1);
+      model.swapAmountOutRisky(1);
       tookStep = true;
     }
     
@@ -111,16 +111,18 @@ contract PureArbitrageur is Agent {
   }
 
   /// @notice store the data at this block into state
-  function storeData() external {
+  function storeData(uint blockNumber) external {
     uint feed = model.getFeed();
-    // get distance from start block
-    uint distance = block.number > startBlock ? block.number - startBlock : 0;
-    // log the current data at this distance
-    data[distance] = Data({
+
+    latestBlock = blockNumber;
+
+    (uint RX1, uint RY2) = model.getReserves();
+    // log the current data at this blockNumber
+    data[blockNumber] = Data({
       number: block.number,
       feed: feed,
-      BX1: 0,
-      BY2: 0,
+      BX1: RX1,
+      BY2: RY2,
       stepped: true
     });
   }
