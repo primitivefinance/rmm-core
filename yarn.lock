@@ -7283,6 +7283,11 @@ static-extend@^0.1.1:
   resolved "https://registry.yarnpkg.com/statuses/-/statuses-1.5.0.tgz#161c7dac177659fd9811f43771fa99381478628c"
   integrity sha1-Fhx9rBd2Wf2YEfQ3cfqZOBR4Yow=
 
+stochastic@^0.0.14:
+  version "0.0.14"
+  resolved "https://registry.yarnpkg.com/stochastic/-/stochastic-0.0.14.tgz#eea8388b578ad3d921076f69bfe5b4352db34e08"
+  integrity sha1-7qg4i1eK09khB29pv+W0NS2zTgg=
+
 stream-to-pull-stream@^1.7.1:
   version "1.7.3"
   resolved "https://registry.yarnpkg.com/stream-to-pull-stream/-/stream-to-pull-stream-1.7.3.tgz#4161aa2d2eb9964de60bfa1af7feaf917e874ece"

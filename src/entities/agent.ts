@@ -1,4 +1,5 @@
 import { BigNumberish, Contract } from 'ethers'
+import { parseWei } from '../../test/shared/Units'
 import Model from './model'
 
 // the smart contract data structure to track the change in state
@@ -26,7 +27,33 @@ class Agent {
 
   // runs the smart contract step call
   async step() {
-    await this.contract.step()
+    const spot = await this.model.contract.getSpotPrice()
+    const reference = await this.model.contract.getFeed()
+
+    if (spot > reference) {
+      let postSpot = spot
+      let amountIn = 0.001
+      while (postSpot > reference) {
+        postSpot = this.model.getSpotPriceAfterVirtualSwapAmountInRisky(amountIn)
+        amountIn += 0.001
+      }
+
+      // execute a swap
+      await this.contract.swapAmountInRisky(parseWei(amountIn).raw)
+    } else {
+      let postSpot = spot
+      let amountIn = 1
+      while (postSpot < reference) {
+        postSpot = this.model.getSpotPriceAfterVirtualSwapAmountInRiskless(amountIn)
+        amountIn += 1
+      }
+
+      // execute a swap
+      await this.contract.swapAmountInRiskless(parseWei(amountIn).raw)
+    }
+
+    // log the data
+    await this.contract.storeData()
   }
 
   // fetches the latest data from the smart contract
