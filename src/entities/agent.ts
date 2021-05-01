@@ -1,5 +1,5 @@
 import { BigNumberish, Contract } from 'ethers'
-import { parseWei } from '../../test/shared/Units'
+import { formatEther, parseWei } from '../../test/shared/Units'
 import Model from './model'
 
 // the smart contract data structure to track the change in state
@@ -27,14 +27,20 @@ class Agent {
 
   // runs the smart contract step call
   async step() {
-    const spot = await this.model.contract.getSpotPrice()
+    const spot = await this.model.spotPrice()
     const reference = await this.model.contract.getFeed()
 
-    if (spot > reference) {
+    if (spot.gt(reference)) {
       let postSpot = spot
       let amountIn = 0.001
-      while (postSpot > reference) {
-        postSpot = this.model.getSpotPriceAfterVirtualSwapAmountInRisky(amountIn)
+      while (postSpot.gt(reference)) {
+        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountInRisky(amountIn)
+        if (false)
+          console.log(`
+        Swap IN risky
+        post spot price: ${postSpot.float}, 
+        reference price: ${formatEther(reference)}
+        `)
         amountIn += 0.001
       }
 
@@ -42,18 +48,25 @@ class Agent {
       await this.contract.swapAmountInRisky(parseWei(amountIn).raw)
     } else {
       let postSpot = spot
-      let amountIn = 1
-      while (postSpot < reference) {
-        postSpot = this.model.getSpotPriceAfterVirtualSwapAmountInRiskless(amountIn)
-        amountIn += 1
+      let amountIn = 0.001
+      while (postSpot.lt(reference)) {
+        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountOutRisky(amountIn)
+        if (false)
+          console.log(`
+        Swap OUT risky
+        post spot price: ${postSpot.float}, 
+        reference price: ${formatEther(reference)}
+        `)
+        amountIn += 0.001
       }
 
       // execute a swap
-      await this.contract.swapAmountInRiskless(parseWei(amountIn).raw)
+      await this.contract.swapAmountOutRisky(parseWei(amountIn).raw)
     }
 
     // log the data
-    await this.contract.storeData()
+    //const block = await this.model.hre.ethers.provider.getBlockNumber()
+    //await this.contract.storeData(block)
   }
 
   // fetches the latest data from the smart contract
@@ -68,8 +81,6 @@ class Agent {
     }
     return obj
   }
-
-  advance() {}
 }
 
 export default Agent

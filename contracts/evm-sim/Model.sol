@@ -12,6 +12,8 @@ import "hardhat/console.sol";
 
 interface ICallback {
   function depositCallback(uint deltaX, uint deltaY) external;
+  function addXCallback(uint deltaX, uint deltaY) external;
+  function removeXCallback(uint deltaX, uint deltaY) external;
 }
 
 contract Model is ICallback {
@@ -48,9 +50,7 @@ contract Model is ICallback {
 
   /// @notice move the model forward using off-chain rng seed
   function tick(uint newAssetPrice) public {
-    console.log("enter model tick");
     oracle.setPrice(newAssetPrice);
-    console.log("exit model tick");
   }
 
   // ===== State Changing & Engine Interaction =====
@@ -61,7 +61,7 @@ contract Model is ICallback {
   function depositCallback(uint deltaX, uint deltaY) external override {
     IERC20 TX1 = IERC20(engine.TX1());
     IERC20 TY2 = IERC20(engine.TY2());
-    if(deltaX > 0) TX1.safeTransfer(msg.sender, deltaX);
+    if(deltaX > 0) TX1.safeTransfer(msg.sender, deltaX); // msg.sender is engine
     if(deltaY > 0) TY2.safeTransfer(msg.sender, deltaY);
   }
 
@@ -70,10 +70,14 @@ contract Model is ICallback {
     return engine.addX(pid, msg.sender, deltaX, 0);
   }
 
+  function addXCallback(uint deltaX, uint deltaY) external override {}
+
   /// @notice should execute a removeX swap, Y -> X.
-  function swapAmountInRiskless(uint deltaX) external returns(uint) {
+  function swapAmountOutRisky(uint deltaX) external returns(uint) {
     return engine.removeX(pid, msg.sender, deltaX, type(uint256).max);
   }
+
+  function removeXCallback(uint deltaX, uint deltaY) external override {}
 
 
   // ===== View =====
@@ -82,6 +86,11 @@ contract Model is ICallback {
   function getFeed() public view returns (uint) {
      return oracle.peek();
    }
+
+  function getReserves() public view returns (uint, uint) {
+    Reserve.Data memory res = engine.getReserve(pid);
+    return (res.RX1, res.RY2);
+  }
 
   /// @notice should query the engine contract for a risky asset quote. Riskless swap Y -> X
   function getRiskyAmountIn(uint deltaX) external view returns (uint) {
@@ -94,7 +103,7 @@ contract Model is ICallback {
   }
 
   function getSpotPrice() external view returns (uint) {
-      return engine.getOutputAmount(pid, 1e18); // fix
+      return engine.getOutputAmount(pid, 1e6); // fix
   }
 
   function getSpotPriceAfterVirtualSwapAmountInRiskless() external view returns (uint) {
