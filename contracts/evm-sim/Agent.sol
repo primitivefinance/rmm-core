@@ -12,9 +12,4 @@ abstract contract Agent {
 
   /// @notice to be implemented by a higher level agent contract
   function step() public virtual;
-
-  /// @notice to be implemented by a higher level agent contract
-  function advance() public virtual;
-
-
 }
