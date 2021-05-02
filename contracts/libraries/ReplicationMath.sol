@@ -59,4 +59,20 @@ library ReplicationMath {
         int128 invariant = RY2.parseUnits().sub(reserve2);
         return invariant;
     }
+
+    function getPerpetualPutTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint rfRate) internal pure returns (int128 RY2) {
+        int128 k = strike.parseUnits();
+        int128 r = rfRate.percentage();
+        // 2r / (2r + sigma^2)
+        int128 exponent = r.mul(2).div(r.mul(2).add(sigma.percentage().pow(2)));
+        int128 input = RX1.parseUnits().pow(exponent.parseUnits());
+        // RY2 = K - K * RX1^(2r / (2r + sigma^2))
+        RY2 = k.sub(k.mul(input));
+    }
+
+    function calcPerpInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint rfRate) internal pure returns (int128) {
+        int128 reserve2 = getPerpetualPutTradingFunction(RX1, liquidity, strike, sigma, rfRate);
+        int128 invariant = RY2.parseUnits().sub(reserve2);
+        return invariant;
+    }
 }

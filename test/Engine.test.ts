@@ -356,4 +356,10 @@ describe('Primitive Engine', function () {
     `)
     })
   })
+
+  describe('Lending', function () {
+    it('Engine::lend: Increase a positions float', async function () {})
+    it('Engine::borrow: Increase a positions loan debt', async function () {})
+    it('Engine::repay: Decrease a positions loan debt', async function () {})
+  })
 })
