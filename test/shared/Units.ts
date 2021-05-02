@@ -74,6 +74,11 @@ export class Wei {
     return this.val.gt(x.toString())
   }
 
+  lt(x: BigNumberish | Wei): boolean {
+    if (x instanceof Wei) x = x.raw
+    return this.val.lt(x.toString())
+  }
+
   log() {
     console.log(this.parsed)
   }
