@@ -30,6 +30,10 @@ abstract contract Tier2Engine {
         RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
     }
 
+    function _calcRX1(uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RX1) {
+        RX1 = ReplicationMath.getInverseTradingFunction(RY2, liquidity, strike, sigma, time);
+    }
+
     /**
      * @notice  Swap Y -> X. Calculates the amount of Y that must enter the pool to preserve the invariant.
      * @dev     X leaves the pool.
