@@ -433,6 +433,34 @@ contract PrimitiveEngine is Tier2Engine {
 
     // ===== Swaps =====
 
+    function swap(bytes32 pid, bool riskyToRiskFree, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
+        // Fetch internal balances of owner address
+        Margin.Data memory margin_ = getMargin(msg.sender);
+        margin_.unlocked = true;
+
+        // Fetch the global reserves for the `pid` curve
+        Reserve.Data storage res = reserves[pid];
+        uint256 RX1 = res.RX1; // gas savings
+        uint256 RY2 = res.RY2; // gas savings
+        uint256 liquidity = res.liquidity; // gas savings
+        int128 invariant = getInvariantLast(pid); //gas savings
+
+        {
+            int128 FXR1;
+            uint256 FXR2;
+            if(riskyToRiskFree) {
+                FXR1 = _getOutputRY2(pid, deltaX); // F(r1 + deltaX)
+                FXR2 = invariant.add(FXR1).parseUnits();
+                deltaIn =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
+            } else {
+                FXR1 = _getInputRY2(pid, deltaX); // r1 - deltaX
+                FXR2 = invariant.add(FXR1).parseUnits();
+                deltaIn =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
+            }
+        }
+
+    }
+
     /**
      * @notice  Updates the reserves after adding X and removing Y.
      * @return  deltaY Amount of Y removed.
@@ -568,6 +596,16 @@ contract PrimitiveEngine is Tier2Engine {
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 - deltaX; // new reserve1 value.
         return _calcRY2(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+    }
+
+    /**
+     * @notice  Fetches a new R1 from an increased R2.
+     */
+    function _getOutputRX1(bytes32 pid, uint deltaY) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        uint RY2 = res.RY2 + deltaY;
+        
     }
 
     function _getPosition(address owner, uint nonce, bytes32 pid) internal returns (Position.Data storage) {
