@@ -56,5 +56,27 @@ abstract contract Tier2Engine {
         deltaY = postRY2 > preRY2 ? postRY2.sub(preRY2) : preRY2.sub(postRY2);
     }
 
+    /**
+     * @notice  Swap Y -> X. Calculates the amount of X that must leave the pool to preserve the invariant.
+     * @dev     Y enters the pool. X leaves the pool.
+     */
+    function _calcRiskFreeInput(uint deltaY, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaX) {
+        RY2 = RY2 + deltaY;
+        int128 preRX1 = RX1.parseUnits();
+        int128 postRX1 = _calcRX1(RX1, liquidity, strike, sigma, time);
+        deltaX = postRX1 > preRX1 ? postRX1.sub(preRX1) : preRX1.sub(postRX1);
+    }
+
+    /**
+     * @notice  Swap X -> Y. Calculates the amount of X that must enter the pool to preserve the invariant.
+     * @dev     Y leaves the pool. X enters the pool.
+     */
+    function _calcRiskFreeOutput(uint deltaY, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaX) {
+        RY2 = RY2 - deltaY;
+        int128 preRX1 = RX1.parseUnits();
+        int128 postRX1 = _calcRX1(RY2, liquidity, strike, sigma, time);
+        deltaX = postRX1 > preRX1 ? postRX1.sub(preRX1) : preRX1.sub(postRX1);
+    }
+
     function test() public virtual {}
 }
