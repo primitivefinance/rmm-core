@@ -53,7 +53,7 @@ library ReplicationMath {
 
     /**
      * @notice  Fetches RX1 using RY2.
-     * @return  RX1 = 
+     * @return  RX1 = 1 - K*CDF(CDF^-1(RY2/K) + sigma*sqrt(t))
      */
     function getInverseTradingFunction(uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RX1) {
         int128 k = strike.parseUnits();
@@ -67,7 +67,7 @@ library ReplicationMath {
         int128 phi = reserve.div(k).getInverseCDF();
         // CDF^-1(Y/K) + sigma*sqrt(t)
         int128 input = phi.mul(Units.PERCENTAGE_INT).add(vol).div(Units.PERCENTAGE_INT);
-        // 1 - CDF(CDF^-1(Y/K) + sigma*sqrt(t))
+        // 1 - K*CDF(CDF^-1(Y/K) + sigma*sqrt(t))
         RX1 = one.sub(k.mul(input.getCDF())).mul(liquidity.parseUnits());
     }
  

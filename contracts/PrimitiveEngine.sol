@@ -433,7 +433,14 @@ contract PrimitiveEngine is Tier2Engine {
 
     // ===== Swaps =====
 
-    function swap(bytes32 pid, bool riskyToRiskFree, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
+    event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
+
+    /**
+     * @notice  Swap between risky and riskfree assets
+     * @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
+                Else, we request X out, and must add Y to the pool's reserves.
+     */
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
         margin_.unlocked = true;
@@ -446,19 +453,58 @@ contract PrimitiveEngine is Tier2Engine {
         int128 invariant = getInvariantLast(pid); //gas savings
 
         {
-            int128 FXR1;
-            uint256 FXR2;
-            if(riskyToRiskFree) {
-                FXR1 = _getOutputRY2(pid, deltaX); // F(r1 + deltaX)
-                FXR2 = invariant.add(FXR1).parseUnits();
-                deltaIn =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
+            if(addXRemoveY) {
+                int128 nextRX1 = _removeY(pid, deltaOut); // remove Y from reserves, and calculate the new X reserve value.
+                uint256 postRX1 = invariant.add(nextRX1).parseUnits();
+                deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
             } else {
-                FXR1 = _getInputRY2(pid, deltaX); // r1 - deltaX
-                FXR2 = invariant.add(FXR1).parseUnits();
-                deltaIn =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
+                int128 nextRY2 = _removeX(pid, deltaOut); // subtract X from reserves, and calculate the new Y reserve value.
+                uint256 postRY2 = invariant.add(nextRY2).parseUnits();
+                deltaIn =  postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2; // the diff between new Y and current Y is the deltaIn
             }
         }
 
+        require(deltaInMax >= deltaIn, "Too expensive");
+        uint postRX1 = addXRemoveY ? RX1 + deltaIn : RX1 - deltaOut;
+        uint postRY2 = addXRemoveY ? RY2 - deltaOut : RY2 + deltaIn;
+        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, liquidity);
+        require(postInvariant >= invariant, "Invalid invariant");
+
+        {// avoids stack too deep errors
+        address to = msg.sender;
+        uint margin = addXRemoveY ? margin_.BX1 : margin_.BY2;
+        if(margin >= deltaIn) {
+            if(addXRemoveY) {
+                margin_.BX1 -= deltaIn;
+            } else {
+                margin_.BY2 -= deltaIn;
+            }
+            {
+            uint preBalance = addXRemoveY ? getBY2() : getBX1();
+            IERC20(addXRemoveY ? TY2 : TX1).safeTransfer(to, deltaOut);
+            uint postBalance = addXRemoveY ? getBY2() : getBX1();
+            require(postBalance >= preBalance - deltaOut, "Sent too much TY2");
+            }
+            _updateMargin(to, margin_);
+        } else {
+            {
+            uint preBX1 = getBX1();
+            uint preBY2 = getBY2();
+            IERC20(addXRemoveY ? TY2 : TX1).safeTransfer(to, deltaOut);
+            ICallback(msg.sender).addXCallback(deltaIn, deltaOut);
+            uint postBX1 = getBX1();
+            uint postBY2 = getBY2();
+            uint deltaX_ = addXRemoveY ? deltaIn : deltaOut;
+            uint deltaY_ = addXRemoveY ? deltaOut : deltaIn;
+            require(postBX1 >= (addXRemoveY ? preBX1 + deltaX_ : preBX1 - deltaX_), "Not enough TX1");
+            require(postBY2 >= (addXRemoveY ? preBY2 - deltaY_ : preBY2 + deltaY_), "Not enough TY2");
+            }
+        }
+        }
+        
+        bytes32 pid_ = pid;
+        _update(pid_, postRX1, postRY2);
+        emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut);
     }
 
     /**
@@ -478,7 +524,7 @@ contract PrimitiveEngine is Tier2Engine {
         uint256 liquidity = res.liquidity; // gas savings
         int128 invariant = getInvariantLast(pid); //gas savings
         { // scope for calculating deltaY, avoids stack too deep errors
-        int128 FXR1 = _getOutputRY2(pid, deltaX); // F(r1 + deltaX)
+        int128 FXR1 = _addX(pid, deltaX); // F(r1 + deltaX)
         uint256 FXR2 = invariant.add(FXR1).parseUnits();
         deltaY =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
         //deltaY -= deltaY / FEE;
@@ -535,7 +581,7 @@ contract PrimitiveEngine is Tier2Engine {
         uint256 liquidity = res.liquidity; // gas savings
         int128 invariant = getInvariantLast(pid); //gas savings
         { // scope for calculating deltaY, avoids stack too deep errors
-        int128 FXR1 = _getInputRY2(pid, deltaX); // r1 - deltaX
+        int128 FXR1 = _removeX(pid, deltaX); // r1 - deltaX
         uint256 FXR2 = invariant.add(FXR1).parseUnits();
         deltaY =  FXR2 > RY2 ? FXR2 - RY2 : RY2 - FXR2;
         deltaY += deltaY / FEE;
@@ -581,7 +627,7 @@ contract PrimitiveEngine is Tier2Engine {
     /**
      * @notice  Fetches a new R2 from an increased R1. F(R1).
      */
-    function _getOutputRY2(bytes32 pid, uint deltaX) public view returns (int128) {
+    function _addX(bytes32 pid, uint deltaX) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 + deltaX; // new reserve1 value.
@@ -591,21 +637,32 @@ contract PrimitiveEngine is Tier2Engine {
     /**
      * @notice  Fetches a new R2 from a decreased R1.
      */
-    function _getInputRY2(bytes32 pid, uint deltaX) public view returns (int128) {
+    function _removeX(bytes32 pid, uint deltaX) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 - deltaX; // new reserve1 value.
         return _calcRY2(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
+
     /**
      * @notice  Fetches a new R1 from an increased R2.
      */
-    function _getOutputRX1(bytes32 pid, uint deltaY) public view returns (int128) {
+    function _addY(bytes32 pid, uint deltaY) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RY2 = res.RY2 + deltaY;
-        
+        return _calcRX1(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+    }
+
+    /**
+     * @notice  Fetches a new R1 from an increased R2.
+     */
+    function _removeY(bytes32 pid, uint deltaY) public view returns (int128) {
+        Calibration.Data memory cal = settings[pid];
+        Reserve.Data memory res = reserves[pid];
+        uint RY2 = res.RY2 - deltaY;
+        return _calcRX1(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     function _getPosition(address owner, uint nonce, bytes32 pid) internal returns (Position.Data storage) {
