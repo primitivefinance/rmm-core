@@ -156,61 +156,21 @@ export function getOutputAmount(params: PoolParams, deltaX: Wei): Wei {
   return deltaY
 }
 
-export interface SwapXOutput {
-  deltaY: Wei
-  feePaid: Wei
-  postParams: PoolParams
-  postInvariant: number
-}
-
-export interface SwapAddXRemoveY {
+export interface Swap {
   deltaIn: Wei
   postParams: PoolParams
   postInvariant: number
 }
 
 /**
- * @notice Returns the amount of Y removed by adding X.
- * @param deltaX The amount of X to add or remove, can be negative.
- * @param invariantInt128 The previous invariant value.
- * @param fee The amount of Y kept as a fee.
- * @param params Parameters of the engine, including strike,time,sigma,RX1,RY2
- * @returns Next R1 amount
- * @returns Next R2 amount
- * @returns Amount of Y output
+ * @notice  Calculates the required deltaIn if requesting deltaOut
+ * @param deltaOut The amount of tokens requested out (swapped out of pool)
+ * @param addXRemoveY The swap direction, if true, swap X to Y, else swap Y to X
+ * @param invariantInt128 The previous invariant of the pool
+ * @param params The pool's parameters, including calibration and reserve/liquidity
+ * @returns deltaIn The required amount of tokens that must enter the pool to preserve invariant
  */
-export function getDeltaY(deltaX: Wei, invariantInt128: string, fee: Wei, params: PoolParams): SwapXOutput {
-  const RX1: Wei = params.reserve.RX1
-  const RY2: Wei = params.reserve.RY2
-  const liquidity: Wei = params.reserve.liquidity
-  const invariant: Wei = parseWei(fromInt(invariantInt128))
-  let FXR1 = RX1.add(deltaX)
-  const FX = parseWei(getTradingFunction(FXR1, liquidity, params.calibration).toString())
-  let FYR2 = invariant.add(FX)
-  let deltaY = FYR2.gt(RY2) ? FYR2.sub(RY2) : RY2.sub(FYR2)
-  let feePaid = parseWei('0') //deltaY.div(fee)
-  const yToX = deltaX.raw.isNegative()
-  deltaY = yToX ? deltaY.add(feePaid) : deltaY.sub(feePaid)
-  FYR2 = yToX ? RY2.add(deltaY) : RY2.sub(deltaY)
-  const postParams: PoolParams = {
-    reserve: {
-      RX1: FXR1,
-      RY2: FYR2,
-      liquidity: params.reserve.liquidity,
-      float: params.reserve.float,
-    },
-    calibration: params.calibration,
-  }
-  const postInvariant: number = calculateInvariant(postParams)
-  return { deltaY, feePaid, postParams, postInvariant }
-}
-
-export function getDeltaIn(
-  deltaOut: Wei,
-  addXRemoveY: boolean,
-  invariantInt128: string,
-  params: PoolParams
-): SwapAddXRemoveY {
+export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128: string, params: PoolParams): Swap {
   let deltaIn: Wei
   const RX1: Wei = params.reserve.RX1
   const RY2: Wei = params.reserve.RY2
@@ -219,11 +179,11 @@ export function getDeltaIn(
   let postRY2: Wei = new Wei('0')
 
   if (addXRemoveY) {
-    postRX1 = parseWei(_removeY(deltaOut, params).toString())
+    postRX1 = calcRX1WithYOut(deltaOut, params)
     postRY2 = RY2.sub(deltaOut)
     deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
   } else {
-    let nextRY2 = parseWei(_removeX(deltaOut, params).toString())
+    let nextRY2 = calcRY2WithXOut(deltaOut, params)
     postRY2 = invariant.add(nextRY2)
     postRX1 = RX1.sub(deltaOut)
     deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
@@ -245,23 +205,23 @@ export function getDeltaIn(
 }
 
 // new functions in contracts
-export function _removeY(deltaY: Wei, params: PoolParams) {
+export function calcRX1WithYOut(deltaY: Wei, params: PoolParams): Wei {
   const RY2: Wei = params.reserve.RY2
   const nextRY2 = RY2.sub(deltaY)
-  return _calcRX1(nextRY2, params)
+  return parseWei(calcRX1WithRY2(nextRY2, params))
 }
 
-export function _calcRX1(RY2: Wei, params: PoolParams) {
+export function calcRX1WithRY2(RY2: Wei, params: PoolParams) {
   return getInverseTradingFunction(RY2, params.reserve.liquidity, params.calibration)
 }
 
-export function _removeX(deltaX: Wei, params: PoolParams) {
+export function calcRY2WithXOut(deltaX: Wei, params: PoolParams): Wei {
   const RX1 = params.reserve.RX1
   const nextRX1 = RX1.sub(deltaX)
-  return _calcRY2(nextRX1, params)
+  return parseWei(calcRY2WithRX1(nextRX1, params))
 }
 
-export function _calcRY2(RX1: Wei, params: PoolParams) {
+export function calcRY2WithRX1(RX1: Wei, params: PoolParams) {
   return getTradingFunction(RX1, params.reserve.liquidity, params.calibration)
 }
 
