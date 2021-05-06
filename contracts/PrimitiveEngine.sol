@@ -447,10 +447,9 @@ contract PrimitiveEngine is Tier2Engine {
 
         // Fetch the global reserves for the `pid` curve
         Reserve.Data storage res = reserves[pid];
+        int128 invariant = getInvariantLast(pid); //gas savings
         uint256 RX1 = res.RX1; // gas savings
         uint256 RY2 = res.RY2; // gas savings
-        uint256 liquidity = res.liquidity; // gas savings
-        int128 invariant = getInvariantLast(pid); //gas savings
 
         {
             if(addXRemoveY) {
@@ -467,44 +466,51 @@ contract PrimitiveEngine is Tier2Engine {
         require(deltaInMax >= deltaIn, "Too expensive");
         uint postRX1 = addXRemoveY ? RX1 + deltaIn : RX1 - deltaOut;
         uint postRY2 = addXRemoveY ? RY2 - deltaOut : RY2 + deltaIn;
-        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, liquidity);
+        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, res.liquidity);
         require(postInvariant >= invariant, "Invalid invariant");
 
         {// avoids stack too deep errors
+        bool xToY = addXRemoveY;
         address to = msg.sender;
-        uint margin = addXRemoveY ? margin_.BX1 : margin_.BY2;
+        uint margin = xToY ? margin_.BX1 : margin_.BY2;
         if(margin >= deltaIn) {
-            if(addXRemoveY) {
+            if(xToY) {
                 margin_.BX1 -= deltaIn;
             } else {
                 margin_.BY2 -= deltaIn;
             }
-            {
-            uint preBalance = addXRemoveY ? getBY2() : getBX1();
-            IERC20(addXRemoveY ? TY2 : TX1).safeTransfer(to, deltaOut);
-            uint postBalance = addXRemoveY ? getBY2() : getBX1();
-            require(postBalance >= preBalance - deltaOut, "Sent too much TY2");
+            { // avoids stack too deep errors, sending the asset out that we are removing
+            uint deltaOut_ = deltaOut;
+            address token = xToY ? TY2 : TX1;
+            uint preBalance = xToY ? getBY2() : getBX1();
+            IERC20(token).safeTransfer(to, deltaOut_);
+            uint postBalance = xToY ? getBY2() : getBX1();
+            require(postBalance >= preBalance - deltaOut_, "Sent too much tokens");
             }
             _updateMargin(to, margin_);
         } else {
             {
+            uint deltaOut_ = deltaOut;
+            uint deltaIn_ = deltaIn;
             uint preBX1 = getBX1();
             uint preBY2 = getBY2();
-            IERC20(addXRemoveY ? TY2 : TX1).safeTransfer(to, deltaOut);
-            ICallback(msg.sender).addXCallback(deltaIn, deltaOut);
+            address token = xToY ? TY2 : TX1;
+            IERC20(token).safeTransfer(to, deltaOut_);
+            ICallback(msg.sender).addXCallback(deltaIn_, deltaOut_);
             uint postBX1 = getBX1();
             uint postBY2 = getBY2();
-            uint deltaX_ = addXRemoveY ? deltaIn : deltaOut;
-            uint deltaY_ = addXRemoveY ? deltaOut : deltaIn;
-            require(postBX1 >= (addXRemoveY ? preBX1 + deltaX_ : preBX1 - deltaX_), "Not enough TX1");
-            require(postBY2 >= (addXRemoveY ? preBY2 - deltaY_ : preBY2 + deltaY_), "Not enough TY2");
+            uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
+            uint deltaY_ = xToY ? deltaOut_ : deltaIn_;
+            require(postBX1 >= (xToY ? preBX1 + deltaX_ : preBX1 - deltaX_), "Not enough TX1");
+            require(postBY2 >= (xToY ? preBY2 - deltaY_ : preBY2 + deltaY_), "Not enough TY2");
             }
         }
         }
         
         bytes32 pid_ = pid;
+        uint deltaOut_ = deltaOut;
         _update(pid_, postRX1, postRY2);
-        emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut);
+        emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
     }
 
     /**
