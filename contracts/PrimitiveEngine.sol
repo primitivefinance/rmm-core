@@ -41,12 +41,12 @@ contract PrimitiveEngine {
     using CumulativeNormalDistribution for int128;
     using ReplicationMath for int128;
     using Units for *;
+    using Calibration for mapping(bytes32 => Calibration.Data);
+    using Reserve for mapping(bytes32 => Reserve.Data);
     using Margin for mapping(bytes32 => Margin.Data);
     using Margin for Margin.Data;
-    using Calibration for mapping(bytes32 => Calibration.Data);
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
-    using Reserve for mapping(bytes32 => Reserve.Data);
     using SafeERC20 for IERC20;
 
     uint public constant INIT_SUPPLY = 10 ** 18;
@@ -124,7 +124,7 @@ contract PrimitiveEngine {
         // Set x = 1 - delta
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
         // Set y = F(x)
-        uint RY2 = SwapMath.calculateRY2WithRX1(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
+        uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
         reserves[pid] = Reserve.Data({
             RX1: RX1,
             RY2: RY2,
@@ -155,7 +155,7 @@ contract PrimitiveEngine {
      * @notice  Commits transiently set `activePosition` to state of positions[encodePacked(owner,nonce)].
      */
     function _updatePosition(address owner, Position.Data memory next) internal lockPosition {
-        Position.Data storage pos = _getPosition(owner, _NONCE, _POOL_ID);
+        Position.Data storage pos = _fetchPosition(owner, _NONCE, _POOL_ID);
         pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.loan);
     }
 
@@ -163,7 +163,7 @@ contract PrimitiveEngine {
      * @notice  Commits transiently set `activeMargin` to state of margins[encodePacked(owner,nonce)].
      */
     function _updateMargin(address owner, Margin.Data memory next) internal lockMargin(next) {
-        Margin.Data storage mar = _getMargin(owner);
+        Margin.Data storage mar = _fetchMargin(owner);
         mar.edit(next.BX1, next.BY2);
     }
 
@@ -448,12 +448,12 @@ contract PrimitiveEngine {
         uint postRY2;
         {
             if(addXRemoveY) {
-                int128 nextRX1 = _removeY(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
+                int128 nextRX1 = calcRX1WithYOut(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
                 postRX1 = nextRX1.sub(invariant).parseUnits();
                 postRY2 = RY2 - deltaOut;
                 deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
             } else {
-                int128 nextRY2 = _removeX(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
+                int128 nextRY2 = calcRY2WithXOut(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
                 postRX1 = RX1 - deltaOut;
                 postRY2 = invariant.add(nextRY2).parseUnits();
                 deltaIn =  postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2; // the diff between new Y and current Y is the deltaIn
@@ -511,57 +511,28 @@ contract PrimitiveEngine {
     // ===== Swap and Liquidity Math =====
 
     /**
-     * @notice  Calculates the Replication invariant: R2 - K * CDF(CDF^-1(1 - x) - sigma*sqrt(T-t))
-     */
-    function _calcInvariant(
-        uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time
-    ) internal pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, time);
-    }
-
-    /**
-     * @notice  Swap Y -> X. Calculates the amount of Y that must enter the pool to preserve the invariant.
-     * @dev     X leaves the pool.
-     */
-    function _calcInput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
-        RX1 = RX1 - deltaX;
-        int128 preRY2 = RY2.parseUnits();
-        int128 postRY2 = SwapMath.calculateRY2WithRX1(RX1, liquidity, strike, sigma, time);
-        deltaY = postRY2 > preRY2 ? postRY2.sub(preRY2) : preRY2.sub(postRY2);
-    }
-
-    /**
-     * @notice  Swap X -> Y. Calculates the amount of Y that must leave the pool to preserve the invariant.
-     * @dev     X enters the pool.
-     */
-    function _calcOutput(uint deltaX, uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 deltaY) {
-        RX1 = RX1 + deltaX;
-        int128 preRY2 = RY2.parseUnits();
-        int128 postRY2 = SwapMath.calculateRY2WithRX1(RX1, liquidity, strike, sigma, time);
-        deltaY = postRY2 > preRY2 ? postRY2.sub(preRY2) : preRY2.sub(postRY2);
-    }
-
-    /**
      * @notice  Fetches a new R2 from a decreased R1.
      */
-    function _removeX(bytes32 pid, uint deltaX) public view returns (int128) {
+    function calcRY2WithXOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        uint RX1 = res.RX1 - deltaX; // new reserve1 value.
-        return SwapMath.calculateRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+        uint RX1 = res.RX1 - deltaXOut; // new reserve1 value.
+        return SwapMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /**
-     * @notice  Fetches a new R1 from an increased R2.
+     * @notice  Fetches a new R1 from a decreased R2.
      */
-    function _removeY(bytes32 pid, uint deltaY) public view returns (int128) {
+    function calcRX1WithYOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        uint RY2 = res.RY2 - deltaY;
-        return SwapMath.calculateRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        uint RY2 = res.RY2 - deltaYOut;
+        return SwapMath.calcRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    function _getPosition(address owner, uint nonce, bytes32 pid) internal returns (Position.Data storage) {
+    // ===== Position & Margin State Fetchers =====
+
+    function _fetchPosition(address owner, uint nonce, bytes32 pid) internal returns (Position.Data storage) {
         Position.Data storage pos = positions.fetch(owner, nonce, pid);
         if(pos.owner == address(0)) {
             pos.owner = owner;
@@ -571,7 +542,7 @@ contract PrimitiveEngine {
         return pos;
     }
 
-    function _getMargin(address owner) internal returns (Margin.Data storage) {
+    function _fetchMargin(address owner) internal returns (Margin.Data storage) {
         Margin.Data storage mar = margins.fetch(owner);
         if(mar.owner == address(0)) {
             mar.owner = owner;
@@ -583,38 +554,13 @@ contract PrimitiveEngine {
 
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
-        int128 invariant = _calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
+        int128 invariant = ReplicationMath.calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
         return invariant;
     }
 
-    /**
-     * @notice  Fetches the amount of y which must leave the R2 to preserve the invariant.
-     * @dev     R1 = x, R2 = y
-     */
-    function getOutputAmount(bytes32 pid, uint deltaX) public view returns (uint) {
-        Calibration.Data memory cal = settings[pid];
-        Reserve.Data memory res = reserves[pid];
-        int128 deltaYInt = _calcOutput(deltaX, res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
-        uint deltaY = deltaYInt.parseUnits();
-        return deltaY;
-    }
-
-    /**
-     * @notice  Fetches the amount of y which must enter the R2 to preserve the invariant.
-     */
-    function getInputAmount(bytes32 pid, uint deltaX) public view returns (uint) {
-        Calibration.Data memory cal = settings[pid];
-        Reserve.Data memory res = reserves[pid];
-        int128 deltaYInt = _calcInput(deltaX, res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
-        uint deltaY = deltaYInt.parseUnits();
-        return deltaY;
-
-    }
-
     function getInvariantLast(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        int128 invariant = _calcInvariant(res.RX1, res.RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        int128 invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
         return invariant;
     }
 

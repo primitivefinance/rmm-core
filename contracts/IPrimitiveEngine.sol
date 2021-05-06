@@ -33,8 +33,6 @@ interface IPrimitiveEngine {
     
     // ===== View =====
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
-    function getOutputAmount(bytes32 pid, uint deltaX) external view returns (uint);
-    function getInputAmount(bytes32 pid, uint deltaX) external view returns (uint);
     function getPosition(address owner, uint nonce) external view returns (Position memory);
     function getInvariantLast() external view returns (int128);
     function getBX1() external view returns (uint);
@@ -45,5 +43,4 @@ interface IPrimitiveEngine {
     function INIT_SUPPLY() external view returns (uint);
     function getPoolId(Calibration.Data memory self) external view returns(bytes32);
     function getReserve(bytes32 pid) external view returns (Reserve.Data memory);
-    function _getOutputRY2(bytes32 pid, uint deltaX) external view returns (int128);
 }
