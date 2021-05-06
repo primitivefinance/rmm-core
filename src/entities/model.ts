@@ -45,7 +45,7 @@ class Model {
     this.data = {}
     this.gbm = []
     this.startBlock = 0
-    this.ticks = 365
+    this.ticks = 10
     this.currTick = 0
   }
 
@@ -164,7 +164,8 @@ class Model {
     return this.getSpotPrice(x, cal)
   }
 
-  async getSpotPriceAfterVirtualSwapAmountInRisky(deltaX): Promise<Wei> {
+  // add X and remove Y
+  async getSpotPriceAfterVirtualSwapAmountOutRiskFree(deltaX): Promise<Wei> {
     const pid = await this.contract.pid()
     const res: Reserve = await getReserve(this.engine, pid)
     const cal: Calibration = await getCalibration(this.engine, pid)
@@ -176,6 +177,7 @@ class Model {
     return spot
   }
 
+  // add Y remove X
   async getSpotPriceAfterVirtualSwapAmountOutRisky(deltaX): Promise<Wei> {
     const pid = await this.contract.pid()
     const res: Reserve = await getReserve(this.engine, pid)

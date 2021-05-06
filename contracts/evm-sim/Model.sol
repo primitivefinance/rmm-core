@@ -65,19 +65,19 @@ contract Model is ICallback {
     if(deltaY > 0) TY2.safeTransfer(msg.sender, deltaY);
   }
 
-  /// @notice should execute an addX swap, X -> Y.
-  function swapAmountInRisky(uint deltaX) external returns(uint) {
-    return engine.addX(pid, msg.sender, deltaX, 0);
-  }
-
   function addXCallback(uint deltaX, uint deltaY) external override {}
+  function removeXCallback(uint deltaX, uint deltaY) external override {}
 
-  /// @notice should execute a removeX swap, Y -> X.
+  /// @notice should execute an addYRemoveX swap, Y -> X.
   function swapAmountOutRisky(uint deltaX) external returns(uint) {
-    return engine.removeX(pid, msg.sender, deltaX, type(uint256).max);
+    // swap params: pool id, addXRemoveY, amountOut, maxAmountIn
+    return engine.swap(pid, false, deltaX, type(uint256).max);
   }
 
-  function removeXCallback(uint deltaX, uint deltaY) external override {}
+  /// @notice should execute an addXRemoveY swap, X -> Y.
+  function swapAmountOutRiskFree(uint deltaY) external returns (uint) {
+    return engine.swap(pid, true, deltaY, type(uint256).max);
+  }
 
 
   // ===== View =====
@@ -91,29 +91,4 @@ contract Model is ICallback {
     Reserve.Data memory res = engine.getReserve(pid);
     return (res.RX1, res.RY2);
   }
-
-  /// @notice should query the engine contract for a risky asset quote. Riskless swap Y -> X
-  function getRiskyAmountIn(uint deltaX) external view returns (uint) {
-    return engine.getInputAmount(pid, deltaX); // fix
-  }
-
-  /// @notice should query the engine contract for a riskFree asset quote. Risky swap X -> Y
-  function getRiskFreeAmountOut(uint deltaX) external view returns (uint) {
-    return engine.getOutputAmount(pid, deltaX); // fix
-  }
-
-  function getSpotPrice() external view returns (uint) {
-      return engine.getOutputAmount(pid, 1e6); // fix
-  }
-
-  function getSpotPriceAfterVirtualSwapAmountInRiskless() external view returns (uint) {
-    // fix
-  }
-
-  function getSpotPriceAfterVirtualSwapAmountInRisky(uint deltaX) external view returns (uint) {
-      Reserve.Data memory res = engine.getReserve(pid);
-      uint currRX1 = res.RX1 + deltaX;
-      uint currRY2 = engine._getOutputRY2(pid, deltaX).parseUnits(); // fox
-  }
-
 }

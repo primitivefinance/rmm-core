@@ -32,36 +32,36 @@ class Agent {
 
     if (spot.gt(reference)) {
       let postSpot = spot
-      let amountIn = 0.001
+      let amountOut = 0.001
       while (postSpot.gt(reference)) {
-        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountInRisky(amountIn)
+        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountOutRiskFree(amountOut)
         if (false)
           console.log(`
         Swap IN risky
         post spot price: ${postSpot.float}, 
         reference price: ${formatEther(reference)}
         `)
-        amountIn += 0.001
+        amountOut += 0.001
       }
 
       // execute a swap
-      await this.contract.swapAmountInRisky(parseWei(amountIn).raw)
+      await this.contract.swapAmountOutRiskFree(parseWei(amountOut).raw)
     } else {
       let postSpot = spot
-      let amountIn = 0.001
+      let amountOut = 0.001
       while (postSpot.lt(reference)) {
-        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountOutRisky(amountIn)
+        postSpot = await this.model.getSpotPriceAfterVirtualSwapAmountOutRisky(amountOut)
         if (false)
           console.log(`
         Swap OUT risky
         post spot price: ${postSpot.float}, 
         reference price: ${formatEther(reference)}
         `)
-        amountIn += 0.001
+        amountOut += 0.001
       }
 
       // execute a swap
-      await this.contract.swapAmountOutRisky(parseWei(amountIn).raw)
+      await this.contract.swapAmountOutRisky(parseWei(amountOut).raw)
     }
 
     // log the data
