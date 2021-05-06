@@ -451,23 +451,27 @@ contract PrimitiveEngine is Tier2Engine {
         uint256 RX1 = res.RX1; // gas savings
         uint256 RY2 = res.RY2; // gas savings
 
+        uint postRX1;
+        uint postRY2;
         {
             if(addXRemoveY) {
                 int128 nextRX1 = _removeY(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
-                uint256 postRX1 = nextRX1.parseUnits();
+                postRX1 = nextRX1.sub(invariant).parseUnits();
+                postRY2 = RY2 - deltaOut;
                 deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
             } else {
                 int128 nextRY2 = _removeX(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-                uint256 postRY2 = invariant.add(nextRY2).parseUnits();
+                postRX1 = RX1 - deltaOut;
+                postRY2 = invariant.add(nextRY2).parseUnits();
                 deltaIn =  postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2; // the diff between new Y and current Y is the deltaIn
             }
         }
 
         require(deltaInMax >= deltaIn, "Too expensive");
-        uint postRX1 = addXRemoveY ? RX1 + deltaIn : RX1 - deltaOut;
-        uint postRY2 = addXRemoveY ? RY2 - deltaOut : RY2 + deltaIn;
+        //postRX1 = addXRemoveY ? RX1 + deltaIn : RX1 - deltaOut;
+        //postRY2 = addXRemoveY ? RY2 - deltaOut : RY2 + deltaIn;
         int128 postInvariant = calcInvariant(pid, postRX1, postRY2, res.liquidity);
-        require(postInvariant >= invariant, "Invalid invariant");
+        require(postInvariant.parseUnits() >= invariant.parseUnits(), "Invalid invariant");
 
         {// avoids stack too deep errors
         bool xToY = addXRemoveY;

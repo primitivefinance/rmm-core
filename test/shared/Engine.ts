@@ -215,19 +215,20 @@ export function getDeltaIn(
   const RX1: Wei = params.reserve.RX1
   const RY2: Wei = params.reserve.RY2
   const invariant: Wei = parseWei(fromInt(invariantInt128))
-  let nextRY2: Wei, postRX1: Wei, nextRX1: Wei, postRY2: Wei
+  let postRX1: Wei = new Wei('0')
+  let postRY2: Wei = new Wei('0')
+
   if (addXRemoveY) {
-    nextRX1 = parseWei(_removeY(deltaOut, params).toString())
-    postRX1 = nextRX1.sub(invariant)
+    postRX1 = parseWei(_removeY(deltaOut, params).toString())
+    postRY2 = RY2.sub(deltaOut)
     deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
   } else {
-    nextRY2 = parseWei(_removeX(deltaOut, params).toString())
+    let nextRY2 = parseWei(_removeX(deltaOut, params).toString())
     postRY2 = invariant.add(nextRY2)
+    postRX1 = RX1.sub(deltaOut)
     deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
   }
 
-  postRX1 = addXRemoveY ? RX1.add(deltaIn) : RX1.sub(deltaOut)
-  postRY2 = addXRemoveY ? RY2.sub(deltaOut) : RY2.add(deltaIn)
   console.log(postRY2.parsed, postRX1.parsed, deltaIn.parsed, deltaOut.parsed, invariant.parsed)
 
   const postParams: PoolParams = {
