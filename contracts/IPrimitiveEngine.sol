@@ -22,6 +22,7 @@ interface IPrimitiveEngine {
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) external returns (uint, uint);
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) external returns (uint, uint);
     // Swaps
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) external returns (uint deltaIn);
     function addX(bytes32 pid, address owner, uint deltaX, uint minDeltaY) external returns (uint);
     function removeX(bytes32 pid, address owner, uint deltaX, uint maxDeltaY) external returns (uint);
     // Margin

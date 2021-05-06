@@ -453,11 +453,11 @@ contract PrimitiveEngine is Tier2Engine {
 
         {
             if(addXRemoveY) {
-                int128 nextRX1 = _removeY(pid, deltaOut); // remove Y from reserves, and calculate the new X reserve value.
-                uint256 postRX1 = invariant.add(nextRX1).parseUnits();
+                int128 nextRX1 = _removeY(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
+                uint256 postRX1 = nextRX1.parseUnits();
                 deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
             } else {
-                int128 nextRY2 = _removeX(pid, deltaOut); // subtract X from reserves, and calculate the new Y reserve value.
+                int128 nextRY2 = _removeX(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
                 uint256 postRY2 = invariant.add(nextRY2).parseUnits();
                 deltaIn =  postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2; // the diff between new Y and current Y is the deltaIn
             }

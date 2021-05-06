@@ -36,6 +36,8 @@ import {
   addBoth,
   ERC20Events,
   getMargin,
+  getDeltaIn,
+  SwapAddXRemoveY,
 } from './shared/Engine'
 import { engineFixture, EngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -71,11 +73,11 @@ describe('Primitive Engine', function () {
     await TY2.approve(guy, wad.raw)
     // init external settings
     nonce = 0
-    spot = parseWei('25')
+    spot = parseWei('1000')
     // init pool settings
     // Calibration struct
-    const strike = parseWei('25').raw
-    const sigma = 0.1 * PERCENTAGE
+    const strike = parseWei('1000').raw
+    const sigma = 0.85 * PERCENTAGE
     const time = 31449600 //one year
     calibration = { strike, sigma, time }
     // Create pool
@@ -96,7 +98,7 @@ describe('Primitive Engine', function () {
     // remove some liquidity to get BX1 and BY2 balances.
     //await expect(engine.removeBoth(poolId, nonce, parseWei('500').raw, true)).to.emit(engine, 'RemovedBoth')
     // depost
-    await expect(house.deposit(parseWei('100').raw, parseWei('100').raw)).to.emit(engine, 'Deposited')
+    await expect(house.deposit(parseWei('1000').raw, parseWei('1000').raw)).to.emit(engine, 'Deposited')
 
     hre.tracer.nameTags[signer.address] = 'Signer'
     hre.tracer.nameTags[house.address] = 'House'
@@ -297,30 +299,28 @@ describe('Primitive Engine', function () {
   })
 
   describe('Swaps', function () {
-    it('Engine::AddX: Swap X to Y', async function () {
+    it.only('Engine::Swap: Swap X to Y', async function () {
       const invariant = await engine.getInvariantLast(poolId)
-      const fee = await engine.FEE()
-      const deltaX = parseWei('0.2')
+      const deltaOut = parseWei('0.2')
       const params: PoolParams = await getPoolParams(engine, poolId)
-
-      const { deltaY, feePaid, postParams, postInvariant } = getDeltaY(deltaX, invariant, fee, params)
+      const addXRemoveY: boolean = true
+      const { deltaIn, postParams, postInvariant } = getDeltaIn(deltaOut, addXRemoveY, invariant, params)
       console.log(`
-      minDeltaY:      ${deltaY.parsed}
-      feePaid:        ${feePaid.parsed}
+      mindeltaIn:      ${deltaIn.parsed}
       postR2:         ${postParams.reserve.RY2.parsed}
       invariant:      ${fromInt(invariant)}
       postInvariant:  ${postInvariant}
     `)
-      await expect(engine.addX(poolId, signer.address, deltaX.raw, deltaY.raw), 'Engine:AddX').to.emit(
-        engine,
-        EngineEvents.ADDED_X
-      )
+      await expect(
+        engine.swap(poolId, addXRemoveY, deltaOut.raw, ethers.constants.MaxUint256 /* deltaOut.raw */),
+        'Engine:Swap'
+      ).to.emit(engine, EngineEvents.SWAP)
       const postR2 = new Wei((await engine.getReserve(poolId)).RY2)
       expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq((await engine.getReserve(poolId)).RX1)
       //expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.within(fromWithin(postR2, 0.01)[0], fromWithin(postR2, 0.01)[1]) // FIX
     })
 
-    it('Engine::RemoveX: Swap Y to X', async function () {
+    it('Engine::Swap: Swap Y to X', async function () {
       const reserves = await engine.getReserve(poolId)
       const RX1 = reserves.RX1
       const RY2 = reserves.RY2
@@ -343,10 +343,7 @@ describe('Primitive Engine', function () {
       invariant:      ${fromInt(invariant)}
       postInvariant:  ${postInvariant}
     `)
-      await expect(engine.removeX(poolId, signer.address, deltaX.raw, maxDeltaY.raw), 'Engine:RemoveX').to.emit(
-        engine,
-        'RemovedX'
-      )
+      await expect(engine.swap(poolId, false, deltaX.raw, maxDeltaY.raw), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
       expect(postR1.raw.toString(), 'check FXR1').to.be.eq((await engine.getReserve(poolId)).RX1)
       //expect(postR2, 'check FYR2').to.be.eq((await engine.getReserve(poolId)).RY2) // FIX
       const FYR2 = (await engine.getReserve(poolId)).RY2

@@ -1,6 +1,6 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber } from './Units'
 import { Contract } from 'ethers'
-import { getTradingFunction } from './ReplicationMath'
+import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -17,6 +17,7 @@ export const EngineEvents = {
   REMOVED_BOTH: 'RemovedBoth',
   ADDED_X: 'AddedX',
   REMOVED_X: 'RemovedX',
+  SWAP: 'Swap',
 }
 
 export interface Reserve {
@@ -162,6 +163,12 @@ export interface SwapXOutput {
   postInvariant: number
 }
 
+export interface SwapAddXRemoveY {
+  deltaIn: Wei
+  postParams: PoolParams
+  postInvariant: number
+}
+
 /**
  * @notice Returns the amount of Y removed by adding X.
  * @param deltaX The amount of X to add or remove, can be negative.
@@ -196,6 +203,65 @@ export function getDeltaY(deltaX: Wei, invariantInt128: string, fee: Wei, params
   }
   const postInvariant: number = calculateInvariant(postParams)
   return { deltaY, feePaid, postParams, postInvariant }
+}
+
+export function getDeltaIn(
+  deltaOut: Wei,
+  addXRemoveY: boolean,
+  invariantInt128: string,
+  params: PoolParams
+): SwapAddXRemoveY {
+  let deltaIn: Wei
+  const RX1: Wei = params.reserve.RX1
+  const RY2: Wei = params.reserve.RY2
+  const invariant: Wei = parseWei(fromInt(invariantInt128))
+  let nextRY2: Wei, postRX1: Wei, nextRX1: Wei, postRY2: Wei
+  if (addXRemoveY) {
+    nextRX1 = parseWei(_removeY(deltaOut, params).toString())
+    postRX1 = nextRX1.sub(invariant)
+    deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
+  } else {
+    nextRY2 = parseWei(_removeX(deltaOut, params).toString())
+    postRY2 = invariant.add(nextRY2)
+    deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
+  }
+
+  postRX1 = addXRemoveY ? RX1.add(deltaIn) : RX1.sub(deltaOut)
+  postRY2 = addXRemoveY ? RY2.sub(deltaOut) : RY2.add(deltaIn)
+  console.log(postRY2.parsed, postRX1.parsed, deltaIn.parsed, deltaOut.parsed, invariant.parsed)
+
+  const postParams: PoolParams = {
+    reserve: {
+      RX1: postRX1,
+      RY2: postRY2,
+      liquidity: params.reserve.liquidity,
+      float: params.reserve.float,
+    },
+    calibration: params.calibration,
+  }
+  const postInvariant: number = calculateInvariant(postParams)
+  return { deltaIn, postParams, postInvariant }
+}
+
+// new functions in contracts
+export function _removeY(deltaY: Wei, params: PoolParams) {
+  const RY2: Wei = params.reserve.RY2
+  const nextRY2 = RY2.sub(deltaY)
+  return _calcRX1(nextRY2, params)
+}
+
+export function _calcRX1(RY2: Wei, params: PoolParams) {
+  return getInverseTradingFunction(RY2, params.reserve.liquidity, params.calibration)
+}
+
+export function _removeX(deltaX: Wei, params: PoolParams) {
+  const RX1 = params.reserve.RX1
+  const nextRX1 = RX1.sub(deltaX)
+  return _calcRY2(nextRX1, params)
+}
+
+export function _calcRY2(RX1: Wei, params: PoolParams) {
+  return getTradingFunction(RX1, params.reserve.liquidity, params.calibration)
 }
 
 export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {

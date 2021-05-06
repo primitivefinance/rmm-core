@@ -65,3 +65,6 @@ Dk = ( (Ps + Pi) / Ps - 1 ) _ Bk
 Dk _ Bk = (Ps + Pi) / Ps - 1
 PS _ (Dk _ Bk - 1) = Ps + Pi
 Ps _ (Dk _ Bk - 1) - Ps = Pi
+
+I = RY2 - F(RX1)
+F(RX1) = RY2 - I

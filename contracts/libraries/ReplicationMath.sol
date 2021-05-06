@@ -68,7 +68,7 @@ library ReplicationMath {
         // CDF^-1(Y/K) + sigma*sqrt(t)
         int128 input = phi.mul(Units.PERCENTAGE_INT).add(vol).div(Units.PERCENTAGE_INT);
         // 1 - K*CDF(CDF^-1(Y/K) + sigma*sqrt(t))
-        RX1 = one.sub(k.mul(input.getCDF())).mul(liquidity.parseUnits());
+        RX1 = one.sub(input.getCDF()).mul(liquidity.parseUnits());
     }
  
     /**
