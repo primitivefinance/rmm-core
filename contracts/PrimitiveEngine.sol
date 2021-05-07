@@ -15,6 +15,7 @@ import "./libraries/Calibration.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
+import "./libraries/FullMath.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -70,8 +71,8 @@ contract PrimitiveEngine {
         uint blockNumberLast;
     }
 
-    address public immutable TX1;
-    address public immutable TY2;
+    address public immutable TX1; // always risky asset
+    address public immutable TY2; // always risk free asset, TODO: rename vars?
 
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
@@ -108,6 +109,8 @@ contract PrimitiveEngine {
         return IERC20(TY2).balanceOf(address(this));
     }
 
+    // create new curve with assets TX1 TY2
+    // Setting initial reserves such that 1 LP == 1 SHORT option
     function create(Calibration.Data memory self, uint assetPrice) public {
         require(self.time > 0, "Time is 0");
         require(self.sigma > 0, "Sigma is 0");
@@ -129,7 +132,7 @@ contract PrimitiveEngine {
             RX1: RX1,
             RY2: RY2,
             liquidity: INIT_SUPPLY,
-            float: 0
+            float: 0 // the LP shares available to be borrowed on a given pid
         });
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
@@ -236,7 +239,7 @@ contract PrimitiveEngine {
         Margin.Data memory margin_ = getMargin(owner);
         margin_.unlocked = true;
 
-        Position.Data memory pos_ = getPosition(owner, nonce, pid);
+        Position.Data memory pos_ = getPosition(owner, nonce, pid); // TODO: can potentially delete nonce
         pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
@@ -250,8 +253,8 @@ contract PrimitiveEngine {
         { // scope for RX1 and RY2, avoids stack too deep errors
         uint RX1 = res.RX1;
         uint RY2 = res.RY2;
-        deltaX = deltaL * RX1 / liquidity;
-        deltaY = deltaL * RY2 / liquidity;
+        deltaX = FullMath.mulDiv(deltaL, RX1, liquidity);
+        deltaY = FullMath.mulDiv(deltaL, RY2, liquidity);
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
         postR1 = RX1 + deltaX;
         postR2 = RY2 + deltaY;
@@ -342,61 +345,61 @@ contract PrimitiveEngine {
 
     // ===== Lending =====
 
-    /**
-     * @notice  Increases a position's float and decreses its liquidity.
-     */
+    // @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
+    // as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
+    // As a side effect, `lend` will modify global reserve `float` by the same amount.
     function lend(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
-        // Get the position
         Position.Data memory pos_ = getPosition(msg.sender, nonce, pid);
+        Reserve.Data storage res = reserves[pid];
+
         pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
         if (deltaL > 0) {
+            // increment position float factor by `deltaL`
             pos_.float += deltaL;
-            pos_.liquidity -= deltaL;
             _updatePosition(msg.sender, pos_);
         } 
 
-        // Update state
-        Reserve.Data storage res = reserves[pid];
-        res.liquidity -= deltaL;
         res.float += deltaL;
         return deltaL;
     }
 
-    /**
-     * @notice  Increases a positions `loan` debt by increasing its liquidity.
-     */
-    function borrow(bytes32 pid, address owner, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
-        // Get the position and update it
+    // @dev Decrease global float factor by `deltaL`, and increase `owner` 
+    // debt factor by `deltaL`.  Global debt and float must satisfy
+    // liquidity >= debt + float.
+    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
         Position.Data memory pos_ = getPosition(owner, nonce, pid);
+        Reserve.Data storage res = reserves[pid];
+
+        Margin.Data memory margin_ = getMargin(recipient);
+        margin_.unlocked = true;
+
+        if (deltaL > res.float) {
+          return 0; // not enough liquidity available to borrow
+        }
+
         pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
-        // Update position
-        if(deltaL > 0) {
-            require(pos_.float == 0, "Lent shares outstanding");
-            pos_.liquidity += deltaL;
-            pos_.loan += deltaL;
-            _updatePosition(owner, pos_);
-        }
-        
-        // Update Reserve
-        Reserve.Data storage res = reserves[pid];
-        res.float -= deltaL;
-        res.liquidity += deltaL;
+        uint preBY2 = getBY2(); // store pre payment  
 
-        // Trigger the callback
-        uint preBX1 = getBX1();
-        ICallback(msg.sender).borrowCallback(pid, deltaL, maxPremium); // remove liquidity, pull in premium token.
-        uint postBX1 = getBX1();
+        ICallback(msg.sender).borrowCallback(pid, maxPremium); // pull in premium token.
+
+        pos_.debt += deltaL; // increase position debt by deltaL
+        _updatePosition(msg.sender, pos_); // lock in updates to position
+
+        res.float = res.float - deltaL; // reduce float factor by deltaL
+        res.debt = res.debt + deltaL; // increase debt factor by deltaL
+        uint postBY2 = getBY2(); // check new 
+
         uint assetPrice = 0;
         uint value = 0; // get value
         uint difference = assetPrice > value ? assetPrice - value : value - assetPrice; // get difference between lp value and asset value.
-        require(difference >= postBX1 - preBX1, "Not enough premium");
 
+        require(difference >= postBX1 - preBX1, "Not enough premium");
 
         return deltaL;
     }

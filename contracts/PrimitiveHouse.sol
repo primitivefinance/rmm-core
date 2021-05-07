@@ -36,16 +36,26 @@ contract PrimitiveHouse is ICallback {
         engine = IPrimitiveEngine(engine_);
     }
 
+
+    /**
+     * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
+     */
     function deposit(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.deposit(msg.sender, deltaX, deltaY);
     }
 
+    /**
+     * @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
+     */
     function withdraw(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.withdraw(deltaX, deltaY);
     }
 
+    /**
+     * @notice Adds deltaL to global liquidity factor.
+     */
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
         engine.addBoth(pid, msg.sender, nonce, deltaL);
@@ -54,6 +64,12 @@ contract PrimitiveHouse is ICallback {
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
         CALLER = msg.sender;
         engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
+    /**
+     * @notice Puts `deltaL` LP shares up to be borrowed.
+     */
+    function lend(bytes32 pid, uint nonce, uint deltaL) public lock {
+        CALLER = msg.sender;
+        engine.lend(msg.sender, deltaX, deltaY);
     }
     
     // ===== Callback Implementations =====
@@ -84,8 +100,13 @@ contract PrimitiveHouse is ICallback {
         addXYCallback(uint(0), deltaY);
     }
 
-    function borrowCallback(bytes32 pid, uint deltaL, uint maxPremium) public override {
-        addXYCallback(deltaL, uint(0));
+    function borrowCallback(
+      bytes32 pid, 
+      uint blackScholesPremium, 
+      uint nonce,
+      uint deltaL,
+    ) public override {
+        IERC20 TY2 = IERC20(engine.TY2());
     }
 
     function repayCallback(bytes32 pid, uint deltaL) public override {
