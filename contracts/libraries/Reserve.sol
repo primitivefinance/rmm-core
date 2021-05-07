@@ -5,20 +5,21 @@ pragma abicoder v2;
 /**
  * @notice  Engine Reserves
  * @author  Primitive
- * @dev     This library is holds the data structure for an Engine's Reserves.
+ * @dev     This library holds the data structure for an Engine's Reserves.
  */
 
 library Reserve {
     // An Engine has two reserves of RISKY and RISK-FREE assets, X and Y, and total liquidity shares.
     struct Data {
-        // Total Reserves for the RISKY asset.
-        uint RX1;
-        // Total Reserves for the RISK-FREE asset.
-        uint RY2;
-        // Total liquidity shares, also the quantity of options replicated, open interest. 
+        // the reserve for the risky asset
+        uint assetX;
+        // the reserve for the risk free asset
+        uint assetY;
+        // the total liquidity shares
         uint liquidity;
-        // Total liquidity shares available for borrowing.
+        // the liquidity available for lending
         uint float;
+        uint debt;
     }
 
     /**
