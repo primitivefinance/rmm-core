@@ -19,6 +19,8 @@ import "./libraries/FullMath.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 
 import "./libraries/SwapMath.sol";
 
@@ -74,6 +76,11 @@ contract PrimitiveEngine {
     address public immutable TX1; // always risky asset
     address public immutable TY2; // always risk free asset, TODO: rename vars?
 
+    ISwapRouter public router;
+    ISwapFactory public uniFactory;
+
+    uint24 public fee;
+
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
@@ -96,9 +103,13 @@ contract PrimitiveEngine {
         _;
     }
 
-    constructor(address risky, address riskFree) {
+    constructor(address router_, address factory_, uint24 fee_, address risky, address riskFree) {
+        router = ISwapRouter(router_);
+        uniFactory = ISwapFactory(factory_); 
+        fee = fee_;
         TX1 = risky;
         TY2 = riskFree;
+        require(uniFactory.getPool(TX1, TY1, 3000) != address(0), "NO POOL");
     }
 
     function getBX1() public view returns (uint) {
@@ -374,32 +385,49 @@ contract PrimitiveEngine {
         Reserve.Data storage res = reserves[pid];
 
         Margin.Data memory margin_ = getMargin(recipient);
-        margin_.unlocked = true;
 
-        if (deltaL > res.float) {
-          return 0; // not enough liquidity available to borrow
-        }
+        require(deltaL > res.float, "INSUFFICIENT FLOAT");
 
         pos_.unlocked = true;
+        margin_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
-        uint preBY2 = getBY2(); // store pre payment  
 
-        ICallback(msg.sender).borrowCallback(pid, maxPremium); // pull in premium token.
+        uint preSwapRiskFreeReserve = res.RY2;
+        uint preSwapRiskyReserve = res.RX1;
+        uint preLiquidity = res.liquidity; 
+        uint preFloat = res.float;
+        uint preDebt = res.debt;
+
+        uint deltaY2 = FullMath.mulDiv(deltaL, preRY2, liquidity);
+        uint deltaX1 = FullMath.mulDiv(deltaL, preRX1, liquidity);
+
+        // swap risk free asset for risky asset
+        uint256 amountOutRisky = router.exactInputSingle({
+          tokenIn: TY2,
+          tokenOut: TX1,
+          fee: fee,
+          recipient: address(this),
+          deadline: 1,
+          amountIn: deltaY2,
+          amountOutMinimum: uint256(0),
+          sqrtPriceLimitX96: uint160(0)
+        })
+
+        uint riskyNeeded = deltaL - (deltaX1 + amountOutRisky);
+        
+        require(margin_.BX1 > riskyNeeded, "INSUFFICIENT RISKY BALANCE")
+
+        margin_.BX1 -= riskyNeeded;
 
         pos_.debt += deltaL; // increase position debt by deltaL
+        res.debt += deltaL;
         _updatePosition(msg.sender, pos_); // lock in updates to position
 
-        res.float = res.float - deltaL; // reduce float factor by deltaL
-        res.debt = res.debt + deltaL; // increase debt factor by deltaL
-        uint postBY2 = getBY2(); // check new 
-
-        uint assetPrice = 0;
-        uint value = 0; // get value
-        uint difference = assetPrice > value ? assetPrice - value : value - assetPrice; // get difference between lp value and asset value.
-
-        require(difference >= postBX1 - preBX1, "Not enough premium");
+        res.float = preFloat - deltaL; // reduce float factor by deltaL
+        res.liquidity = preLiquidity - deltaL; // reduce float factor by deltaL
+        res.debt = preDebt + deltaL; // increase debt factor by deltaL
 
         return deltaL;
     }
