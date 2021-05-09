@@ -51,14 +51,9 @@ contract PrimitiveHouse is ICallback {
         engine.addBoth(pid, msg.sender, nonce, deltaL);
     }
 
-    function addX(bytes32 pid, uint deltaX, uint minDeltaY) public lock {
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
         CALLER = msg.sender;
-        engine.addX(pid, msg.sender, deltaX, minDeltaY);
-    }
-
-    function removeX(bytes32 pid, uint deltaX, uint maxDeltaY) public lock {
-        CALLER = msg.sender;
-        engine.removeX(pid, msg.sender, deltaX, maxDeltaY);
+        engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
     }
     
     // ===== Callback Implementations =====
