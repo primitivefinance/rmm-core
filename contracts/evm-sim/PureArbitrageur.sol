@@ -50,8 +50,8 @@ contract PureArbitrageur is Agent {
 
   // ===== Swaps =====
 
-  function swapAmountInRisky(uint deltaX) external {
-    uint deltaY = model.swapAmountInRisky(deltaX);
+  function swapAmountOutRiskFree(uint deltaX) external {
+    uint deltaY = model.swapAmountOutRiskFree(deltaX);
     emit SwapInRisky(deltaX, deltaY);
   }
 
