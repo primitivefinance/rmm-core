@@ -12,9 +12,9 @@ library Reserve {
     // An Engine has two reserves of RISKY and RISK-FREE assets, X and Y, and total liquidity shares.
     struct Data {
         // the reserve for the risky asset
-        uint assetX;
+        uint RX1;
         // the reserve for the risk free asset
-        uint assetY;
+        uint RY2;
         // the total liquidity shares
         uint liquidity;
         // the liquidity available for lending

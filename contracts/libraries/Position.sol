@@ -14,6 +14,8 @@ library Position {
         // the address which can withdraw balances
         address owner;
         // the nonce of the position, which is iterated for each engine
+        uint BX1;
+        uint BY2;
         uint nonce;
         // The pool ID of the liquidity shares
         bytes32 pid;
@@ -45,6 +47,8 @@ library Position {
      * @return  The new position.
      */
     function edit(Data storage pos, uint BX1, uint BY2, uint liquidity, uint float, uint debt) internal returns (Data storage) {
+        pos.BX1 = BX1;
+        pos.BY2 = BY2;
         pos.float = float;
         pos.liquidity = liquidity;
         pos.debt = debt;
