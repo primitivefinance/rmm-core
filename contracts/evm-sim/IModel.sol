@@ -5,6 +5,7 @@ import {IERC20} from "../PrimitiveEngine.sol";
 interface IModel {
     function deposit(uint deltaX, uint deltaY) external;
     function swapAmountInRisky(uint deltaX) external returns(uint);
+    function swapAmountOutRiskFree(uint deltaY) external returns (uint);
     function swapAmountOutRisky(uint deltaX) external returns(uint);
 
     // ===== View =====
