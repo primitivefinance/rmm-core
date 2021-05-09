@@ -15,12 +15,9 @@ import "./libraries/Calibration.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
-import "./libraries/FullMath.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 
 import "./libraries/SwapMath.sol";
 
@@ -32,8 +29,8 @@ interface ICallback {
     function depositCallback(uint deltaX, uint deltaY) external;
     function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
     function addXCallback(uint deltaX, uint deltaY) external;
+    function borrowCallback() external returns (address);
     function removeXCallback(uint deltaX, uint deltaY) external;
-    function borrowCallback(bytes32 pid, uint deltaL, uint maxPremium) external;
     function repayCallback(bytes32 pid, uint deltaL) external;
     function getCaller() external returns (address);
 }
@@ -76,9 +73,6 @@ contract PrimitiveEngine {
     address public immutable TX1; // always risky asset
     address public immutable TY2; // always risk free asset, TODO: rename vars?
 
-    ISwapRouter public router;
-    ISwapFactory public uniFactory;
-
     uint24 public fee;
 
     uint public _NONCE = _NO_NONCE;
@@ -105,11 +99,11 @@ contract PrimitiveEngine {
 
     constructor(address router_, address factory_, uint24 fee_, address risky, address riskFree) {
         router = ISwapRouter(router_);
-        uniFactory = ISwapFactory(factory_); 
+        uniFactory = IUniswapV3Factory(factory_); 
         fee = fee_;
         TX1 = risky;
         TY2 = riskFree;
-        require(uniFactory.getPool(TX1, TY1, 3000) != address(0), "NO POOL");
+        require(uniFactory.getPool(risky, riskFree, 3000) != address(0), "NO POOL");
     }
 
     function getBX1() public view returns (uint) {
@@ -143,7 +137,8 @@ contract PrimitiveEngine {
             RX1: RX1,
             RY2: RY2,
             liquidity: INIT_SUPPLY,
-            float: 0 // the LP shares available to be borrowed on a given pid
+            float: 0, // the LP shares available to be borrowed on a given pid
+            debt: 0
         });
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
@@ -169,8 +164,8 @@ contract PrimitiveEngine {
      * @notice  Commits transiently set `activePosition` to state of positions[encodePacked(owner,nonce)].
      */
     function _updatePosition(address owner, Position.Data memory next) internal lockPosition {
-        Position.Data storage pos = _fetchPosition(owner, _NONCE, _POOL_ID);
-        pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.loan);
+        Position.Data storage pos = _getPosition(owner, _NONCE, _POOL_ID);
+        pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.debt);
     }
 
     /**
@@ -264,8 +259,8 @@ contract PrimitiveEngine {
         { // scope for RX1 and RY2, avoids stack too deep errors
         uint RX1 = res.RX1;
         uint RY2 = res.RY2;
-        deltaX = FullMath.mulDiv(deltaL, RX1, liquidity);
-        deltaY = FullMath.mulDiv(deltaL, RY2, liquidity);
+        deltaX = deltaL * RX1 / liquidity;
+        deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
         postR1 = RX1 + deltaX;
         postR2 = RY2 + deltaY;
@@ -359,8 +354,8 @@ contract PrimitiveEngine {
     // @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
     // as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     // As a side effect, `lend` will modify global reserve `float` by the same amount.
-    function lend(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
-        Position.Data memory pos_ = getPosition(msg.sender, nonce, pid);
+    function lend(address owner, bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
+        Position.Data memory pos_ = getPosition(owner, nonce, pid);
         Reserve.Data storage res = reserves[pid];
 
         pos_.unlocked = true;
@@ -381,53 +376,53 @@ contract PrimitiveEngine {
     // debt factor by `deltaL`.  Global debt and float must satisfy
     // liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
-        Position.Data memory pos_ = getPosition(owner, nonce, pid);
+        Position.Data memory pos_ = getPosition(recipient, nonce, pid);
         Reserve.Data storage res = reserves[pid];
 
         Margin.Data memory margin_ = getMargin(recipient);
 
-        require(deltaL > res.float, "INSUFFICIENT FLOAT");
+        require(res.float > deltaL, "INSUFFICIENT FLOAT");
 
         pos_.unlocked = true;
         margin_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
+        uint liquidity = res.liquidity;
 
-        uint preSwapRiskFreeReserve = res.RY2;
-        uint preSwapRiskyReserve = res.RX1;
-        uint preLiquidity = res.liquidity; 
-        uint preFloat = res.float;
-        uint preDebt = res.debt;
+        uint deltaX = deltaL * res.RX1 / liquidity;
+        uint deltaY = deltaL * res.RY2 / liquidity;
 
-        uint deltaY2 = FullMath.mulDiv(deltaL, preRY2, liquidity);
-        uint deltaX1 = FullMath.mulDiv(deltaL, preRX1, liquidity);
-
+        {
         // swap risk free asset for risky asset
-        uint256 amountOutRisky = router.exactInputSingle({
+        uint256 amountOutRisky = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
           tokenIn: TY2,
           tokenOut: TX1,
           fee: fee,
           recipient: address(this),
           deadline: 1,
-          amountIn: deltaY2,
+          amountIn: deltaY,
           amountOutMinimum: uint256(0),
           sqrtPriceLimitX96: uint160(0)
-        })
+        }));
 
-        uint riskyNeeded = deltaL - (deltaX1 + amountOutRisky);
+        uint riskyNeeded = deltaL - (deltaX + amountOutRisky);
         
-        require(margin_.BX1 > riskyNeeded, "INSUFFICIENT RISKY BALANCE")
+        require(margin_.BX1 > riskyNeeded, "INSUFFICIENT RISKY BALANCE");
 
         margin_.BX1 -= riskyNeeded;
 
         pos_.debt += deltaL; // increase position debt by deltaL
-        res.debt += deltaL;
         _updatePosition(msg.sender, pos_); // lock in updates to position
+        uint postFloat = res.float - deltaL; // reduce float factor by deltaL
+        uint postLiquidity = liquidity - deltaL; // reduce float factor by deltaL
+        uint postDebt = res.debt + deltaL; // increase debt factor by deltaL
+        }
 
-        res.float = preFloat - deltaL; // reduce float factor by deltaL
-        res.liquidity = preLiquidity - deltaL; // reduce float factor by deltaL
-        res.debt = preDebt + deltaL; // increase debt factor by deltaL
+        uint postRX1 = res.RX1 - deltaX;
+        uint postRY2 = res.RY2 - deltaY;
+
+        _update(pid, postRX1, postRY2);
 
         return deltaL;
     }
@@ -444,10 +439,10 @@ contract PrimitiveEngine {
 
         // Take away loan debt and liquidity.
         if(deltaL > 0) {
-            require(pos_.loan >= 0, "No loan to repay");
+            require(pos_.debt >= 0, "No loan to repay");
             ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
             pos_.liquidity -= deltaL;
-            pos_.loan -= deltaL;
+            pos_.debt -= deltaL;
             _updatePosition(owner, pos_);
         }
 

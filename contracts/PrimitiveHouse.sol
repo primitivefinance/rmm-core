@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
-_
 
 import {ICallback} from "./PrimitiveEngine.sol";
 import "./IPrimitiveEngine.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 
 contract PrimitiveHouse is ICallback {
     using SafeERC20 for IERC20;
 
     address public constant NO_CALLER = address(21);
+
     IPrimitiveEngine public engine;
+    IUniswapV3Factory public uniFactory;
 
     address public CALLER = NO_CALLER;
     uint private reentrant;
@@ -69,7 +71,7 @@ contract PrimitiveHouse is ICallback {
      */
     function lend(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
-        engine.lend(msg.sender, deltaX, deltaY);
+        engine.lend(msg.sender, pid, nonce, deltaL);
     }
     
     // ===== Callback Implementations =====
@@ -100,13 +102,8 @@ contract PrimitiveHouse is ICallback {
         addXYCallback(uint(0), deltaY);
     }
 
-    function borrowCallback(
-      bytes32 pid, 
-      uint blackScholesPremium, 
-      uint nonce,
-      uint deltaL,
-    ) public override {
-        IERC20 TY2 = IERC20(engine.TY2());
+    function borrowCallback() public override returns (address) {
+      return CALLER;
     }
 
     function repayCallback(bytes32 pid, uint deltaL) public override {
