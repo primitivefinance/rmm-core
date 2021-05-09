@@ -19,3 +19,14 @@ export function getTradingFunction(RX1: Wei, liquidity: Wei, cal: Calibration): 
   const RY2 = K * std_n_cdf(input)
   return parseFloat(RY2.toString())
 }
+
+export function getInverseTradingFunction(RY2: Wei, liquidity: Wei, cal: Calibration): number {
+  const K = +formatEther(cal.strike)
+  const vol = getProportionalVol(cal.sigma, cal.time)
+  const reserve: number = RY2.mul(parseEther('1')).div(liquidity).float
+  const inverseInput: number = reserve / K
+  const phi: number = inverse_std_n_cdf(inverseInput)
+  const input = phi + vol / PERCENTAGE
+  const RX1 = 1 - std_n_cdf(input)
+  return parseFloat(RX1.toString())
+}
