@@ -11,12 +11,12 @@ pragma abicoder v2;
 library Margin {
     // every margin position in an Engine is this data structure.
     struct Data {
-        // the address which can withdraw balances
-        address owner;
         // Balance of X, the RISKY, or underlying asset.
         uint BX1;
         // Balance of Y, the RISK-FREE, or "quote" asset, a stablecoin.
         uint BY2;
+        // the address which can withdraw balances
+        address owner;
         // Transiently set as true when a margin position is being edited.
         bool unlocked;
     }

@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-
 import {ICallback} from "./PrimitiveEngine.sol";
 import "./IPrimitiveEngine.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 
 contract PrimitiveHouse is ICallback {
     using SafeERC20 for IERC20;
 
     address public constant NO_CALLER = address(21);
+
     IPrimitiveEngine public engine;
+    IUniswapV3Factory public uniFactory;
 
     address public CALLER = NO_CALLER;
     uint private reentrant;
@@ -36,16 +38,26 @@ contract PrimitiveHouse is ICallback {
         engine = IPrimitiveEngine(engine_);
     }
 
+
+    /**
+     * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
+     */
     function deposit(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.deposit(msg.sender, deltaX, deltaY);
     }
 
+    /**
+     * @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
+     */
     function withdraw(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.withdraw(deltaX, deltaY);
     }
 
+    /**
+     * @notice Adds deltaL to global liquidity factor.
+     */
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
         engine.addBoth(pid, msg.sender, nonce, deltaL);
@@ -54,6 +66,12 @@ contract PrimitiveHouse is ICallback {
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
         CALLER = msg.sender;
         engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
+    /**
+     * @notice Puts `deltaL` LP shares up to be borrowed.
+     */
+    function lend(bytes32 pid, uint nonce, uint deltaL) public lock {
+        CALLER = msg.sender;
+        engine.lend(msg.sender, pid, nonce, deltaL);
     }
     
     // ===== Callback Implementations =====
@@ -84,8 +102,8 @@ contract PrimitiveHouse is ICallback {
         addXYCallback(uint(0), deltaY);
     }
 
-    function borrowCallback(bytes32 pid, uint deltaL, uint maxPremium) public override {
-        addXYCallback(deltaL, uint(0));
+    function borrowCallback() public override returns (address) {
+      return CALLER;
     }
 
     function repayCallback(bytes32 pid, uint deltaL) public override {
