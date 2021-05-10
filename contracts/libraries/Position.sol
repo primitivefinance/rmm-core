@@ -77,20 +77,6 @@ library Position {
     }
 
     /**
-     * @notice  Transitions a `pos` to the `nextPos` by setting pos = nextPos.
-     * @return  The new position.
-     */
-    function edit(Data storage pos, uint BX1, uint BY2, uint liquidity, uint float, uint debt) internal returns (Data storage) {
-        pos.BX1 = BX1;
-        pos.BY2 = BY2;
-        pos.float = float;
-        pos.liquidity = liquidity;
-        pos.debt = debt;
-        pos.unlocked = false;
-        return pos;
-    }
-
-    /**
      * @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
      * @return  The position Id as a bytes32.
      */
