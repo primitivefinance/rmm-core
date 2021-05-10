@@ -143,7 +143,7 @@ contract PrimitiveEngine {
     /**
      * @notice  Updates R to new values for X and Y.
      */
-    function _update(bytes32 pid, uint postR1, uint postR2) public {
+    function _updateReserves(bytes32 pid, uint postR1, uint postR2) public {
         Reserve.Data storage res = reserves[pid];
         res.RX1 = postR1;
         res.RY2 = postR2;
@@ -214,8 +214,6 @@ contract PrimitiveEngine {
      * @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
      */
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint postR1, uint postR2) {
-        Position.Data memory pos_ = getPosition(owner, nonce, pid); // TODO: can potentially delete nonce
-        pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -237,9 +235,6 @@ contract PrimitiveEngine {
         require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
         }
         
-        // Update State
-        res.liquidity += deltaL;
-        pos_.liquidity += deltaL;
 
         // if internal balance can pay, use it
         Margin.Data storage mar = margins.fetch(msg.sender);
@@ -253,9 +248,12 @@ contract PrimitiveEngine {
             require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
         }
         
+        res.liquidity += deltaL; // Update global liquidity
+        Position.Data storage pos = positions.fetch(owner, nonce, pid);
+        pos.addLiquidity(deltaL); // Update position liquidity
+
         // Commit state updates
-        _update(pid, postR1, postR2);
-        _updatePosition(owner, pos_);
+        _updateReserves(pid, postR1, postR2);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -264,8 +262,6 @@ contract PrimitiveEngine {
      * @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `owner`.
      */
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint postR1, uint postR2) {
-        Position.Data memory pos_ = getPosition(msg.sender, nonce, pid);
-        pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -292,8 +288,6 @@ contract PrimitiveEngine {
 
         // Update state
         require(res.liquidity >= deltaL, "Above max burn");
-        res.liquidity -= deltaL;
-        pos_.liquidity -= deltaL;
 
         console.log("entering internal");
     
@@ -311,9 +305,9 @@ contract PrimitiveEngine {
             require(getBY2() >= preBY2 - deltaY, "Not enough TY2");
         }
         
-        // Commit state updates
-        _update(pid, postR1, postR2);
-        _updatePosition(msg.sender, pos_);
+        res.liquidity -= deltaL; // Update global liquidity
+        positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
+        _updateReserves(pid, postR1, postR2); // Update global reserves
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -324,20 +318,16 @@ contract PrimitiveEngine {
     // as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     // As a side effect, `lend` will modify global reserve `float` by the same amount.
     function lend(address owner, bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
-        Position.Data memory pos_ = getPosition(owner, nonce, pid);
-        Reserve.Data storage res = reserves[pid];
-
-        pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
-            pos_.float += deltaL;
-            _updatePosition(msg.sender, pos_);
+            positions.lend(nonce, pid, deltaL);
         } 
 
-        res.float += deltaL;
+        Reserve.Data storage res = reserves[pid];
+        res.float += deltaL; // update global float
         return deltaL;
     }
 
@@ -345,14 +335,12 @@ contract PrimitiveEngine {
     // debt factor by `deltaL`.  Global debt and float must satisfy
     // liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
-        Position.Data memory pos_ = getPosition(recipient, nonce, pid);
         Reserve.Data storage res = reserves[pid];
 
         Margin.Data memory margin_ = getMargin(recipient);
 
         require(res.float > deltaL, "INSUFFICIENT FLOAT");
 
-        pos_.unlocked = true;
         margin_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
@@ -382,8 +370,9 @@ contract PrimitiveEngine {
 
         margin_.BX1 -= riskyNeeded;
 
-        pos_.debt += deltaL; // increase position debt by deltaL
-        _updatePosition(msg.sender, pos_); // lock in updates to position
+        bytes32 pid_ = pid;
+        Position.Data storage position = positions.fetch(recipient, nonce, pid_);
+        position.borrow(deltaL); // add position debt of `deltaL`
         uint postFloat = res.float - deltaL; // reduce float factor by deltaL
         uint postLiquidity = liquidity - deltaL; // reduce float factor by deltaL
         uint postDebt = res.debt + deltaL; // increase debt factor by deltaL
@@ -392,7 +381,7 @@ contract PrimitiveEngine {
         uint postRX1 = res.RX1 - deltaX;
         uint postRY2 = res.RY2 - deltaY;
 
-        _update(pid, postRX1, postRY2);
+        _updateReserves(pid, postRX1, postRY2);
 
         return deltaL;
     }
@@ -402,22 +391,18 @@ contract PrimitiveEngine {
      */
     function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint) {
         // Get the position
-        Position.Data memory pos_ = getPosition(owner, nonce, pid);
-        pos_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
         // Take away loan debt and liquidity.
         if(deltaL > 0) {
-            require(pos_.debt >= 0, "No loan to repay");
             ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
-            pos_.liquidity -= deltaL;
-            pos_.debt -= deltaL;
-            _updatePosition(owner, pos_);
+            Position.Data storage position = positions.fetch(owner, nonce, pid);
+            position.repay(deltaL);
         }
 
         Reserve.Data storage res = reserves[pid];
-        res.float += deltaL;
+        res.float += deltaL; // add the removed liquidity to the global float
         
         return deltaL;
     }
@@ -432,7 +417,6 @@ contract PrimitiveEngine {
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
-        margin_.unlocked = true;
 
         // Fetch the global reserves for the `pid` curve
         Reserve.Data storage res = reserves[pid];
@@ -500,7 +484,7 @@ contract PrimitiveEngine {
         
         bytes32 pid_ = pid;
         uint deltaOut_ = deltaOut;
-        _update(pid_, postRX1, postRY2);
+        _updateReserves(pid_, postRX1, postRY2);
         emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
     }
 
@@ -524,18 +508,6 @@ contract PrimitiveEngine {
         Reserve.Data memory res = reserves[pid];
         uint RY2 = res.RY2 - deltaYOut;
         return SwapMath.calcRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
-    }
-
-    // ===== Position & Margin State Fetchers =====
-
-    function _fetchPosition(address owner, uint nonce, bytes32 pid) internal returns (Position.Data storage) {
-        Position.Data storage pos = positions.fetch(owner, nonce, pid);
-        if(pos.owner == address(0)) {
-            pos.owner = owner;
-            pos.nonce = nonce;
-            pos.pid = pid;
-        }
-        return pos;
     }
 
     // ===== View ===== 
