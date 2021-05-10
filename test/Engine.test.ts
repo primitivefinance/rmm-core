@@ -1,5 +1,5 @@
-import hre, {ethers, waffle} from 'hardhat'
-import {Wallet, Contract} from 'ethers'
+import hre, { ethers, waffle } from 'hardhat'
+import { Wallet, Contract } from 'ethers'
 import {
   YEAR,
   PERCENTAGE,
@@ -17,8 +17,8 @@ import {
   fromMantissa,
   fromWithin,
 } from './shared/Units'
-import {calculateDelta} from './shared/BlackScholes'
-import {getTradingFunction, getProportionalVol} from './shared/ReplicationMath'
+import { calculateDelta } from './shared/BlackScholes'
+import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
 import {
   Calibration,
   Position,
@@ -38,9 +38,9 @@ import {
   calcRY2WithXOut,
   Swap,
 } from './shared/Engine'
-import {engineFixture, EngineFixture} from './shared/fixtures'
-import {expect} from 'chai'
-const {createFixtureLoader} = waffle
+import { engineFixture, EngineFixture } from './shared/fixtures'
+import { expect } from 'chai'
+const { createFixtureLoader } = waffle
 
 describe('Primitive Engine', function () {
   let fixture: EngineFixture
@@ -79,7 +79,7 @@ describe('Primitive Engine', function () {
     const strike = parseWei('1000').raw
     const sigma = 0.85 * PERCENTAGE
     const time = 31449600 //one year
-    calibration = {strike, sigma, time}
+    calibration = { strike, sigma, time }
     // Create pool
     await engine.create(calibration, spot.raw)
     poolId = await engine.getPoolId(calibration)
@@ -215,10 +215,9 @@ describe('Primitive Engine', function () {
       const amount = parseWei('200').raw
       // deposit 200
       await expect(house.deposit(amount, amount))
-        .to.emit(engine, EngineEvents.MARGIN_UPDATED)
         .to.emit(engine, EngineEvents.DEPOSITED)
         .withArgs(signer.address, amount, amount)
-      const {owner, BX1, BY2, unlocked} = await getMargin(engine, signer.address)
+      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
       expect(owner).to.be.eq(signer.address)
       expect(BX1.raw).to.be.eq(amount)
       expect(BY2.raw).to.be.eq(amount)
@@ -230,14 +229,13 @@ describe('Primitive Engine', function () {
       const amount = INITIAL_MARGIN.raw
       // remove 100
       await expect(engine.withdraw(amount, amount))
-        .to.emit(engine, EngineEvents.MARGIN_UPDATED)
         .to.emit(engine, EngineEvents.WITHDRAWN)
         .withArgs(signer.address, amount, amount)
       // deposit 100
       await house.deposit(amount, amount)
       // remove 100
       await expect(() => engine.withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
-      const {owner, BX1, BY2, unlocked} = await getMargin(engine, signer.address)
+      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
       expect(owner).to.be.eq(signer.address)
       expect(BX1.raw).to.be.eq(0)
       expect(BY2.raw).to.be.eq(0)

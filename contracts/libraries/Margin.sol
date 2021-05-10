@@ -39,8 +39,8 @@ library Margin {
 
     function withdraw(mapping(address => Data) storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
         Data storage margin = mar[msg.sender];
-        if(deltaX > 0) margin -= deltaX;
-        if(deltaY > 0) margin -= deltaY;
+        if(deltaX > 0) margin.BX1 -= deltaX;
+        if(deltaY > 0) margin.BY2 -= deltaY;
         return margin;
     }
 }

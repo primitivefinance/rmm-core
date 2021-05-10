@@ -11,8 +11,8 @@ import SwapFactory from '@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.s
 const overrides = {gasLimit: 9500000}
 
 export interface UniswapFixture {
-  SwapRouter: Contract
-  SwapFactory: Contract
+  swapRouter: Contract
+  swapFactory: Contract
 }
 
 export async function uniswapFixture([wallet]: Wallet[], provider): Promise<UniswapFixture> {
