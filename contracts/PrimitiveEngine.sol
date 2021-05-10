@@ -43,7 +43,7 @@ contract PrimitiveEngine {
     using Units for *;
     using Calibration for mapping(bytes32 => Calibration.Data);
     using Reserve for mapping(bytes32 => Reserve.Data);
-    using Margin for mapping(bytes32 => Margin.Data);
+    using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
@@ -57,7 +57,6 @@ contract PrimitiveEngine {
     event Deposited(address indexed from, uint deltaX, uint deltaY);
     event Withdrawn(address indexed from, uint deltaX, uint deltaY);
     event PositionUpdated(address indexed from, Position.Data pos);
-    event MarginUpdated(address indexed from, Margin.Data mar);
     event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration);
     event Update(uint R1, uint R2, uint blockNumber);
     event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
@@ -164,16 +163,9 @@ contract PrimitiveEngine {
      * @notice  Commits transiently set `activePosition` to state of positions[encodePacked(owner,nonce)].
      */
     function _updatePosition(address owner, Position.Data memory next) internal lockPosition {
-        Position.Data storage pos = _getPosition(owner, _NONCE, _POOL_ID);
+        bytes32 posId = Position.getPositionId(msg.sender, _NONCE, _POOL_ID);
+        Position.Data storage pos = positions.fetch(msg.sender, _NONCE, _POOL_ID);
         pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.debt);
-    }
-
-    /**
-     * @notice  Commits transiently set `activeMargin` to state of margins[encodePacked(owner,nonce)].
-     */
-    function _updateMargin(address owner, Margin.Data memory next) internal lockMargin(next) {
-        Margin.Data storage mar = _fetchMargin(owner);
-        mar.edit(next.BX1, next.BY2);
     }
 
     // ===== Margin =====
@@ -182,26 +174,18 @@ contract PrimitiveEngine {
      * @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
      */
     function deposit(address owner, uint deltaX, uint deltaY) public returns (bool) {
-        Margin.Data memory margin_ = getMargin(owner);
-        margin_.unlocked = true;
-
-        // Update state
-        if(deltaX > 0) margin_.BX1 += deltaX;
-        if(deltaY > 0) margin_.BY2 += deltaY;
-        _updateMargin(owner, margin_);
-
-
-        { // avoids stack too deep errors
+        // Receive tokens
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
         ICallback(msg.sender).depositCallback(deltaX, deltaY);
         if(deltaX > 0) require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
         if(deltaY > 0) require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
-        }
+        // Update margin state
+        Margin.Data storage mar = margins.fetch(owner);
+        mar.deposit(deltaX, deltaY);
 
         // Commit state updates
         emit Deposited(owner, deltaX, deltaY);
-        emit MarginUpdated(msg.sender, margin_);
         return true;
     }
 
@@ -209,15 +193,6 @@ contract PrimitiveEngine {
      * @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
      */
     function withdraw(uint deltaX, uint deltaY) public returns (bool) {
-        Margin.Data memory margin_ = getMargin(msg.sender);
-        margin_.unlocked = true;
-
-        // Update state
-        if(deltaX > 0) margin_.BX1 -= deltaX;
-        if(deltaY > 0) margin_.BY2 -= deltaY;
-        _updateMargin(msg.sender, margin_);
-
-        { // avoids stack too deep errors
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
         if(deltaX > 0) {
@@ -228,11 +203,10 @@ contract PrimitiveEngine {
             IERC20(TY2).safeTransfer(msg.sender, deltaY);
             require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
         }
-        }
-
+        // Update Margin state
+        margins.withdraw(detlaX, deltaY);
         // Commit state updates
         emit Withdrawn(msg.sender, deltaX, deltaY);
-        emit MarginUpdated(msg.sender, margin_);
         return true;
     }
 
@@ -274,9 +248,7 @@ contract PrimitiveEngine {
 
         // if internal balance can pay, use it
         if(margin_.BX1 >= deltaX && margin_.BY2 >= deltaY) {
-            margin_.BX1 -= deltaX;
-            margin_.BY2 -= deltaY;
-            _updateMargin(owner, margin_);
+            margins.withdraw(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
             uint preBY2 = getBY2();
@@ -329,9 +301,8 @@ contract PrimitiveEngine {
         pos_.liquidity -= deltaL;
     
         if(isInternal) {
-            margin_.BX1 += deltaX;
-            margin_.BY2 += deltaY;
-            _updateMargin(msg.sender, margin_);
+            Margin.Data storage mar = margins.fetch(owner);
+            mar.deposit(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
             uint preBY2 = getBY2();
@@ -495,11 +466,6 @@ contract PrimitiveEngine {
         address to = msg.sender;
         uint margin = xToY ? margin_.BX1 : margin_.BY2;
         if(margin >= deltaIn) {
-            if(xToY) {
-                margin_.BX1 -= deltaIn;
-            } else {
-                margin_.BY2 -= deltaIn;
-            }
             { // avoids stack too deep errors, sending the asset out that we are removing
             uint deltaOut_ = deltaOut;
             address token = xToY ? TY2 : TX1;
@@ -508,7 +474,12 @@ contract PrimitiveEngine {
             uint postBalance = xToY ? getBY2() : getBX1();
             require(postBalance >= preBalance - deltaOut_, "Sent too much tokens");
             }
-            _updateMargin(to, margin_);
+
+            if(xToY) {
+                margins.withdraw(deltaIn, uint(0));
+            } else {
+                margins.withdraw(uint(0), deltaIn);
+            }
         } else {
             {
             uint deltaOut_ = deltaOut;
@@ -566,14 +537,6 @@ contract PrimitiveEngine {
             pos.pid = pid;
         }
         return pos;
-    }
-
-    function _fetchMargin(address owner) internal returns (Margin.Data storage) {
-        Margin.Data storage mar = margins.fetch(owner);
-        if(mar.owner == address(0)) {
-            mar.owner = owner;
-        }
-        return mar;
     }
 
     // ===== View ===== 
