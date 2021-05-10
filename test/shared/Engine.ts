@@ -92,14 +92,14 @@ export interface Margin {
 export async function getMargin(engine: Contract, owner: string, log?: boolean): Promise<Margin> {
   const mar = await engine.getMargin(owner)
   const margin: Margin = {
-    owner: mar.owner,
+    owner: owner,
     BX1: new Wei(mar.BX1),
     BY2: new Wei(mar.BY2),
     unlocked: mar.unlocked,
   }
   if (log)
     console.log(`
-      owner: ${mar.owner},
+      owner: ${owner},
       BX1: ${formatEther(mar.BX1)},
       BY2: ${formatEther(mar.BY2)},
       unlocked: ${mar.unlocked}
