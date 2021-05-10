@@ -28,9 +28,8 @@ interface ICallback {
     function removeXYCallback(uint deltaX, uint deltaY) external;
     function depositCallback(uint deltaX, uint deltaY) external;
     function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
-    function addXCallback(uint deltaX, uint deltaY) external;
+    function swapCallback(uint deltaX, uint deltaY) external;
     function borrowCallback() external returns (address);
-    function removeXCallback(uint deltaX, uint deltaY) external;
     function repayCallback(bytes32 pid, uint deltaL) external;
     function getCaller() external returns (address);
 }
@@ -54,13 +53,12 @@ contract PrimitiveEngine {
     uint public constant _NO_NONCE = type(uint).max;
     bytes32 public constant _NO_POOL = bytes32(0);
 
-    event Deposited(address indexed from, uint deltaX, uint deltaY);
-    event Withdrawn(address indexed from, uint deltaX, uint deltaY);
-    event PositionUpdated(address indexed from, Position.Data pos);
-    event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration);
-    event Update(uint R1, uint R2, uint blockNumber);
-    event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
-    event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY);
+    event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration); // Create pool
+    event Update(uint R1, uint R2, uint blockNumber); // Update pool reserves
+    event Deposited(address indexed from, uint deltaX, uint deltaY); // Depost margin
+    event Withdrawn(address indexed from, uint deltaX, uint deltaY); // Withdraw margin
+    event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Add liq to curve
+    event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
     event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
 
     struct Accumulator {
@@ -82,19 +80,10 @@ contract PrimitiveEngine {
     Margin.Data public activeMargin;
     Position.Data public activePosition;
     mapping(bytes32 => Calibration.Data) public settings;
-    mapping(bytes32 => Reserve.Data) public reserves;
     mapping(address => Margin.Data) public margins;
     mapping(bytes32 => Position.Data) public positions;
+    mapping(bytes32 => Reserve.Data) public reserves;
 
-    modifier lockPosition() {
-        require(_NONCE != _NO_NONCE && _POOL_ID != _NO_POOL, "Position locked");
-        _;
-    }
-
-    modifier lockMargin(Margin.Data memory next) {
-        require(next.unlocked, "Margin locked");
-        _;
-    }
 
     constructor(address risky, address riskFree) {
         TX1 = risky;
@@ -153,17 +142,6 @@ contract PrimitiveEngine {
         acc.ARX2 += postR2;
         acc.blockNumberLast = block.number;
         emit Update(postR1, postR2, block.number);
-    }
-
-    /**
-     * @notice  Commits transiently set `activePosition` to state of positions[encodePacked(owner,nonce)].
-     */
-    function _updatePosition(address owner, Position.Data memory next) internal lockPosition {
-        /* bytes32 posId = Position.getPositionId(msg.sender, _NONCE, _POOL_ID);
-        Position.Data storage pos = positions.fetch(msg.sender, _NONCE, _POOL_ID);
-        pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.debt); */
-        Position.Data storage pos = positions.fetch(owner, _NONCE, _POOL_ID);
-        pos.edit(next.BX1, next.BY2, next.liquidity, next.float, next.debt);
     }
 
     // ===== Margin =====
@@ -337,11 +315,7 @@ contract PrimitiveEngine {
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
         Reserve.Data storage res = reserves[pid];
 
-        Margin.Data memory margin_ = getMargin(recipient);
-
         require(res.float > deltaL, "INSUFFICIENT FLOAT");
-
-        margin_.unlocked = true;
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -365,10 +339,7 @@ contract PrimitiveEngine {
         uint amountOutRisky = uint(0);
 
         uint riskyNeeded = deltaL - (deltaX + amountOutRisky);
-        
-        require(margin_.BX1 > riskyNeeded, "INSUFFICIENT RISKY BALANCE");
-
-        margin_.BX1 -= riskyNeeded;
+        Margin.Data storage margin = margins.withdraw(uint(0), riskyNeeded); // remove risky from margin
 
         bytes32 pid_ = pid;
         Position.Data storage position = positions.fetch(recipient, nonce, pid_);
@@ -471,7 +442,7 @@ contract PrimitiveEngine {
             uint preBY2 = getBY2();
             address token = xToY ? TY2 : TX1;
             IERC20(token).safeTransfer(to, deltaOut_);
-            ICallback(msg.sender).addXCallback(deltaIn_, deltaOut_);
+            ICallback(msg.sender).swapCallback(deltaIn_, deltaOut_);
             uint postBX1 = getBX1();
             uint postBY2 = getBY2();
             uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
