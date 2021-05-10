@@ -66,6 +66,8 @@ contract PrimitiveHouse is ICallback {
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
         CALLER = msg.sender;
         engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
+    }
+    
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
