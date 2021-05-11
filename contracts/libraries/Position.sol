@@ -57,6 +57,7 @@ library Position {
 
     /// @notice Adds a debt balance of `deltaL` to `position`
     function borrow(Data storage position, uint deltaL) internal returns (Data storage) {
+        position.liquidity += deltaL; // fix: think abut this more
         position.debt += deltaL;
         return position;
     }

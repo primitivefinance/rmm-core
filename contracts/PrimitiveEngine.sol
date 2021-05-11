@@ -10,7 +10,6 @@ pragma abicoder v2;
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
-import "./libraries/CumulativeNormalDistribution.sol";
 import "./libraries/Calibration.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Position.sol";
@@ -37,7 +36,6 @@ interface ICallback {
 contract PrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
-    using CumulativeNormalDistribution for int128;
     using ReplicationMath for int128;
     using Units for *;
     using Calibration for mapping(bytes32 => Calibration.Data);
@@ -68,38 +66,41 @@ contract PrimitiveEngine {
     }
 
     address public immutable TX1; // always risky asset
-    address public immutable TY2; // always risk free asset, TODO: rename vars?
-
-    uint24 public fee;
+    address public immutable TY2; // always riskless asset, TODO: rename vars?
 
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
     bytes32[] public allPools;
+
     Accumulator public accumulator;
     Margin.Data public activeMargin;
     Position.Data public activePosition;
+
     mapping(bytes32 => Calibration.Data) public settings;
     mapping(address => Margin.Data) public margins;
     mapping(bytes32 => Position.Data) public positions;
     mapping(bytes32 => Reserve.Data) public reserves;
 
 
-    constructor(address risky, address riskFree) {
+    constructor(address risky, address riskless) {
         TX1 = risky;
-        TY2 = riskFree;
+        TY2 = riskless;
     }
 
+    /// @notice Gets the risky token balance of this contract
     function getBX1() public view returns (uint) {
         return IERC20(TX1).balanceOf(address(this));
     }
 
+    /// @notice Gets the riskless token balance of this contract
     function getBY2() public view returns (uint) {
         return IERC20(TY2).balanceOf(address(this));
     }
 
-    // create new curve with assets TX1 TY2
-    // Setting initial reserves such that 1 LP == 1 SHORT option
+    /// @notice Generates a new curve with parameters `self`
+    /// @param  self The calibration of the curve incl. params time, sigma, and strike.
+    /// @param  assetPrice The spot price of the risky token in riskless units.
     function create(Calibration.Data memory self, uint assetPrice) public {
         require(self.time > 0, "Time is 0");
         require(self.sigma > 0, "Sigma is 0");
@@ -129,9 +130,7 @@ contract PrimitiveEngine {
         emit Create(msg.sender, pid, self);
     }
 
-    /**
-     * @notice  Updates R to new values for X and Y.
-     */
+    /// @notice  Updates R to new values for X and Y.
     function _updateReserves(bytes32 pid, uint postR1, uint postR2) public {
         Reserve.Data storage res = reserves[pid];
         res.RX1 = postR1;
@@ -146,9 +145,7 @@ contract PrimitiveEngine {
 
     // ===== Margin =====
 
-    /**
-     * @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
-     */
+    /// @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
     function deposit(address owner, uint deltaX, uint deltaY) public returns (bool) {
         // Receive tokens
         uint preBX1 = getBX1();
@@ -159,15 +156,13 @@ contract PrimitiveEngine {
         // Update margin state
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
-
         // Commit state updates
         emit Deposited(owner, deltaX, deltaY);
         return true;
     }
 
-    /**
-     * @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
-     */
+    
+    /// @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
     function withdraw(uint deltaX, uint deltaY) public returns (bool) {
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
@@ -188,9 +183,8 @@ contract PrimitiveEngine {
 
     // ===== Liquidity =====
 
-    /**
-     * @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
-     */
+    
+    /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint postR1, uint postR2) {
         _NONCE = nonce;
         _POOL_ID = pid;
@@ -236,9 +230,8 @@ contract PrimitiveEngine {
         return (postR1, postR2);
     }
 
-    /**
-     * @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `owner`.
-     */
+    
+    /// @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `msg.sender`.
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint postR1, uint postR2) {
         _NONCE = nonce;
         _POOL_ID = pid;
@@ -292,9 +285,9 @@ contract PrimitiveEngine {
 
     // ===== Lending =====
 
-    // @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
-    // as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
-    // As a side effect, `lend` will modify global reserve `float` by the same amount.
+    /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
+    /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
+    /// As a side effect, `lend` will modify global reserve `float` by the same amount.
     function lend(address owner, bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
         _NONCE = nonce;
         _POOL_ID = pid;
@@ -309,9 +302,9 @@ contract PrimitiveEngine {
         return deltaL;
     }
 
-    // @dev Decrease global float factor by `deltaL`, and increase `owner` 
-    // debt factor by `deltaL`.  Global debt and float must satisfy
-    // liquidity >= debt + float.
+    /// @dev Decrease global float factor by `deltaL`, and increase `owner` 
+    /// debt factor by `deltaL`.  Global debt and float must satisfy
+    /// liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
         Reserve.Data storage res = reserves[pid];
 
@@ -325,7 +318,7 @@ contract PrimitiveEngine {
         uint deltaY = deltaL * res.RY2 / liquidity;
 
         {
-        // swap risk free asset for risky asset
+        // swap riskless asset for risky asset
         /* uint256 amountOutRisky = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
           tokenIn: TY2,
           tokenOut: TX1,
@@ -357,9 +350,8 @@ contract PrimitiveEngine {
         return deltaL;
     }
 
-    /**
-     * @notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
-     */
+    
+    ///@notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
     function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint) {
         // Get the position
         _NONCE = nonce;
@@ -380,11 +372,9 @@ contract PrimitiveEngine {
 
     // ===== Swaps =====
 
-    /**
-     * @notice  Swap between risky and riskfree assets
-     * @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
-                Else, we request X out, and must add Y to the pool's reserves.
-     */
+    
+    ///@notice  Swap between risky and riskless assets
+    ///@dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
@@ -461,9 +451,8 @@ contract PrimitiveEngine {
 
     // ===== Swap and Liquidity Math =====
 
-    /**
-     * @notice  Fetches a new R2 from a decreased R1.
-     */
+    
+     ///@notice  Fetches a new R2 from a decreased R1.
     function calcRY2WithXOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
@@ -471,9 +460,7 @@ contract PrimitiveEngine {
         return SwapMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    /**
-     * @notice  Fetches a new R1 from a decreased R2.
-     */
+     ///@notice  Fetches a new R1 from a decreased R2.
     function calcRX1WithYOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
