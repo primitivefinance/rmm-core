@@ -6,7 +6,6 @@ import "./libraries/Calibration.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
-import {Accumulator} from "./PrimitiveEngine.sol";
 
 interface IPrimitiveEngine {
     // ==== State =====
@@ -40,7 +39,6 @@ interface IPrimitiveEngine {
 
     // ===== Pool States =====
     function getReserve(bytes32 pid) external view returns (Reserve.Data memory);
-    function getAccumulator(bytes32 pid) external view returns (Accumulator memory);
     function getCalibration(bytes32 pid) external view returns (Calibration.Data memory);
     function getPosition(address owner, uint nonce) external view returns (Position.Data memory);
     function getMargin(address owner) external view returns (Margin.Data memory);

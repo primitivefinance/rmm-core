@@ -15,8 +15,6 @@ library Margin {
         uint BX1;
         // Balance of Y, the RISK-FREE, or "quote" asset, a stablecoin.
         uint BY2;
-        // the address which can withdraw balances
-        address owner;
         // Transiently set as true when a margin position is being edited.
         bool unlocked;
     }
@@ -26,24 +24,23 @@ library Margin {
      * @dev     Used across all Engines.
      */
     function fetch(
-        mapping(bytes32 => Data) storage mar,
+        mapping(address => Data) storage mar,
         address owner
     ) internal returns (Data storage) {
-        return mar[getMarginId(owner)];
+        require(owner != address(0x0), "No owner");
+        return mar[owner];
     }
 
-    function edit(Data storage mar, uint BX1, uint BY2) internal returns (Data storage) {
-        mar.BX1 = BX1;
-        mar.BY2 = BY2;
-        mar.unlocked = false;
+    function deposit(Data storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
+        if(deltaX > 0) mar.BX1 += deltaX;
+        if(deltaY > 0) mar.BY2 += deltaY;
         return mar;
     }
 
-    /**
-     * @notice  Fetches the margin position Id, which is an encoded `owner`.
-     * @return  The margin position Id as a bytes32.
-     */
-    function getMarginId(address owner) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(owner));
+    function withdraw(mapping(address => Data) storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
+        Data storage margin = mar[msg.sender];
+        if(deltaX > 0) margin.BX1 -= deltaX;
+        if(deltaY > 0) margin.BY2 -= deltaY;
+        return margin;
     }
 }
