@@ -13,10 +13,12 @@ library Position {
     struct Data {
         // the address which can withdraw balances
         address owner;
+        // Transiently set as true when a position is being edited.
+        bool unlocked;
         // the nonce of the position, which is iterated for each engine
-        uint BX1;
-        uint BY2;
         uint nonce;
+        uint BX1; // Balance of risky asset
+        uint BY2; // Balance of riskless asset
         // The pool ID of the liquidity shares
         bytes32 pid;
         // Balance of X, the RISKY, or underlying asset.
@@ -25,8 +27,6 @@ library Position {
         uint float;
         // The amount of liquidity shares borrowed.
         uint debt;
-        // Transiently set as true when a position is being edited.
-        bool unlocked;
     }
 
     /**
@@ -42,18 +42,39 @@ library Position {
          return position[getPositionId(owner, nonce, pid)];
     }
 
-    /**
-     * @notice  Transitions a `pos` to the `nextPos` by setting pos = nextPos.
-     * @return  The new position.
-     */
-    function edit(Data storage pos, uint BX1, uint BY2, uint liquidity, uint float, uint debt) internal returns (Data storage) {
-        pos.BX1 = BX1;
-        pos.BY2 = BY2;
-        pos.float = float;
-        pos.liquidity = liquidity;
-        pos.debt = debt;
-        pos.unlocked = false;
-        return pos;
+    /// @notice Add to the balance of liquidity
+    function addLiquidity(Data storage position, uint deltaL) internal returns (Data storage) {
+        position.liquidity += deltaL;
+        return position;
+    }
+
+    /// @notice Decrease the balance of liquidity
+    function removeLiquidity(mapping(bytes32 => Data) storage positions, uint nonce, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, nonce, pid);
+        position.liquidity -= deltaL;
+        return position;
+    }
+
+    /// @notice Adds a debt balance of `deltaL` to `position`
+    function borrow(Data storage position, uint deltaL) internal returns (Data storage) {
+        position.liquidity += deltaL; // fix: think abut this more
+        position.debt += deltaL;
+        return position;
+    }
+
+    /// @notice Locks `deltaL` of liquidity as a float which can be borrowed from.
+    function lend(mapping(bytes32 => Data) storage positions, uint nonce, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, nonce, pid);
+        position.float += deltaL;
+        return position;
+    }
+
+    /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
+    function repay(Data storage position, uint deltaL) internal returns (Data storage) {
+        require(position.debt >= uint(0), "No loan to repay");
+        position.liquidity -= deltaL;
+        position.debt -= deltaL;
+        return position;
     }
 
     /**

@@ -15,12 +15,9 @@ contract TestEngine is PrimitiveEngine {
     using CumulativeNormalDistribution for *;
 
     constructor(
-      address router, 
-      address factory, 
-      uint24 fee, 
       address risky, 
       address riskFree
-    ) PrimitiveEngine(router, factory, fee, risky, riskFree) {}
+    ) PrimitiveEngine(risky, riskFree) {}
 
     // ==== Cumulative Normal Distribution Function Library Entry ====
 
