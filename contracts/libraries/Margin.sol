@@ -2,11 +2,9 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @notice  Margin Library
- * @author  Primitive
- * @dev     This library is a generalized margin position data structure for any engine.
- */
+/// @notice  Margin Library
+/// @author  Primitive
+/// @dev     This library is a generalized margin position data structure for any engine.
 
 library Margin {
     // every margin position in an Engine is this data structure.
@@ -19,10 +17,8 @@ library Margin {
         bool unlocked;
     }
 
-    /**
-     * @notice  An Engine's mapping of margin position Ids to Data structs can be used to fetch any margin position.
-     * @dev     Used across all Engines.
-     */
+    /// @notice  An Engine's mapping of margin position Ids to Data structs can be used to fetch any margin position.
+    /// @dev     Used across all Engines.
     function fetch(
         mapping(address => Data) storage mar,
         address owner
@@ -31,12 +27,14 @@ library Margin {
         return mar[owner];
     }
 
+    /// @notice Adds to risky and riskless token balances
     function deposit(Data storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
         if(deltaX > 0) mar.BX1 += deltaX;
         if(deltaY > 0) mar.BY2 += deltaY;
         return mar;
     }
 
+    /// @notice Removes risky and riskless token balance from `msg.sender`'s internal margin account
     function withdraw(mapping(address => Data) storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
         Data storage margin = mar[msg.sender];
         if(deltaX > 0) margin.BX1 -= deltaX;

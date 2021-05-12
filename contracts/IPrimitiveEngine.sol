@@ -8,7 +8,7 @@ import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 
 interface IPrimitiveEngine {
-    // ==== State =====
+    // ===== State =====
 
     // Curve
     function create(Calibration.Data memory self, uint assetPrice) external;

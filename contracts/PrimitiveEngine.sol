@@ -2,11 +2,9 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @title   Primitive Engine
- * @author  Primitive
- * @dev     Create pools with parameters `Calibration` to replicate Black-scholes covered call payoffs.
- */
+/// @title   Primitive Engine
+/// @author  Primitive
+/// @dev     Create pools with parameters `Calibration` to replicate Black-scholes covered call payoffs.
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
@@ -73,17 +71,20 @@ contract PrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public reserves;
 
 
+    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
+    /// @param  The risky asset token address, e.g. WETH
+    /// @param  The riskless asset token address, e.g. DAI
     constructor(address risky, address riskless) {
         TX1 = risky;
         TY2 = riskless;
     }
 
-    /// @notice Gets the risky token balance of this contract
+    /// @notice Returns the risky token balance of this contract
     function getBX1() public view returns (uint) {
         return IERC20(TX1).balanceOf(address(this));
     }
 
-    /// @notice Gets the riskless token balance of this contract
+    /// @notice Returns the riskless token balance of this contract
     function getBY2() public view returns (uint) {
         return IERC20(TY2).balanceOf(address(this));
     }
@@ -337,8 +338,8 @@ contract PrimitiveEngine {
     // ===== Swaps =====
 
     
-    ///@notice  Swap between risky and riskless assets
-    ///@dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
+    /// @notice  Swap between risky and riskless assets
+    /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
@@ -417,7 +418,7 @@ contract PrimitiveEngine {
     // ===== Swap and Liquidity Math =====
 
     
-     ///@notice  Fetches a new R2 from a decreased R1.
+    /// @notice  Fetches a new R2 from a decreased R1.
     function calcRY2WithXOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
@@ -425,7 +426,7 @@ contract PrimitiveEngine {
         return SwapMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-     ///@notice  Fetches a new R1 from a decreased R2.
+    /// @notice  Fetches a new R1 from a decreased R2.
     function calcRX1WithYOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
@@ -435,38 +436,45 @@ contract PrimitiveEngine {
 
     // ===== View ===== 
 
+    /// @notice Calculates the invariant for `postR1` and `postR2` reserve values
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         int128 invariant = ReplicationMath.calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
         return invariant;
     }
 
+    /// @notice Calculates the invariant for the current reserve values of a pool.
     function getInvariantLast(bytes32 pid) public view returns (int128) {
         Reserve.Data memory res = reserves[pid];
         int128 invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
         return invariant;
     }
 
+    /// @notice Returns the reserve information of a calibrated curve
     function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
         Reserve.Data memory res = reserves[pid];
         return res; 
     }
 
+    /// @notice Returns the parameters of a calibrated curve
     function getCalibration(bytes32 pid) public view returns (Calibration.Data memory) {
         Calibration.Data memory cal = settings[pid];
         return cal; 
     }
 
+    /// @notice Returns the position data struct for a pool
     function getPosition(address owner, uint nonce, bytes32 pid) public view returns (Position.Data memory) {
         Position.Data memory pos = positions[Position.getPositionId(owner, nonce, pid)];
         return pos; 
     }
 
+    /// @notice Returns the internal balances of risky and riskless tokens for an owner
     function getMargin(address owner) public view returns (Margin.Data memory) {
         Margin.Data memory mar = margins[owner];
         return mar;
     }
 
+    /// @notice Returns a kaccak256 hash of a pool's calibration parameters
     function getPoolId(Calibration.Data memory self) public view returns(bytes32 pid) {
         pid = keccak256(
             abi.encodePacked(

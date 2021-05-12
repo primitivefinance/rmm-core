@@ -2,11 +2,9 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @notice  Position Library
- * @author  Primitive
- * @dev     This library is a generalized position data structure for any engine.
- */
+/// @notice  Position Library
+/// @author  Primitive
+/// @dev     This library is a generalized position data structure for any engine.
 
 interface IBorrow {
     function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
@@ -33,10 +31,8 @@ library Position {
         uint debt;
     }
 
-    /**
-     * @notice  An Engine's mapping of position Ids to Data structs can be used to fetch any position.
-     * @dev     Used across all Engines.
-     */
+    /// @notice  An Engine's mapping of position Ids to Data structs can be used to fetch any position.
+    /// @dev     Used across all Engines.
     function fetch(
         mapping(bytes32 => Data) storage position,
         address owner,
@@ -92,10 +88,8 @@ library Position {
         return position;
     }
 
-    /**
-     * @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
-     * @return  The position Id as a bytes32.
-     */
+    /// @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
+    /// @return  The position Id as a bytes32.
     function getPositionId(address owner, uint nonce, bytes32 pid) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(owner, nonce, pid));
     }
