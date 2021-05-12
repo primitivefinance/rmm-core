@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-/**
- * @title   Replication Math
- * @author  Primitive
- */
+/// @title   Replication Math
+/// @author  Primitive
 
 import "./ABDKMath64x64.sol";
 import "./BlackScholes.sol";
@@ -23,9 +21,7 @@ library ReplicationMath {
 
     // ===== Math ======
 
-    /**
-     * @return  vol Implied Vol * Sqrt(T-t)
-     */
+    /// @return  vol Implied Vol * Sqrt(T-t)
     function getProportionalVolatility(uint sigma, uint time) internal pure returns (int128 vol) {
         // sigma * sqrt(t)
         int128 sqrtTime = time.toYears().sqrt();
@@ -33,10 +29,8 @@ library ReplicationMath {
         vol = SX1.mul(sqrtTime);
     }
 
-    /**
-     * @notice  Fetches RY2 using RX1.
-     * @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-     */
+    /// @notice  Fetches RY2 using RX1.
+    /// @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
     function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RY2) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
@@ -51,10 +45,8 @@ library ReplicationMath {
         RY2 = k.mul(input.getCDF()).mul(liquidity.parseUnits()); 
     }
 
-    /**
-     * @notice  Fetches RX1 using RY2.
-     * @return  RX1 = 1 - K*CDF(CDF^-1(RY2/K) + sigma*sqrt(t))
-     */
+    /// @notice  Fetches RX1 using RY2.
+    /// @return  RX1 = 1 - K*CDF(CDF^-1(RY2/K) + sigma*sqrt(t))
     function getInverseTradingFunction(uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RX1) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
@@ -71,15 +63,14 @@ library ReplicationMath {
         RX1 = one.sub(input.getCDF()).mul(liquidity.parseUnits());
     }
  
-    /**
-     * @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-     */
+    /// @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
     function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128) {
         int128 reserve2 = getTradingFunction(RX1, liquidity, strike, sigma, time);
         int128 invariant = RY2.parseUnits().sub(reserve2);
         return invariant;
     }
 
+    /// @notice Returns the riskless reserve value based on a risky reserve value using the perp. put function
     function getPerpetualPutTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint rfRate) internal pure returns (int128 RY2) {
         int128 k = strike.parseUnits();
         int128 r = rfRate.percentage();
@@ -90,6 +81,7 @@ library ReplicationMath {
         RY2 = k.sub(k.mul(input));
     }
 
+    /// @notice Returns the perp. put trading function invariant
     function calcPerpInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint rfRate) internal pure returns (int128) {
         int128 reserve2 = getPerpetualPutTradingFunction(RX1, liquidity, strike, sigma, rfRate);
         int128 invariant = RY2.parseUnits().sub(reserve2);
