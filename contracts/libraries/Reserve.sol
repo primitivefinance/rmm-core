@@ -15,10 +15,11 @@ library Reserve {
         uint RX1;
         // the reserve for the risk free asset
         uint RY2;
-        // the total liquidity shares
+        // the total supply of liquidity shares
         uint liquidity;
         // the liquidity available for lending
         uint float;
+        // the liquidity unavailable because it was borrowed
         uint debt;
     }
 
@@ -30,6 +31,48 @@ library Reserve {
         address engine
     ) internal returns (Data storage) {
         return reserves[getReserveId(engine)];
+    }
+
+    function swap(Data storage reserve, bool addXRemoveY, uint deltaIn, uint deltaOut) internal returns (Data storage) {
+        if(addXRemoveY) {
+            reserve.RX1 += deltaIn;
+            reserve.RY2 -= deltaOut;
+        } else {
+            reserve.RX1 -= deltaOut;
+            reserve.RY2 += deltaIn;
+        }
+
+        return reserve;
+    }
+
+    function mint(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+        reserve.RX1 += deltaX;
+        reserve.RY2 += deltaY;
+        reserve.liquidity += deltaL;
+        return reserve;
+    }
+
+    function burn(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+        reserve.RX1 -= deltaX;
+        reserve.RY2 -= deltaY;
+        reserve.liquidity -= deltaL;
+        return reserve;
+    }
+
+    function addFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
+        reserve.float += deltaL;
+        return reserve;
+    }
+
+    function borrowFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
+        reserve.float -= deltaL;
+        reserve.debt += deltaL;
+        return reserve;
+    }
+
+    function removeFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
+        reserve.float -= deltaL;
+        return reserve;
     }
 
     /**
