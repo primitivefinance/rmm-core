@@ -11,14 +11,13 @@ pragma abicoder v2;
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
 import "./libraries/Calibration.sol";
-import "./libraries/ReplicationMath.sol";
-import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
+import "./libraries/Position.sol";
+import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
+import "./libraries/SwapMath.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "./libraries/SwapMath.sol";
 
 import "hardhat/console.sol";
 
@@ -28,7 +27,7 @@ interface ICallback {
     function depositCallback(uint deltaX, uint deltaY) external;
     function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
     function swapCallback(uint deltaX, uint deltaY) external;
-    function borrowCallback() external returns (address);
+    function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
     function repayCallback(bytes32 pid, uint deltaL) external;
     function getCaller() external returns (address);
 }
@@ -74,8 +73,6 @@ contract PrimitiveEngine {
     bytes32[] public allPools;
 
     Accumulator public accumulator;
-    Margin.Data public activeMargin;
-    Position.Data public activePosition;
 
     mapping(bytes32 => Calibration.Data) public settings;
     mapping(address => Margin.Data) public margins;
@@ -288,7 +285,7 @@ contract PrimitiveEngine {
     /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
     /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     /// As a side effect, `lend` will modify global reserve `float` by the same amount.
-    function lend(address owner, bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
+    function lend(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -302,71 +299,45 @@ contract PrimitiveEngine {
         return deltaL;
     }
 
-    /// @dev Decrease global float factor by `deltaL`, and increase `owner` 
+    /// @dev Decrease global float factor by `deltaL`, and increase `recipient` 
     /// debt factor by `deltaL`.  Global debt and float must satisfy
     /// liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
         Reserve.Data storage res = reserves[pid];
-
-        require(res.float > deltaL, "INSUFFICIENT FLOAT");
+        require(res.float > deltaL, "Insufficient float"); // fail early if not enough float to borrow
+        // transiently set to reference in callback
         _NONCE = nonce;
         _POOL_ID = pid;
 
-        uint liquidity = res.liquidity;
+        uint liquidity = res.liquidity; // global liquidity balance
+        uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
+        uint deltaY = deltaL * res.RY2 / liquidity; // amount of riskless asset
+        
+        // trigger callback before position debt is increased, so liquidity can be removed
+        Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
+        // fails if risky asset balance is less than borrowed `deltaL`
 
-        uint deltaX = deltaL * res.RX1 / liquidity;
-        uint deltaY = deltaL * res.RY2 / liquidity;
-
-        {
-        // swap riskless asset for risky asset
-        /* uint256 amountOutRisky = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
-          tokenIn: TY2,
-          tokenOut: TX1,
-          fee: fee,
-          recipient: address(this),
-          deadline: 1,
-          amountIn: deltaY,
-          amountOutMinimum: uint256(0),
-          sqrtPriceLimitX96: uint160(0)
-        })); */
-        uint amountOutRisky = uint(0);
-
-        uint riskyNeeded = deltaL - (deltaX + amountOutRisky);
-        Margin.Data storage margin = margins.withdraw(uint(0), riskyNeeded); // remove risky from margin
-
-        bytes32 pid_ = pid;
-        Position.Data storage position = positions.fetch(recipient, nonce, pid_);
-        position.borrow(deltaL); // add position debt of `deltaL`
-        uint postFloat = res.float - deltaL; // reduce float factor by deltaL
-        uint postLiquidity = liquidity - deltaL; // reduce float factor by deltaL
-        uint postDebt = res.debt + deltaL; // increase debt factor by deltaL
-        }
-
-        uint postRX1 = res.RX1 - deltaX;
-        uint postRY2 = res.RY2 - deltaY;
-
-        _updateReserves(pid, postRX1, postRY2);
-
+        res.float -= deltaL; // update global available float
+        res.debt += deltaL; // update global outstanding debt
         return deltaL;
     }
 
     
-    ///@notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
+    /// @notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
+    /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
     function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint) {
-        // Get the position
+        // transiently set to reference in callback
         _NONCE = nonce;
         _POOL_ID = pid;
 
-        // Take away loan debt and liquidity.
         if(deltaL > 0) {
             ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
             Position.Data storage position = positions.fetch(owner, nonce, pid);
-            position.repay(deltaL);
+            position.repay(deltaL); // reduce pos.liquidity and pos.float by `deltaL`
         }
 
         Reserve.Data storage res = reserves[pid];
         res.float += deltaL; // add the removed liquidity to the global float
-        
         return deltaL;
     }
 
