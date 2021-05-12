@@ -39,6 +39,7 @@ contract PrimitiveEngine {
     using Units for *;
     using Calibration for mapping(bytes32 => Calibration.Data);
     using Reserve for mapping(bytes32 => Reserve.Data);
+    using Reserve for Reserve.Data;
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
     using Position for mapping(bytes32 => Position.Data);
@@ -127,19 +128,6 @@ contract PrimitiveEngine {
         emit Create(msg.sender, pid, self);
     }
 
-    /// @notice  Updates R to new values for X and Y.
-    function _updateReserves(bytes32 pid, uint postR1, uint postR2) public {
-        Reserve.Data storage res = reserves[pid];
-        res.RX1 = postR1;
-        res.RY2 = postR2;
-        // add new reserves to cumulative reserves
-        Accumulator storage acc = accumulator;
-        acc.ARX1 += postR1;
-        acc.ARX2 += postR2;
-        acc.blockNumberLast = block.number;
-        emit Update(postR1, postR2, block.number);
-    }
-
     // ===== Margin =====
 
     /// @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
@@ -217,12 +205,12 @@ contract PrimitiveEngine {
             require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
         }
         
-        res.liquidity += deltaL; // Update global liquidity
         Position.Data storage pos = positions.fetch(owner, nonce, pid);
         pos.addLiquidity(deltaL); // Update position liquidity
 
         // Commit state updates
-        _updateReserves(pid, postR1, postR2);
+        res.mint(deltaX, deltaY, deltaL);
+        emit Update(postR1, postR2, block.number);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -273,9 +261,9 @@ contract PrimitiveEngine {
             require(getBY2() >= preBY2 - deltaY, "Not enough TY2");
         }
         
-        res.liquidity -= deltaL; // Update global liquidity
         positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
-        _updateReserves(pid, postR1, postR2); // Update global reserves
+        res.burn(deltaX, deltaY, deltaL);
+        emit Update(postR1, postR2, block.number);
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
         return (postR1, postR2);
     }
@@ -295,7 +283,21 @@ contract PrimitiveEngine {
         } 
 
         Reserve.Data storage res = reserves[pid];
-        res.float += deltaL; // update global float
+        res.addFloat(deltaL); // update global float
+        return deltaL;
+    }
+
+    /// @notice Reduce a `msg.sender`s float, taking them off the borrow market
+    function claim(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
+         _NONCE = nonce;
+        _POOL_ID = pid;
+
+        if (deltaL > 0) {
+            // increment position float factor by `deltaL`
+            positions.claim(nonce, pid, deltaL);
+        }
+        Reserve.Data storage res = reserves[pid];
+        res.removeFloat(deltaL); // update global float
         return deltaL;
     }
 
@@ -317,8 +319,7 @@ contract PrimitiveEngine {
         Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
 
-        res.float -= deltaL; // update global available float
-        res.debt += deltaL; // update global outstanding debt
+        res.borrowFloat(deltaL);
         return deltaL;
     }
 
@@ -337,7 +338,7 @@ contract PrimitiveEngine {
         }
 
         Reserve.Data storage res = reserves[pid];
-        res.float += deltaL; // add the removed liquidity to the global float
+        res.addFloat(deltaL);
         return deltaL;
     }
 
@@ -416,7 +417,8 @@ contract PrimitiveEngine {
         
         bytes32 pid_ = pid;
         uint deltaOut_ = deltaOut;
-        _updateReserves(pid_, postRX1, postRY2);
+        res.swap(addXRemoveY, deltaIn, deltaOut);
+        emit Update(postRX1, postRY2, block.number);
         emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
     }
 
