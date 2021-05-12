@@ -8,6 +8,10 @@ pragma abicoder v2;
  * @dev     This library is a generalized position data structure for any engine.
  */
 
+interface IBorrow {
+    function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
+}
+
 library Position {
     // every position in an Engine is this data structure.
     struct Data {
@@ -51,14 +55,18 @@ library Position {
     /// @notice Decrease the balance of liquidity
     function removeLiquidity(mapping(bytes32 => Data) storage positions, uint nonce, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, nonce, pid);
+        require(position.debt == uint(0), "Has debt");
         position.liquidity -= deltaL;
         return position;
     }
 
     /// @notice Adds a debt balance of `deltaL` to `position`
-    function borrow(Data storage position, uint deltaL) internal returns (Data storage) {
-        position.liquidity += deltaL; // fix: think abut this more
-        position.debt += deltaL;
+    function borrow(mapping(bytes32 => Data) storage positions, uint nonce, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, nonce, pid);
+        position.liquidity += deltaL; // increase liquidity
+        IBorrow(msg.sender).borrowCallback(position, deltaL); // trigger the callback so we can remove liquidity
+        position.debt += deltaL; // add the debt post position manipulation
+        require(position.BX1 >= deltaL, "Check the borrow factor invariant");
         return position;
     }
 
