@@ -59,12 +59,6 @@ contract PrimitiveEngine {
     event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
     event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
 
-    struct Accumulator {
-        uint ARX1;
-        uint ARX2;
-        uint blockNumberLast;
-    }
-
     address public immutable TX1; // always risky asset
     address public immutable TY2; // always riskless asset, TODO: rename vars?
 
@@ -72,8 +66,6 @@ contract PrimitiveEngine {
     bytes32 public _POOL_ID = _NO_POOL;
 
     bytes32[] public allPools;
-
-    Accumulator public accumulator;
 
     mapping(bytes32 => Calibration.Data) public settings;
     mapping(address => Margin.Data) public margins;
@@ -458,11 +450,6 @@ contract PrimitiveEngine {
     function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
         Reserve.Data memory res = reserves[pid];
         return res; 
-    }
-
-    function getAccumulator(bytes32 pid) public view returns (Accumulator memory) {
-        Accumulator memory acc = accumulator;
-        return acc; 
     }
 
     function getCalibration(bytes32 pid) public view returns (Calibration.Data memory) {
