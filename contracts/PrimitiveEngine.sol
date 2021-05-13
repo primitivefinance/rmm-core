@@ -173,7 +173,7 @@ contract PrimitiveEngine {
 
     
     /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
-    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
+    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
@@ -187,14 +187,12 @@ contract PrimitiveEngine {
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
         postRX1 = RX1 + deltaX;
         postRY2 = RY2 + deltaY;
-        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, liquidity);
+        bytes32 pid_ = pid;
+        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
         require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
         }
-        
 
-        // if internal balance can pay, use it
-        Margin.Data storage mar = margins.fetch(msg.sender);
-        if(mar.BX1 >= deltaX && mar.BY2 >= deltaY) {
+        if(isInternal) {
             margins.withdraw(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
