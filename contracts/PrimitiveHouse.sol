@@ -61,7 +61,7 @@ contract PrimitiveHouse is ICallback {
      */
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
-        engine.addBoth(pid, msg.sender, nonce, deltaL);
+        engine.addBoth(pid, msg.sender, nonce, deltaL, false);
     }
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
