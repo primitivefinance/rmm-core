@@ -5,6 +5,7 @@ import {ICallback} from "./PrimitiveEngine.sol";
 import "./IPrimitiveEngine.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
+import "./libraries/Position.sol";
 
 contract PrimitiveHouse is ICallback {
     using SafeERC20 for IERC20;
@@ -60,7 +61,7 @@ contract PrimitiveHouse is ICallback {
      */
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
-        engine.addBoth(pid, msg.sender, nonce, deltaL);
+        engine.addBoth(pid, msg.sender, nonce, deltaL, false);
     }
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
@@ -99,8 +100,8 @@ contract PrimitiveHouse is ICallback {
         addXYCallback(deltaX, uint(0));
     }
 
-    function borrowCallback() public override returns (address) {
-      return CALLER;
+    function borrowCallback(Position.Data calldata pos, uint deltaL) public override returns (uint) {
+      return uint(0);
     }
 
     function repayCallback(bytes32 pid, uint deltaL) public override {
