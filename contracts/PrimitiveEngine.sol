@@ -2,23 +2,20 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @title   Primitive Engine
- * @author  Primitive
- * @dev     Create pools with parameters `Calibration` to replicate Black-scholes covered call payoffs.
- */
+/// @title   Primitive Engine
+/// @author  Primitive
+/// @dev     Create pools with parameters `Calibration` to replicate Black-scholes covered call payoffs.
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
 import "./libraries/Calibration.sol";
-import "./libraries/ReplicationMath.sol";
-import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
+import "./libraries/Position.sol";
+import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
+import "./libraries/SwapMath.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-import "./libraries/SwapMath.sol";
 
 import "hardhat/console.sol";
 
@@ -28,7 +25,7 @@ interface ICallback {
     function depositCallback(uint deltaX, uint deltaY) external;
     function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
     function swapCallback(uint deltaX, uint deltaY) external;
-    function borrowCallback() external returns (address);
+    function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
     function repayCallback(bytes32 pid, uint deltaL) external;
     function getCaller() external returns (address);
 }
@@ -40,6 +37,7 @@ contract PrimitiveEngine {
     using Units for *;
     using Calibration for mapping(bytes32 => Calibration.Data);
     using Reserve for mapping(bytes32 => Reserve.Data);
+    using Reserve for Reserve.Data;
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
     using Position for mapping(bytes32 => Position.Data);
@@ -59,23 +57,23 @@ contract PrimitiveEngine {
     event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
     event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
 
-    struct Accumulator {
-        uint ARX1;
-        uint ARX2;
-        uint blockNumberLast;
-    }
-
     address public immutable TX1; // always risky asset
     address public immutable TY2; // always riskless asset, TODO: rename vars?
 
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
-    bytes32[] public allPools;
+    modifier lock(bytes32 pid, uint nonce) {
+        require(_POOL_ID == _NO_POOL, "Pid set");
+        require(_NONCE == _NO_NONCE, "Nonce set");
+        _NONCE = nonce;
+        _POOL_ID = pid;
+        _;
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
+    }
 
-    Accumulator public accumulator;
-    Margin.Data public activeMargin;
-    Position.Data public activePosition;
+    bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
 
     mapping(bytes32 => Calibration.Data) public settings;
     mapping(address => Margin.Data) public margins;
@@ -83,17 +81,20 @@ contract PrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public reserves;
 
 
+    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
+    /// @param  risky asset token address, e.g. WETH
+    /// @param  riskless asset token address, e.g. DAI
     constructor(address risky, address riskless) {
         TX1 = risky;
         TY2 = riskless;
     }
 
-    /// @notice Gets the risky token balance of this contract
+    /// @notice Returns the risky token balance of this contract
     function getBX1() public view returns (uint) {
         return IERC20(TX1).balanceOf(address(this));
     }
 
-    /// @notice Gets the riskless token balance of this contract
+    /// @notice Returns the riskless token balance of this contract
     function getBY2() public view returns (uint) {
         return IERC20(TY2).balanceOf(address(this));
     }
@@ -105,8 +106,9 @@ contract PrimitiveEngine {
         require(self.time > 0, "Time is 0");
         require(self.sigma > 0, "Sigma is 0");
         require(self.strike > 0, "Strike is 0");
-        // Fetch the pool id and set its calibration data
-        bytes32 pid = getPoolId(self);
+        // fetch the keccak hash of the parameters
+        bytes32 pid = getPoolId(self); 
+        // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
             strike: self.strike,
             sigma: self.sigma,
@@ -118,45 +120,32 @@ contract PrimitiveEngine {
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
         // Set y = F(x)
         uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
+        // initialize the reserves to have 1e18 shares of liquidity
         reserves[pid] = Reserve.Data({
-            RX1: RX1,
-            RY2: RY2,
-            liquidity: INIT_SUPPLY,
+            RX1: RX1, // risky token balance
+            RY2: RY2, // riskless token balance
+            liquidity: INIT_SUPPLY, // 1e18
             float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0
+            debt: 0 // the LP shares borrowed from the float
         });
+        // add the pid to all the pids initialized
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
-    }
-
-    /// @notice  Updates R to new values for X and Y.
-    function _updateReserves(bytes32 pid, uint postR1, uint postR2) public {
-        Reserve.Data storage res = reserves[pid];
-        res.RX1 = postR1;
-        res.RY2 = postR2;
-        // add new reserves to cumulative reserves
-        Accumulator storage acc = accumulator;
-        acc.ARX1 += postR1;
-        acc.ARX2 += postR2;
-        acc.blockNumberLast = block.number;
-        emit Update(postR1, postR2, block.number);
     }
 
     // ===== Margin =====
 
     /// @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
     function deposit(address owner, uint deltaX, uint deltaY) public returns (bool) {
-        // Receive tokens
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
         ICallback(msg.sender).depositCallback(deltaX, deltaY);
         if(deltaX > 0) require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
         if(deltaY > 0) require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
-        // Update margin state
+
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
-        // Commit state updates
         emit Deposited(owner, deltaX, deltaY);
         return true;
     }
@@ -174,9 +163,8 @@ contract PrimitiveEngine {
             IERC20(TY2).safeTransfer(msg.sender, deltaY);
             require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
         }
-        // Update Margin state
+
         margins.withdraw(deltaX, deltaY);
-        // Commit state updates
         emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
@@ -185,32 +173,26 @@ contract PrimitiveEngine {
 
     
     /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
-    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint postR1, uint postR2) {
-        _NONCE = nonce;
-        _POOL_ID = pid;
-
+    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
 
-        uint deltaX;
-        uint deltaY;
+        uint postRX1;
+        uint postRY2;
         { // scope for RX1 and RY2, avoids stack too deep errors
-        uint RX1 = res.RX1;
-        uint RY2 = res.RY2;
+        (uint RX1, uint RY2) = (res.RX1, res.RY2);
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
-        postR1 = RX1 + deltaX;
-        postR2 = RY2 + deltaY;
-        int128 postInvariant = calcInvariant(pid, postR1, postR2, liquidity);
+        postRX1 = RX1 + deltaX;
+        postRY2 = RY2 + deltaY;
+        bytes32 pid_ = pid;
+        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
         require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
         }
-        
 
-        // if internal balance can pay, use it
-        Margin.Data storage mar = margins.fetch(msg.sender);
-        if(mar.BX1 >= deltaX && mar.BY2 >= deltaY) {
+        if(isInternal) {
             margins.withdraw(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
@@ -219,29 +201,28 @@ contract PrimitiveEngine {
             require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
             require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
         }
-        
-        res.liquidity += deltaL; // Update global liquidity
-        Position.Data storage pos = positions.fetch(owner, nonce, pid);
+
+        bytes32 pid_ = pid;
+        Position.Data storage pos = positions.fetch(owner, nonce, pid_);
         pos.addLiquidity(deltaL); // Update position liquidity
 
         // Commit state updates
-        _updateReserves(pid, postR1, postR2);
+        res.mint(deltaX, deltaY, deltaL);
+
+        emit Update(postRX1, postRY2, block.number);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
-        return (postR1, postR2);
+        return (deltaX, deltaY);
     }
 
     
     /// @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `msg.sender`.
-    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint postR1, uint postR2) {
-        _NONCE = nonce;
-        _POOL_ID = pid;
-
+    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
 
-        uint deltaX;
-        uint deltaY;
+        uint postRX1;
+        uint postRY2;
 
         { // scope for calculting invariants
         int128 invariant = getInvariantLast(pid);
@@ -251,20 +232,16 @@ contract PrimitiveEngine {
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
-        postR1 = RX1 - deltaX;
-        postR2 = RY2 - deltaY;
-        int128 postInvariant = calcInvariant(pid_, postR1, postR2, liquidity);
+        postRX1 = RX1 - deltaX;
+        postRY2 = RY2 - deltaY;
+        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
         require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Update state
         require(res.liquidity >= deltaL, "Above max burn");
-
-        console.log("entering internal");
-    
         if(isInternal) {
             Margin.Data storage mar = margins.fetch(msg.sender);
-            console.log(deltaX, deltaY);
             mar.deposit(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
@@ -276,11 +253,12 @@ contract PrimitiveEngine {
             require(getBY2() >= preBY2 - deltaY, "Not enough TY2");
         }
         
-        res.liquidity -= deltaL; // Update global liquidity
         positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
-        _updateReserves(pid, postR1, postR2); // Update global reserves
+        res.burn(deltaX, deltaY, deltaL);
+        
+        emit Update(postRX1, postRY2, block.number);
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
-        return (postR1, postR2);
+        return (deltaX, deltaY);
     }
 
     // ===== Lending =====
@@ -288,93 +266,67 @@ contract PrimitiveEngine {
     /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
     /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     /// As a side effect, `lend` will modify global reserve `float` by the same amount.
-    function lend(address owner, bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
-        _NONCE = nonce;
-        _POOL_ID = pid;
-
+    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) returns (uint) {
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
             positions.lend(nonce, pid, deltaL);
         } 
 
         Reserve.Data storage res = reserves[pid];
-        res.float += deltaL; // update global float
+        res.addFloat(deltaL); // update global float
         return deltaL;
     }
 
-    /// @dev Decrease global float factor by `deltaL`, and increase `owner` 
-    /// debt factor by `deltaL`.  Global debt and float must satisfy
-    /// liquidity >= debt + float.
-    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public returns (uint) {
-        Reserve.Data storage res = reserves[pid];
-
-        require(res.float > deltaL, "INSUFFICIENT FLOAT");
-        _NONCE = nonce;
-        _POOL_ID = pid;
-
-        uint liquidity = res.liquidity;
-
-        uint deltaX = deltaL * res.RX1 / liquidity;
-        uint deltaY = deltaL * res.RY2 / liquidity;
-
-        {
-        // swap riskless asset for risky asset
-        /* uint256 amountOutRisky = router.exactInputSingle(ISwapRouter.ExactInputSingleParams({
-          tokenIn: TY2,
-          tokenOut: TX1,
-          fee: fee,
-          recipient: address(this),
-          deadline: 1,
-          amountIn: deltaY,
-          amountOutMinimum: uint256(0),
-          sqrtPriceLimitX96: uint160(0)
-        })); */
-        uint amountOutRisky = uint(0);
-
-        uint riskyNeeded = deltaL - (deltaX + amountOutRisky);
-        Margin.Data storage margin = margins.withdraw(uint(0), riskyNeeded); // remove risky from margin
-
-        bytes32 pid_ = pid;
-        Position.Data storage position = positions.fetch(recipient, nonce, pid_);
-        position.borrow(deltaL); // add position debt of `deltaL`
-        uint postFloat = res.float - deltaL; // reduce float factor by deltaL
-        uint postLiquidity = liquidity - deltaL; // reduce float factor by deltaL
-        uint postDebt = res.debt + deltaL; // increase debt factor by deltaL
+    /// @notice Reduce a `msg.sender`s float, taking them off the borrow market
+    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) returns (uint) {
+        if (deltaL > 0) {
+            // increment position float factor by `deltaL`
+            positions.claim(nonce, pid, deltaL);
         }
 
-        uint postRX1 = res.RX1 - deltaX;
-        uint postRY2 = res.RY2 - deltaY;
+        Reserve.Data storage res = reserves[pid];
+        res.removeFloat(deltaL); // update global float
+        return deltaL;
+    }
 
-        _updateReserves(pid, postRX1, postRY2);
+    /// @dev Decrease global float factor by `deltaL`, and increase `recipient` 
+    /// debt factor by `deltaL`.  Global debt and float must satisfy
+    /// liquidity >= debt + float.
+    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid, nonce) returns (uint) {
+        Reserve.Data storage res = reserves[pid];
+        require(res.float > deltaL, "Insufficient float"); // fail early if not enough float to borrow
 
+        uint liquidity = res.liquidity; // global liquidity balance
+        uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
+        uint deltaY = deltaL * res.RY2 / liquidity; // amount of riskless asset
+        
+        // trigger callback before position debt is increased, so liquidity can be removed
+        Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
+        // fails if risky asset balance is less than borrowed `deltaL`
+        res.borrowFloat(deltaL);
         return deltaL;
     }
 
     
-    ///@notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
-    function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint) {
-        // Get the position
-        _NONCE = nonce;
-        _POOL_ID = pid;
-
-        // Take away loan debt and liquidity.
+    /// @notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
+    /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
+    function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public lock(pid, nonce) returns (uint) {
         if(deltaL > 0) {
             ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
             Position.Data storage position = positions.fetch(owner, nonce, pid);
-            position.repay(deltaL);
+            position.repay(deltaL); // reduce pos.liquidity and pos.float by `deltaL`
         }
 
         Reserve.Data storage res = reserves[pid];
-        res.float += deltaL; // add the removed liquidity to the global float
-        
+        res.addFloat(deltaL);
         return deltaL;
     }
 
     // ===== Swaps =====
 
     
-    ///@notice  Swap between risky and riskless assets
-    ///@dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
+    /// @notice  Swap between risky and riskless assets
+    /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
@@ -382,8 +334,7 @@ contract PrimitiveEngine {
         // Fetch the global reserves for the `pid` curve
         Reserve.Data storage res = reserves[pid];
         int128 invariant = getInvariantLast(pid); //gas savings
-        uint256 RX1 = res.RX1; // gas savings
-        uint256 RY2 = res.RY2; // gas savings
+        (uint RX1, uint RY2) = (res.RX1, res.RY2);
 
         uint postRX1;
         uint postRY2;
@@ -445,14 +396,15 @@ contract PrimitiveEngine {
         
         bytes32 pid_ = pid;
         uint deltaOut_ = deltaOut;
-        _updateReserves(pid_, postRX1, postRY2);
+        res.swap(addXRemoveY, deltaIn, deltaOut);
+        emit Update(postRX1, postRY2, block.number);
         emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
     }
 
     // ===== Swap and Liquidity Math =====
 
     
-     ///@notice  Fetches a new R2 from a decreased R1.
+    /// @notice  Fetches a new R2 from a decreased R1.
     function calcRY2WithXOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
@@ -460,7 +412,7 @@ contract PrimitiveEngine {
         return SwapMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
-     ///@notice  Fetches a new R1 from a decreased R2.
+    /// @notice  Fetches a new R1 from a decreased R2.
     function calcRX1WithYOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
@@ -470,43 +422,39 @@ contract PrimitiveEngine {
 
     // ===== View ===== 
 
-    function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
+    /// @notice Calculates the invariant for `postRX1` and `postRY2` reserve values
+    function calcInvariant(bytes32 pid, uint postRX1, uint postRY2, uint postLiquidity) public view returns (int128 invariant) {
         Calibration.Data memory cal = settings[pid];
-        int128 invariant = ReplicationMath.calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
-        return invariant;
+        invariant = ReplicationMath.calcInvariant(postRX1, postRY2, postLiquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    function getInvariantLast(bytes32 pid) public view returns (int128) {
+    /// @notice Calculates the invariant for the current reserve values of a pool.
+    function getInvariantLast(bytes32 pid) public view returns (int128 invariant) {
         Reserve.Data memory res = reserves[pid];
-        int128 invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
-        return invariant;
+        invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
     }
 
-    function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
-        Reserve.Data memory res = reserves[pid];
-        return res; 
+    /// @notice Returns the reserve information of a calibrated curve
+    function getReserve(bytes32 pid) public view returns (Reserve.Data memory res) {
+        res = reserves[pid];
     }
 
-    function getAccumulator(bytes32 pid) public view returns (Accumulator memory) {
-        Accumulator memory acc = accumulator;
-        return acc; 
+    /// @notice Returns the parameters of a calibrated curve
+    function getCalibration(bytes32 pid) public view returns (Calibration.Data memory cal) {
+        cal = settings[pid]; 
     }
 
-    function getCalibration(bytes32 pid) public view returns (Calibration.Data memory) {
-        Calibration.Data memory cal = settings[pid];
-        return cal; 
+    /// @notice Returns the position data struct for a pool
+    function getPosition(address owner, uint nonce, bytes32 pid) public view returns (Position.Data memory pos) {
+        pos = positions[Position.getPositionId(owner, nonce, pid)];
     }
 
-    function getPosition(address owner, uint nonce, bytes32 pid) public view returns (Position.Data memory) {
-        Position.Data memory pos = positions[Position.getPositionId(owner, nonce, pid)];
-        return pos; 
+    /// @notice Returns the internal balances of risky and riskless tokens for an owner
+    function getMargin(address owner) public view returns (Margin.Data memory mar) {
+        mar = margins[owner];
     }
 
-    function getMargin(address owner) public view returns (Margin.Data memory) {
-        Margin.Data memory mar = margins[owner];
-        return mar;
-    }
-
+    /// @notice Returns a kaccak256 hash of a pool's calibration parameters
     function getPoolId(Calibration.Data memory self) public view returns(bytes32 pid) {
         pid = keccak256(
             abi.encodePacked(

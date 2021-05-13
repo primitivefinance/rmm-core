@@ -2,11 +2,9 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @notice  Calibration Library
- * @author  Primitive
- * @dev     This library holds the data struct for each CFMM's calibrated option parameters.
- */
+/// @notice  Calibration Library
+/// @author  Primitive
+/// @dev     This library holds the data struct for each CFMM's calibrated option parameters.
 
 
 library Calibration {
@@ -20,21 +18,18 @@ library Calibration {
         uint32 time;
     }
 
-    /**
-     * @notice  Fetches an Engine's Calibration Data struct using a mapping of Reserve Ids.
-     */
+    /// @notice  Fetches an Engine's Calibration Data struct using a mapping of Reserve Ids.
     function fetch(
         mapping(bytes32 => Data) storage settings,
         address engine
     ) internal returns (Data storage) {
-        return settings[getReserveId(engine)];
+        return settings[getCalibrationId(engine)];
     }
 
-    /**
-     * @notice  Fetches the reserve Id, which is an encoded `owner`.
-     * @return  The reserve Id as a bytes32.
-     */
-    function getReserveId(address engine) internal view returns (bytes32) {
+    /// @notice  Fetches the reserve Id, which is an encoded `owner`.
+    /// @return  The reserve Id as a bytes32.
+    // @TODO: make these more deterministic?
+    function getCalibrationId(address engine) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(engine));
     }
 }
