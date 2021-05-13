@@ -63,7 +63,7 @@ contract PrimitiveEngine {
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
-    bytes32[] public allPools;
+    bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
 
     mapping(bytes32 => Calibration.Data) public settings;
     mapping(address => Margin.Data) public margins;
@@ -72,8 +72,8 @@ contract PrimitiveEngine {
 
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
-    /// @param  The risky asset token address, e.g. WETH
-    /// @param  The riskless asset token address, e.g. DAI
+    /// @param  risky asset token address, e.g. WETH
+    /// @param  riskless asset token address, e.g. DAI
     constructor(address risky, address riskless) {
         TX1 = risky;
         TY2 = riskless;
@@ -96,8 +96,9 @@ contract PrimitiveEngine {
         require(self.time > 0, "Time is 0");
         require(self.sigma > 0, "Sigma is 0");
         require(self.strike > 0, "Strike is 0");
-        // Fetch the pool id and set its calibration data
-        bytes32 pid = getPoolId(self);
+        // fetch the keccak hash of the parameters
+        bytes32 pid = getPoolId(self); 
+        // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
             strike: self.strike,
             sigma: self.sigma,
@@ -109,13 +110,15 @@ contract PrimitiveEngine {
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
         // Set y = F(x)
         uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
+        // initialize the reserves to have 1e18 shares of liquidity
         reserves[pid] = Reserve.Data({
-            RX1: RX1,
-            RY2: RY2,
-            liquidity: INIT_SUPPLY,
+            RX1: RX1, // risky token balance
+            RY2: RY2, // riskless token balance
+            liquidity: INIT_SUPPLY, // 1e18
             float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0
+            debt: 0 // the LP shares borrowed from the float
         });
+        // add the pid to all the pids initialized
         allPools.push(pid);
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
@@ -125,16 +128,14 @@ contract PrimitiveEngine {
 
     /// @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
     function deposit(address owner, uint deltaX, uint deltaY) public returns (bool) {
-        // Receive tokens
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
         ICallback(msg.sender).depositCallback(deltaX, deltaY);
         if(deltaX > 0) require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
         if(deltaY > 0) require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
-        // Update margin state
+
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
-        // Commit state updates
         emit Deposited(owner, deltaX, deltaY);
         return true;
     }
@@ -152,9 +153,8 @@ contract PrimitiveEngine {
             IERC20(TY2).safeTransfer(msg.sender, deltaY);
             require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
         }
-        // Update Margin state
+
         margins.withdraw(deltaX, deltaY);
-        // Commit state updates
         emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
@@ -163,7 +163,7 @@ contract PrimitiveEngine {
 
     
     /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
-    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint postR1, uint postR2) {
+    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL) public returns (uint deltaX, uint deltaY) {
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -171,17 +171,16 @@ contract PrimitiveEngine {
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
 
-        uint deltaX;
-        uint deltaY;
+        uint postRX1;
+        uint postRY2;
         { // scope for RX1 and RY2, avoids stack too deep errors
-        uint RX1 = res.RX1;
-        uint RY2 = res.RY2;
+        (uint RX1, uint RY2) = (res.RX1, res.RY2);
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
-        postR1 = RX1 + deltaX;
-        postR2 = RY2 + deltaY;
-        int128 postInvariant = calcInvariant(pid, postR1, postR2, liquidity);
+        postRX1 = RX1 + deltaX;
+        postRY2 = RY2 + deltaY;
+        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, liquidity);
         require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
         }
         
@@ -203,14 +202,17 @@ contract PrimitiveEngine {
 
         // Commit state updates
         res.mint(deltaX, deltaY, deltaL);
-        emit Update(postR1, postR2, block.number);
+
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
+        emit Update(postRX1, postRY2, block.number);
         emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
-        return (postR1, postR2);
+        return (deltaX, deltaY);
     }
 
     
     /// @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `msg.sender`.
-    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint postR1, uint postR2) {
+    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public returns (uint deltaX, uint deltaY) {
         _NONCE = nonce;
         _POOL_ID = pid;
 
@@ -218,8 +220,8 @@ contract PrimitiveEngine {
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not bound");
 
-        uint deltaX;
-        uint deltaY;
+        uint postRX1;
+        uint postRY2;
 
         { // scope for calculting invariants
         int128 invariant = getInvariantLast(pid);
@@ -229,20 +231,16 @@ contract PrimitiveEngine {
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX > 0 && deltaY > 0, "Delta is 0");
-        postR1 = RX1 - deltaX;
-        postR2 = RY2 - deltaY;
-        int128 postInvariant = calcInvariant(pid_, postR1, postR2, liquidity);
+        postRX1 = RX1 - deltaX;
+        postRY2 = RY2 - deltaY;
+        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
         require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Update state
         require(res.liquidity >= deltaL, "Above max burn");
-
-        console.log("entering internal");
-    
         if(isInternal) {
             Margin.Data storage mar = margins.fetch(msg.sender);
-            console.log(deltaX, deltaY);
             mar.deposit(deltaX, deltaY);
         } else {
             uint preBX1 = getBX1();
@@ -256,9 +254,12 @@ contract PrimitiveEngine {
         
         positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
         res.burn(deltaX, deltaY, deltaL);
-        emit Update(postR1, postR2, block.number);
+        
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
+        emit Update(postRX1, postRY2, block.number);
         emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
-        return (postR1, postR2);
+        return (deltaX, deltaY);
     }
 
     // ===== Lending =====
@@ -277,20 +278,27 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
+
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
         return deltaL;
     }
 
     /// @notice Reduce a `msg.sender`s float, taking them off the borrow market
     function claim(bytes32 pid, uint nonce, uint deltaL) public returns (uint) {
-         _NONCE = nonce;
+        _NONCE = nonce;
         _POOL_ID = pid;
 
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
             positions.claim(nonce, pid, deltaL);
         }
+
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
+
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
         return deltaL;
     }
 
@@ -311,8 +319,10 @@ contract PrimitiveEngine {
         // trigger callback before position debt is increased, so liquidity can be removed
         Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
-
         res.borrowFloat(deltaL);
+    
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
         return deltaL;
     }
 
@@ -332,6 +342,9 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL);
+
+        _NONCE = _NO_NONCE;
+        _POOL_ID = _NO_POOL;
         return deltaL;
     }
 
@@ -347,8 +360,7 @@ contract PrimitiveEngine {
         // Fetch the global reserves for the `pid` curve
         Reserve.Data storage res = reserves[pid];
         int128 invariant = getInvariantLast(pid); //gas savings
-        uint256 RX1 = res.RX1; // gas savings
-        uint256 RY2 = res.RY2; // gas savings
+        (uint RX1, uint RY2) = (res.RX1, res.RY2);
 
         uint postRX1;
         uint postRY2;
@@ -436,42 +448,36 @@ contract PrimitiveEngine {
 
     // ===== View ===== 
 
-    /// @notice Calculates the invariant for `postR1` and `postR2` reserve values
-    function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) public view returns (int128) {
+    /// @notice Calculates the invariant for `postRX1` and `postRY2` reserve values
+    function calcInvariant(bytes32 pid, uint postRX1, uint postRY2, uint postLiquidity) public view returns (int128 invariant) {
         Calibration.Data memory cal = settings[pid];
-        int128 invariant = ReplicationMath.calcInvariant(postR1, postR2, postLiquidity, cal.strike, cal.sigma, cal.time);
-        return invariant;
+        invariant = ReplicationMath.calcInvariant(postRX1, postRY2, postLiquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /// @notice Calculates the invariant for the current reserve values of a pool.
-    function getInvariantLast(bytes32 pid) public view returns (int128) {
+    function getInvariantLast(bytes32 pid) public view returns (int128 invariant) {
         Reserve.Data memory res = reserves[pid];
-        int128 invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
-        return invariant;
+        invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
     }
 
     /// @notice Returns the reserve information of a calibrated curve
-    function getReserve(bytes32 pid) public view returns (Reserve.Data memory) {
-        Reserve.Data memory res = reserves[pid];
-        return res; 
+    function getReserve(bytes32 pid) public view returns (Reserve.Data memory res) {
+        res = reserves[pid];
     }
 
     /// @notice Returns the parameters of a calibrated curve
-    function getCalibration(bytes32 pid) public view returns (Calibration.Data memory) {
-        Calibration.Data memory cal = settings[pid];
-        return cal; 
+    function getCalibration(bytes32 pid) public view returns (Calibration.Data memory cal) {
+        cal = settings[pid]; 
     }
 
     /// @notice Returns the position data struct for a pool
-    function getPosition(address owner, uint nonce, bytes32 pid) public view returns (Position.Data memory) {
-        Position.Data memory pos = positions[Position.getPositionId(owner, nonce, pid)];
-        return pos; 
+    function getPosition(address owner, uint nonce, bytes32 pid) public view returns (Position.Data memory pos) {
+        pos = positions[Position.getPositionId(owner, nonce, pid)];
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function getMargin(address owner) public view returns (Margin.Data memory) {
-        Margin.Data memory mar = margins[owner];
-        return mar;
+    function getMargin(address owner) public view returns (Margin.Data memory mar) {
+        mar = margins[owner];
     }
 
     /// @notice Returns a kaccak256 hash of a pool's calibration parameters
