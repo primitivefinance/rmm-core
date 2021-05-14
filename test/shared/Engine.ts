@@ -20,6 +20,167 @@ export const EngineEvents = {
   SWAP: 'Swap',
 }
 
+// ===== Margin =====
+
+// ===== Liquidity =====
+
+export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+  const { RX1, RY2, liquidity, float } = params.reserve
+  const deltaX = deltaL.mul(RX1).div(liquidity)
+  const deltaY = deltaL.mul(RY2).div(liquidity)
+  const postRX1 = deltaX.add(RX1)
+  const postRY2 = deltaY.add(RY2)
+  const postLiquidity = deltaL.add(liquidity)
+  const post: PoolParams = {
+    reserve: {
+      RX1: postRX1,
+      RY2: postRY2,
+      liquidity: postLiquidity,
+      float: float,
+    },
+    calibration: params.calibration,
+  }
+  const postInvariant: number = calculateInvariant(post)
+  return [deltaX, deltaY, post, postInvariant]
+}
+
+export function removeBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+  const { RX1, RY2, liquidity, float } = params.reserve
+  const deltaX = deltaL.mul(RX1).div(liquidity)
+  const deltaY = deltaL.mul(RY2).div(liquidity)
+  const postRX1 = RX1.sub(deltaX)
+  const postRY2 = RY2.sub(deltaY)
+  const postLiquidity = liquidity.sub(deltaL)
+  const post: PoolParams = {
+    reserve: {
+      RX1: postRX1,
+      RY2: postRY2,
+      liquidity: postLiquidity,
+      float: float,
+    },
+    calibration: params.calibration,
+  }
+  const postInvariant: number = calculateInvariant(post)
+  return [deltaX, deltaY, post, postInvariant]
+}
+
+// ===== Swaps =====
+
+export interface Swap {
+  deltaIn: Wei
+  deltaOut: Wei
+  postParams: PoolParams
+  postInvariant: number
+}
+
+/**
+ * @notice  Calculates the required deltaIn if requesting deltaOut
+ * @param deltaOut The amount of tokens requested out (swapped out of pool)
+ * @param addXRemoveY The swap direction, if true, swap X to Y, else swap Y to X
+ * @param invariantInt128 The previous invariant of the pool
+ * @param params The pool's parameters, including calibration and reserve/liquidity
+ * @returns deltaIn The required amount of tokens that must enter the pool to preserve invariant
+ */
+export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128: string, params: PoolParams): Swap {
+  let deltaIn: Wei
+  const RX1: Wei = params.reserve.RX1
+  const RY2: Wei = params.reserve.RY2
+  const invariant: Wei = parseWei(fromInt(invariantInt128))
+  let postRX1: Wei = new Wei('0')
+  let postRY2: Wei = new Wei('0')
+
+  if (addXRemoveY) {
+    postRX1 = calcRX1WithYOut(deltaOut, params)
+    postRY2 = RY2.sub(deltaOut)
+    deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
+  } else {
+    let nextRY2 = calcRY2WithXOut(deltaOut, params)
+    postRY2 = invariant.add(nextRY2)
+    postRX1 = RX1.sub(deltaOut)
+    deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
+  }
+
+  const postParams: PoolParams = {
+    reserve: {
+      RX1: postRX1,
+      RY2: postRY2,
+      liquidity: params.reserve.liquidity,
+      float: params.reserve.float,
+    },
+    calibration: params.calibration,
+  }
+  const postInvariant: number = calculateInvariant(postParams)
+  return { deltaIn, deltaOut, postParams, postInvariant }
+}
+
+export function getDeltaOut(deltaIn: Wei, addXRemoveY: boolean, invariantInt128: string, params: PoolParams): Swap {
+  let deltaOut: Wei
+  const RX1: Wei = params.reserve.RX1
+  const RY2: Wei = params.reserve.RY2
+  const invariant: Wei = parseWei(fromInt(invariantInt128))
+  let postRX1: Wei = new Wei('0')
+  let postRY2: Wei = new Wei('0')
+
+  if (addXRemoveY) {
+    postRX1 = RX1.add(deltaIn)
+    postRY2 = calcRY2WithXIn(postRX1, params)
+    deltaOut = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
+  } else {
+    let nextRY2 = calcRY2WithXIn(deltaIn, params)
+    postRY2 = invariant.add(nextRY2)
+    postRX1 = RX1.add(deltaIn)
+    deltaOut = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
+  }
+
+  const postParams: PoolParams = {
+    reserve: {
+      RX1: postRX1,
+      RY2: postRY2,
+      liquidity: params.reserve.liquidity,
+      float: params.reserve.float,
+    },
+    calibration: params.calibration,
+  }
+  const postInvariant: number = calculateInvariant(postParams)
+  return { deltaIn, deltaOut, postParams, postInvariant }
+}
+
+export function calcRX1WithYOut(deltaY: Wei, params: PoolParams): Wei {
+  const RY2: Wei = params.reserve.RY2
+  const nextRY2 = RY2.sub(deltaY)
+  return parseWei(calcRX1WithRY2(nextRY2, params))
+}
+
+export function calcRY2WithXOut(deltaX: Wei, params: PoolParams): Wei {
+  const RX1 = params.reserve.RX1
+  const nextRX1 = RX1.sub(deltaX)
+  return parseWei(calcRY2WithRX1(nextRX1, params))
+}
+
+export function calcRX1WithYIn(deltaY: Wei, params: PoolParams): Wei {
+  const RY2: Wei = params.reserve.RY2
+  const nextRY2 = RY2.add(deltaY)
+  return parseWei(calcRX1WithRY2(nextRY2, params))
+}
+
+export function calcRY2WithXIn(deltaX: Wei, params: PoolParams): Wei {
+  const RX1 = params.reserve.RX1
+  const nextRX1 = RX1.add(deltaX)
+  return parseWei(calcRY2WithRX1(nextRX1, params))
+}
+
+export function calcRX1WithRY2(RY2: Wei, params: PoolParams) {
+  return getInverseTradingFunction(RY2, params.reserve.liquidity, params.calibration)
+}
+
+export function calcRY2WithRX1(RX1: Wei, params: PoolParams) {
+  return getTradingFunction(RX1, params.reserve.liquidity, params.calibration)
+}
+
+// ===== Lending =====
+
+// ===== View =====
+
 export interface Reserve {
   RX1: Wei
   RY2: Wei
@@ -144,103 +305,4 @@ export function calculateInvariant(params: PoolParams): number {
   const input: number = getTradingFunction(params.reserve.RX1, params.reserve.liquidity, params.calibration)
   const invariant: Wei = params.reserve.RY2.sub(parseEther(input > 0.0001 ? input.toString() : '0'))
   return invariant.float
-}
-
-export function getOutputAmount(params: PoolParams, deltaX: Wei): Wei {
-  const RX1: Wei = params.reserve.RX1.add(deltaX)
-  const RY2: Wei = params.reserve.RY2
-  const liquidity: Wei = params.reserve.liquidity
-  const TF: number = getTradingFunction(RX1, liquidity, params.calibration)
-  const PostRY2: Wei = parseWei(TF.toString())
-  const deltaY = PostRY2.gt(RY2.raw) ? PostRY2.sub(RY2.raw) : RY2.sub(PostRY2)
-  return deltaY
-}
-
-export interface Swap {
-  deltaIn: Wei
-  postParams: PoolParams
-  postInvariant: number
-}
-
-/**
- * @notice  Calculates the required deltaIn if requesting deltaOut
- * @param deltaOut The amount of tokens requested out (swapped out of pool)
- * @param addXRemoveY The swap direction, if true, swap X to Y, else swap Y to X
- * @param invariantInt128 The previous invariant of the pool
- * @param params The pool's parameters, including calibration and reserve/liquidity
- * @returns deltaIn The required amount of tokens that must enter the pool to preserve invariant
- */
-export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128: string, params: PoolParams): Swap {
-  let deltaIn: Wei
-  const RX1: Wei = params.reserve.RX1
-  const RY2: Wei = params.reserve.RY2
-  const invariant: Wei = parseWei(fromInt(invariantInt128))
-  let postRX1: Wei = new Wei('0')
-  let postRY2: Wei = new Wei('0')
-
-  if (addXRemoveY) {
-    postRX1 = calcRX1WithYOut(deltaOut, params)
-    postRY2 = RY2.sub(deltaOut)
-    deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
-  } else {
-    let nextRY2 = calcRY2WithXOut(deltaOut, params)
-    postRY2 = invariant.add(nextRY2)
-    postRX1 = RX1.sub(deltaOut)
-    deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
-  }
-
-  console.log(postRY2.parsed, postRX1.parsed, deltaIn.parsed, deltaOut.parsed, invariant.parsed)
-
-  const postParams: PoolParams = {
-    reserve: {
-      RX1: postRX1,
-      RY2: postRY2,
-      liquidity: params.reserve.liquidity,
-      float: params.reserve.float,
-    },
-    calibration: params.calibration,
-  }
-  const postInvariant: number = calculateInvariant(postParams)
-  return { deltaIn, postParams, postInvariant }
-}
-
-// new functions in contracts
-export function calcRX1WithYOut(deltaY: Wei, params: PoolParams): Wei {
-  const RY2: Wei = params.reserve.RY2
-  const nextRY2 = RY2.sub(deltaY)
-  return parseWei(calcRX1WithRY2(nextRY2, params))
-}
-
-export function calcRX1WithRY2(RY2: Wei, params: PoolParams) {
-  return getInverseTradingFunction(RY2, params.reserve.liquidity, params.calibration)
-}
-
-export function calcRY2WithXOut(deltaX: Wei, params: PoolParams): Wei {
-  const RX1 = params.reserve.RX1
-  const nextRX1 = RX1.sub(deltaX)
-  return parseWei(calcRY2WithRX1(nextRX1, params))
-}
-
-export function calcRY2WithRX1(RX1: Wei, params: PoolParams) {
-  return getTradingFunction(RX1, params.reserve.liquidity, params.calibration)
-}
-
-export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
-  const { RX1, RY2, liquidity, float } = params.reserve
-  const deltaX = deltaL.mul(RX1).div(liquidity)
-  const deltaY = deltaL.mul(RY2).div(liquidity)
-  const postRX1 = deltaX.add(RX1)
-  const postRY2 = deltaY.add(RY2)
-  const postLiquidity = deltaL.add(liquidity)
-  const post: PoolParams = {
-    reserve: {
-      RX1: postRX1,
-      RY2: postRY2,
-      liquidity: postLiquidity,
-      float: float,
-    },
-    calibration: params.calibration,
-  }
-  const postInvariant: number = calculateInvariant(post)
-  return [deltaX, deltaY, post, postInvariant]
 }

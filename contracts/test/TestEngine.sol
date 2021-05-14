@@ -50,6 +50,7 @@ contract TestEngine is PrimitiveEngine {
     }
 
     // ===== BS Library Entry ====
+
     function callDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
         y = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
     }

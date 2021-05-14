@@ -51,8 +51,8 @@ contract PrimitiveEngine {
 
     event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration); // Create pool
     event Update(uint R1, uint R2, uint blockNumber); // Update pool reserves
-    event Deposited(address indexed from, uint deltaX, uint deltaY); // Depost margin
-    event Withdrawn(address indexed from, uint deltaX, uint deltaY); // Withdraw margin
+    event Deposited(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Depost margin
+    event Withdrawn(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Withdraw margin
     event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Add liq to curve
     event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
     event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
@@ -146,7 +146,7 @@ contract PrimitiveEngine {
 
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
-        emit Deposited(owner, deltaX, deltaY);
+        emit Deposited(msg.sender, owner, deltaX, deltaY);
         return true;
     }
 
@@ -165,7 +165,7 @@ contract PrimitiveEngine {
         }
 
         margins.withdraw(deltaX, deltaY);
-        emit Withdrawn(msg.sender, deltaX, deltaY);
+        emit Withdrawn(msg.sender, msg.sender, deltaX, deltaY);
         return true;
     }
 
@@ -341,7 +341,7 @@ contract PrimitiveEngine {
         {
             if(addXRemoveY) {
                 int128 nextRX1 = calcRX1WithYOut(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
-                postRX1 = nextRX1.sub(invariant).parseUnits();
+                postRX1 = nextRX1.parseUnits();
                 postRY2 = RY2 - deltaOut;
                 deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
             } else {
@@ -383,7 +383,7 @@ contract PrimitiveEngine {
             uint preBY2 = getBY2();
             address token = xToY ? TY2 : TX1;
             IERC20(token).safeTransfer(to, deltaOut_);
-            ICallback(msg.sender).swapCallback(deltaIn_, deltaOut_);
+            ICallback(msg.sender).swapCallback(xToY ? deltaIn_ : 0, xToY ? 0 : deltaIn_);
             uint postBX1 = getBX1();
             uint postBY2 = getBY2();
             uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
