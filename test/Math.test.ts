@@ -3,7 +3,7 @@ import { Wallet, Contract } from 'ethers'
 import { PERCENTAGE, fromInt, fromPercentageInt, parseWei, Wei, percentage, fromMantissa } from './shared/Units'
 import { calculateD1, calculateDelta } from './shared/BlackScholes'
 import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
-import { Calibration, Reserve, PoolParams, getReserve, getPoolParams, calcRY2WithXOut } from './shared/Engine'
+import { Calibration, Reserve, PoolParams, getReserve, getPoolParams, calcRY2WithXOut, createPool } from './shared/Engine'
 import { engineFixture, EngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { std_n_cdf } from './shared/CumulativeNormalDistribution'
@@ -27,16 +27,10 @@ describe('Math', function () {
     // get contracts
     ;({ engine, house, TX1, TY2 } = await loadFixture(engineFixture))
     spot = parseWei('1000')
-    // init pool settings
-    // Calibration struct
-    const strike = parseWei('1000').raw
-    const sigma = 0.85 * PERCENTAGE
-    const time = 31449600 //one year
+    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
     // Create pool
-    await engine.create(calibration, spot.raw)
-    poolId = await engine.getPoolId(calibration)
-    reserve = await getReserve(engine, poolId)
+    ;({ poolId, reserve } = await createPool(engine, calibration, spot, TX1, TY2))
 
     hre.tracer.nameTags[signer.address] = 'Signer'
     hre.tracer.nameTags[house.address] = 'House'
