@@ -97,7 +97,7 @@ contract PrimitiveHouse is ICallback {
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, uint(0));
+        addXYCallback(deltaX, deltaY);
     }
 
     function borrowCallback(Position.Data calldata pos, uint deltaL) public override returns (uint) {
