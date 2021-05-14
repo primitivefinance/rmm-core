@@ -40,6 +40,7 @@ import {
   removeBoth,
   calcRY2WithRX1,
   calcRX1WithRY2,
+  createPool,
 } from './shared/Engine'
 import { engineFixture, EngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -53,6 +54,9 @@ describe('Primitive Engine', function () {
   let poolId: string, calibration: Calibration, reserve: Reserve
   // External settings
   let nonce: number, spot: Wei
+  // Invariant checks
+  let preInvariant: number, postInvariant: number
+
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
   let loadFixture: ReturnType<typeof createFixtureLoader>
 
@@ -79,25 +83,31 @@ describe('Primitive Engine', function () {
     spot = parseWei('1000')
     // init pool settings
     // Calibration struct
-    const strike = parseWei('1000').raw
-    const sigma = 0.85 * PERCENTAGE
-    const time = 31449600 //one year
+    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
-    const delta = await engine.callDelta(calibration, spot.raw)
-    const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
-    const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
     // Create pool
-    await TX1.mint(engine.address, RX1.raw)
-    await TY2.mint(engine.address, RY2.raw)
-    await engine.create(calibration, spot.raw)
-    poolId = await engine.getPoolId(calibration)
-    reserve = await getReserve(engine, poolId)
-
+    ;({ poolId, reserve } = await createPool(engine, calibration, spot, TX1, TY2))
+    preInvariant = await engine.getInvariantLast(poolId)
+    // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
     hre.tracer.nameTags[callee.address] = 'Callee'
     hre.tracer.nameTags[engine.address] = 'Engine'
     hre.tracer.nameTags[TX1.address] = 'Risky Token'
     hre.tracer.nameTags[TY2.address] = 'Riskless Token'
+  })
+
+  afterEach(async function () {
+    postInvariant = await engine.getInvariantLast(poolId)
+    expect(Math.abs(postInvariant)).to.be.gte(Math.abs(preInvariant))
+
+    let riskyBal: Wei = parseWei('0')
+    for (let i = 0; i < (await engine.getAllPoolsLength()); i++) {
+      riskyBal = riskyBal.add((await engine.getReserve(poolId)).RX1)
+    }
+
+    riskyBal = riskyBal.add((await engine.getMargin(signer.address)).BX1)
+
+    expect(await TX1.balanceOf(engine.address)).to.be.gte(riskyBal.raw)
   })
 
   describe('Margin', function () {
@@ -121,15 +131,7 @@ describe('Primitive Engine', function () {
         })
       })
 
-      describe('fail cases', function () {
-        it('Fail Callee::AddX: No X balance', async function () {
-          await callee.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
-          await expect(engine.withdraw(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-          await expect(callee.swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
-            ERC20Events.EXCEEDS_BALANCE
-          )
-        })
-      })
+      describe('fail cases', function () {})
     })
 
     describe('#withdraw', function () {
@@ -156,15 +158,7 @@ describe('Primitive Engine', function () {
         })
       })
 
-      describe('fail cases', function () {
-        it('Fail Callee::SwapYForX: No Y balance', async function () {
-          // before: add initial margin
-          await expect(engine.withdraw(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-          await expect(callee.swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
-            ERC20Events.EXCEEDS_BALANCE
-          )
-        })
-      })
+      describe('fail cases', function () {})
     })
   })
 
@@ -316,7 +310,20 @@ describe('Primitive Engine', function () {
         })
       })
 
-      describe('fail cases', function () {})
+      describe('fail cases', function () {
+        it('Fail Callee::SwapXForY: No X balance', async function () {
+          await expect(
+            callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
+          ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
+        })
+
+        it('Fail Callee::SwapYForX: No Y balance', async function () {
+          // before: add initial margin
+          await expect(
+            callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
+          ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
+        })
+      })
     })
   })
 

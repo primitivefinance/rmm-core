@@ -136,7 +136,7 @@ contract PrimitiveEngine {
         require(getBY2() >= RY2, "Not enough riskless tokens");
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
-    }
+}
 
     // ===== Margin =====
 
@@ -467,5 +467,9 @@ contract PrimitiveEngine {
                 self.strike
             )
         );
+    }
+
+    function getAllPoolsLength() public view returns (uint len) {
+        len = allPools.length;
     }
 }

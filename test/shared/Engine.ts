@@ -1,4 +1,4 @@
-import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber } from './Units'
+import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, fromMantissa } from './Units'
 import { Contract } from 'ethers'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
 
@@ -18,6 +18,34 @@ export const EngineEvents = {
   ADDED_X: 'AddedX',
   REMOVED_X: 'RemovedX',
   SWAP: 'Swap',
+}
+
+// ===== Create =====
+interface Pool {
+  poolId: string
+  reserve: Reserve
+}
+export const createPool = async (
+  engine: Contract,
+  calibration: Calibration,
+  spot: Wei,
+  TX1: Contract,
+  TY2: Contract
+): Promise<Pool> => {
+  // get delta of pool's calibration
+  const delta = await engine.callDelta(calibration, spot.raw)
+  // set risky reserve to 1 - delta
+  const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
+  // set riskless reserve using trading function
+  const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
+  // mint the tokens to the engine before we call create()
+  await TX1.mint(engine.address, RX1.raw)
+  await TY2.mint(engine.address, RY2.raw)
+  // Create pool
+  await engine.create(calibration, spot.raw)
+  const poolId = await engine.getPoolId(calibration)
+  const reserve = await getReserve(engine, poolId)
+  return { poolId, reserve }
 }
 
 // ===== Margin =====
