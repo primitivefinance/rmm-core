@@ -94,8 +94,7 @@ export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128:
     postRY2 = RY2.sub(deltaOut)
     deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
   } else {
-    let nextRY2 = calcRY2WithXOut(deltaOut, params)
-    postRY2 = invariant.add(nextRY2)
+    postRY2 = calcRY2WithXOut(deltaOut, params)
     postRX1 = RX1.sub(deltaOut)
     deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
   }
