@@ -130,6 +130,10 @@ contract PrimitiveEngine {
         });
         // add the pid to all the pids initialized
         allPools.push(pid);
+
+        // check that balances were sent to contract to initialize
+        require(getBX1() >= RX1, "Not enough risky tokens");
+        require(getBY2() >= RY2, "Not enough riskless tokens");
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
     }

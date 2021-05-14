@@ -38,6 +38,8 @@ import {
   calcRY2WithXOut,
   Swap,
   removeBoth,
+  calcRY2WithRX1,
+  calcRX1WithRY2,
 } from './shared/Engine'
 import { engineFixture, EngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -81,7 +83,12 @@ describe('Primitive Engine', function () {
     const sigma = 0.85 * PERCENTAGE
     const time = 31449600 //one year
     calibration = { strike, sigma, time }
+    const delta = await engine.callDelta(calibration, spot.raw)
+    const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
+    const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
     // Create pool
+    await TX1.mint(engine.address, RX1.raw)
+    await TY2.mint(engine.address, RY2.raw)
     await engine.create(calibration, spot.raw)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
