@@ -19,6 +19,7 @@ import {
   WithdrawFunction,
   AddLiquidityFunction,
   CreateFunction,
+  getPosition,
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -342,6 +343,26 @@ describe('Primitive Engine', function () {
         it('Fail Engine::RemoveBoth: No L balance', async function () {
           await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
         })
+        it('Fail Engine::RemoveBoth: Not initialized', async function () {
+          const getPid = (calibration) => {
+            const cals = Object.keys(calibration).map((key) => calibration[key])
+            return ethers.utils.solidityKeccak256(['uint256', 'uint256', 'uint256'], cals)
+          }
+
+          const cal = { strike: parseWei('444').raw, sigma: 0, time: calibration.time }
+          const pid = getPid(cal)
+          await expect(engine.removeBoth(pid, 0, 1, true)).to.be.revertedWith('Not initialized')
+        })
+        it('Fail Engine::RemoveBoth: Deltas are 0', async function () {
+          await expect(engine.removeBoth(poolId, 0, 0, true)).to.be.revertedWith('Deltas are 0')
+        })
+        it('Fail Engine::RemoveBoth: Invalid Invariant', async function () {})
+        it('Fail Engine::RemoveBoth: Above max burn', async function () {
+          const L = (await engine.getReserve(poolId)).liquidity
+          await expect(engine.removeBoth(poolId, 0, L.add(1), true)).to.be.revertedWith('Above max burn')
+        })
+        it('Fail Engine::RemoveBoth: Not enough TX1', async function () {})
+        it('Fail Engine::RemoveBoth: Not enough TY2', async function () {})
       })
     })
   })
@@ -456,14 +477,29 @@ describe('Primitive Engine', function () {
             callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
           ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
         })
+
+        it('Fail Callee::Swap: Too expensive', async function () {
+          await expect(engine.swap(poolId, true, 1, 0)).to.be.revertedWith('Too expensive')
+        })
+        it('Fail Callee::Swap: Invalid invariant', async function () {})
+        it('Fail Callee::Swap: Sent too much tokens', async function () {})
+        it('Fail Callee::Swap: Not enough TX1', async function () {})
+        it('Fail Callee::Swap: Not enough TY2', async function () {})
       })
     })
   })
 
   describe('Lending', function () {
+    const checkPosition = async () => {
+      const pos = await getPosition(engine, signer.address, nonce)
+    }
     describe('#lend', function () {
       describe('success cases', function () {
         it('Engine::lend: Increase a positions float', async function () {})
+      })
+
+      describe('fail cases', function () {
+        it('Fail Engine::lend: Increase a positions float', async function () {})
       })
     })
     describe('#borrow', function () {

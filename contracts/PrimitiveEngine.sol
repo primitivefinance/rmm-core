@@ -225,7 +225,7 @@ contract PrimitiveEngine {
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
-        require(liquidity > 0, "Not bound");
+        require(liquidity > 0, "Not initialized");
 
         uint postRX1;
         uint postRY2;
@@ -237,7 +237,7 @@ contract PrimitiveEngine {
         uint RY2 = res.RY2;
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Delta is 0");
+        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
         postRX1 = RX1 - deltaX;
         postRY2 = RY2 - deltaY;
         int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
