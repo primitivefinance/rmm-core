@@ -1,5 +1,5 @@
 import bn from 'bignumber.js'
-import { Wei, PERCENTAGE, YEAR, formatEther, parseEther, toBN, BigNumberish } from './Units'
+import { Wei, PERCENTAGE, YEAR, formatEther, parseEther, toBN, BigNumberish, parseWei } from './Units'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 import { Calibration } from './Engine'
 
@@ -17,7 +17,7 @@ export function getTradingFunction(RX1: Wei, liquidity: Wei, cal: Calibration): 
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi - vol / PERCENTAGE
   const RY2 = K * std_n_cdf(input)
-  return parseFloat(RY2.toString())
+  return parseWei(RY2).float
 }
 
 export function getInverseTradingFunction(RY2: Wei, liquidity: Wei, cal: Calibration): number {
@@ -28,5 +28,5 @@ export function getInverseTradingFunction(RY2: Wei, liquidity: Wei, cal: Calibra
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi + vol / PERCENTAGE
   const RX1 = 1 - std_n_cdf(input)
-  return parseFloat(RX1.toString())
+  return parseWei(RX1).float
 }

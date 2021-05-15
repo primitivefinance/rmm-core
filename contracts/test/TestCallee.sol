@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import {ICallback} from "./PrimitiveEngine.sol";
-import "./IPrimitiveEngine.sol";
+import {ICallback} from "../PrimitiveEngine.sol";
+import "../IPrimitiveEngine.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import "./libraries/Position.sol";
+import "../libraries/Position.sol";
 
-contract PrimitiveHouse is ICallback {
+contract TestCallee is ICallback {
     using SafeERC20 for IERC20;
 
     address public constant NO_CALLER = address(21);
@@ -64,9 +64,19 @@ contract PrimitiveHouse is ICallback {
         engine.addBoth(pid, msg.sender, nonce, deltaL, false);
     }
 
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public lock {
         CALLER = msg.sender;
-        engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
+        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax);
+    }
+
+    function swapXForY(bytes32 pid, uint deltaOut) public lock {
+        CALLER = msg.sender;
+        engine.swap(pid, true, deltaOut, type(uint256).max);
+    }
+
+    function swapYForX(bytes32 pid, uint deltaOut) public lock {
+        CALLER = msg.sender;
+        engine.swap(pid, false, deltaOut, type(uint256).max);
     }
     
     /**
@@ -93,11 +103,17 @@ contract PrimitiveHouse is ICallback {
     }
 
     function depositCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
+        IERC20 TX1 = IERC20(engine.TX1());
+        IERC20 TY2 = IERC20(engine.TY2());
+        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
+        IERC20 TX1 = IERC20(engine.TX1());
+        IERC20 TY2 = IERC20(engine.TY2());
+        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function borrowCallback(Position.Data calldata pos, uint deltaL) public override returns (uint) {

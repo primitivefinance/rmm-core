@@ -1,54 +1,89 @@
-import {ethers, waffle} from 'hardhat'
-import {Wallet, Contract, BigNumber} from 'ethers'
-import {deployContract, link} from 'ethereum-waffle'
-import Engine from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
-import TestEngine from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
-import Token from '../../artifacts/contracts/test/Token.sol/Token.json'
-import House from '../../artifacts/contracts/PrimitiveHouse.sol/PrimitiveHouse.json'
-import SwapRouter from '@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json'
-import SwapFactory from '@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json'
+import { waffle } from 'hardhat'
+import { BigNumber, Wallet } from 'ethers'
+import { Fixture } from 'ethereum-waffle'
 
-const overrides = {gasLimit: 9500000}
+import { abi as TOKEN_ABI, bytecode as TOKEN_BYTECODE } from '../../artifacts/contracts/test/Token.sol/Token.json'
+import {
+  abi as ENGINE_ABI,
+  bytecode as ENGINE_BYTECODE,
+} from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
+import {
+  abi as HOUSE_ABI,
+  bytecode as HOUSE_BYTECODE,
+} from '../../artifacts/contracts/PrimitiveHouse.sol/PrimitiveHouse.json'
+import {
+  abi as FACTORY_ABI,
+  bytecode as FACTORY_BYTECODE,
+} from '@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json'
+import {
+  abi as CALLEE_ABI,
+  bytecode as CALLEE_BYTECODE,
+} from '../../artifacts/contracts/test/TestCallee.sol/TestCallee.json'
 
-export interface UniswapFixture {
-  swapRouter: Contract
-  swapFactory: Contract
+import { PrimitiveHouse, TestEngine, IUniswapV3Factory, IERC20, TestCallee } from '../../typechain'
+
+const tokensFixture: Fixture<{
+  TX1: IERC20
+  TY2: IERC20
+}> = async ([wallet]) => {
+  const TX1 = (await waffle.deployContract(wallet, {
+    bytecode: TOKEN_BYTECODE,
+    abi: TOKEN_ABI,
+  })) as IERC20
+  const TY2 = (await waffle.deployContract(wallet, {
+    bytecode: TOKEN_BYTECODE,
+    abi: TOKEN_ABI,
+  })) as IERC20
+
+  await TX1.mint(wallet.address, BigNumber.from(2).pow(255))
+  await TY2.mint(wallet.address, BigNumber.from(2).pow(255))
+  return { TX1, TY2 }
 }
 
-export async function uniswapFixture([wallet]: Wallet[], provider): Promise<UniswapFixture> {
-  const swapRouter = await deployContract(wallet, SwapRouter, [], overrides)
-  const swapFactory = await deployContract(wallet, SwapFactory, [], overrides)
-  return {swapRouter, swapFactory}
+const uniV3FactoryFixture: Fixture<IUniswapV3Factory> = async ([wallet]) => {
+  return (await waffle.deployContract(wallet, {
+    bytecode: FACTORY_BYTECODE,
+    abi: FACTORY_ABI,
+  })) as IUniswapV3Factory
 }
 
-export interface TokensFixture {
-  TX1: Contract // risky token like ether
-  TY2: Contract // risk free token like dai
+const primitiveHouseFixture: Fixture<PrimitiveHouse> = async ([wallet]) => {
+  return (await waffle.deployContract(wallet, {
+    bytecode: HOUSE_BYTECODE,
+    abi: HOUSE_ABI,
+  })) as PrimitiveHouse
 }
 
-export async function tokensFixture([wallet]: Wallet[], provider): Promise<TokensFixture> {
-  const TX1 = await deployContract(wallet, Token, [], overrides)
-  const TY2 = await deployContract(wallet, Token, [], overrides)
-  return {TX1, TY2}
+const primitiveCalleeFixture: Fixture<TestCallee> = async ([wallet]) => {
+  return (await waffle.deployContract(wallet, {
+    bytecode: CALLEE_BYTECODE,
+    abi: CALLEE_ABI,
+  })) as TestCallee
 }
 
-export interface HouseFixture extends TokensFixture {
-  house: Contract
-}
+export const primitiveProtocolFixture: Fixture<{
+  TX1: IERC20
+  TY2: IERC20
+  uniFactory: IUniswapV3Factory
+  house: PrimitiveHouse
+  engine: TestEngine
+  callee: TestCallee
+}> = async ([wallet], provider) => {
+  const { TX1, TY2 } = await tokensFixture([wallet], provider)
+  const uniFactory = await uniV3FactoryFixture([wallet], provider)
+  const house = await primitiveHouseFixture([wallet], provider)
+  const callee = await primitiveCalleeFixture([wallet], provider)
+  const engine = (await waffle.deployContract(
+    wallet,
+    {
+      bytecode: ENGINE_BYTECODE,
+      abi: ENGINE_ABI,
+    },
+    [TX1.address, TY2.address]
+  )) as TestEngine
 
-export async function houseFixture([wallet]: Wallet[], provider): Promise<HouseFixture> {
-  const {TX1, TY2} = await tokensFixture([wallet], provider)
-  const house = await deployContract(wallet, House, [], overrides)
-  return {house, TX1, TY2}
-}
-
-export interface EngineFixture extends HouseFixture {
-  engine: Contract
-}
-
-export async function engineFixture([wallet]: Wallet[], provider: any): Promise<EngineFixture> {
-  const {house, TX1, TY2} = await houseFixture([wallet], provider)
-  const engine = await deployContract(wallet, TestEngine, [TX1.address, TY2.address], overrides)
   await house.initialize(engine.address)
-  return {engine, house, TX1, TY2}
+  await callee.initialize(engine.address)
+
+  return { TX1, TY2, uniFactory, house, engine, callee }
 }
