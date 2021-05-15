@@ -490,6 +490,9 @@ describe('Primitive Engine', function () {
   })
 
   describe('Lending', function () {
+    this.beforeEach(async function () {
+      await addLiquidity(poolId, nonce, 1000)
+    })
     const checkPosition = async () => {
       const pos = await getPosition(engine, signer.address, nonce)
     }
@@ -499,7 +502,9 @@ describe('Primitive Engine', function () {
       })
 
       describe('fail cases', function () {
-        it('Fail Engine::lend: Increase a positions float', async function () {})
+        it('Fail Engine::lend: Not enough liquidity', async function () {
+          await expect(engine.lend(poolId, nonce, 1001)).to.be.revertedWith('Not enough liquidity')
+        })
       })
     })
     describe('#borrow', function () {
