@@ -1,364 +1,346 @@
 import hre, { ethers, waffle } from 'hardhat'
-import { Wallet, Contract } from 'ethers'
-import {
-  YEAR,
-  PERCENTAGE,
-  MANTISSA,
-  DENOMINATOR,
-  fromInt,
-  fromPercentageInt,
-  formatEther,
-  parseWei,
-  BigNumber,
-  Wei,
-  BigNumberish,
-  toBN,
-  percentage,
-  fromMantissa,
-  fromWithin,
-} from './shared/Units'
-import { calculateDelta } from './shared/BlackScholes'
-import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
+import { Wallet, constants } from 'ethers'
+import { PERCENTAGE, parseWei, BigNumber, Wei } from './shared/Units'
 import {
   Calibration,
-  Position,
   Reserve,
-  calculateInvariant,
   EngineEvents,
   PoolParams,
   getReserve,
-  getCalibration,
-  getPosition,
   getPoolParams,
   addBoth,
   ERC20Events,
   getMargin,
   getDeltaIn,
-  calcRX1WithYOut,
-  calcRY2WithXOut,
-  Swap,
+  removeBoth,
+  createEngineFunctions,
+  SwapFunction,
+  DepositFunction,
+  WithdrawFunction,
+  AddLiquidityFunction,
+  CreateFunction,
 } from './shared/Engine'
-import { engineFixture, EngineFixture } from './shared/fixtures'
+import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
+import { IERC20, PrimitiveHouse, TestCallee, TestEngine } from '../typechain'
 const { createFixtureLoader } = waffle
 
 describe('Primitive Engine', function () {
-  let fixture: EngineFixture
   // Contracts
-  let engine: Contract, house: Contract, TX1: Contract, TY2: Contract
+  let engine: TestEngine, callee: TestCallee, house: PrimitiveHouse, TX1: IERC20, TY2: IERC20
   // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
   // External settings
   let nonce: number, spot: Wei
+  // Invariant checks
+  let preInvariant: BigNumber, postInvariant: BigNumber
+  // Engine Functions
+  let deposit: DepositFunction,
+    withdraw: WithdrawFunction,
+    swapXForY: SwapFunction,
+    swapYForX: SwapFunction,
+    addLiquidity: AddLiquidityFunction,
+    create: CreateFunction
+
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
-  const loadFixture = createFixtureLoader([signer], waffle.provider)
+  let loadFixture: ReturnType<typeof createFixtureLoader>
+
   const INITIAL_MARGIN = parseWei('1000')
+
+  before('Generate fixture loader', async function () {
+    loadFixture = createFixtureLoader([signer, signer2])
+  })
 
   beforeEach(async function () {
     // get contracts
-    fixture = await loadFixture(engineFixture)
-    engine = fixture.engine
-    house = fixture.house
-    TX1 = fixture.TX1
-    TY2 = fixture.TY2
-    // mint tokens
-    let wad = parseWei('25000000')
-    let guy = signer.address
-    await TX1.mint(guy, wad.raw)
-    await TY2.mint(guy, wad.raw)
-    // approve tokens
-    wad = new Wei(ethers.constants.MaxUint256)
-    guy = house.address
-    await TX1.approve(guy, wad.raw)
-    await TY2.approve(guy, wad.raw)
+    ;({ engine, callee, house, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
     // init external settings
     nonce = 0
     spot = parseWei('1000')
-    // init pool settings
     // Calibration struct
-    const strike = parseWei('1000').raw
-    const sigma = 0.85 * PERCENTAGE
-    const time = 31449600 //one year
+    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
+    // Engine functions
+    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create } = createEngineFunctions({
+      target: callee,
+      TX1,
+      TY2,
+      engine,
+    }))
     // Create pool
-    await engine.create(calibration, spot.raw)
+    await create(spot.raw, calibration)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
-    if (false)
-      console.log(`
-      ===== Initial Conditions: =====
-      delta: ${fromMantissa(fromInt(await engine.callDelta(calibration, spot.raw)))}
-      RX1: ${1 - fromMantissa(fromInt(await engine.callDelta(calibration, spot.raw)))}
-      ActualRX1: ${reserve.RX1.parsed}
-      ActualRX2: ${reserve.RY2.parsed}
-      ===== End =====
-    `)
-    // add some liquidity
-    //await expect(house.addLiquidity(poolId, nonce, parseWei('1000').raw)).to.emit(engine, 'AddedBoth')
-    // remove some liquidity to get BX1 and BY2 balances.
-    //await expect(engine.removeBoth(poolId, nonce, parseWei('500').raw, true)).to.emit(engine, 'RemovedBoth')
-    // depost
-    await expect(house.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)).to.emit(engine, 'Deposited')
+    preInvariant = await engine.getInvariantLast(poolId)
 
+    // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
-    hre.tracer.nameTags[house.address] = 'House'
+    hre.tracer.nameTags[callee.address] = 'Callee'
     hre.tracer.nameTags[engine.address] = 'Engine'
+    hre.tracer.nameTags[TX1.address] = 'Risky Token'
+    hre.tracer.nameTags[TY2.address] = 'Riskless Token'
   })
 
-  describe('Math', function () {
-    it('CumulativeDistribution::cdf: Gets the cdf', async function () {
-      const cdf = await engine.cdf(1)
-      const scaled = fromMantissa(fromInt(cdf.toString()))
+  afterEach(async function () {
+    postInvariant = await engine.getInvariantLast(poolId)
+    expect(Math.abs(parseFloat(postInvariant.toString()))).to.be.gte(Math.abs(parseFloat(preInvariant.toString())))
 
-      console.log(`
-        denom:  ${DENOMINATOR.toString()}
-        raw:    ${cdf.toString()}
-        uint:   ${scaled.toString()}
-    `)
-      expect(scaled).to.be.within(0.84, 0.845)
-    })
+    let riskyBal: Wei = parseWei('0')
+    for (let i = 0; i < (await engine.getAllPoolsLength()).toNumber(); i++) {
+      riskyBal = riskyBal.add((await engine.getReserve(poolId)).RX1)
+    }
 
-    it('CumulativeDistribution::icdf: Gets the inverse cdf', async function () {
-      const cdf = await engine.icdf(parseWei('0.25').raw)
-      const scaled = parseFloat(cdf) / Math.pow(2, 64)
+    riskyBal = riskyBal.add((await engine.getMargin(signer.address)).BX1)
 
-      console.log(`
-        denom:  ${DENOMINATOR.toString()}
-        raw:    ${cdf.toString()}
-        uint:   ${scaled.toString()}
-    `)
-      expect(scaled).to.be.within(-0.68, -0.66)
-    })
-
-    it('BlackScholes::calcDelta: Gets the black scholes call delta', async function () {
-      const delta = await engine.callDelta(calibration, spot.raw)
-      const scaled = fromMantissa(fromInt(delta.toString()))
-      const actual = calculateDelta(calibration, spot)
-
-      console.log(`
-        raw:    ${delta.toString()}
-        uint:   ${scaled.toString()}
-        actual: ${actual.toString()}
-    `)
-      expect(scaled, 'checking delta').to.be.within(
-        percentage(actual.toString(), 1, false),
-        percentage(actual.toString(), 1, true)
-      )
-    })
-
-    it('ReplicationMath::calcProportionalVol:Gets the proportional volatility', async function () {
-      const rawVol = toBN(await engine.proportionalVol(poolId)).mul(PERCENTAGE)
-      const vol = fromMantissa(fromPercentageInt((await engine.proportionalVol(poolId)).toString()))
-      const actual = getProportionalVol(calibration.sigma, calibration.time) * PERCENTAGE
-      console.log(`
-        denom:  ${DENOMINATOR.toString()}
-        raw:    ${rawVol.toString()}
-        vol:    ${vol.toString()}
-        actual: ${actual.toString()}
-    `)
-      expect(vol, 'checking vol').to.be.within(
-        percentage(actual.toString(), 1, false),
-        percentage(actual.toString(), 1, true)
-      )
-    })
-
-    it('ReplicationMath::getTradingFunction: Gets the trading function correct RY2', async function () {
-      const vol = fromPercentageInt((await engine.proportionalVol(poolId)).toString())
-      const tf = getTradingFunction(
-        parseWei(1 - fromMantissa(fromInt(await engine.callDelta(calibration, spot.raw)))),
-        reserve.liquidity,
-        calibration
-      )
-      const RY2 = fromMantissa(fromInt((await engine.tradingFunction(poolId)).toString()))
-      console.log(`
-        vol:    ${vol.toString()}
-        RY2:     ${RY2.toString()}
-        tf:     ${tf.toString()}
-    `)
-
-      expect(RY2).to.be.within(percentage(tf.toString(), 1, false), percentage(tf.toString(), 1, true))
-    })
-
-    it('ReplicationMath::calcInvariant: Gets an amount out of R2 based on a new R1', async function () {
-      const deltaOut = parseWei('0.1')
-      const deltaIn = await engine.calcRY2WithXOut(poolId, deltaOut.raw)
-      const params: PoolParams = await getPoolParams(engine, poolId)
-      const actual = calcRY2WithXOut(deltaOut, params)
-      console.log(`
-        deltaIn:     ${formatEther(deltaIn)}
-        actual:     ${actual.parsed}
-    `)
-
-      //expect(new Wei(deltaIn).float).to.be.within(actual.float * 0.95, actual.float * 1.05) @TODO: FIX
-    })
+    expect(await TX1.balanceOf(engine.address)).to.be.gte(riskyBal.raw)
   })
 
   describe('Margin', function () {
-    it('Fail House::AddX: No X balance', async function () {
-      await expect(engine.withdraw(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-      await expect(house.swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
-        ERC20Events.EXCEEDS_BALANCE
-      )
+    this.beforeEach(async function () {})
+
+    describe('#deposit', function () {
+      describe('sucess cases', function () {
+        it('Callee::Deposit: Adds X and Y directly', async function () {
+          const amount = parseWei('200').raw
+          // deposit 200
+          await expect(deposit(amount, amount))
+            .to.emit(engine, EngineEvents.DEPOSITED)
+            .withArgs(callee.address, signer.address, amount, amount)
+          const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
+          expect(owner).to.be.eq(signer.address)
+          expect(BX1.raw).to.be.eq(amount)
+          expect(BY2.raw).to.be.eq(amount)
+          expect(unlocked).to.be.eq(false)
+        })
+      })
+
+      describe('fail cases', function () {})
     })
 
-    it('Fail House::RemoveX: No Y balance', async function () {
-      await expect(engine.withdraw(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)).to.emit(engine, EngineEvents.WITHDRAWN)
-      await expect(house.swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)).to.be.revertedWith(
-        ERC20Events.EXCEEDS_BALANCE
-      )
-    })
+    describe('#withdraw', function () {
+      this.beforeEach(async function () {
+        await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+      })
+      describe('sucess cases', function () {
+        it('Engine::Withdraw: Removes X and Y directly', async function () {
+          // before: deposit 100
+          const amount = INITIAL_MARGIN.raw
+          // remove 100
+          await expect(withdraw(amount, amount))
+            .to.emit(engine, EngineEvents.WITHDRAWN)
+            .withArgs(signer.address, signer.address, amount, amount)
+          // deposit 100
+          await deposit(amount, amount)
+          // remove 100
+          await expect(() => withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
+          const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
+          expect(owner).to.be.eq(signer.address)
+          expect(BX1.raw).to.be.eq(0)
+          expect(BY2.raw).to.be.eq(0)
+          expect(unlocked).to.be.eq(false)
+        })
+      })
 
-    it('House::Deposit: Adds X and Y directly', async function () {
-      // before: deposit 100
-      // withdraw 100
-      await engine.withdraw(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
-      const amount = parseWei('200').raw
-      // deposit 200
-      await expect(house.deposit(amount, amount))
-        .to.emit(engine, EngineEvents.DEPOSITED)
-        .withArgs(signer.address, amount, amount)
-      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
-      expect(owner).to.be.eq(signer.address)
-      expect(BX1.raw).to.be.eq(amount)
-      expect(BY2.raw).to.be.eq(amount)
-      expect(unlocked).to.be.eq(false)
-    })
-
-    it('Engine::Withdraw: Removes X and Y directly', async function () {
-      // before: deposit 100
-      const amount = INITIAL_MARGIN.raw
-      // remove 100
-      await expect(engine.withdraw(amount, amount))
-        .to.emit(engine, EngineEvents.WITHDRAWN)
-        .withArgs(signer.address, amount, amount)
-      // deposit 100
-      await house.deposit(amount, amount)
-      // remove 100
-      await expect(() => engine.withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
-      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
-      expect(owner).to.be.eq(signer.address)
-      expect(BX1.raw).to.be.eq(0)
-      expect(BY2.raw).to.be.eq(0)
-      expect(unlocked).to.be.eq(false)
+      describe('fail cases', function () {})
     })
   })
 
   describe('Liquidity', function () {
-    it('Engine::AddBoth: Add both X and Y', async function () {
-      const invariant = await engine.getInvariantLast(poolId)
-      const deltaL = parseWei('1')
-      const params: PoolParams = await getPoolParams(engine, poolId)
-      const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
-      console.log(`
-        invariant:      ${fromInt(invariant)}
-        postInvariant:  ${postInvariant}
-    `)
-      await expect(house.addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+    this.beforeEach(async function () {})
+
+    describe('#addBoth', function () {
+      describe('sucess cases', function () {
+        it('Engine::AddBoth: Add both X and Y from Balance', async function () {
+          const invariant = await engine.getInvariantLast(poolId)
+          const deltaL = parseWei('1')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
+          await expect(addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+          expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(params.reserve.RX1.add(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
+          expect(params.reserve.RY2.add(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
+          expect(params.reserve.liquidity.add(deltaL).raw).to.be.eq(postParams.reserve.liquidity.raw)
+        })
+
+        it('Engine::AddBoth: Add both X and Y from Margin', async function () {
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          const invariant = await engine.getInvariantLast(poolId)
+          const deltaL = parseWei('1')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
+          await expect(addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+          expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(params.reserve.RX1.add(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
+          expect(params.reserve.RY2.add(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
+          expect(params.reserve.liquidity.add(deltaL).raw).to.be.eq(postParams.reserve.liquidity.raw)
+        })
+      })
+
+      describe('fail cases', function () {})
     })
 
-    it('Engine::RemoveBoth: Remove both X and Y', async function () {
-      // Add some liq to remove it
-      await expect(house.addLiquidity(poolId, nonce, parseWei('1').raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
-      const invariant = await engine.getInvariantLast(poolId)
-      const liquidity = (await getReserve(engine, poolId)).liquidity
-      const deltaL = liquidity.sub(await engine.INIT_SUPPLY())
+    describe('#removeBoth', function () {
+      this.beforeEach(async function () {
+        // Add some liq to remove it
+        await expect(addLiquidity(poolId, nonce, parseWei('1').raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+      })
+      describe('sucess cases', function () {
+        it('Engine::RemoveBoth: Remove both X and Y', async function () {
+          // fetch current state
+          const invariant = await engine.getInvariantLast(poolId)
+          const liquidity = (await getReserve(engine, poolId)).liquidity
+          const deltaL = liquidity.sub(await engine.INIT_SUPPLY())
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const postLiquidity = liquidity.sub(deltaL)
+          // calc amounts removed
+          const [deltaX, deltaY, postParams, postInvariant] = removeBoth(deltaL, params)
+          // remove liquidity
+          await expect(engine.removeBoth(poolId, nonce, deltaL.raw, true)).to.emit(engine, 'RemovedBoth')
+          expect(postInvariant).to.be.gte(parseFloat(invariant.toString()))
+          expect(postLiquidity.raw).to.be.eq(postParams.reserve.liquidity.raw)
+          expect(params.reserve.RX1.sub(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
+          expect(params.reserve.RY2.sub(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
+          expect(params.reserve.liquidity.sub(deltaL).raw).to.be.eq(postParams.reserve.liquidity.raw)
+        })
+      })
 
-      const postLiquidity = liquidity.sub(deltaL)
-      const params: PoolParams = await getPoolParams(engine, poolId)
-      const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
-      console.log(`
-      RX1: ${formatEther((await engine.getReserve(poolId)).RX1)}
-      RY2: ${formatEther((await engine.getReserve(poolId)).RY2)}
-      liquidity: ${liquidity.parsed}
-      deltaL: ${deltaL.parsed}
-      deltaX: ${deltaX.parsed}
-      deltaY: ${deltaY.parsed}
-      postR1: ${postParams.reserve.RX1.parsed}
-      postR2: ${postParams.reserve.RY2.parsed}
-      postLiquidity: ${postLiquidity.parsed}
-    `)
-
-      const actual = calculateInvariant(params)
-      console.log(`
-      invariant:      ${fromInt(invariant)}
-      postInvariant:  ${postInvariant}
-      actual:         ${actual.toString()}
-    `)
-      await expect(engine.removeBoth(poolId, nonce, deltaL.raw, true)).to.emit(engine, 'RemovedBoth')
-      console.log(`
-      RX1: ${formatEther((await engine.getReserve(poolId)).RX1)}
-      RY2: ${formatEther((await engine.getReserve(poolId)).RY2)}
-      liquidity: ${formatEther((await engine.getReserve(poolId)).liquidity)}
-      invariantLast: ${formatEther(await engine.getInvariantLast(poolId))}
-    `)
-    })
-
-    it('Fail Engine::RemoveBoth: No L balance', async function () {
-      await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
+      describe('fail cases', function () {
+        it('Fail Engine::RemoveBoth: No L balance', async function () {
+          await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
+        })
+      })
     })
   })
 
   describe('Swaps', function () {
-    it('Engine::Swap: Swap X to Y', async function () {
-      const invariant = await engine.getInvariantLast(poolId)
-      const deltaOut = parseWei('0.2')
-      const params: PoolParams = await getPoolParams(engine, poolId)
-      const addXRemoveY: boolean = true
-      const { deltaIn, postParams, postInvariant } = getDeltaIn(deltaOut, addXRemoveY, invariant, params)
-      console.log(`
-      mindeltaIn:      ${deltaIn.parsed}
-      preR2:          ${params.reserve.RY2.parsed}
-      postR2:         ${postParams.reserve.RY2.parsed}
-      invariant:      ${fromInt(invariant)}
-      postInvariant:  ${postInvariant}
-    `)
-      await expect(
-        engine.swap(poolId, addXRemoveY, deltaOut.raw, ethers.constants.MaxUint256 /* deltaOut.raw */),
-        'Engine:Swap'
-      ).to.emit(engine, EngineEvents.SWAP)
-      const postR2 = new Wei((await engine.getReserve(poolId)).RY2)
-      //expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq((await engine.getReserve(poolId)).RX1) // FIX
-      //expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.within(fromWithin(postR2, 0.01)[0], fromWithin(postR2, 0.01)[1]) // FIX
-    })
+    this.beforeEach(async function () {})
+    describe('#swap', function () {
+      describe('sucess cases', function () {
+        it('Engine::Swap: Swap X to Y from EOA', async function () {
+          // before: add tokens to margin to do swaps with
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          const invariant = await engine.getInvariantLast(poolId)
+          const amount = parseWei('100')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const addXRemoveY: boolean = true
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
+          // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
+          await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
+            engine,
+            EngineEvents.SWAP
+          )
 
-    it('Engine::Swap: Swap Y to X', async function () {
-      const reserves = await engine.getReserve(poolId)
-      const RX1 = reserves.RX1
-      const RY2 = reserves.RY2
-      const liquidity = reserves.liquidity
-      const invariant = await engine.getInvariantLast(poolId)
-      const fee = await engine.FEE()
-      const deltaOut = parseWei('0.2')
-      const params: PoolParams = await getPoolParams(engine, poolId)
-      const addXRemoveY: boolean = false
-      const { deltaIn, postParams, postInvariant } = getDeltaIn(deltaOut, addXRemoveY, invariant, params)
+          const postReserve = await engine.getReserve(poolId)
+          //expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq(postReserve.RX1) // FIX
+          expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
+        })
 
-      console.log(`
-      deltaY[FIX]:    ${deltaIn.float}
-      preR2:          ${params.reserve.RY2.parsed}
-      postR2:         ${postParams.reserve.RY2.float}
-      preR1:          ${params.reserve.RX1.parsed}
-      postR1:         ${postParams.reserve.RX1.float}
-      invariant:      ${fromInt(invariant)}
-      postInvariant:  ${postInvariant}
-    `)
-      await expect(engine.swap(poolId, addXRemoveY, deltaOut.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
-        engine,
-        EngineEvents.SWAP
-      )
-      expect(postParams.reserve.RX1.raw.toString(), 'check FXR1').to.be.eq((await engine.getReserve(poolId)).RX1)
-      //expect(postParams.reserve.RY2.raw.toString(), 'check FYR2').to.be.eq((await engine.getReserve(poolId)).RY2) // FIX
-      const FYR2 = (await engine.getReserve(poolId)).RY2
-      const actualDeltaY = toBN(FYR2).sub(RY2)
-      console.log(`
-      actualDeltaY:   ${formatEther(actualDeltaY)}
-    `)
+        it('Engine::Swap: Swap X to Y from Callee', async function () {
+          // before: add tokens to margin to do swaps with
+          const invariant = await engine.getInvariantLast(poolId)
+          const amount = parseWei('100')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const addXRemoveY: boolean = true
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
+          // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
+          await expect(swapXForY(poolId, amount.raw, constants.MaxUint256), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
+
+          const postReserve = await engine.getReserve(poolId)
+          //expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq(postReserve.RX1) // FIX
+          expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
+        })
+
+        it('Engine::Swap: Swap Y to X from EOA', async function () {
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          const invariant = await engine.getInvariantLast(poolId)
+          const amount = parseWei('0.2')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const addXRemoveY: boolean = false
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
+
+          // TODO: Swap deltaIn amount is different from esimated deltaIn
+          await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
+            engine,
+            EngineEvents.SWAP
+          )
+
+          const postReserve = await engine.getReserve(poolId)
+          //expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(postParams.reserve.RX1.raw.toString(), 'check FXR1').to.be.eq(postReserve.RX1)
+          expect(postParams.reserve.RY2.raw.toString(), 'check FYR2').to.be.eq(postReserve.RY2)
+        })
+
+        it('Engine::Swap: Swap Y to X from Callee', async function () {
+          const invariant = await engine.getInvariantLast(poolId)
+          const amount = parseWei('0.2')
+          const params: PoolParams = await getPoolParams(engine, poolId)
+          const addXRemoveY: boolean = false
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
+
+          // TODO: Swap deltaIn amount is different from esimated deltaIn
+          await expect(swapYForX(poolId, amount.raw, constants.MaxUint256), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
+
+          const postReserve = await engine.getReserve(poolId)
+          //expect(postInvariant).to.be.gte(new Wei(invariant).float)
+          expect(postParams.reserve.RX1.raw.toString(), 'check FXR1').to.be.eq(postReserve.RX1)
+          expect(postParams.reserve.RY2.raw.toString(), 'check FYR2').to.be.eq(postReserve.RY2)
+        })
+      })
+
+      describe('fail cases', function () {
+        it('Fail Callee::SwapXForY: No X balance', async function () {
+          await expect(
+            callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
+          ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
+        })
+
+        it('Fail Callee::SwapYForX: No Y balance', async function () {
+          // before: add initial margin
+          await expect(
+            callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
+          ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
+        })
+      })
     })
   })
 
   describe('Lending', function () {
-    it('Engine::lend: Increase a positions float', async function () {})
-    it('Engine::borrow: Increase a positions loan debt', async function () {})
-    it('Engine::repay: Decrease a positions loan debt', async function () {})
+    describe('#lend', function () {
+      describe('success cases', function () {
+        it('Engine::lend: Increase a positions float', async function () {})
+      })
+    })
+    describe('#borrow', function () {
+      describe('success cases', function () {
+        it('Engine::borrow: Increase a positions loan debt', async function () {})
+      })
+    })
+    describe('#repay', function () {
+      describe('success cases', function () {
+        it('Engine::repay: Decrease a positions loan debt', async function () {})
+      })
+    })
   })
 })
