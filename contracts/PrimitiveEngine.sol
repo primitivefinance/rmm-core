@@ -469,6 +469,8 @@ contract PrimitiveEngine {
         );
     }
 
+
+    /// @notice Returns the length of the allPools array that has all pool Ids
     function getAllPoolsLength() public view returns (uint len) {
         len = allPools.length;
     }
