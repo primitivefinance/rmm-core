@@ -1,7 +1,6 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, fromMantissa } from './Units'
 import { constants, Contract, Wallet, Transaction, BytesLike, BigNumberish } from 'ethers'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
-import { PrimitiveEngine } from '../../typechain/PrimitiveEngine'
 import { IERC20, TestCallee, TestEngine } from '../../typechain'
 
 export const ERC20Events = {

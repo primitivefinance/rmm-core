@@ -1,45 +1,18 @@
 import hre, { ethers, waffle } from 'hardhat'
-import { Wallet, Contract, constants } from 'ethers'
-import {
-  YEAR,
-  PERCENTAGE,
-  MANTISSA,
-  DENOMINATOR,
-  fromInt,
-  fromPercentageInt,
-  formatEther,
-  parseWei,
-  BigNumber,
-  Wei,
-  BigNumberish,
-  toBN,
-  percentage,
-  fromMantissa,
-  fromWithin,
-} from './shared/Units'
-import { calculateD1, calculateDelta } from './shared/BlackScholes'
-import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
+import { Wallet, constants } from 'ethers'
+import { PERCENTAGE, parseWei, BigNumber, Wei } from './shared/Units'
 import {
   Calibration,
-  Position,
   Reserve,
-  calculateInvariant,
   EngineEvents,
   PoolParams,
   getReserve,
-  getCalibration,
-  getPosition,
   getPoolParams,
   addBoth,
   ERC20Events,
   getMargin,
   getDeltaIn,
-  calcRX1WithYOut,
-  calcRY2WithXOut,
-  Swap,
   removeBoth,
-  calcRY2WithRX1,
-  calcRX1WithRY2,
   createEngineFunctions,
   SwapFunction,
   DepositFunction,
@@ -49,7 +22,6 @@ import {
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
-import { PrimitiveEngine } from '../typechain/PrimitiveEngine'
 import { IERC20, PrimitiveHouse, TestCallee, TestEngine } from '../typechain'
 const { createFixtureLoader } = waffle
 
@@ -75,7 +47,7 @@ describe('Primitive Engine', function () {
 
   const INITIAL_MARGIN = parseWei('1000')
 
-  before('Generate fixture load', async function () {
+  before('Generate fixture loader', async function () {
     loadFixture = createFixtureLoader([signer, signer2])
   })
 
