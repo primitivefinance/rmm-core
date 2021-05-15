@@ -20,6 +20,10 @@ import {
   AddLiquidityFunction,
   CreateFunction,
   getPosition,
+  LendFunction,
+  ClaimFunction,
+  BorrowFunction,
+  RepayFunction,
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -41,7 +45,11 @@ describe('Primitive Engine', function () {
     swapXForY: SwapFunction,
     swapYForX: SwapFunction,
     addLiquidity: AddLiquidityFunction,
-    create: CreateFunction
+    create: CreateFunction,
+    lend: LendFunction,
+    claim: ClaimFunction,
+    borrow: BorrowFunction,
+    repay: RepayFunction
 
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -62,7 +70,7 @@ describe('Primitive Engine', function () {
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
     // Engine functions
-    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create } = createEngineFunctions({
+    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create, lend, claim, borrow, repay } = createEngineFunctions({
       target: callee,
       TX1,
       TY2,
@@ -493,12 +501,20 @@ describe('Primitive Engine', function () {
     this.beforeEach(async function () {
       await addLiquidity(poolId, nonce, 1000)
     })
-    const checkPosition = async () => {
+    const checkPosition = async (deltaL) => {
       const pos = await getPosition(engine, signer.address, nonce)
+      expect(pos.float.raw).to.be.eq(deltaL)
     }
+
     describe('#lend', function () {
       describe('success cases', function () {
-        it('Engine::lend: Increase a positions float', async function () {})
+        it('Engine::lend: Increase a positions float', async function () {
+          await expect(engine.lend(poolId, nonce, 1000))
+            .to.emit(engine, EngineEvents.LOANED)
+            .withArgs(signer.address, poolId, nonce, 1000)
+          const pos = await getPosition(engine, signer.address, nonce)
+          expect(pos.float.raw).to.be.eq(1000)
+        })
       })
 
       describe('fail cases', function () {
@@ -509,7 +525,9 @@ describe('Primitive Engine', function () {
     })
     describe('#borrow', function () {
       describe('success cases', function () {
-        it('Engine::borrow: Increase a positions loan debt', async function () {})
+        it('Engine::borrow: Increase a positions loan debt', async function () {
+          await expect()
+        })
       })
     })
     describe('#repay', function () {

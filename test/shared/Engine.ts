@@ -15,6 +15,10 @@ export const EngineEvents = {
   ADDED_BOTH: 'AddedBoth',
   REMOVED_BOTH: 'RemovedBoth',
   SWAP: 'Swap',
+  LOANED: 'Loaned',
+  CLAIMED: 'Claimed',
+  BORROWED: 'Borrowed',
+  REPAID: 'Repaid',
 }
 
 export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
@@ -22,6 +26,21 @@ export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => P
 export type AddLiquidityFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
 export type CreateFunction = (calibration: Calibration, spot: BigNumberish) => Promise<Transaction>
+export type LendFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type BorrowFunction = (
+  pid: BytesLike,
+  recipient: string,
+  nonce: BigNumberish,
+  deltaL: BigNumberish,
+  maxPremium: BigNumberish
+) => Promise<Transaction>
+export type RepayFunction = (
+  pid: BytesLike,
+  owner: string,
+  nonce: BigNumberish,
+  deltaL: BigNumberish
+) => Promise<Transaction>
 
 export interface EngineFunctions {
   deposit: DepositFunction
@@ -30,6 +49,10 @@ export interface EngineFunctions {
   swapXForY: SwapFunction
   swapYForX: SwapFunction
   create: CreateFunction
+  lend: LendFunction
+  claim: ClaimFunction
+  borrow: BorrowFunction
+  repay: RepayFunction
 }
 
 // ===== Engine Functions ====
@@ -95,6 +118,31 @@ export function createEngineFunctions({
     return engine.create(calibration, spot)
   }
 
+  const lend: LendFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.lend(pid, nonce, deltaL)
+  }
+
+  const claim: ClaimFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.claim(pid, nonce, deltaL)
+  }
+  const borrow: BorrowFunction = async (
+    pid: BytesLike,
+    recipient: string,
+    nonce: BigNumberish,
+    deltaL: BigNumberish,
+    maxPremium: BigNumberish
+  ): Promise<Transaction> => {
+    return engine.borrow(pid, recipient, nonce, deltaL, maxPremium)
+  }
+  const repay: RepayFunction = async (
+    pid: BytesLike,
+    owner: string,
+    nonce: BigNumberish,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    return engine.repay(pid, owner, nonce, deltaL)
+  }
+
   return {
     deposit,
     withdraw,
@@ -102,6 +150,10 @@ export function createEngineFunctions({
     swapXForY,
     swapYForX,
     create,
+    lend,
+    claim,
+    borrow,
+    repay,
   }
 }
 
