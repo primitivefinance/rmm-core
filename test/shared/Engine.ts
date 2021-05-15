@@ -1,6 +1,7 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, fromMantissa } from './Units'
 import { Contract } from 'ethers'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
+import { PrimitiveEngine } from '../../typechain/PrimitiveEngine'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -47,6 +48,8 @@ export const createPool = async (
   const reserve = await getReserve(engine, poolId)
   return { poolId, reserve }
 }
+
+export const create = () => {}
 
 // ===== Margin =====
 

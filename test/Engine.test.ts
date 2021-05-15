@@ -41,8 +41,9 @@ import {
   calcRY2WithRX1,
   calcRX1WithRY2,
   createPool,
+  create,
 } from './shared/Engine'
-import { engineFixture, EngineFixture } from './shared/fixtures'
+import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { PrimitiveEngine } from '../typechain/PrimitiveEngine'
 const { createFixtureLoader } = waffle
@@ -77,7 +78,7 @@ describe('Primitive Engine', function () {
 
   beforeEach(async function () {
     // get contracts
-    ;({ engine, callee, house, TX1, TY2 } = await loadFixture(engineFixture))
+    ;({ engine, callee, house, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
     // init external settings
     nonce = 0
     spot = parseWei('1000')

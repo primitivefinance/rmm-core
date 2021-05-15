@@ -4,7 +4,7 @@ import { PERCENTAGE, fromInt, fromPercentageInt, parseWei, Wei, percentage, from
 import { calculateD1, calculateDelta } from './shared/BlackScholes'
 import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
 import { Calibration, Reserve, PoolParams, getReserve, getPoolParams, calcRY2WithXOut, createPool } from './shared/Engine'
-import { engineFixture, EngineFixture } from './shared/fixtures'
+import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { std_n_cdf } from './shared/CumulativeNormalDistribution'
 const { createFixtureLoader } = waffle
@@ -25,7 +25,7 @@ describe('Math', function () {
 
   beforeEach(async function () {
     // get contracts
-    ;({ engine, house, TX1, TY2 } = await loadFixture(engineFixture))
+    ;({ engine, house, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
     spot = parseWei('1000')
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
