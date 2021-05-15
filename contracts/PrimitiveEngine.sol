@@ -269,6 +269,11 @@ contract PrimitiveEngine {
 
     // ===== Lending =====
 
+    event Loaned(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+    event Claimed(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+    event Borrowed(address indexed recipient, bytes32 indexed pid, uint indexed nonce, uint deltaL, uint maxPremium);
+    event Repaid(address indexed owner, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+
     /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
     /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     /// As a side effect, `lend` will modify global reserve `float` by the same amount.
@@ -280,6 +285,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
+        emit Loaned(msg.sender, pid, nonce, deltaL);
         return deltaL;
     }
 
@@ -292,6 +298,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
+        emit Claimed(msg.sender, pid, nonce, deltaL);
         return deltaL;
     }
 
@@ -310,6 +317,7 @@ contract PrimitiveEngine {
         Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.borrowFloat(deltaL);
+        emit Borrowed(recipient, pid, nonce, deltaL, maxPremium);
         return deltaL;
     }
 
@@ -325,6 +333,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL);
+        emit Repaid(owner, pid, nonce, deltaL);
         return deltaL;
     }
 
