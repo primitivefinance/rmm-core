@@ -1,7 +1,8 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, fromMantissa } from './Units'
-import { Contract } from 'ethers'
+import { constants, Contract, Wallet, Transaction, BytesLike, BigNumberish } from 'ethers'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
 import { PrimitiveEngine } from '../../typechain/PrimitiveEngine'
+import { IERC20, TestCallee, TestEngine } from '../../typechain'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -10,46 +11,100 @@ export const ERC20Events = {
 export const EngineEvents = {
   DEPOSITED: 'Deposited',
   WITHDRAWN: 'Withdrawn',
-  POSITION_UPDATED: 'PositionUpdated',
-  MARGIN_UPDATED: 'MarginUpdated',
   CREATE: 'Create',
   UPDATE: 'Update',
   ADDED_BOTH: 'AddedBoth',
   REMOVED_BOTH: 'RemovedBoth',
-  ADDED_X: 'AddedX',
-  REMOVED_X: 'RemovedX',
   SWAP: 'Swap',
 }
 
-// ===== Create =====
-interface Pool {
-  poolId: string
-  reserve: Reserve
-}
-export const createPool = async (
-  engine: Contract,
-  calibration: Calibration,
-  spot: Wei,
-  TX1: Contract,
-  TY2: Contract
-): Promise<Pool> => {
-  // get delta of pool's calibration
-  const delta = await engine.callDelta(calibration, spot.raw)
-  // set risky reserve to 1 - delta
-  const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
-  // set riskless reserve using trading function
-  const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
-  // mint the tokens to the engine before we call create()
-  await TX1.mint(engine.address, RX1.raw)
-  await TY2.mint(engine.address, RY2.raw)
-  // Create pool
-  await engine.create(calibration, spot.raw)
-  const poolId = await engine.getPoolId(calibration)
-  const reserve = await getReserve(engine, poolId)
-  return { poolId, reserve }
+export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
+export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
+export type AddLiquidityFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
+export type CreateFunction = (spot: BigNumberish, calibration: Calibration) => Promise<Transaction>
+
+export interface EngineFunctions {
+  deposit: DepositFunction
+  withdraw: WithdrawFunction
+  addLiquidity: AddLiquidityFunction
+  swapXForY: SwapFunction
+  swapYForX: SwapFunction
+  create: CreateFunction
 }
 
-export const create = () => {}
+// ===== Engine Functions ====
+export function createEngineFunctions({
+  target,
+  TX1,
+  TY2,
+  engine,
+}: {
+  target: TestCallee
+  TX1: IERC20
+  TY2: IERC20
+  engine: TestEngine
+}): EngineFunctions {
+  const deposit: DepositFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
+    return target.deposit(deltaX, deltaY)
+  }
+
+  const withdraw: WithdrawFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
+    return engine.withdraw(deltaX, deltaY)
+  }
+
+  const addLiquidity: AddLiquidityFunction = async (
+    pid: BytesLike,
+    nonce: BigNumberish,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    return target.addLiquidity(pid, nonce, deltaL)
+  }
+
+  const swap = async (
+    pid: BytesLike | string,
+    addXRemoveY: boolean,
+    deltaOut: BigNumberish,
+    deltaInMax: BigNumberish
+  ): Promise<Transaction> => {
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    return target.swap(pid, addXRemoveY, deltaOut, deltaInMax)
+  }
+
+  const swapXForY: SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => {
+    return swap(pid, true, deltaOut, deltaInMax)
+  }
+  const swapYForX: SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => {
+    return swap(pid, false, deltaOut, deltaInMax)
+  }
+
+  const create: CreateFunction = async (spot: BigNumberish, calibration: Calibration): Promise<Transaction> => {
+    // get delta of pool's calibration
+    const delta = await engine.callDelta(calibration, spot)
+    // set risky reserve to 1 - delta
+    const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
+    // set riskless reserve using trading function
+    const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
+    // mint the tokens to the engine before we call create()
+    await TX1.mint(engine.address, RX1.raw)
+    await TY2.mint(engine.address, RY2.raw)
+    return engine.create(calibration, spot)
+  }
+
+  return {
+    deposit,
+    withdraw,
+    addLiquidity,
+    swapXForY,
+    swapYForX,
+    create,
+  }
+}
+
+// ===== Create =====
 
 // ===== Margin =====
 
@@ -243,7 +298,7 @@ export interface Position {
   BY2: Wei
   liquidity: Wei
   float: Wei
-  loan: Wei
+  debt: Wei
   unlocked: boolean
 }
 
@@ -256,7 +311,7 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
     BY2: new Wei(pos.BY2),
     liquidity: new Wei(pos.liquidity),
     float: new Wei(pos.float),
-    loan: new Wei(pos.loan),
+    debt: new Wei(pos.debt),
     unlocked: pos.unlocked,
   }
   if (log)
@@ -267,7 +322,7 @@ export async function getPosition(engine: Contract, owner: string, nonce: number
       BY2: ${formatEther(pos.BY2)},
       liquidity: ${formatEther(pos.liquidity)},
       float: ${formatEther(pos.float)},
-      loan: ${formatEther(pos.loan)}
+      debt: ${formatEther(pos.debt)}
       unlocked: ${pos.unlocked}
     `)
   return position

@@ -1,5 +1,5 @@
 import hre, { ethers, waffle } from 'hardhat'
-import { Wallet, Contract } from 'ethers'
+import { Wallet, Contract, constants } from 'ethers'
 import {
   YEAR,
   PERCENTAGE,
@@ -40,23 +40,35 @@ import {
   removeBoth,
   calcRY2WithRX1,
   calcRX1WithRY2,
-  createPool,
-  create,
+  createEngineFunctions,
+  SwapFunction,
+  DepositFunction,
+  WithdrawFunction,
+  AddLiquidityFunction,
+  CreateFunction,
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { PrimitiveEngine } from '../typechain/PrimitiveEngine'
+import { IERC20, PrimitiveHouse, TestCallee, TestEngine } from '../typechain'
 const { createFixtureLoader } = waffle
 
 describe('Primitive Engine', function () {
   // Contracts
-  let engine: Contract, callee: Contract, house: Contract, TX1: Contract, TY2: Contract
+  let engine: TestEngine, callee: TestCallee, house: PrimitiveHouse, TX1: IERC20, TY2: IERC20
   // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
   // External settings
   let nonce: number, spot: Wei
   // Invariant checks
-  let preInvariant: number, postInvariant: number
+  let preInvariant: BigNumber, postInvariant: BigNumber
+  // Engine Functions
+  let deposit: DepositFunction,
+    withdraw: WithdrawFunction,
+    swapXForY: SwapFunction,
+    swapYForX: SwapFunction,
+    addLiquidity: AddLiquidityFunction,
+    create: CreateFunction
 
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -86,8 +98,18 @@ describe('Primitive Engine', function () {
     // Calibration struct
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
+    // Engine functions
+    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create } = createEngineFunctions({
+      target: callee,
+      TX1,
+      TY2,
+      engine,
+    }))
+
     // Create pool
-    ;({ poolId, reserve } = await createPool(engine, calibration, spot, TX1, TY2))
+    await create(spot.raw, calibration)
+    poolId = await engine.getPoolId(calibration)
+    reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
     // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
@@ -99,10 +121,10 @@ describe('Primitive Engine', function () {
 
   afterEach(async function () {
     postInvariant = await engine.getInvariantLast(poolId)
-    expect(Math.abs(postInvariant)).to.be.gte(Math.abs(preInvariant))
+    expect(Math.abs(parseFloat(postInvariant.toString()))).to.be.gte(Math.abs(parseFloat(preInvariant.toString())))
 
     let riskyBal: Wei = parseWei('0')
-    for (let i = 0; i < (await engine.getAllPoolsLength()); i++) {
+    for (let i = 0; i < (await engine.getAllPoolsLength()).toNumber(); i++) {
       riskyBal = riskyBal.add((await engine.getReserve(poolId)).RX1)
     }
 
@@ -121,7 +143,7 @@ describe('Primitive Engine', function () {
         it('Callee::Deposit: Adds X and Y directly', async function () {
           const amount = parseWei('200').raw
           // deposit 200
-          await expect(callee.deposit(amount, amount))
+          await expect(deposit(amount, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(callee.address, signer.address, amount, amount)
           const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
@@ -137,20 +159,20 @@ describe('Primitive Engine', function () {
 
     describe('#withdraw', function () {
       this.beforeEach(async function () {
-        await callee.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+        await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
       })
       describe('sucess cases', function () {
         it('Engine::Withdraw: Removes X and Y directly', async function () {
           // before: deposit 100
           const amount = INITIAL_MARGIN.raw
           // remove 100
-          await expect(engine.withdraw(amount, amount))
+          await expect(withdraw(amount, amount))
             .to.emit(engine, EngineEvents.WITHDRAWN)
             .withArgs(signer.address, signer.address, amount, amount)
           // deposit 100
-          await callee.deposit(amount, amount)
+          await deposit(amount, amount)
           // remove 100
-          await expect(() => engine.withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
+          await expect(() => withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
           const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
           expect(owner).to.be.eq(signer.address)
           expect(BX1.raw).to.be.eq(0)
@@ -175,7 +197,7 @@ describe('Primitive Engine', function () {
           const deltaL = parseWei('1')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
-          await expect(callee.addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+          await expect(addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
           expect(postInvariant).to.be.gte(new Wei(invariant).float)
           expect(params.reserve.RX1.add(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
           expect(params.reserve.RY2.add(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
@@ -183,12 +205,12 @@ describe('Primitive Engine', function () {
         })
 
         it('Engine::AddBoth: Add both X and Y from Margin', async function () {
-          await callee.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
           const invariant = await engine.getInvariantLast(poolId)
           const deltaL = parseWei('1')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const [deltaX, deltaY, postParams, postInvariant] = addBoth(deltaL, params)
-          await expect(callee.addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+          await expect(addLiquidity(poolId, nonce, deltaL.raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
           expect(postInvariant).to.be.gte(new Wei(invariant).float)
           expect(params.reserve.RX1.add(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
           expect(params.reserve.RY2.add(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
@@ -202,7 +224,7 @@ describe('Primitive Engine', function () {
     describe('#removeBoth', function () {
       this.beforeEach(async function () {
         // Add some liq to remove it
-        await expect(callee.addLiquidity(poolId, nonce, parseWei('1').raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
+        await expect(addLiquidity(poolId, nonce, parseWei('1').raw)).to.emit(engine, EngineEvents.ADDED_BOTH)
       })
       describe('sucess cases', function () {
         it('Engine::RemoveBoth: Remove both X and Y', async function () {
@@ -216,7 +238,7 @@ describe('Primitive Engine', function () {
           const [deltaX, deltaY, postParams, postInvariant] = removeBoth(deltaL, params)
           // remove liquidity
           await expect(engine.removeBoth(poolId, nonce, deltaL.raw, true)).to.emit(engine, 'RemovedBoth')
-          expect(postInvariant).to.be.gte(parseFloat(invariant))
+          expect(postInvariant).to.be.gte(parseFloat(invariant.toString()))
           expect(postLiquidity.raw).to.be.eq(postParams.reserve.liquidity.raw)
           expect(params.reserve.RX1.sub(deltaX).raw).to.be.eq(postParams.reserve.RX1.raw)
           expect(params.reserve.RY2.sub(deltaY).raw).to.be.eq(postParams.reserve.RY2.raw)
@@ -240,12 +262,17 @@ describe('Primitive Engine', function () {
       describe('sucess cases', function () {
         it('Engine::Swap: Swap X to Y from EOA', async function () {
           // before: add tokens to margin to do swaps with
-          await callee.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
           const invariant = await engine.getInvariantLast(poolId)
           const amount = parseWei('100')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const addXRemoveY: boolean = true
-          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(amount, addXRemoveY, invariant, params)
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
           // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
           await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
             engine,
@@ -264,9 +291,14 @@ describe('Primitive Engine', function () {
           const amount = parseWei('100')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const addXRemoveY: boolean = true
-          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(amount, addXRemoveY, invariant, params)
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
           // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-          await expect(callee.swapXForY(poolId, amount.raw), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
+          await expect(swapXForY(poolId, amount.raw, constants.MaxUint256), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
 
           const postReserve = await engine.getReserve(poolId)
           //expect(postInvariant).to.be.gte(new Wei(invariant).float)
@@ -275,12 +307,17 @@ describe('Primitive Engine', function () {
         })
 
         it('Engine::Swap: Swap Y to X from EOA', async function () {
-          await callee.deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+          await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
           const invariant = await engine.getInvariantLast(poolId)
           const amount = parseWei('0.2')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const addXRemoveY: boolean = false
-          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(amount, addXRemoveY, invariant, params)
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
 
           // TODO: Swap deltaIn amount is different from esimated deltaIn
           await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
@@ -299,10 +336,15 @@ describe('Primitive Engine', function () {
           const amount = parseWei('0.2')
           const params: PoolParams = await getPoolParams(engine, poolId)
           const addXRemoveY: boolean = false
-          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(amount, addXRemoveY, invariant, params)
+          const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
+            amount,
+            addXRemoveY,
+            invariant.toString(),
+            params
+          )
 
           // TODO: Swap deltaIn amount is different from esimated deltaIn
-          await expect(callee.swapYForX(poolId, amount.raw), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
+          await expect(swapYForX(poolId, amount.raw, constants.MaxUint256), 'Engine:Swap').to.emit(engine, EngineEvents.SWAP)
 
           const postReserve = await engine.getReserve(poolId)
           //expect(postInvariant).to.be.gte(new Wei(invariant).float)

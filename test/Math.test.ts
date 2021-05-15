@@ -3,17 +3,29 @@ import { Wallet, Contract } from 'ethers'
 import { PERCENTAGE, fromInt, fromPercentageInt, parseWei, Wei, percentage, fromMantissa } from './shared/Units'
 import { calculateD1, calculateDelta } from './shared/BlackScholes'
 import { getTradingFunction, getProportionalVol } from './shared/ReplicationMath'
-import { Calibration, Reserve, PoolParams, getReserve, getPoolParams, calcRY2WithXOut, createPool } from './shared/Engine'
+import {
+  Calibration,
+  Reserve,
+  PoolParams,
+  getReserve,
+  getPoolParams,
+  calcRY2WithXOut,
+  CreateFunction,
+  createEngineFunctions,
+} from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { std_n_cdf } from './shared/CumulativeNormalDistribution'
+import { IERC20, TestCallee, TestEngine } from '../typechain'
 const { createFixtureLoader } = waffle
 
 describe('Math', function () {
   // Contracts
-  let engine: Contract, house: Contract, TX1: Contract, TY2: Contract
+  let engine: TestEngine, callee: TestCallee, TX1: IERC20, TY2: IERC20
   // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
+  // Engine Functions
+  let create: CreateFunction
   // External settings
   let spot: Wei
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
@@ -25,15 +37,23 @@ describe('Math', function () {
 
   beforeEach(async function () {
     // get contracts
-    ;({ engine, house, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
+    ;({ engine, callee, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
     spot = parseWei('1000')
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
+    ;({ create } = createEngineFunctions({
+      target: callee,
+      TX1,
+      TY2,
+      engine,
+    }))
     // Create pool
-    ;({ poolId, reserve } = await createPool(engine, calibration, spot, TX1, TY2))
+    await create(spot.raw, calibration)
+    poolId = await engine.getPoolId(calibration)
+    reserve = await getReserve(engine, poolId)
 
     hre.tracer.nameTags[signer.address] = 'Signer'
-    hre.tracer.nameTags[house.address] = 'House'
+    hre.tracer.nameTags[callee.address] = 'Callee'
     hre.tracer.nameTags[engine.address] = 'Engine'
   })
 
@@ -47,7 +67,7 @@ describe('Math', function () {
 
     it('CumulativeDistribution::icdf: Gets the inverse cdf', async function () {
       const cdf = await engine.icdf(parseWei('0.25').raw)
-      const scaled = parseFloat(cdf) / Math.pow(2, 64)
+      const scaled = parseFloat(cdf.toString()) / Math.pow(2, 64)
       expect(scaled).to.be.within(-0.68, -0.66)
     })
 
