@@ -1,5 +1,5 @@
 import { waffle } from 'hardhat'
-import { Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
 
 import { abi as TOKEN_ABI, bytecode as TOKEN_BYTECODE } from '../../artifacts/contracts/test/Token.sol/Token.json'
@@ -35,6 +35,8 @@ const tokensFixture: Fixture<{
     abi: TOKEN_ABI,
   })) as IERC20
 
+  await TX1.mint(wallet.address, BigNumber.from(2).pow(255))
+  await TY2.mint(wallet.address, BigNumber.from(2).pow(255))
   return { TX1, TY2 }
 }
 

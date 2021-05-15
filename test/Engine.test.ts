@@ -75,15 +75,6 @@ describe('Primitive Engine', function () {
 
   const INITIAL_MARGIN = parseWei('1000')
 
-  const mintTokens = async (wad, guy, spender) => {
-    await TX1.mint(guy, wad.raw)
-    await TY2.mint(guy, wad.raw)
-    // approve tokens
-    wad = new Wei(ethers.constants.MaxUint256)
-    await TX1.approve(spender, wad.raw)
-    await TY2.approve(spender, wad.raw)
-  }
-
   before('Generate fixture load', async function () {
     loadFixture = createFixtureLoader([signer, signer2])
   })
@@ -94,7 +85,6 @@ describe('Primitive Engine', function () {
     // init external settings
     nonce = 0
     spot = parseWei('1000')
-    // init pool settings
     // Calibration struct
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
@@ -105,12 +95,12 @@ describe('Primitive Engine', function () {
       TY2,
       engine,
     }))
-
     // Create pool
     await create(spot.raw, calibration)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
+
     // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
     hre.tracer.nameTags[callee.address] = 'Callee'
@@ -134,9 +124,7 @@ describe('Primitive Engine', function () {
   })
 
   describe('Margin', function () {
-    this.beforeEach(async function () {
-      await mintTokens(parseWei('25000000'), signer.address, callee.address)
-    })
+    this.beforeEach(async function () {})
 
     describe('#deposit', function () {
       describe('sucess cases', function () {
@@ -186,9 +174,7 @@ describe('Primitive Engine', function () {
   })
 
   describe('Liquidity', function () {
-    this.beforeEach(async function () {
-      await mintTokens(parseWei('25000000'), signer.address, callee.address)
-    })
+    this.beforeEach(async function () {})
 
     describe('#addBoth', function () {
       describe('sucess cases', function () {
@@ -255,9 +241,7 @@ describe('Primitive Engine', function () {
   })
 
   describe('Swaps', function () {
-    this.beforeEach(async function () {
-      await mintTokens(parseWei('25000000'), signer.address, callee.address)
-    })
+    this.beforeEach(async function () {})
     describe('#swap', function () {
       describe('sucess cases', function () {
         it('Engine::Swap: Swap X to Y from EOA', async function () {
