@@ -98,53 +98,42 @@ describe('Primitive Engine', function () {
   describe('#create', function () {
     describe('sucess cases', function () {
       it('Engine::Create: Generates a new Curve', async function () {
-        await expect(create(calibration, spot.raw)).to.not.be.reverted
+        const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.not.be.reverted
+        const len = (await engine.getAllPoolsLength()).toString()
+        const pid = await engine.allPools(+len - 1)
+        const settings = await engine.getCalibration(pid)
+        settings.map((val, i) => {
+          const keys = Object.keys(cal)
+          expect(val).to.be.eq(cal[keys[i]])
+        })
       })
     })
 
     describe('fail cases', function () {
+      it('Fail Engine::Create: Already created', async function () {
+        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Already created')
+      })
       it('Fail Engine::Create: time is 0', async function () {
-        expect(
-          create(
-            {
-              strike: parseWei('1').raw,
-              sigma: 1,
-              time: 0,
-            },
-            spot.raw
-          )
-        ).to.be.revertedWith('time is 0')
+        const cal = { strike: parseWei('500').raw, sigma: calibration.sigma, time: 0 }
+        await expect(create(cal, spot.raw)).to.be.reverted
       })
       it('Fail Engine::Create: sigma is 0', async function () {
-        expect(
-          create(
-            {
-              strike: parseWei('1').raw,
-              sigma: 0,
-              time: 1,
-            },
-            spot.raw
-          )
-        ).to.be.revertedWith('time is 0')
+        const cal = { strike: parseWei('500').raw, sigma: 0, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.be.reverted
       })
       it('Fail Engine::Create: strike is 0', async function () {
-        expect(
-          create(
-            {
-              strike: parseWei('0').raw,
-              sigma: 1,
-              time: 1,
-            },
-            spot.raw
-          )
-        ).to.be.revertedWith('time is 0')
+        const cal = { strike: parseWei('0').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.be.reverted
       })
       it('Fail Engine::Create: Not enough risky tokens', async function () {
-        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Not enough risky tokens')
+        const cal = { strike: parseWei('1500').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough risky tokens')
       })
       it('Fail Engine::Create: Not enough riskless tokens', async function () {
+        const cal = { strike: parseWei('750').raw, sigma: calibration.sigma, time: calibration.time }
         await TX1.mint(engine.address, parseWei('100').raw)
-        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Not enough riskless tokens')
+        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough riskless tokens')
       })
     })
   })
