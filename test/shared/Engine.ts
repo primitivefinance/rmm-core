@@ -21,7 +21,7 @@ export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Pr
 export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type AddLiquidityFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type CreateFunction = (spot: BigNumberish, calibration: Calibration) => Promise<Transaction>
+export type CreateFunction = (calibration: Calibration, spot: BigNumberish) => Promise<Transaction>
 
 export interface EngineFunctions {
   deposit: DepositFunction
@@ -82,7 +82,7 @@ export function createEngineFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const create: CreateFunction = async (spot: BigNumberish, calibration: Calibration): Promise<Transaction> => {
+  const create: CreateFunction = async (calibration: Calibration, spot: BigNumberish): Promise<Transaction> => {
     // get delta of pool's calibration
     const delta = await engine.callDelta(calibration, spot)
     // set risky reserve to 1 - delta
