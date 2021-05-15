@@ -16,7 +16,11 @@ contract TestCallee is ICallback {
     IUniswapV3Factory public uniFactory;
 
     address public CALLER = NO_CALLER;
+    Fails public ORDER_TYPE = Fails.NONE;
     uint private reentrant;
+
+    enum Fails { NONE, TX1, TY2 }
+
 
     constructor() {}
 
@@ -25,6 +29,11 @@ contract TestCallee is ICallback {
         reentrant = 1;
         _;
         reentrant = 0;
+    }
+
+    modifier reset() {
+        _;
+        ORDER_TYPE = Fails.NONE;
     }
 
     modifier executionLock() {
@@ -48,6 +57,18 @@ contract TestCallee is ICallback {
         engine.deposit(msg.sender, deltaX, deltaY);
     }
 
+    function depositFailTX1(uint deltaX, uint deltaY) public lock reset {
+        CALLER = msg.sender;
+        ORDER_TYPE = Fails.TX1;
+        engine.deposit(msg.sender, deltaX, deltaY);
+    }
+
+    function depositFailTY2(uint deltaX, uint deltaY) public lock reset {
+        CALLER = msg.sender;
+        ORDER_TYPE = Fails.TY2;
+        engine.deposit(msg.sender, deltaX, deltaY);
+    }
+
     /**
      * @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
      */
@@ -61,6 +82,18 @@ contract TestCallee is ICallback {
      */
     function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
         CALLER = msg.sender;
+        engine.addBoth(pid, msg.sender, nonce, deltaL, false);
+    }
+
+    function addLiquidityFailTX1(bytes32 pid, uint nonce, uint deltaL) public lock reset {
+        CALLER = msg.sender;
+        ORDER_TYPE = Fails.TX1;
+        engine.addBoth(pid, msg.sender, nonce, deltaL, false);
+    }
+
+    function addLiquidityFailTY2(bytes32 pid, uint nonce, uint deltaL) public lock reset {
+        CALLER = msg.sender;
+        ORDER_TYPE = Fails.TY2;
         engine.addBoth(pid, msg.sender, nonce, deltaL, false);
     }
 
@@ -103,10 +136,14 @@ contract TestCallee is ICallback {
     }
 
     function depositCallback(uint deltaX, uint deltaY) public override {
-        IERC20 TX1 = IERC20(engine.TX1());
-        IERC20 TY2 = IERC20(engine.TY2());
-        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(ORDER_TYPE == Fails.NONE) {
+            IERC20 TX1 = IERC20(engine.TX1());
+            IERC20 TY2 = IERC20(engine.TY2());
+            if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
+            if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+        } else  {
+            // do nothing, will fail early because no tokens were sent into it
+        } 
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
