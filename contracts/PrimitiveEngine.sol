@@ -107,7 +107,8 @@ contract PrimitiveEngine {
         require(self.sigma > 0, "Sigma is 0");
         require(self.strike > 0, "Strike is 0");
         // fetch the keccak hash of the parameters
-        bytes32 pid = getPoolId(self); 
+        bytes32 pid = getPoolId(self);
+        require(settings[pid].time == 0, "Already created");
         // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
             strike: self.strike,
