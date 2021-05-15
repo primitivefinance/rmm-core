@@ -156,7 +156,7 @@ contract PrimitiveEngine {
     }
 
     
-    /// @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
+    /// @notice  Removes X and Y from internal balance of `msg.sender`.
     function withdraw(uint deltaX, uint deltaY) public returns (bool) {
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
@@ -181,7 +181,7 @@ contract PrimitiveEngine {
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
-        require(liquidity > 0, "Not bound");
+        require(liquidity > 0, "Not initialized");
 
         uint postRX1;
         uint postRY2;
@@ -189,12 +189,13 @@ contract PrimitiveEngine {
         (uint RX1, uint RY2) = (res.RX1, res.RY2);
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Delta is 0");
+        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
         postRX1 = RX1 + deltaX;
         postRY2 = RY2 + deltaY;
         bytes32 pid_ = pid;
+        int128 preInvariant = getInvariantLast(pid_);
         int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
-        require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
+        require(postInvariant.parseUnits() >= preInvariant.parseUnits(), "Invalid invariant");
         }
 
         if(isInternal) {
