@@ -68,7 +68,7 @@ describe('Primitive Engine', function () {
       engine,
     }))
     // Create pool
-    await create(spot.raw, calibration)
+    await create(calibration, spot.raw)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
@@ -93,6 +93,60 @@ describe('Primitive Engine', function () {
     riskyBal = riskyBal.add((await engine.getMargin(signer.address)).BX1)
 
     expect(await TX1.balanceOf(engine.address)).to.be.gte(riskyBal.raw)
+  })
+
+  describe('#create', function () {
+    describe('sucess cases', function () {
+      it('Engine::Create: Generates a new Curve', async function () {
+        await expect(create(calibration, spot.raw)).to.not.be.reverted
+      })
+    })
+
+    describe('fail cases', function () {
+      it('Fail Engine::Create: time is 0', async function () {
+        expect(
+          create(
+            {
+              strike: parseWei('1').raw,
+              sigma: 1,
+              time: 0,
+            },
+            spot.raw
+          )
+        ).to.be.revertedWith('time is 0')
+      })
+      it('Fail Engine::Create: sigma is 0', async function () {
+        expect(
+          create(
+            {
+              strike: parseWei('1').raw,
+              sigma: 0,
+              time: 1,
+            },
+            spot.raw
+          )
+        ).to.be.revertedWith('time is 0')
+      })
+      it('Fail Engine::Create: strike is 0', async function () {
+        expect(
+          create(
+            {
+              strike: parseWei('0').raw,
+              sigma: 1,
+              time: 1,
+            },
+            spot.raw
+          )
+        ).to.be.revertedWith('time is 0')
+      })
+      it('Fail Engine::Create: Not enough risky tokens', async function () {
+        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Not enough risky tokens')
+      })
+      it('Fail Engine::Create: Not enough riskless tokens', async function () {
+        await TX1.mint(engine.address, parseWei('100').raw)
+        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Not enough riskless tokens')
+      })
+    })
   })
 
   describe('Margin', function () {
