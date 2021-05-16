@@ -19,6 +19,11 @@ import {
   WithdrawFunction,
   AddLiquidityFunction,
   CreateFunction,
+  getPosition,
+  LendFunction,
+  ClaimFunction,
+  BorrowFunction,
+  RepayFunction,
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
@@ -40,7 +45,11 @@ describe('Primitive Engine', function () {
     swapXForY: SwapFunction,
     swapYForX: SwapFunction,
     addLiquidity: AddLiquidityFunction,
-    create: CreateFunction
+    create: CreateFunction,
+    lend: LendFunction,
+    claim: ClaimFunction,
+    borrow: BorrowFunction,
+    repay: RepayFunction
 
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -61,14 +70,14 @@ describe('Primitive Engine', function () {
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
     // Engine functions
-    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create } = createEngineFunctions({
+    ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create, lend, claim, borrow, repay } = createEngineFunctions({
       target: callee,
       TX1,
       TY2,
       engine,
     }))
     // Create pool
-    await create(spot.raw, calibration)
+    await create(calibration, spot.raw)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
@@ -95,26 +104,101 @@ describe('Primitive Engine', function () {
     expect(await TX1.balanceOf(engine.address)).to.be.gte(riskyBal.raw)
   })
 
+  describe('#create', function () {
+    describe('sucess cases', function () {
+      it('Engine::Create: Generates a new Curve', async function () {
+        const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.not.be.reverted
+        const len = (await engine.getAllPoolsLength()).toString()
+        const pid = await engine.allPools(+len - 1)
+        const settings = await engine.getCalibration(pid)
+        settings.map((val, i) => {
+          const keys = Object.keys(cal)
+          expect(val).to.be.eq(cal[keys[i]])
+        })
+      })
+    })
+
+    describe('fail cases', function () {
+      it('Fail Engine::Create: Already created', async function () {
+        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Already created')
+      })
+      it('Fail Engine::Create: time is 0', async function () {
+        const cal = { strike: parseWei('500').raw, sigma: calibration.sigma, time: 0 }
+        await expect(create(cal, spot.raw)).to.be.reverted
+      })
+      it('Fail Engine::Create: sigma is 0', async function () {
+        const cal = { strike: parseWei('500').raw, sigma: 0, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.be.reverted
+      })
+      it('Fail Engine::Create: strike is 0', async function () {
+        const cal = { strike: parseWei('0').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(create(cal, spot.raw)).to.be.reverted
+      })
+      it('Fail Engine::Create: Not enough risky tokens', async function () {
+        const cal = { strike: parseWei('1500').raw, sigma: calibration.sigma, time: calibration.time }
+        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough risky tokens')
+      })
+      it('Fail Engine::Create: Not enough riskless tokens', async function () {
+        const cal = { strike: parseWei('750').raw, sigma: calibration.sigma, time: calibration.time }
+        await TX1.mint(engine.address, parseWei('100').raw)
+        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough riskless tokens')
+      })
+    })
+  })
+
   describe('Margin', function () {
     this.beforeEach(async function () {})
 
+    const checkMargin = async (deltaX, deltaY) => {
+      const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
+      expect(owner).to.be.eq(signer.address)
+      expect(BX1.raw).to.be.eq(deltaX)
+      expect(BY2.raw).to.be.eq(deltaY)
+      expect(unlocked).to.be.eq(false)
+    }
+
     describe('#deposit', function () {
       describe('sucess cases', function () {
-        it('Callee::Deposit: Adds X and Y directly', async function () {
+        it('Callee::Deposit: Adds X', async function () {
+          const amount = parseWei('200').raw
+          // deposit 200
+          await expect(deposit(amount, 0))
+            .to.emit(engine, EngineEvents.DEPOSITED)
+            .withArgs(callee.address, signer.address, amount, 0)
+          await checkMargin(amount, 0)
+        })
+
+        it('Callee::Deposit: Adds Y', async function () {
+          const amount = parseWei('200').raw
+          // deposit 200
+          await expect(deposit(0, amount))
+            .to.emit(engine, EngineEvents.DEPOSITED)
+            .withArgs(callee.address, signer.address, 0, amount)
+          await checkMargin(0, amount)
+        })
+
+        it('Callee::Deposit: Adds X and Y ', async function () {
           const amount = parseWei('200').raw
           // deposit 200
           await expect(deposit(amount, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(callee.address, signer.address, amount, amount)
-          const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
-          expect(owner).to.be.eq(signer.address)
-          expect(BX1.raw).to.be.eq(amount)
-          expect(BY2.raw).to.be.eq(amount)
-          expect(unlocked).to.be.eq(false)
+          await checkMargin(amount, amount)
         })
       })
 
-      describe('fail cases', function () {})
+      describe('fail cases', function () {
+        it('Fail Engine::Deposit: Called from EOA', async function () {
+          await expect(engine.deposit(signer.address, 1, 1)).to.be.reverted
+        })
+        it('Fail Engine::Deposit: Not enough TX1', async function () {
+          await expect(callee.depositFailTX1(1, 0)).to.be.revertedWith('Not enough TX1')
+        })
+        it('Fail Engine::Deposit: Not enough TY2', async function () {
+          await expect(callee.depositFailTY2(0, 1)).to.be.revertedWith('Not enough TY2')
+        })
+      })
     })
 
     describe('#withdraw', function () {
@@ -122,7 +206,33 @@ describe('Primitive Engine', function () {
         await deposit(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
       })
       describe('sucess cases', function () {
-        it('Engine::Withdraw: Removes X and Y directly', async function () {
+        it('Engine::Withdraw: Removes X', async function () {
+          // before: deposit 100
+          const amount = INITIAL_MARGIN.raw
+          // remove 100
+          await expect(withdraw(amount, 0))
+            .to.emit(engine, EngineEvents.WITHDRAWN)
+            .withArgs(signer.address, signer.address, amount, 0)
+          // deposit 100
+          await deposit(amount, 0)
+          // remove 100
+          await expect(() => withdraw(amount, 0)).to.changeTokenBalance(TX1, signer, amount)
+          await checkMargin(0, amount)
+        })
+        it('Engine::Withdraw: Removes Y', async function () {
+          // before: deposit 100
+          const amount = INITIAL_MARGIN.raw
+          // remove 100
+          await expect(withdraw(0, amount))
+            .to.emit(engine, EngineEvents.WITHDRAWN)
+            .withArgs(signer.address, signer.address, 0, amount)
+          // deposit 100
+          await deposit(0, amount)
+          // remove 100
+          await expect(() => withdraw(0, amount)).to.changeTokenBalance(TY2, signer, amount)
+          await checkMargin(amount, 0)
+        })
+        it('Engine::Withdraw: Removes X and Y', async function () {
           // before: deposit 100
           const amount = INITIAL_MARGIN.raw
           // remove 100
@@ -133,15 +243,20 @@ describe('Primitive Engine', function () {
           await deposit(amount, amount)
           // remove 100
           await expect(() => withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
-          const { owner, BX1, BY2, unlocked } = await getMargin(engine, signer.address)
-          expect(owner).to.be.eq(signer.address)
-          expect(BX1.raw).to.be.eq(0)
-          expect(BY2.raw).to.be.eq(0)
-          expect(unlocked).to.be.eq(false)
+          await checkMargin(0, 0)
         })
       })
 
-      describe('fail cases', function () {})
+      describe('fail cases', function () {
+        it('Fail Engine::Withdraw: Not enough TX1', async function () {}) // can we even enter these fails?
+        it('Fail Engine::Withdraw: Not enough TY2', async function () {}) // can we even enter these fails?
+        it('Fail Engine::Withdraw: Not enough BX1 in Margin', async function () {
+          await expect(withdraw(parseWei('10000').raw, 0)).to.be.reverted
+        })
+        it('Fail Engine::Withdraw: Not enough BY2 in Margin', async function () {
+          await expect(withdraw(0, parseWei('10000').raw)).to.be.reverted
+        })
+      })
     })
   })
 
@@ -176,7 +291,35 @@ describe('Primitive Engine', function () {
         })
       })
 
-      describe('fail cases', function () {})
+      describe('fail cases', function () {
+        it('Fail Engine::AddBoth: Not initialized', async function () {
+          const getPid = (calibration) => {
+            const cals = Object.keys(calibration).map((key) => calibration[key])
+            return ethers.utils.solidityKeccak256(['uint256', 'uint256', 'uint256'], cals)
+          }
+
+          const cal = { strike: parseWei('666').raw, sigma: 0, time: calibration.time }
+          const pid = getPid(cal)
+          await expect(addLiquidity(pid, 0, 1)).to.be.revertedWith('Not initialized')
+        })
+        it('Fail Engine::AddBoth: Deltas are 0', async function () {
+          await expect(addLiquidity(poolId, nonce, 0)).to.be.revertedWith('Deltas are 0')
+        })
+        it('Fail Engine::AddBoth: Invalid Invariant', async function () {})
+        it('Fail Engine::AddBoth: Not enough TX1', async function () {
+          await expect(callee.addLiquidityFailTX1(poolId, nonce, 1)).to.be.reverted
+        })
+        it('Fail Engine::AddBoth: Not enough TY2', async function () {
+          await expect(callee.addLiquidityFailTY2(poolId, nonce, 1)).to.be.reverted
+        })
+        it('Fail Engine::AddBoth: Not enough BX1 in Margin', async function () {
+          await expect(engine.addBoth(poolId, signer.address, nonce, 1, true)).to.be.reverted
+        })
+        it('Fail Engine::AddBoth: Not enough BY2 in Margin', async function () {
+          await deposit(10, 0)
+          await expect(engine.addBoth(poolId, signer.address, nonce, 1, true)).to.be.reverted
+        })
+      })
     })
 
     describe('#removeBoth', function () {
@@ -208,6 +351,26 @@ describe('Primitive Engine', function () {
         it('Fail Engine::RemoveBoth: No L balance', async function () {
           await expect(engine.connect(signer2).removeBoth(poolId, 0, parseWei('0.1').raw, true)).to.be.reverted
         })
+        it('Fail Engine::RemoveBoth: Not initialized', async function () {
+          const getPid = (calibration) => {
+            const cals = Object.keys(calibration).map((key) => calibration[key])
+            return ethers.utils.solidityKeccak256(['uint256', 'uint256', 'uint256'], cals)
+          }
+
+          const cal = { strike: parseWei('444').raw, sigma: 0, time: calibration.time }
+          const pid = getPid(cal)
+          await expect(engine.removeBoth(pid, 0, 1, true)).to.be.revertedWith('Not initialized')
+        })
+        it('Fail Engine::RemoveBoth: Deltas are 0', async function () {
+          await expect(engine.removeBoth(poolId, 0, 0, true)).to.be.revertedWith('Deltas are 0')
+        })
+        it('Fail Engine::RemoveBoth: Invalid Invariant', async function () {})
+        it('Fail Engine::RemoveBoth: Above max burn', async function () {
+          const L = (await engine.getReserve(poolId)).liquidity
+          await expect(engine.removeBoth(poolId, 0, L.add(1), true)).to.be.revertedWith('Above max burn')
+        })
+        it('Fail Engine::RemoveBoth: Not enough TX1', async function () {})
+        it('Fail Engine::RemoveBoth: Not enough TY2', async function () {})
       })
     })
   })
@@ -322,24 +485,66 @@ describe('Primitive Engine', function () {
             callee.connect(signer2).swap(poolId, true, parseWei('0.1').raw, ethers.constants.MaxUint256)
           ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
         })
+
+        it('Fail Callee::Swap: Too expensive', async function () {
+          await expect(engine.swap(poolId, true, 1, 0)).to.be.revertedWith('Too expensive')
+        })
+        it('Fail Callee::Swap: Invalid invariant', async function () {})
+        it('Fail Callee::Swap: Sent too much tokens', async function () {})
+        it('Fail Callee::Swap: Not enough TX1', async function () {})
+        it('Fail Callee::Swap: Not enough TY2', async function () {})
       })
     })
   })
 
   describe('Lending', function () {
+    this.beforeEach(async function () {
+      await addLiquidity(poolId, nonce, 1000)
+    })
+    const checkPosition = async (deltaL) => {
+      const pos = await getPosition(engine, signer.address, nonce, poolId)
+      expect(pos.float.raw).to.be.eq(deltaL)
+    }
+
     describe('#lend', function () {
       describe('success cases', function () {
-        it('Engine::lend: Increase a positions float', async function () {})
+        it('Engine::lend: Increase a positions float', async function () {
+          await expect(lend(poolId, nonce, 1000))
+            .to.emit(engine, EngineEvents.LOANED)
+            .withArgs(signer.address, poolId, nonce, 1000)
+          const pos = await getPosition(engine, signer.address, nonce, poolId)
+          expect(pos.float.raw).to.be.eq(1000)
+        })
+      })
+
+      describe('fail cases', function () {
+        it('Fail Engine::lend: Not enough liquidity', async function () {
+          await expect(engine.lend(poolId, nonce, 1001)).to.be.revertedWith('Not enough liquidity')
+        })
       })
     })
     describe('#borrow', function () {
+      this.beforeEach(async function () {
+        await lend(poolId, nonce, 1000)
+      })
       describe('success cases', function () {
-        it('Engine::borrow: Increase a positions loan debt', async function () {})
+        it('Engine::borrow: Increase a positions loan debt', async function () {
+          await expect(borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)).to.not.be.reverted.to.emit(
+            engine,
+            EngineEvents.BORROWED
+          )
+        })
       })
     })
     describe('#repay', function () {
+      this.beforeEach(async function () {
+        await lend(poolId, nonce, 1000)
+        await borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)
+      })
       describe('success cases', function () {
-        it('Engine::repay: Decrease a positions loan debt', async function () {})
+        it('Engine::repay: Decrease a positions loan debt', async function () {
+          await expect(repay(poolId, signer.address, nonce, 1000)).to.not.be.reverted.to.emit(engine, EngineEvents.REPAID)
+        })
       })
     })
   })
