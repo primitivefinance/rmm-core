@@ -497,7 +497,7 @@ describe('Primitive Engine', function () {
     })
   })
 
-  describe.only('Lending', function () {
+  describe('Lending', function () {
     this.beforeEach(async function () {
       await addLiquidity(poolId, nonce, 1000)
     })
