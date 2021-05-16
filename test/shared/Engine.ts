@@ -132,7 +132,7 @@ export function createEngineFunctions({
     deltaL: BigNumberish,
     maxPremium: BigNumberish
   ): Promise<Transaction> => {
-    return engine.borrow(pid, recipient, nonce, deltaL, maxPremium)
+    return target.borrow(pid, recipient, nonce, deltaL, maxPremium)
   }
   const repay: RepayFunction = async (
     pid: BytesLike,
@@ -140,7 +140,7 @@ export function createEngineFunctions({
     nonce: BigNumberish,
     deltaL: BigNumberish
   ): Promise<Transaction> => {
-    return engine.repay(pid, owner, nonce, deltaL)
+    return target.repay(pid, owner, nonce, deltaL)
   }
 
   return {
