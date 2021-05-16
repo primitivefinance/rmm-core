@@ -48,7 +48,7 @@ describe('Math', function () {
       engine,
     }))
     // Create pool
-    await create(spot.raw, calibration)
+    await create(calibration, spot.raw)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
 

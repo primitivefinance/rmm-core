@@ -107,7 +107,8 @@ contract PrimitiveEngine {
         require(self.sigma > 0, "Sigma is 0");
         require(self.strike > 0, "Strike is 0");
         // fetch the keccak hash of the parameters
-        bytes32 pid = getPoolId(self); 
+        bytes32 pid = getPoolId(self);
+        require(settings[pid].time == 0, "Already created");
         // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
             strike: self.strike,
@@ -155,7 +156,7 @@ contract PrimitiveEngine {
     }
 
     
-    /// @notice  Removes X and Y from internal balance of `owner` at position Id of `nonce`.
+    /// @notice  Removes X and Y from internal balance of `msg.sender`.
     function withdraw(uint deltaX, uint deltaY) public returns (bool) {
         uint preBX1 = getBX1();
         uint preBY2 = getBY2();
@@ -180,7 +181,7 @@ contract PrimitiveEngine {
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
-        require(liquidity > 0, "Not bound");
+        require(liquidity > 0, "Not initialized");
 
         uint postRX1;
         uint postRY2;
@@ -188,12 +189,13 @@ contract PrimitiveEngine {
         (uint RX1, uint RY2) = (res.RX1, res.RY2);
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Delta is 0");
+        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
         postRX1 = RX1 + deltaX;
         postRY2 = RY2 + deltaY;
         bytes32 pid_ = pid;
+        int128 preInvariant = getInvariantLast(pid_);
         int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
-        require(postInvariant.parseUnits() >= uint(0), "Invalid invariant");
+        require(postInvariant.parseUnits() >= preInvariant.parseUnits(), "Invalid invariant");
         }
 
         if(isInternal) {
@@ -223,7 +225,7 @@ contract PrimitiveEngine {
     function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
-        require(liquidity > 0, "Not bound");
+        require(liquidity > 0, "Not initialized");
 
         uint postRX1;
         uint postRY2;
@@ -235,7 +237,7 @@ contract PrimitiveEngine {
         uint RY2 = res.RY2;
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Delta is 0");
+        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
         postRX1 = RX1 - deltaX;
         postRY2 = RY2 - deltaY;
         int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
@@ -267,6 +269,11 @@ contract PrimitiveEngine {
 
     // ===== Lending =====
 
+    event Loaned(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+    event Claimed(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+    event Borrowed(address indexed recipient, bytes32 indexed pid, uint indexed nonce, uint deltaL, uint maxPremium);
+    event Repaid(address indexed owner, bytes32 indexed pid, uint indexed nonce, uint deltaL);
+
     /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
     /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
     /// As a side effect, `lend` will modify global reserve `float` by the same amount.
@@ -278,6 +285,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
+        emit Loaned(msg.sender, pid, nonce, deltaL);
         return deltaL;
     }
 
@@ -290,6 +298,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
+        emit Claimed(msg.sender, pid, nonce, deltaL);
         return deltaL;
     }
 
@@ -298,7 +307,7 @@ contract PrimitiveEngine {
     /// liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid, nonce) returns (uint) {
         Reserve.Data storage res = reserves[pid];
-        require(res.float > deltaL, "Insufficient float"); // fail early if not enough float to borrow
+        require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
 
         uint liquidity = res.liquidity; // global liquidity balance
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
@@ -308,6 +317,7 @@ contract PrimitiveEngine {
         Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.borrowFloat(deltaL);
+        emit Borrowed(recipient, pid, nonce, deltaL, maxPremium);
         return deltaL;
     }
 
@@ -323,6 +333,7 @@ contract PrimitiveEngine {
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL);
+        emit Repaid(owner, pid, nonce, deltaL);
         return deltaL;
     }
 

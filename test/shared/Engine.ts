@@ -15,13 +15,32 @@ export const EngineEvents = {
   ADDED_BOTH: 'AddedBoth',
   REMOVED_BOTH: 'RemovedBoth',
   SWAP: 'Swap',
+  LOANED: 'Loaned',
+  CLAIMED: 'Claimed',
+  BORROWED: 'Borrowed',
+  REPAID: 'Repaid',
 }
 
 export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type AddLiquidityFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type CreateFunction = (spot: BigNumberish, calibration: Calibration) => Promise<Transaction>
+export type CreateFunction = (calibration: Calibration, spot: BigNumberish) => Promise<Transaction>
+export type LendFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type BorrowFunction = (
+  pid: BytesLike,
+  recipient: string,
+  nonce: BigNumberish,
+  deltaL: BigNumberish,
+  maxPremium: BigNumberish
+) => Promise<Transaction>
+export type RepayFunction = (
+  pid: BytesLike,
+  owner: string,
+  nonce: BigNumberish,
+  deltaL: BigNumberish
+) => Promise<Transaction>
 
 export interface EngineFunctions {
   deposit: DepositFunction
@@ -30,6 +49,10 @@ export interface EngineFunctions {
   swapXForY: SwapFunction
   swapYForX: SwapFunction
   create: CreateFunction
+  lend: LendFunction
+  claim: ClaimFunction
+  borrow: BorrowFunction
+  repay: RepayFunction
 }
 
 // ===== Engine Functions ====
@@ -82,7 +105,7 @@ export function createEngineFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const create: CreateFunction = async (spot: BigNumberish, calibration: Calibration): Promise<Transaction> => {
+  const create: CreateFunction = async (calibration: Calibration, spot: BigNumberish): Promise<Transaction> => {
     // get delta of pool's calibration
     const delta = await engine.callDelta(calibration, spot)
     // set risky reserve to 1 - delta
@@ -95,6 +118,31 @@ export function createEngineFunctions({
     return engine.create(calibration, spot)
   }
 
+  const lend: LendFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.lend(pid, nonce, deltaL)
+  }
+
+  const claim: ClaimFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.claim(pid, nonce, deltaL)
+  }
+  const borrow: BorrowFunction = async (
+    pid: BytesLike,
+    recipient: string,
+    nonce: BigNumberish,
+    deltaL: BigNumberish,
+    maxPremium: BigNumberish
+  ): Promise<Transaction> => {
+    return target.borrow(pid, recipient, nonce, deltaL, maxPremium)
+  }
+  const repay: RepayFunction = async (
+    pid: BytesLike,
+    owner: string,
+    nonce: BigNumberish,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    return target.repay(pid, owner, nonce, deltaL)
+  }
+
   return {
     deposit,
     withdraw,
@@ -102,6 +150,10 @@ export function createEngineFunctions({
     swapXForY,
     swapYForX,
     create,
+    lend,
+    claim,
+    borrow,
+    repay,
   }
 }
 
@@ -303,8 +355,14 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(engine: Contract, owner: string, nonce: number, log?: boolean): Promise<Position> {
-  const pos = await engine.getPosition(owner, nonce)
+export async function getPosition(
+  engine: Contract,
+  owner: string,
+  nonce: number,
+  pid: BytesLike,
+  log?: boolean
+): Promise<Position> {
+  const pos = await engine.getPosition(owner, nonce, pid)
   const position: Position = {
     owner: pos.owner,
     nonce: pos.nonce,

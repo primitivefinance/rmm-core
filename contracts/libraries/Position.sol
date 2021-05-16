@@ -70,6 +70,7 @@ library Position {
     function lend(mapping(bytes32 => Data) storage positions, uint nonce, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, nonce, pid);
         position.float += deltaL;
+        require(position.liquidity >= position.float, "Not enough liquidity");
         return position;
     }
 
