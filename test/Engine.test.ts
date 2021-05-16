@@ -497,22 +497,22 @@ describe('Primitive Engine', function () {
     })
   })
 
-  describe('Lending', function () {
+  describe.only('Lending', function () {
     this.beforeEach(async function () {
       await addLiquidity(poolId, nonce, 1000)
     })
     const checkPosition = async (deltaL) => {
-      const pos = await getPosition(engine, signer.address, nonce)
+      const pos = await getPosition(engine, signer.address, nonce, poolId)
       expect(pos.float.raw).to.be.eq(deltaL)
     }
 
     describe('#lend', function () {
       describe('success cases', function () {
         it('Engine::lend: Increase a positions float', async function () {
-          await expect(engine.lend(poolId, nonce, 1000))
+          await expect(lend(poolId, nonce, 1000))
             .to.emit(engine, EngineEvents.LOANED)
             .withArgs(signer.address, poolId, nonce, 1000)
-          const pos = await getPosition(engine, signer.address, nonce)
+          const pos = await getPosition(engine, signer.address, nonce, poolId)
           expect(pos.float.raw).to.be.eq(1000)
         })
       })
@@ -524,15 +524,27 @@ describe('Primitive Engine', function () {
       })
     })
     describe('#borrow', function () {
+      this.beforeEach(async function () {
+        await lend(poolId, nonce, 1000)
+      })
       describe('success cases', function () {
         it('Engine::borrow: Increase a positions loan debt', async function () {
-          await expect()
+          await expect(borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)).to.not.be.reverted.to.emit(
+            engine,
+            EngineEvents.BORROWED
+          )
         })
       })
     })
     describe('#repay', function () {
+      this.beforeEach(async function () {
+        await lend(poolId, nonce, 1000)
+        await borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)
+      })
       describe('success cases', function () {
-        it('Engine::repay: Decrease a positions loan debt', async function () {})
+        it('Engine::repay: Decrease a positions loan debt', async function () {
+          await expect(repay(poolId, signer.address, nonce, 1000)).to.not.be.reverted.to.emit(engine, EngineEvents.REPAID)
+        })
       })
     })
   })

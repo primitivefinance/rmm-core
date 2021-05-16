@@ -307,7 +307,7 @@ contract PrimitiveEngine {
     /// liquidity >= debt + float.
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid, nonce) returns (uint) {
         Reserve.Data storage res = reserves[pid];
-        require(res.float > deltaL, "Insufficient float"); // fail early if not enough float to borrow
+        require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
 
         uint liquidity = res.liquidity; // global liquidity balance
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset

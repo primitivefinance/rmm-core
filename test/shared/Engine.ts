@@ -355,8 +355,14 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(engine: Contract, owner: string, nonce: number, log?: boolean): Promise<Position> {
-  const pos = await engine.getPosition(owner, nonce)
+export async function getPosition(
+  engine: Contract,
+  owner: string,
+  nonce: number,
+  pid: BytesLike,
+  log?: boolean
+): Promise<Position> {
+  const pos = await engine.getPosition(owner, nonce, pid)
   const position: Position = {
     owner: pos.owner,
     nonce: pos.nonce,
