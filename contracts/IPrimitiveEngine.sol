@@ -28,7 +28,7 @@ interface IPrimitiveEngine {
     
     // ===== View =====
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
-    function getInvariantLast() external view returns (int128);
+    function getInvariantLast(bytes32 pid) external view returns (int128);
     function FEE() external view returns (uint);
     function INIT_SUPPLY() external view returns (uint);
 
