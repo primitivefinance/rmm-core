@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
-pragma abicoder v2;
 
-/// @title   Primitive Factory
-/// @author  Primitive
-/// @dev     Generate PrimitiveEngine contracts
+/**
+ * @title   Engine TEST contract
+ * @author  Primitive
+ * @dev     ONLY FOR TESTING PURPOSES.  
+ */
 
-import "./IPrimitiveFactory.sol";
-import "./PrimitiveEngine.sol";
+import "../IPrimitiveFactory.sol";
+import "./TestEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
     event EngineCreated(address indexed from, address indexed risky, address indexed riskless, address engine);
@@ -46,7 +46,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
     function deploy(address factory, address risky, address riskless) internal returns (address engine) {
         args = Args({factory: factory, risky: risky, riskless: riskless}); // Engines call this to get constructor args
-        engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, riskless))}());
+        engine = address(new TestEngine{salt: keccak256(abi.encode(risky, riskless))}());
         delete args;
     }
 }

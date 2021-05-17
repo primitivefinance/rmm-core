@@ -10,7 +10,7 @@ interface IPrimitiveFactory {
         address factory,
         address risky,
         address riskless
-    )
+    );
     function getEngine(address risky, address riskless) external view returns (address engine);
     function owner() external view returns (address);
 }
