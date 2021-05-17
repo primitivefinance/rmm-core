@@ -20,14 +20,12 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
 
 interface ICallback {
-    function addXYCallback(uint deltaX, uint deltaY) external;
-    function removeXYCallback(uint deltaX, uint deltaY) external;
+    function addBothFromExternalCallback(uint deltaX, uint deltaY) external;
+    function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) external;
     function depositCallback(uint deltaX, uint deltaY) external;
-    function withdrawCallback(uint deltaX, uint deltaY) external returns (address);
     function swapCallback(uint deltaX, uint deltaY) external;
-    function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
-    function repayCallback(bytes32 pid, uint deltaL) external;
-    function getCaller() external returns (address);
+    function borrowCallback(Position.Data calldata pos, uint deltaL) external;
+    function removeXYCallback(uint deltaX, uint deltaY) external;
 }
 
 contract PrimitiveEngine {
@@ -168,6 +166,9 @@ contract PrimitiveEngine {
             IERC20(TY2).safeTransfer(msg.sender, deltaY);
             require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
         }
+        // Update Margin state
+        Margin.Data storage mar = margins.fetch(msg.sender);
+        margins.withdraw(deltaX, deltaY);
 
         margins.withdraw(deltaX, deltaY);
         emit Withdrawn(msg.sender, msg.sender, deltaX, deltaY);
@@ -176,7 +177,6 @@ contract PrimitiveEngine {
 
     // ===== Liquidity =====
 
-    
     /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
     function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
@@ -203,7 +203,7 @@ contract PrimitiveEngine {
         } else {
             uint preBX1 = getBX1();
             uint preBY2 = getBY2();
-            ICallback(msg.sender).addXYCallback(deltaX, deltaY);
+            ICallback(msg.sender).addBothFromExternalCallback(deltaX, deltaY);
             require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
             require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
         }
@@ -324,17 +324,16 @@ contract PrimitiveEngine {
     
     /// @notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint nonce, uint deltaL) public lock(pid, nonce) returns (uint) {
-        if(deltaL > 0) {
-            ICallback(msg.sender).repayCallback(pid, deltaL); // add liquidity, keeping excess.
-            Position.Data storage position = positions.fetch(owner, nonce, pid);
-            position.repay(deltaL); // reduce pos.liquidity and pos.float by `deltaL`
+    function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) returns (uint deltaX, uint deltaY) {
+        if (isInternal) {
+            (deltaX, deltaY) = addBoth(pid, owner, nonce, deltaL, true);
+        } else {
+            ICallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
         }
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL);
         emit Repaid(owner, pid, nonce, deltaL);
-        return deltaL;
     }
 
     // ===== Swaps =====
