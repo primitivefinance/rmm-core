@@ -12,6 +12,10 @@ import {
   bytecode as HOUSE_BYTECODE,
 } from '../../artifacts/contracts/PrimitiveHouse.sol/PrimitiveHouse.json'
 import {
+  abi as PRIMITIVE_FACTORY_ABI,
+  bytecode as PRIMITIVE_FACTORY_BYTECODE,
+} from '../../artifacts/contracts/PrimitiveFactory.sol/PrimitiveFactory.json'
+import {
   abi as FACTORY_ABI,
   bytecode as FACTORY_BYTECODE,
 } from '@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json'
