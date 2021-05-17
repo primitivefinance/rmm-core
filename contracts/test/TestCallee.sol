@@ -64,7 +64,8 @@ contract TestCallee is ICallback, IPrimitiveHouse {
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
     function deposit(address owner, uint deltaX, uint deltaY) public override lock {
-        engine.deposit(address(this), deltaX, deltaY);
+        CALLER = msg.sender;
+        engine.deposit(msg.sender, deltaX, deltaY);
     }
 
     function depositFailTX1(uint deltaX, uint deltaY) public lock reset {
