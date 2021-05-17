@@ -70,7 +70,7 @@ export function createEngineFunctions({
   const deposit: DepositFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.deposit(deltaX, deltaY)
+    return target.deposit(target.address, deltaX, deltaY)
   }
 
   const withdraw: WithdrawFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {

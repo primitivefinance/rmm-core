@@ -82,8 +82,8 @@ export const primitiveProtocolFixture: Fixture<{
     [TX1.address, TY2.address]
   )) as TestEngine
 
-  await house.initialize(engine.address)
-  await callee.initialize(engine.address)
+  await house.initialize(engine.address, uniFactory.address, 3000)
+  await callee.initialize(engine.address, uniFactory.address, 3000)
 
   return { TX1, TY2, uniFactory, house, engine, callee }
 }
