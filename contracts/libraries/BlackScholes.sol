@@ -22,7 +22,7 @@ library BlackScholes {
     /// @param   k Strike price in USD/DAI/USDC. In wei.
     /// @param   o "volatility" scaled by 1000.
     /// @param   t Time until expiration in seconds.
-    function calculateD1(
+    function d1(
         uint256 s,
         uint256 k,
         uint256 o,
@@ -42,7 +42,7 @@ library BlackScholes {
     }
 
     /// @notice Returns the `delta` greek of a call option
-    function calculateCallDelta(
+    function deltaCall(
         uint256 s,
         uint256 k,
         uint256 o,
@@ -53,7 +53,7 @@ library BlackScholes {
     }
 
     /// @notice Returns the `delta` greek of a put option
-    function calculatePutDelta(
+    function deltaPut(
         uint256 s,
         uint256 k,
         uint256 o,

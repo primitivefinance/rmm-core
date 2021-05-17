@@ -13,7 +13,7 @@ import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
-import "./libraries/SwapMath.sol";
+import "./libraries/ReserveMath.sol";
 import "./libraries/Units.sol";
 import "./libraries/Transfers.sol";
 
@@ -79,45 +79,41 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return IERC20(risky).balanceOf(address(this));
     }
 
-    /// @notice Returns the riskless token balance of this contract
+    /// @notice Returns the stable token balance of this contract
     function balanceStable() private view returns (uint) {
         return IERC20(stable).balanceOf(address(this));
     }
 
     /// @inheritdoc IPrimitiveEngineActions
     function create(uint strike, uint sigma, uint time, uint riskyPrice) external override returns(bytes32 pid) {
-        require(time > 0, "Time is 0");
-        require(sigma > 0, "Sigma is 0");
-        require(strike > 0, "Strike is 0");
-        // fetch the keccak hash of the parameters
-        pid = getPoolId(self);
+        require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
+
+        pid = getPoolId(strike, sigma, time);
         require(settings[pid].time == 0, "Already created");
-        // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
             strike: strike,
             sigma: sigma,
             time: time
         });
-        // Call Delta = CDF(d1)
-        int128 delta = BlackScholes.calculateCallDelta(riskyPrice, strike, sigma, time);
-        // Set x = 1 - delta
+
+        int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
-        // Set y = F(x)
-        uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, strike, sigma, time).parseUnits();
-        // initialize the reserves to have 1e18 shares of liquidity
+        uint RY2 = ReserveMath.reserveStable(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
             RX1: RX1, // risky token balance
-            RY2: RY2, // riskless token balance
-            liquidity: 1e18, // 1e18
+            RY2: RY2, // stable token balance
+            liquidity: 1e18, // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
             debt: 0 // the LP shares borrowed from the float
         });
-        // add the pid to all the pids initialized
-        allPools.push(pid);
 
-        // check that balances were sent to contract to initialize
+        uint preRiskyBal = balanceRisky();
+        uint preStableBal = balanceStable();
+        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
         require(balanceRisky() >= RX1, "Not enough risky tokens");
-        require(balanceStable() >= RY2, "Not enough riskless tokens");
+        require(balanceStable() >= RY2, "Not enough stable tokens");
+    
+        allPools.push(pid);
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
 }
@@ -128,10 +124,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function deposit(address owner, uint deltaX, uint deltaY) external override returns (bool) {
         uint preRiskyBal = balanceRisky();
         uint preStableBal = balanceStable();
-        IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY);
+        IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY); // receive tokens
         if(deltaX > 0) require(balanceRisky() >= preRiskyBal + deltaX, "Not enough risky");
         if(deltaY > 0) require(balanceStable() >= preStableBal + deltaY, "Not enough stable");
-
+    
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
         emit Deposited(msg.sender, owner, deltaX, deltaY);
@@ -141,22 +137,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
-        uint preRiskyBal = balanceRisky();
-        uint preStableBal = balanceStable();
-        if(deltaX > 0) {
-            IERC20(risky).safeTransfer(msg.sender, deltaX);
-            require(preRiskyBal - deltaX >= balanceRisky(), "Not enough risky");
-        }
-        if(deltaY > 0) {
-            IERC20(stable).safeTransfer(msg.sender, deltaY);
-            require(preStableBal - deltaY >= balanceStable(), "Not enough stable");
-        }
-        // Update Margin state
         Margin.Data storage mar = margins.fetch(msg.sender);
         margins.withdraw(deltaX, deltaY);
 
-        margins.withdraw(deltaX, deltaY);
-        emit Withdrawn(msg.sender, msg.sender, deltaX, deltaY);
+        if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
+        if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);
+        emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
 
@@ -287,7 +273,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint liquidity = res.liquidity; // global liquidity balance
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
-        uint deltaY = deltaL * res.RY2 / liquidity; // amount of riskless asset
+        uint deltaY = deltaL * res.RY2 / liquidity; // amount of stable asset
         
         // trigger callback before position debt is increased, so liquidity can be removed
         Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
@@ -400,7 +386,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 - deltaXOut; // new reserve1 value.
-        return SwapMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return ReserveMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /// @notice  Fetches a new R1 from a decreased R2.
@@ -408,7 +394,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RY2 = res.RY2 - deltaYOut;
-        return SwapMath.calcRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return ReserveMath.calcRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     // ===== View ===== 
@@ -429,6 +415,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function getPoolId(uint strike, uint sigma, uint time) public view returns(bytes32 pid) {
         pid = keccak256(
             abi.encodePacked(
+                factory,
                 self.time,
                 self.sigma,
                 self.strike
