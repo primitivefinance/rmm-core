@@ -1,20 +1,30 @@
 pragma solidity 0.8.0;
 
 /**
- * @title   Engine TEST contract
+ * @title   Black Scholes Math Lib TEST contract
  * @author  Primitive
  * @dev     ONLY FOR TESTING PURPOSES.  
  */
 
-import "../PrimitiveEngine.sol";
+import "../IPrimitiveEngine.sol";
+import "../libraries/ABDKMath64x64.sol";
+import "../libraries/BlackScholes.sol";
+import "../libraries/Calibration.sol";
+import "../libraries/ReplicationMath.sol";
+import "../libraries/SwapMath.sol";
+import "../libraries/Units.sol";
 
-contract TestEngine is PrimitiveEngine {
+contract TestBlackScholes {
     using Units for *;
     using ReplicationMath for *;
     using BlackScholes for *;
     using CumulativeNormalDistribution for *;
 
-    constructor()  {}
+    IPrimitiveEngine public engine;
+
+    constructor(address engine_)  {
+        engine = IPrimitiveEngine(engine_);
+    }
 
     // ==== Cumulative Normal Distribution Function Library Entry ====
 
@@ -32,18 +42,18 @@ contract TestEngine is PrimitiveEngine {
     // ===== Replication Library Entry =====
 
     function proportionalVol(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = settings[pid];
+        Calibration.Data memory cal = engine.getCalibration(pid);
         return ReplicationMath.getProportionalVolatility(cal.sigma, cal.time);
     }
 
     function tradingFunction(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = settings[pid];
-        Reserve.Data memory res = reserves[pid];
+        Calibration.Data memory cal = engine.getCalibration(pid);
+        Reserve.Data memory res = engine.getReserve(pid);
         return ReplicationMath.getTradingFunction(res.RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     function invariant(bytes32 pid) public view returns (int128) {
-        return getInvariantLast(pid);
+        return engine.getInvariantLast(pid);
     }
 
     // ===== BS Library Entry ====

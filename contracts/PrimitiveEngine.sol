@@ -17,6 +17,8 @@ import "./libraries/SwapMath.sol";
 import "./libraries/Units.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./IPrimitiveFactory.sol";
+
 import "hardhat/console.sol";
 
 interface ICallback {
@@ -55,6 +57,7 @@ contract PrimitiveEngine {
     event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
     event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
 
+    address public immutable factory;
     address public immutable TX1; // always risky asset
     address public immutable TY2; // always riskless asset, TODO: rename vars?
 
@@ -80,11 +83,8 @@ contract PrimitiveEngine {
 
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
-    /// @param  risky asset token address, e.g. WETH
-    /// @param  riskless asset token address, e.g. DAI
-    constructor(address risky, address riskless) {
-        TX1 = risky;
-        TY2 = riskless;
+    constructor() {
+        (factory, TX1, TY2) = IPrimitiveFactory(msg.sender).args(); 
     }
 
     /// @notice Returns the risky token balance of this contract

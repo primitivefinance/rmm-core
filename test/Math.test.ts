@@ -13,15 +13,15 @@ import {
   CreateFunction,
   createEngineFunctions,
 } from './shared/Engine'
-import { primitiveProtocolFixture } from './shared/fixtures'
+import { testEngineFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { std_n_cdf } from './shared/CumulativeNormalDistribution'
-import { IERC20, TestCallee, TestEngine } from '../typechain'
+import { IERC20, TestCallee, TestEngine, TestBlackScholes } from '../typechain'
 const { createFixtureLoader } = waffle
 
 describe('Math', function () {
   // Contracts
-  let engine: TestEngine, callee: TestCallee, TX1: IERC20, TY2: IERC20
+  let engine: TestEngine, callee: TestCallee, TX1: IERC20, TY2: IERC20, bs: TestBlackScholes
   // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
   // Engine Functions
@@ -37,7 +37,9 @@ describe('Math', function () {
 
   beforeEach(async function () {
     // get contracts
-    ;({ engine, callee, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
+    let testEngine, testFactory
+    ;({ TX1, TY2, callee, testEngine, testFactory, bs } = await loadFixture(testEngineFixture))
+    engine = testEngine
     spot = parseWei('1000')
     const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
     calibration = { strike, sigma, time }
@@ -46,6 +48,7 @@ describe('Math', function () {
       TX1,
       TY2,
       engine,
+      bs,
     }))
     // Create pool
     await create(calibration, spot.raw)
