@@ -9,7 +9,7 @@ pragma solidity 0.8.0;
 import "../IPrimitiveFactory.sol";
 import "./TestEngine.sol";
 
-contract PrimitiveFactory is IPrimitiveFactory {
+contract TestFactory is IPrimitiveFactory {
     event EngineCreated(address indexed from, address indexed risky, address indexed riskless, address engine);
 
     address public override owner;

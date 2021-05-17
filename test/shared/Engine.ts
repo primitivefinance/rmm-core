@@ -1,7 +1,7 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, fromMantissa } from './Units'
 import { constants, Contract, Wallet, Transaction, BytesLike, BigNumberish } from 'ethers'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
-import { IERC20, TestCallee, TestEngine } from '../../typechain'
+import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes } from '../../typechain'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -61,11 +61,13 @@ export function createEngineFunctions({
   TX1,
   TY2,
   engine,
+  bs,
 }: {
   target: TestCallee
   TX1: IERC20
   TY2: IERC20
-  engine: TestEngine
+  engine: PrimitiveEngine
+  bs: TestBlackScholes
 }): EngineFunctions {
   const deposit: DepositFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
@@ -84,7 +86,7 @@ export function createEngineFunctions({
   ): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.addLiquidity(pid, nonce, deltaL)
+    return target.addBothFromMargin(pid, target.address, nonce, deltaL)
   }
 
   const swap = async (
@@ -107,7 +109,7 @@ export function createEngineFunctions({
 
   const create: CreateFunction = async (calibration: Calibration, spot: BigNumberish): Promise<Transaction> => {
     // get delta of pool's calibration
-    const delta = await engine.callDelta(calibration, spot)
+    const delta = await bs.callDelta(calibration, spot)
     // set risky reserve to 1 - delta
     const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
     // set riskless reserve using trading function

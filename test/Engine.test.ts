@@ -27,12 +27,12 @@ import {
 } from './shared/Engine'
 import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
-import { IERC20, PrimitiveHouse, TestCallee, TestEngine } from '../typechain'
+import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes } from '../typechain'
 const { createFixtureLoader } = waffle
 
 describe('Primitive Engine', function () {
   // Contracts
-  let engine: TestEngine, callee: TestCallee, house: PrimitiveHouse, TX1: IERC20, TY2: IERC20
+  let engine: PrimitiveEngine, callee: TestCallee, house: PrimitiveHouse, TX1: IERC20, TY2: IERC20, bs: TestBlackScholes
   // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
   // External settings
@@ -62,7 +62,7 @@ describe('Primitive Engine', function () {
 
   beforeEach(async function () {
     // get contracts
-    ;({ engine, callee, house, TX1, TY2 } = await loadFixture(primitiveProtocolFixture))
+    ;({ engine, callee, house, TX1, TY2, bs } = await loadFixture(primitiveProtocolFixture))
     // init external settings
     nonce = 0
     spot = parseWei('1000')
@@ -75,6 +75,7 @@ describe('Primitive Engine', function () {
       TX1,
       TY2,
       engine,
+      bs,
     }))
     // Create pool
     await create(calibration, spot.raw)
