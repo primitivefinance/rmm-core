@@ -1,7 +1,7 @@
 pragma solidity 0.8.0;
 
 import "./IOracle.sol";
-import "../IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/Calibration.sol";
 import "../libraries/Reserve.sol";
 import "../libraries/Units.sol";
@@ -43,7 +43,7 @@ contract Model is ICallback {
     // create a curve in the engine
     engine.create(params, assetPrice);
     // store the pid in state
-    pid = engine.getPoolId(params);
+    pid = engine.getPoolId(strike, sigma, time);
   }
 
   // ===== Model Advancement =====
@@ -88,7 +88,7 @@ contract Model is ICallback {
    }
 
   function getReserves() public view returns (uint, uint) {
-    Reserve.Data memory res = engine.getReserve(pid);
-    return (res.RX1, res.RY2);
+    (uint RX1, uint RY2, , , ) = engine.getReserve(pid);
+    return (RX1, RY2);
   }
 }

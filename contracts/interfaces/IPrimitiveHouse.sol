@@ -1,9 +1,6 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-import "./libraries/Position.sol";
-import "./libraries/Margin.sol";
-
 interface IPrimitiveHouse {
     // init
     function initialize(address engine_, address factory_, uint24 fee_) external;
