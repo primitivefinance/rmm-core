@@ -6,13 +6,14 @@ pragma solidity 0.8.0;
  * @dev     ONLY FOR TESTING PURPOSES.  
  */
 
-import "../IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/ABDKMath64x64.sol";
 import "../libraries/BlackScholes.sol";
 import "../libraries/Calibration.sol";
 import "../libraries/ReplicationMath.sol";
 import "../libraries/SwapMath.sol";
 import "../libraries/Units.sol";
+import "../libraries/Reserve.sol";
 
 contract TestBlackScholes {
     using Units for *;
@@ -42,14 +43,14 @@ contract TestBlackScholes {
     // ===== Replication Library Entry =====
 
     function proportionalVol(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = engine.getCalibration(pid);
-        return ReplicationMath.getProportionalVolatility(cal.sigma, cal.time);
+        (uint strike, uint sigma, uint time) = engine.getCalibration(pid);
+        return ReplicationMath.getProportionalVolatility(sigma, time);
     }
 
     function tradingFunction(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = engine.getCalibration(pid);
-        Reserve.Data memory res = engine.getReserve(pid);
-        return ReplicationMath.getTradingFunction(res.RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+        (uint strike, uint sigma, uint time) = engine.getCalibration(pid);
+        (uint RX1, , uint liquidity, ,) = engine.getReserve(pid);
+        return ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
     }
 
     function invariant(bytes32 pid) public view returns (int128) {

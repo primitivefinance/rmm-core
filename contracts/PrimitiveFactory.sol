@@ -6,7 +6,7 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     Generate PrimitiveEngine contracts
 
-import "./IPrimitiveFactory.sol";
+import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {

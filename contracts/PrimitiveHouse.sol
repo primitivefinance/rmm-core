@@ -2,8 +2,8 @@
 pragma solidity 0.8.0;
 
 import {ICallback} from "./PrimitiveEngine.sol";
-import "./IPrimitiveEngine.sol";
-import "./IPrimitiveHouse.sol";
+import "./interfaces/IPrimitiveEngine.sol";
+import "./interfaces/IPrimitiveHouse.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
