@@ -12,8 +12,12 @@ interface IPrimitiveHouse {
     function withdraw(uint deltaX, uint deltaY) external;
     function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
     function addBothFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) external;
+    function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) external;
+    function repayFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
     // Swap
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) external;
+    function swapXForY(bytes32 pid, uint deltaOut) external;
+    function swapYForX(bytes32 pid, uint deltaOut) external;
     // Lending
     function lend(bytes32 pid, uint nonce, uint deltaL) external;
 }

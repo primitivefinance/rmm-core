@@ -3,20 +3,35 @@ pragma solidity 0.8.0;
 
 import {ICallback} from "./PrimitiveEngine.sol";
 import "./IPrimitiveEngine.sol";
+import "./IPrimitiveHouse.sol";
+import "./libraries/Position.sol";
+import "./libraries/Margin.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import "./libraries/Position.sol";
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
-contract PrimitiveHouse is ICallback {
+contract PrimitiveHouse is ICallback, IPrimitiveHouse {
     using SafeERC20 for IERC20;
+    using Margin for mapping(address => Margin.Data);
+    using Margin for Margin.Data;
+    using Position for mapping(bytes32 => Position.Data);
+    using Position for Position.Data;
 
     address public constant NO_CALLER = address(21);
 
     IPrimitiveEngine public engine;
+
+    IERC20 public TX1;
+    IERC20 public TY2;
     IUniswapV3Factory public uniFactory;
+    IUniswapV3Pool public uniPool;
 
     address public CALLER = NO_CALLER;
     uint private reentrant;
+
+    mapping(address => Margin.Data) public _margins;
+    mapping(bytes32 => Position.Data) public _positions;
 
     constructor() {}
 
@@ -27,6 +42,13 @@ contract PrimitiveHouse is ICallback {
         reentrant = 0;
     }
 
+    modifier useCallerContext() {
+      require(CALLER == NO_CALLER, "CSF"); // Caller set failure
+      CALLER = msg.sender;
+      _;
+      CALLER = NO_CALLER;
+    }
+
     modifier executionLock() {
         require(reentrant == 1, "Not guarded");
         require(CALLER != NO_CALLER, "No caller set");
@@ -34,55 +56,115 @@ contract PrimitiveHouse is ICallback {
         _;
     }
 
-    function initialize(address engine_) public {
+    function initialize(address engine_, address factory_, uint24 fee_) public override {
         require(address(engine) == address(0), "Already initialized");
         engine = IPrimitiveEngine(engine_);
+        TX1 = IERC20(engine.TX1());
+        TY2 = IERC20(engine.TY2());
+        uniFactory = IUniswapV3Factory(factory_); 
+        uniPool = IUniswapV3Pool(uniFactory.getPool(address(TX1), address(TY2), fee_));
+        require(address(uniPool) != address(0), "POOL UNINITIALIZED");
     }
-
 
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
-    function deposit(uint deltaX, uint deltaY) public lock {
-        CALLER = msg.sender;
-        engine.deposit(msg.sender, deltaX, deltaY);
+    function deposit(address owner, uint deltaX, uint deltaY) public override lock useCallerContext {
+        engine.deposit(address(this), deltaX, deltaY);
+
+        // Update Margin state
+        Margin.Data storage mar = _margins.fetch(owner);
+        mar.deposit(deltaX, deltaY);
     }
 
     /**
      * @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
      */
-    function withdraw(uint deltaX, uint deltaY) public lock {
-        CALLER = msg.sender;
+    function withdraw(uint deltaX, uint deltaY) public override lock useCallerContext {
         engine.withdraw(deltaX, deltaY);
+
+        _margins.withdraw(deltaX, deltaY);
+
+        if (deltaX > 0) IERC20(TX1).safeTransfer(CALLER, deltaX);
+        if (deltaY > 0) IERC20(TY2).safeTransfer(CALLER, deltaY);
     }
 
     /**
      * @notice Adds deltaL to global liquidity factor.
      */
-    function addLiquidity(bytes32 pid, uint nonce, uint deltaL) public lock {
-        CALLER = msg.sender;
-        engine.addBoth(pid, msg.sender, nonce, deltaL, false);
+    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
+        bytes32 pid_ = pid;
+        (uint deltaX, uint deltaY) = engine.addBoth(pid_, address(this), 0, deltaL, true);
+
+        _margins.withdraw(deltaX, deltaY);
+        
+        Position.Data storage pos = _positions.fetch(owner, nonce, pid_);
+        pos.addLiquidity(deltaL); // Update position liquidity
     }
 
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) public lock {
-        CALLER = msg.sender;
-        engine.swap(pid, addXRemoveY, deltaOut, maxDeltaIn);
+    /**
+     * @notice Adds deltaL to global liquidity factor using the CALLER TX1 and TY2 balance.
+     */
+    function addBothFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
+        engine.addBoth(pid, address(this), 0, deltaL, false);
+        bytes32 pid_ = pid;
+        Position.Data storage pos = _positions.fetch(owner, nonce, pid_);
+        pos.addLiquidity(deltaL); // Update position liquidity
     }
+
+    function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+        CALLER = msg.sender;
+        engine.repay(pid, owner, nonce, deltaL, false);
+    }
+
+    function repayFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+        CALLER = msg.sender;
+        (uint deltaX, uint deltaY) = engine.repay(pid, owner, nonce, deltaL, true);
+
+        _margins.withdraw(deltaX, deltaY);
+
+        Position.Data storage pos = _positions.fetch(owner, nonce, pid);
+        pos.addLiquidity(deltaL); // Update position liquidity
+    }
+
     
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
-    function lend(bytes32 pid, uint nonce, uint deltaL) public lock {
+    function lend(bytes32 pid, uint nonce, uint deltaL) public override lock useCallerContext {
+        engine.lend(pid, nonce, deltaL);
+        
+        // cant use callback, must maintain msg.sender
+        if (deltaL > 0) {
+            // increment position float factor by `deltaL`
+            _positions.lend(nonce, pid, deltaL);
+        } 
+    }
+
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
         CALLER = msg.sender;
-        engine.lend(msg.sender, pid, nonce, deltaL);
+        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax);
+    }
+
+    function swapXForY(bytes32 pid, uint deltaOut) public override lock {
+        CALLER = msg.sender;
+        engine.swap(pid, true, deltaOut, type(uint256).max);
+    }
+
+    function swapYForX(bytes32 pid, uint deltaOut) public override lock {
+        CALLER = msg.sender;
+        engine.swap(pid, false, deltaOut, type(uint256).max);
     }
     
     // ===== Callback Implementations =====
-    function addXYCallback(uint deltaX, uint deltaY) public override executionLock {
-        IERC20 TX1 = IERC20(engine.TX1());
-        IERC20 TY2 = IERC20(engine.TY2());
-        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+    function depositCallback(uint deltaX, uint deltaY) public override executionLock {
+        if (deltaX > 0) IERC20(TX1).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if (deltaY > 0) IERC20(TY2).safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
+    function addBothFromExternalCallback(uint deltaX, uint deltaY) public override executionLock {
+        if(deltaX > 0) IERC20(TX1).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(TY2).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function removeXYCallback(uint deltaX, uint deltaY) public override executionLock {
@@ -92,29 +174,12 @@ contract PrimitiveHouse is ICallback {
         if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function depositCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
-    }
-
     function swapCallback(uint deltaX, uint deltaY) public override {
-        addXYCallback(deltaX, deltaY);
     }
 
-    function borrowCallback(Position.Data calldata pos, uint deltaL) public override returns (uint) {
-      return uint(0);
+    function borrowCallback(Position.Data calldata pos, uint deltaL) public override {
     }
 
-    function repayCallback(bytes32 pid, uint deltaL) public override {
-        addXYCallback(deltaL, uint(0));
+    function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) public override {
     }
-
-
-    function withdrawCallback(uint deltaX, uint deltaY) public override executionLock returns (address) {
-        return CALLER;
-    }
-
-    function getCaller() public view override returns (address) {
-        return CALLER;
-    }
-
 }
