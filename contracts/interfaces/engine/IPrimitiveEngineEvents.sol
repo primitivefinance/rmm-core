@@ -6,7 +6,7 @@ interface IPrimitiveEngineEvents {
     
     // ===== Margin ====
     event Deposited(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Depost margin
-    event Withdrawn(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Withdraw margin
+    event Withdrawn(address indexed from, uint deltaX, uint deltaY); // Withdraw margin
     
     // ===== Liquidity =====
     event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Add liq to curve
