@@ -112,16 +112,21 @@ export const primitiveProtocolFixture: Fixture<{
     },
     []
   )) as PrimitiveFactory
+
   await factory.create(TX1.address, TY2.address)
+
   const engine = new ethers.Contract(
     await factory.getEngine(TX1.address, TY2.address),
     ENGINE_ABI,
     wallet
   ) as PrimitiveEngine
+
   const fee = 3000
+
   await uniFactory.createPool(TX1.address, TY2.address, fee)
   await house.initialize(engine.address, uniFactory.address, fee)
   await callee.initialize(engine.address, uniFactory.address, fee)
+
   const bs = (await waffle.deployContract(
     wallet,
     {
