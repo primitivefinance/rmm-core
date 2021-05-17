@@ -4,13 +4,11 @@ interface IPrimitiveEngineView {
     // ===== View =====
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
     function getInvariantLast(bytes32 pid) external view returns (int128);
-    function getBX1() external view returns (uint);
-    function getBY2() external view returns (uint);
 
     // ===== Immutables =====
     function factory() external view returns (address);
-    function TX1() external view returns (address);
-    function TY2() external view returns (address);
+    function risky() external view returns (address);
+    function stable() external view returns (address);
 
     // ===== Pool States =====
     function allPools() external view returns (address[] calldata);

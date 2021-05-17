@@ -15,12 +15,13 @@ import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/SwapMath.sol";
 import "./libraries/Units.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./libraries/Transfers.sol";
 
-import "./interfaces/callback/IPrimitiveLendingCallbacks";
-import "./interfaces/callback/IPrimitiveLiquidityCallbacks";
-import "./interfaces/callback/IPrimitiveMarginCallbacks";
+import "./interfaces/callback/IPrimitiveLendingCallback";
+import "./interfaces/callback/IPrimitiveLiquidityCallback";
+import "./interfaces/callback/IPrimitiveMarginCallback";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
+import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
@@ -38,14 +39,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Margin for Margin.Data;
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
-    using SafeERC20 for IERC20;
+    using Transfers for IERC20;
 
     uint public constant _NO_NONCE = type(uint).max;
     bytes32 public constant _NO_POOL = bytes32(0);
 
     address public immutable override factory;
-    address public immutable override TX1; // always risky asset
-    address public immutable override TY2; // always riskless asset, TODO: rename vars?
+    address public immutable override risky;
+    address public immutable override stable;
 
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
@@ -70,41 +71,39 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
     constructor() {
-        (factory, TX1, TY2) = IPrimitiveFactory(msg.sender).args(); 
+        (factory, risky, stable) = IPrimitiveFactory(msg.sender).args(); 
     }
 
     /// @notice Returns the risky token balance of this contract
-    function getBX1() public view returns (uint) {
-        return IERC20(TX1).balanceOf(address(this));
+    function balanceRisky() private view returns (uint) {
+        return IERC20(risky).balanceOf(address(this));
     }
 
     /// @notice Returns the riskless token balance of this contract
-    function getBY2() public view returns (uint) {
-        return IERC20(TY2).balanceOf(address(this));
+    function balanceStable() private view returns (uint) {
+        return IERC20(stable).balanceOf(address(this));
     }
 
-    /// @notice Generates a new curve with parameters `self`
-    /// @param  self The calibration of the curve incl. params time, sigma, and strike.
-    /// @param  assetPrice The spot price of the risky token in riskless units.
-    function create(Calibration.Data memory self, uint assetPrice) external override returns(bytes32 pid) {
-        require(self.time > 0, "Time is 0");
-        require(self.sigma > 0, "Sigma is 0");
-        require(self.strike > 0, "Strike is 0");
+    /// @inheritdoc IPrimitiveEngineActions
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) external override returns(bytes32 pid) {
+        require(time > 0, "Time is 0");
+        require(sigma > 0, "Sigma is 0");
+        require(strike > 0, "Strike is 0");
         // fetch the keccak hash of the parameters
         pid = getPoolId(self);
         require(settings[pid].time == 0, "Already created");
         // set the pid for the calibration settings
         settings[pid] = Calibration.Data({
-            strike: self.strike,
-            sigma: self.sigma,
-            time: self.time
+            strike: strike,
+            sigma: sigma,
+            time: time
         });
         // Call Delta = CDF(d1)
-        int128 delta = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
+        int128 delta = BlackScholes.calculateCallDelta(riskyPrice, strike, sigma, time);
         // Set x = 1 - delta
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
         // Set y = F(x)
-        uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, self.strike, self.sigma, self.time).parseUnits();
+        uint RY2 = SwapMath.calcRY2WithRX1(RX1, INIT_SUPPLY, strike, sigma, time).parseUnits();
         // initialize the reserves to have 1e18 shares of liquidity
         reserves[pid] = Reserve.Data({
             RX1: RX1, // risky token balance
@@ -117,21 +116,21 @@ contract PrimitiveEngine is IPrimitiveEngine {
         allPools.push(pid);
 
         // check that balances were sent to contract to initialize
-        require(getBX1() >= RX1, "Not enough risky tokens");
-        require(getBY2() >= RY2, "Not enough riskless tokens");
+        require(balanceRisky() >= RX1, "Not enough risky tokens");
+        require(balanceStable() >= RY2, "Not enough riskless tokens");
         emit Update(RX1, RY2, block.number);
         emit Create(msg.sender, pid, self);
 }
 
     // ===== Margin =====
 
-    /// @notice  Adds X and Y to internal balance of `owner` at position Id of `nonce`.
+    /// @inheritdoc IPrimitiveEngineActions
     function deposit(address owner, uint deltaX, uint deltaY) external override returns (bool) {
-        uint preBX1 = getBX1();
-        uint preBY2 = getBY2();
-        IPrimitiveMarginCallbacks(msg.sender).depositCallback(deltaX, deltaY);
-        if(deltaX > 0) require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
-        if(deltaY > 0) require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
+        uint preRiskyBal = balanceRisky();
+        uint preStableBal = balanceStable();
+        IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY);
+        if(deltaX > 0) require(balanceRisky() >= preRiskyBal + deltaX, "Not enough risky");
+        if(deltaY > 0) require(balanceStable() >= preStableBal + deltaY, "Not enough stable");
 
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
@@ -140,17 +139,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     
-    /// @notice  Removes X and Y from internal balance of `msg.sender`.
+    /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
-        uint preBX1 = getBX1();
-        uint preBY2 = getBY2();
+        uint preRiskyBal = balanceRisky();
+        uint preStableBal = balanceStable();
         if(deltaX > 0) {
-            IERC20(TX1).safeTransfer(msg.sender, deltaX);
-            require(preBX1 - deltaX >= getBX1(), "Not enough TX1");
+            IERC20(risky).safeTransfer(msg.sender, deltaX);
+            require(preRiskyBal - deltaX >= balanceRisky(), "Not enough risky");
         }
         if(deltaY > 0) {
-            IERC20(TY2).safeTransfer(msg.sender, deltaY);
-            require(preBY2 - deltaY >= getBY2(), "Not enough TY2");
+            IERC20(stable).safeTransfer(msg.sender, deltaY);
+            require(preStableBal - deltaY >= balanceStable(), "Not enough stable");
         }
         // Update Margin state
         Margin.Data storage mar = margins.fetch(msg.sender);
@@ -163,8 +162,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     // ===== Liquidity =====
 
-    /// @notice  Adds X to RX1 and Y to RY2. Adds `deltaL` to liquidity, owned by `owner`.
-    function addBoth(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
+    /// @inheritdoc IPrimitiveEngineActions
+    function allocate(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not initialized");
@@ -187,11 +186,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if(isInternal) {
             margins.withdraw(deltaX, deltaY);
         } else {
-            uint preBX1 = getBX1();
-            uint preBY2 = getBY2();
-            IPrimitiveLiquidityCallbacks(msg.sender).addBothFromExternalCallback(deltaX, deltaY);
-            require(getBX1() >= preBX1 + deltaX, "Not enough TX1");
-            require(getBY2() >= preBY2 + deltaY, "Not enough TY2");
+            uint preRiskyBal = balanceRisky();
+            uint preStableBal = balanceStable();
+            IPrimitiveLiquidityCallback(msg.sender).addBothFromExternalCallback(deltaX, deltaY);
+            require(balanceRisky() >= preRiskyBal + deltaX, "Not enough risky");
+            require(balanceStable() >= preStableBal + deltaY, "Not enough stable");
         }
 
         bytes32 pid_ = pid;
@@ -207,8 +206,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     
-    /// @notice  Removes X from RX1 and Y from RY2. Removes `deltaL` from liquidity, owned by `msg.sender`.
-    function removeBoth(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
+    /// @inheritdoc IPrimitiveEngineActions
+    function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not initialized");
@@ -236,13 +235,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Margin.Data storage mar = margins.fetch(msg.sender);
             mar.deposit(deltaX, deltaY);
         } else {
-            uint preBX1 = getBX1();
-            uint preBY2 = getBY2();
-            IERC20(TX1).safeTransfer(msg.sender, deltaX);
-            IERC20(TY2).safeTransfer(msg.sender, deltaY);
-            IPrimitiveLiquidityCallbacks(msg.sender).removeXYCallback(deltaX, deltaY);
-            require(getBX1() >= preBX1 - deltaX, "Not enough TX1");
-            require(getBY2() >= preBY2 - deltaY, "Not enough TY2");
+            uint preRiskyBal = balanceRisky();
+            uint preStableBal = balanceStable();
+            IERC20(risky).safeTransfer(msg.sender, deltaX);
+            IERC20(stable).safeTransfer(msg.sender, deltaY);
+            IPrimitiveLiquidityCallback(msg.sender).removeXYCallback(deltaX, deltaY);
+            require(balanceRisky() >= preRiskyBal - deltaX, "Not enough risky");
+            require(balanceStable() >= preStableBal - deltaY, "Not enough stable");
         }
         
         positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
@@ -255,14 +254,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     // ===== Lending =====
 
-    event Loaned(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
-    event Claimed(address indexed from, bytes32 indexed pid, uint indexed nonce, uint deltaL);
-    event Borrowed(address indexed recipient, bytes32 indexed pid, uint indexed nonce, uint deltaL, uint maxPremium);
-    event Repaid(address indexed owner, bytes32 indexed pid, uint indexed nonce, uint deltaL);
-
-    /// @dev Increase `msg.sender` float factor by `deltaL`, marking `deltaL` LP shares
-    /// as available for `borrow`.  Position must satisfy pos_.liquidity >= pos_.float.
-    /// As a side effect, `lend` will modify global reserve `float` by the same amount.
+    /// @inheritdoc IPrimitiveEngineActions
     function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) override returns (uint) {
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
@@ -275,7 +267,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return deltaL;
     }
 
-    /// @notice Reduce a `msg.sender`s float, taking them off the borrow market
+    /// @inheritdoc IPrimitiveEngineActions
     function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) override returns (uint) {
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
@@ -288,9 +280,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return deltaL;
     }
 
-    /// @dev Decrease global float factor by `deltaL`, and increase `recipient` 
-    /// debt factor by `deltaL`.  Global debt and float must satisfy
-    /// liquidity >= debt + float.
+    /// @inheritdoc IPrimitiveEngineActions
     function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid, nonce) override returns (uint) {
         Reserve.Data storage res = reserves[pid];
         require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
@@ -308,13 +298,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     
-    /// @notice Decreases a position's `loan` debt by decreasing its liquidity. Increases float.
+    /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
     function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
         if (isInternal) {
-            (deltaX, deltaY) = addBoth(pid, owner, nonce, deltaL, true);
+            (deltaX, deltaY) = allocate(pid, owner, nonce, deltaL, true);
         } else {
-            IPrimitiveLendingCallbacks(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
+            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
         }
 
         Reserve.Data storage res = reserves[pid];
@@ -325,8 +315,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Swaps =====
 
     
-    /// @notice  Swap between risky and riskless assets
-    /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.///         Else, we request X out, and must add Y to the pool's reserves.
+    /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
+    ///         Else, we request X out, and must add Y to the pool's reserves.
+    /// @inheritdoc IPrimitiveEngineActions
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override returns (uint deltaIn) {
         // Fetch internal balances of owner address
         Margin.Data memory margin_ = getMargin(msg.sender);
@@ -363,10 +354,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if(margin >= deltaIn) {
             { // avoids stack too deep errors, sending the asset out that we are removing
             uint deltaOut_ = deltaOut;
-            address token = xToY ? TY2 : TX1;
-            uint preBalance = xToY ? getBY2() : getBX1();
+            address token = xToY ? stable : risky;
+            uint preBalance = xToY ? balanceStable() : balanceRisky();
             IERC20(token).safeTransfer(to, deltaOut_);
-            uint postBalance = xToY ? getBY2() : getBX1();
+            uint postBalance = xToY ? balanceStable() : balanceRisky();
             require(postBalance >= preBalance - deltaOut_, "Sent too much tokens");
             }
 
@@ -379,17 +370,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
             {
             uint deltaOut_ = deltaOut;
             uint deltaIn_ = deltaIn;
-            uint preBX1 = getBX1();
-            uint preBY2 = getBY2();
-            address token = xToY ? TY2 : TX1;
+            uint preRiskyBal = balanceRisky();
+            uint preStableBal = balanceStable();
+            address token = xToY ? stable : risky;
             IERC20(token).safeTransfer(to, deltaOut_);
             IPrimitiveSwapCallback(msg.sender).swapCallback(xToY ? deltaIn_ : 0, xToY ? 0 : deltaIn_);
-            uint postBX1 = getBX1();
-            uint postBY2 = getBY2();
+            uint postBX1 = balanceRisky();
+            uint postBY2 = balanceStable();
             uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
             uint deltaY_ = xToY ? deltaOut_ : deltaIn_;
-            require(postBX1 >= (xToY ? preBX1 + deltaX_ : preBX1 - deltaX_), "Not enough TX1");
-            require(postBY2 >= (xToY ? preBY2 - deltaY_ : preBY2 + deltaY_), "Not enough TY2");
+            require(postBX1 >= (xToY ? preRiskyBal + deltaX_ : preRiskyBal - deltaX_), "Not enough risky");
+            require(postBY2 >= (xToY ? preStableBal - deltaY_ : preStableBal + deltaY_), "Not enough stable");
             }
         }
         }
