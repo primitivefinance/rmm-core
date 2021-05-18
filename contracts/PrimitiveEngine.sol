@@ -105,8 +105,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             debt: 0 // the LP shares borrowed from the float
         });
 
-        uint preRiskyBal = balanceRisky();
-        uint preStableBal = balanceStable();
+        uint balanceX = balanceRisky();
+        uint balanceY = balanceStable();
         IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
         require(balanceRisky() >= RX1, "Not enough risky tokens");
         require(balanceStable() >= RY2, "Not enough stable tokens");
@@ -187,40 +187,37 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+        require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
-        uint liquidity = res.liquidity; // gas savings
-        require(liquidity > 0, "Not initialized");
 
         uint reserveX;
         uint reserveY;
 
         { // scope for calculting invariants
-        int128 invariant = invariantOf(pid);
-        bytes32 pid_ = pid;
-        uint RX1 = res.RX1;
-        uint RY2 = res.RY2;
+        (uint RX1, uint RY2, uint liquidity) = (res.RX1, res.RY2, res.liquidity);
+        require(liquidity >= deltaL, "Above max burn");
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX * deltaY > 0, "Deltas are 0");
         reserveX = RX1 - deltaX;
         reserveY = RY2 - deltaY;
-        int128 postInvariant = calcInvariant(pid_, reserveX, reserveY, liquidity);
+        int128 invariant = invariantOf(pid);
+        int128 postInvariant = calcInvariant(pid, reserveX, reserveY, liquidity);
         require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Updated state
-        require(res.liquidity >= deltaL, "Above max burn");
         if(isInternal) {
             Margin.Data storage mar = margins.fetch(msg.sender);
             mar.deposit(deltaX, deltaY);
         } else {
-            uint preRiskyBal = balanceRisky();
-            uint preStableBal = balanceStable();
+            uint balanceX = balanceRisky();
+            uint balanceY = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, deltaX);
             IERC20(stable).safeTransfer(msg.sender, deltaY);
             IPrimitiveLiquidityCallback(msg.sender).removeCallback(deltaX, deltaY);
-            require(balanceRisky() >= preRiskyBal - deltaX, "Not enough risky");
-            require(balanceStable() >= preStableBal - deltaY, "Not enough stable");
+            require(balanceRisky() >= balanceX - deltaX, "Not enough risky");
+            require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
         
         positions.remove(factory, pid, deltaL); // Updated position liqudiity
@@ -228,7 +225,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         
         emit Updated(pid, reserveX, reserveY, block.number);
         emit Removed(msg.sender, deltaX, deltaY);
-        return (deltaX, deltaY);
     }
 
     /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
@@ -286,8 +282,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             {
             uint deltaOut_ = deltaOut;
             uint deltaIn_ = deltaIn;
-            uint preRiskyBal = balanceRisky();
-            uint preStableBal = balanceStable();
+            uint balanceX = balanceRisky();
+            uint balanceY = balanceStable();
             address token = xToY ? stable : risky;
             IERC20(token).safeTransfer(to, deltaOut_);
             IPrimitiveSwapCallback(msg.sender).swapCallback(xToY ? deltaIn_ : 0, xToY ? 0 : deltaIn_);
@@ -295,8 +291,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint postBY2 = balanceStable();
             uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
             uint deltaY_ = xToY ? deltaOut_ : deltaIn_;
-            require(postBX1 >= (xToY ? preRiskyBal + deltaX_ : preRiskyBal - deltaX_), "Not enough risky");
-            require(postBY2 >= (xToY ? preStableBal - deltaY_ : preStableBal + deltaY_), "Not enough stable");
+            require(postBX1 >= (xToY ? balanceX + deltaX_ : balanceX - deltaX_), "Not enough risky");
+            require(postBY2 >= (xToY ? balanceY - deltaY_ : balanceY + deltaY_), "Not enough stable");
             }
         }
         }
