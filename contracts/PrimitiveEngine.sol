@@ -17,10 +17,11 @@ import "./libraries/ReserveMath.sol";
 import "./libraries/Units.sol";
 import "./libraries/Transfers.sol";
 
-import "./interfaces/callback/IPrimitiveLendingCallback";
-import "./interfaces/callback/IPrimitiveLiquidityCallback";
-import "./interfaces/callback/IPrimitiveMarginCallback";
+import "./interfaces/callback/IPrimitiveLendingCallback.sol";
+import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
+import "./interfaces/callback/IPrimitiveMarginCallback.sol";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
+import "./interfaces/callback/IPrimitiveCreateCallback.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
@@ -51,17 +52,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
-    modifier lock(bytes32 pid, uint nonce) {
+    modifier lock(bytes32 pid) {
         require(_POOL_ID == _NO_POOL, "Pid set");
-        require(_NONCE == _NO_NONCE, "Nonce set");
-        _NONCE = nonce;
         _POOL_ID = pid;
         _;
-        _NONCE = _NO_NONCE;
         _POOL_ID = _NO_POOL;
     }
 
-    bytes32[] public override allPools; // each `pid` is pushed to this array on `create()` calls
+    bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
 
     mapping(bytes32 => Calibration.Data) public override settings;
     mapping(address => Margin.Data) public override margins;
@@ -114,19 +112,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(balanceStable() >= RY2, "Not enough stable tokens");
     
         allPools.push(pid);
-        emit Update(RX1, RY2, block.number);
-        emit Create(msg.sender, pid, self);
+        emit Updated(pid, RX1, RY2, block.number);
+        emit Create(msg.sender, pid, strike, sigma, time);
 }
 
     // ===== Margin =====
 
     /// @inheritdoc IPrimitiveEngineActions
     function deposit(address owner, uint deltaX, uint deltaY) external override returns (bool) {
-        uint preRiskyBal = balanceRisky();
-        uint preStableBal = balanceStable();
+        uint balanceX = balanceRisky();
+        uint balanceY = balanceStable();
         IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY); // receive tokens
-        if(deltaX > 0) require(balanceRisky() >= preRiskyBal + deltaX, "Not enough risky");
-        if(deltaY > 0) require(balanceStable() >= preStableBal + deltaY, "Not enough stable");
+        if(deltaX > 0) require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
+        if(deltaY > 0) require(balanceStable() >= balanceY + deltaY, "Not enough stable");
     
         Margin.Data storage mar = margins.fetch(owner);
         mar.deposit(deltaX, deltaY);
@@ -149,73 +147,68 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Liquidity =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function allocate(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
+    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin) public lock(pid) override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
-        uint liquidity = res.liquidity; // gas savings
+        (uint liquidity, uint RX1, uint RY2) = (res.liquidity, res.RX1, res.RY2);
         require(liquidity > 0, "Not initialized");
 
-        uint postRX1;
-        uint postRY2;
-        { // scope for RX1 and RY2, avoids stack too deep errors
-        (uint RX1, uint RY2) = (res.RX1, res.RY2);
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
-        postRX1 = RX1 + deltaX;
-        postRY2 = RY2 + deltaY;
+        require(deltaX * deltaY > 0, "Deltas are 0");
+        uint reserveX = RX1 + deltaX;
+        uint reserveY = RY2 + deltaY;
+
+        if(fromMargin) {
+            margins.withdraw(deltaX, deltaY); // uses `msg.sender` margin account
+        } else {
+            uint balanceX = balanceRisky();
+            uint balanceY = balanceStable();
+            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(deltaX, deltaY);
+            require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
+            require(balanceStable() >= balanceY + deltaY, "Not enough stable");
+        }
+
         bytes32 pid_ = pid;
-        int128 preInvariant = getInvariantLast(pid_);
-        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
+        Position.Data storage pos = positions.fetch(factory, owner, pid_);
+        pos.allocate(deltaL);
+
+        { // scope for invariant checks, avoids stack too deep errors
+        bytes32 pid_ = pid;
+        int128 preInvariant = invariantOf(pid_);
+        int128 postInvariant = calcInvariant(pid_, reserveX, reserveY, liquidity);
         require(postInvariant.parseUnits() >= preInvariant.parseUnits(), "Invalid invariant");
         }
 
-        if(isInternal) {
-            margins.withdraw(deltaX, deltaY);
-        } else {
-            uint preRiskyBal = balanceRisky();
-            uint preStableBal = balanceStable();
-            IPrimitiveLiquidityCallback(msg.sender).addBothFromExternalCallback(deltaX, deltaY);
-            require(balanceRisky() >= preRiskyBal + deltaX, "Not enough risky");
-            require(balanceStable() >= preStableBal + deltaY, "Not enough stable");
-        }
-
-        bytes32 pid_ = pid;
-        Position.Data storage pos = positions.fetch(owner, nonce, pid_);
-        pos.addLiquidity(deltaL); // Update position liquidity
-
-        // Commit state updates
-        res.mint(deltaX, deltaY, deltaL);
-
-        emit Update(postRX1, postRY2, block.number);
-        emit AddedBoth(msg.sender, nonce, deltaX, deltaY);
-        return (deltaX, deltaY);
+        res.allocate(deltaX, deltaY, deltaL);
+        emit Updated(pid, reserveX, reserveY, block.number);
+        emit Allocated(msg.sender, deltaX, deltaY);
     }
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         uint liquidity = res.liquidity; // gas savings
         require(liquidity > 0, "Not initialized");
 
-        uint postRX1;
-        uint postRY2;
+        uint reserveX;
+        uint reserveY;
 
         { // scope for calculting invariants
-        int128 invariant = getInvariantLast(pid);
+        int128 invariant = invariantOf(pid);
         bytes32 pid_ = pid;
         uint RX1 = res.RX1;
         uint RY2 = res.RY2;
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
-        require(deltaX > 0 && deltaY > 0, "Deltas are 0");
-        postRX1 = RX1 - deltaX;
-        postRY2 = RY2 - deltaY;
-        int128 postInvariant = calcInvariant(pid_, postRX1, postRY2, liquidity);
+        require(deltaX * deltaY > 0, "Deltas are 0");
+        reserveX = RX1 - deltaX;
+        reserveY = RY2 - deltaY;
+        int128 postInvariant = calcInvariant(pid_, reserveX, reserveY, liquidity);
         require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
-        // Update state
+        // Updated state
         require(res.liquidity >= deltaL, "Above max burn");
         if(isInternal) {
             Margin.Data storage mar = margins.fetch(msg.sender);
@@ -225,112 +218,49 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint preStableBal = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, deltaX);
             IERC20(stable).safeTransfer(msg.sender, deltaY);
-            IPrimitiveLiquidityCallback(msg.sender).removeXYCallback(deltaX, deltaY);
+            IPrimitiveLiquidityCallback(msg.sender).removeCallback(deltaX, deltaY);
             require(balanceRisky() >= preRiskyBal - deltaX, "Not enough risky");
             require(balanceStable() >= preStableBal - deltaY, "Not enough stable");
         }
         
-        positions.removeLiquidity(nonce, pid, deltaL); // Update position liqudiity
-        res.burn(deltaX, deltaY, deltaL);
+        positions.remove(factory, pid, deltaL); // Updated position liqudiity
+        res.remove(deltaX, deltaY, deltaL);
         
-        emit Update(postRX1, postRY2, block.number);
-        emit RemovedBoth(msg.sender, nonce, deltaX, deltaY);
+        emit Updated(pid, reserveX, reserveY, block.number);
+        emit Removed(msg.sender, deltaX, deltaY);
         return (deltaX, deltaY);
     }
 
-    // ===== Lending =====
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) override returns (uint) {
-        if (deltaL > 0) {
-            // increment position float factor by `deltaL`
-            positions.lend(nonce, pid, deltaL);
-        } 
-
-        Reserve.Data storage res = reserves[pid];
-        res.addFloat(deltaL); // update global float
-        emit Loaned(msg.sender, pid, nonce, deltaL);
-        return deltaL;
-    }
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid, nonce) override returns (uint) {
-        if (deltaL > 0) {
-            // increment position float factor by `deltaL`
-            positions.claim(nonce, pid, deltaL);
-        }
-
-        Reserve.Data storage res = reserves[pid];
-        res.removeFloat(deltaL); // update global float
-        emit Claimed(msg.sender, pid, nonce, deltaL);
-        return deltaL;
-    }
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid, nonce) override returns (uint) {
-        Reserve.Data storage res = reserves[pid];
-        require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
-
-        uint liquidity = res.liquidity; // global liquidity balance
-        uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
-        uint deltaY = deltaL * res.RY2 / liquidity; // amount of stable asset
-        
-        // trigger callback before position debt is increased, so liquidity can be removed
-        Position.Data storage pos = positions.borrow(nonce, pid, deltaL); // increase liquidity + debt
-        // fails if risky asset balance is less than borrowed `deltaL`
-        res.borrowFloat(deltaL);
-        emit Borrowed(recipient, pid, nonce, deltaL, maxPremium);
-        return deltaL;
-    }
-
-    
-    /// @inheritdoc IPrimitiveEngineActions
-    /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid, nonce) override returns (uint deltaX, uint deltaY) {
-        if (isInternal) {
-            (deltaX, deltaY) = allocate(pid, owner, nonce, deltaL, true);
-        } else {
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
-        }
-
-        Reserve.Data storage res = reserves[pid];
-        res.addFloat(deltaL);
-        emit Repaid(owner, pid, nonce, deltaL);
-    }
-
-    // ===== Swaps =====
-
-    
     /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
     ///         Else, we request X out, and must add Y to the pool's reserves.
     /// @inheritdoc IPrimitiveEngineActions
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override returns (uint deltaIn) {
         // Fetch internal balances of owner address
-        Margin.Data memory margin_ = getMargin(msg.sender);
+        Margin.Data memory margin_ = margins.fetch(msg.sender);
 
         // Fetch the global reserves for the `pid` curve
         Reserve.Data storage res = reserves[pid];
-        int128 invariant = getInvariantLast(pid); //gas savings
+        int128 invariant = invariantOf(pid); //gas savings
         (uint RX1, uint RY2) = (res.RX1, res.RY2);
 
-        uint postRX1;
-        uint postRY2;
+        uint reserveX;
+        uint reserveY;
         {
             if(addXRemoveY) {
-                int128 nextRX1 = calcRX1WithYOut(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
-                postRX1 = nextRX1.parseUnits();
-                postRY2 = RY2 - deltaOut;
-                deltaIn =  postRX1 > RX1 ? postRX1 - RX1 : RX1 - postRX1; // the diff between new X and current X is the deltaIn
+                int128 nextRX1 = getDeltaInWithStableOut(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
+                reserveX = nextRX1.parseUnits();
+                reserveY = RY2 - deltaOut;
+                deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
             } else {
-                int128 nextRY2 = calcRY2WithXOut(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-                postRX1 = RX1 - deltaOut;
-                postRY2 = invariant.add(nextRY2).parseUnits();
-                deltaIn =  postRY2 > RY2 ? postRY2 - RY2 : RY2 - postRY2; // the diff between new Y and current Y is the deltaIn
+                int128 nextRY2 = getDeltaInWithRiskyOut(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
+                reserveX = RX1 - deltaOut;
+                reserveY = invariant.add(nextRY2).parseUnits();
+                deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
             }
         }
 
         require(deltaInMax >= deltaIn, "Too expensive");
-        int128 postInvariant = calcInvariant(pid, postRX1, postRY2, res.liquidity);
+        int128 postInvariant = calcInvariant(pid, reserveX, reserveY, res.liquidity);
         require(postInvariant.parseUnits() >= invariant.parseUnits(), "Invalid invariant");
 
         {// avoids stack too deep errors
@@ -374,51 +304,112 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 pid_ = pid;
         uint deltaOut_ = deltaOut;
         res.swap(addXRemoveY, deltaIn, deltaOut);
-        emit Update(postRX1, postRY2, block.number);
+        emit Updated(pid, reserveX, reserveY, block.number);
         emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
+    }
+
+
+    // ===== Lending =====
+
+    /// @inheritdoc IPrimitiveEngineActions
+    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (uint) {
+        if (deltaL > 0) {
+            // increment position float factor by `deltaL`
+            positions.lend(factory, pid, deltaL);
+        } 
+
+        Reserve.Data storage res = reserves[pid];
+        res.addFloat(deltaL); // update global float
+        emit Loaned(msg.sender, pid, deltaL);
+        return deltaL;
+    }
+
+    /// @inheritdoc IPrimitiveEngineActions
+    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (uint) {
+        if (deltaL > 0) {
+            // increment position float factor by `deltaL`
+            positions.claim(factory, pid, deltaL);
+        }
+
+        Reserve.Data storage res = reserves[pid];
+        res.removeFloat(deltaL); // update global float
+        emit Claimed(msg.sender, pid, deltaL);
+        return deltaL;
+    }
+
+    /// @inheritdoc IPrimitiveEngineActions
+    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid) override returns (uint) {
+        Reserve.Data storage res = reserves[pid];
+        require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
+
+        uint liquidity = res.liquidity; // global liquidity balance
+        uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
+        uint deltaY = deltaL * res.RY2 / liquidity; // amount of stable asset
+        
+        // trigger callback before position debt is increased, so liquidity can be removed
+        Position.Data storage pos = positions.borrow(factory, pid, deltaL); // increase liquidity + debt
+        // fails if risky asset balance is less than borrowed `deltaL`
+        res.borrowFloat(deltaL);
+        emit Borrowed(recipient, pid, deltaL, maxPremium);
+        return deltaL;
+    }
+
+    
+    /// @inheritdoc IPrimitiveEngineActions
+    /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
+    function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+        if (isInternal) {
+            (deltaX, deltaY) = allocate(pid, owner, deltaL, true);
+        } else {
+            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
+        }
+
+        Reserve.Data storage res = reserves[pid];
+        res.addFloat(deltaL);
+        emit Repaid(owner, pid, deltaL);
     }
 
     // ===== Swap and Liquidity Math =====
 
     
     /// @notice  Fetches a new R2 from a decreased R1.
-    function calcRY2WithXOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
+    function getDeltaInWithRiskyOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 - deltaXOut; // new reserve1 value.
-        return ReserveMath.calcRY2WithRX1(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return ReserveMath.reserveStable(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /// @notice  Fetches a new R1 from a decreased R2.
-    function calcRX1WithYOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
+    function getDeltaInWithStableOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RY2 = res.RY2 - deltaYOut;
-        return ReserveMath.calcRX1WithRY2(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        return ReserveMath.reserveRisky(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
     }
 
     // ===== View ===== 
 
-    /// @notice Calculates the invariant for `postRX1` and `postRY2` reserve values
-    function calcInvariant(bytes32 pid, uint postRX1, uint postRY2, uint postLiquidity) public view override returns (int128 invariant) {
+    /// @notice Calculates the invariant for `reserveX` and `reserveY` reserve values
+    function calcInvariant(bytes32 pid, uint reserveX, uint reserveY, uint postLiquidity) public view override returns (int128 invariant) {
         Calibration.Data memory cal = settings[pid];
-        invariant = ReplicationMath.calcInvariant(postRX1, postRY2, postLiquidity, cal.strike, cal.sigma, cal.time);
+        invariant = ReplicationMath.calcInvariant(reserveX, reserveY, postLiquidity, cal.strike, cal.sigma, cal.time);
     }
 
     /// @notice Calculates the invariant for the current reserve values of a pool.
-    function getInvariantLast(bytes32 pid) public view override returns (int128 invariant) {
+    function invariantOf(bytes32 pid) public view override returns (int128 invariant) {
         Reserve.Data memory res = reserves[pid];
         invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
     }
 
     /// @notice Returns a kaccak256 hash of a pool's calibration parameters
-    function getPoolId(uint strike, uint sigma, uint time) public view returns(bytes32 pid) {
+    function getPoolId(uint strike, uint sigma, uint time) public view override returns(bytes32 pid) {
         pid = keccak256(
             abi.encodePacked(
                 factory,
-                self.time,
-                self.sigma,
-                self.strike
+                time,
+                sigma,
+                strike
             )
         );
     }

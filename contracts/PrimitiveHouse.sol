@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import {ICallback} from "./PrimitiveEngine.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveHouse.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import "./libraries/Position.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
-contract PrimitiveHouse is ICallback, IPrimitiveHouse {
+contract PrimitiveHouse is IPrimitiveHouse {
     using SafeERC20 for IERC20;
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
@@ -22,8 +20,8 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
 
     IPrimitiveEngine public engine;
 
-    IERC20 public TX1;
-    IERC20 public TY2;
+    IERC20 public risky;
+    IERC20 public stable;
     IUniswapV3Factory public uniFactory;
     IUniswapV3Pool public uniPool;
 
@@ -59,10 +57,10 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
     function initialize(address engine_, address factory_, uint24 fee_) public override {
         require(address(engine) == address(0), "Already initialized");
         engine = IPrimitiveEngine(engine_);
-        TX1 = IERC20(engine.TX1());
-        TY2 = IERC20(engine.TY2());
+        risky = IERC20(engine.risky());
+        stable = IERC20(engine.stable());
         uniFactory = IUniswapV3Factory(factory_); 
-        uniPool = IUniswapV3Pool(uniFactory.getPool(address(TX1), address(TY2), fee_));
+        uniPool = IUniswapV3Pool(uniFactory.getPool(address(risky), address(stable), fee_));
         require(address(uniPool) != address(0), "POOL UNINITIALIZED");
     }
 
@@ -85,8 +83,8 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
 
-        if (deltaX > 0) IERC20(TX1).safeTransfer(CALLER, deltaX);
-        if (deltaY > 0) IERC20(TY2).safeTransfer(CALLER, deltaY);
+        if (deltaX > 0) IERC20(risky).safeTransfer(CALLER, deltaX);
+        if (deltaY > 0) IERC20(stable).safeTransfer(CALLER, deltaY);
     }
 
     /**
@@ -94,22 +92,23 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
      */
     function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
         bytes32 pid_ = pid;
-        (uint deltaX, uint deltaY) = engine.addBoth(pid_, address(this), 0, deltaL, true);
+        (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        
-        Position.Data storage pos = _positions.fetch(owner, nonce, pid_);
-        pos.addLiquidity(deltaL); // Update position liquidity
+        address factory = engine.factory();
+        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        pos.allocate(deltaL); // Update position liquidity
     }
 
     /**
-     * @notice Adds deltaL to global liquidity factor using the CALLER TX1 and TY2 balance.
+     * @notice Adds deltaL to global liquidity factor using the CALLER risky and stable balance.
      */
-    function addBothFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
-        engine.addBoth(pid, address(this), 0, deltaL, false);
+    function allocate(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
+        engine.allocate(pid, address(this), deltaL, false);
         bytes32 pid_ = pid;
-        Position.Data storage pos = _positions.fetch(owner, nonce, pid_);
-        pos.addLiquidity(deltaL); // Update position liquidity
+        address factory = engine.factory();
+        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        pos.allocate(deltaL); // Update position liquidity
     }
 
     function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
@@ -123,8 +122,9 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
 
-        Position.Data storage pos = _positions.fetch(owner, nonce, pid);
-        pos.addLiquidity(deltaL); // Update position liquidity
+        address factory = engine.factory();
+        Position.Data storage pos = _positions.fetch(factory, owner, pid);
+        pos.allocate(deltaL); // Update position liquidity
     }
 
     
@@ -137,7 +137,7 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
         // cant use callback, must maintain msg.sender
         if (deltaL > 0) {
             // increment position float factor by `deltaL`
-            _positions.lend(nonce, pid, deltaL);
+            _positions.lend(engine.factory(), pid, deltaL);
         } 
     }
 
@@ -158,20 +158,20 @@ contract PrimitiveHouse is ICallback, IPrimitiveHouse {
     
     // ===== Callback Implementations =====
     function depositCallback(uint deltaX, uint deltaY) public override executionLock {
-        if (deltaX > 0) IERC20(TX1).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if (deltaY > 0) IERC20(TY2).safeTransferFrom(CALLER, msg.sender, deltaY);
+        if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function addBothFromExternalCallback(uint deltaX, uint deltaY) public override executionLock {
-        if(deltaX > 0) IERC20(TX1).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) IERC20(TY2).safeTransferFrom(CALLER, msg.sender, deltaY);
+    function allocateCallback(uint deltaX, uint deltaY) public override executionLock {
+        if(deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function removeXYCallback(uint deltaX, uint deltaY) public override executionLock {
-        IERC20 TX1 = IERC20(engine.TX1());
-        IERC20 TY2 = IERC20(engine.TY2());
-        if(deltaX > 0) TX1.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) TY2.safeTransferFrom(CALLER, msg.sender, deltaY);
+    function removeCallback(uint deltaX, uint deltaY) public override executionLock {
+        IERC20 risky = IERC20(engine.risky());
+        IERC20 stable = IERC20(engine.stable());
+        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {

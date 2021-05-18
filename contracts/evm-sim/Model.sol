@@ -41,7 +41,7 @@ contract Model is ICallback {
     // set the asset price in the oracle
     oracle.setPrice(assetPrice);
     // create a curve in the engine
-    engine.create(params, assetPrice);
+    engine.create(strike, sigma, time, assetPrice);
     // store the pid in state
     pid = engine.getPoolId(strike, sigma, time);
   }
@@ -59,10 +59,10 @@ contract Model is ICallback {
     engine.deposit(msg.sender, deltaX, deltaY);
   }
   function depositCallback(uint deltaX, uint deltaY) external override {
-    IERC20 TX1 = IERC20(engine.TX1());
-    IERC20 TY2 = IERC20(engine.TY2());
-    if(deltaX > 0) TX1.safeTransfer(msg.sender, deltaX); // msg.sender is engine
-    if(deltaY > 0) TY2.safeTransfer(msg.sender, deltaY);
+    IERC20 risky = IERC20(engine.risky());
+    IERC20 stable = IERC20(engine.stable());
+    if(deltaX > 0) risky.safeTransfer(msg.sender, deltaX); // msg.sender is engine
+    if(deltaY > 0) stable.safeTransfer(msg.sender, deltaY);
   }
 
   function addXCallback(uint deltaX, uint deltaY) external override {}
@@ -88,7 +88,7 @@ contract Model is ICallback {
    }
 
   function getReserves() public view returns (uint, uint) {
-    (uint RX1, uint RY2, , , ) = engine.getReserve(pid);
+    (uint RX1, uint RY2, , , ) = engine.reserves(pid);
     return (RX1, RY2);
   }
 }

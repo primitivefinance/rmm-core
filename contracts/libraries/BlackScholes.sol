@@ -48,7 +48,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = calculateD1(s,k,o,t);
+        int128 d1 = d1(s,k,o,t);
         delta = d1.getCDF();
     }
 
@@ -59,7 +59,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = calculateD1(s,k,o,t);
+        int128 d1 = d1(s,k,o,t);
         delta = d1.getCDF().sub(uint(1).fromUInt());
     }
 
