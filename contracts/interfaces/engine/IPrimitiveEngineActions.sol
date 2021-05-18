@@ -6,7 +6,7 @@ interface IPrimitiveEngineActions {
     // Curve
     function create(uint strike, uint sigma, uint time, uint riskyPrice) external returns (bytes32 pid);
     // Liquidity
-    function allocate(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) external returns (uint, uint);
+    function allocate(bytes32 pid, address owner, uint deltaL, bool isInternal) external returns (uint, uint);
     function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) external returns (uint, uint);
     // Swaps
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) external returns (uint deltaIn);

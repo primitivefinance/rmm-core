@@ -13,9 +13,9 @@ library Calibration {
         // The strike price in wei of the option.
         uint256 strike;
         // The implied volatility of the option.
-        uint32 sigma;
+        uint256 sigma;
         // The time in seconds until the option expires.
-        uint32 time;
+        uint256 time;
     }
 
     /// @notice  Fetches an Engine's Calibration Data struct using a mapping of Reserve Ids.
