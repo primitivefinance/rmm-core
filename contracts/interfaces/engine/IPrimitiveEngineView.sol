@@ -2,6 +2,13 @@ pragma solidity 0.8.0;
 
 interface IPrimitiveEngineView {
     // ===== View =====
+
+    /// @notice Computes the reserve value of `token` using the known `reserve` value of the other token
+    /// @param  pid The hashed pool Id
+    /// @param  token The reserve of the token to compute
+    /// @param  reserve The reserve of the other token, which is known
+    /// @return reserveOfToken The reserve of the `token`
+    function compute(bytes32 pid, address token, uint reserve) external view returns (int128 reserveOfToken);
     function calcInvariant(bytes32 pid, uint postR1, uint postR2, uint postLiquidity) external view returns (int128);
     function invariantOf(bytes32 pid) external view returns (int128);
 

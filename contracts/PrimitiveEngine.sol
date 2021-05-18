@@ -240,12 +240,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint reserveY;
         
         if(riskyForStable) {
-            int128 nextRX1 = getRiskyInWithStableOut(poolId, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
+            int128 nextRX1 = compute(poolId, risky, RY2 - deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
             reserveX = nextRX1.sub(invariant).parseUnits();
             reserveY = RY2 - deltaOut;
             deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
         } else {
-            int128 nextRY2 = getStableInWithRiskyOut(poolId, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
+            int128 nextRY2 = compute(poolId, stable, RX1 - deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
             reserveX = RX1 - deltaOut;
             reserveY = invariant.add(nextRY2).parseUnits();
             deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
@@ -359,21 +359,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     // ===== Swap and Liquidity Math =====
 
-    
-    /// @notice  Fetches a new R2 from a decreased R1.
-    function getStableInWithRiskyOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
+    /// @inheritdoc IPrimitiveEngineView
+    function compute(bytes32 pid, address token, uint reserve) public view override returns (int128 reserveOfToken) {
+        require(token == risky || token == stable, "Not an engine token");
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
-        uint RX1 = res.RX1 - deltaXOut; // new reserve1 value.
-        return ReserveMath.reserveStable(RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
-    }
-
-    /// @notice  Fetches a new R1 from a decreased R2.
-    function getRiskyInWithStableOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
-        Calibration.Data memory cal = settings[pid];
-        Reserve.Data memory res = reserves[pid];
-        uint RY2 = res.RY2 - deltaYOut;
-        return ReserveMath.reserveRisky(RY2, res.liquidity, cal.strike, cal.sigma, cal.time);
+        if(token == stable) {
+            reserveOfToken = ReserveMath.reserveStable(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+        } else {
+            reserveOfToken = ReserveMath.reserveRisky(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+        }
     }
 
     // ===== View ===== 
