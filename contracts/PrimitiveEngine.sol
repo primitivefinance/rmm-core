@@ -304,35 +304,31 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (uint) {
-        if (deltaL > 0) {
-            // increment position float factor by `deltaL`
-            positions.lend(factory, pid, deltaL);
-        } 
+    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+        require(deltaL > 0, "Cannot be zero");
+        positions.lend(factory, pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
         emit Loaned(msg.sender, pid, deltaL);
-        return deltaL;
+        return true;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (uint) {
-        if (deltaL > 0) {
-            // increment position float factor by `deltaL`
-            positions.claim(factory, pid, deltaL);
-        }
+    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+        require(deltaL > 0, "Cannot be zero");
+        positions.claim(factory, pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
         emit Claimed(msg.sender, pid, deltaL);
-        return deltaL;
+        return true;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid) override returns (uint) {
+    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
         Reserve.Data storage res = reserves[pid];
-        require(res.float >= deltaL, "Insufficient float"); // fail early if not enough float to borrow
+        require(res.float >= deltaL && deltaL > 0, "Insufficient float"); // fail early if not enough float to borrow
 
         uint liquidity = res.liquidity; // global liquidity balance
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
@@ -343,7 +339,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // fails if risky asset balance is less than borrowed `deltaL`
         res.borrowFloat(deltaL);
         emit Borrowed(recipient, pid, deltaL, maxPremium);
-        return deltaL;
+        return true;
     }
 
     
