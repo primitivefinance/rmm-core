@@ -227,81 +227,77 @@ contract PrimitiveEngine is IPrimitiveEngine {
         emit Removed(msg.sender, deltaX, deltaY);
     }
 
-    /// @dev     If `addXRemoveY` is true, we request Y out, and must add X to the pool's reserves.
-    ///         Else, we request X out, and must add Y to the pool's reserves.
     /// @inheritdoc IPrimitiveEngineActions
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override returns (uint deltaIn) {
-        // Fetch internal balances of owner address
-        Margin.Data memory margin_ = margins.fetch(msg.sender);
-
-        // Fetch the global reserves for the `pid` curve
-        Reserve.Data storage res = reserves[pid];
-        int128 invariant = invariantOf(pid); //gas savings
+    /// @dev     If `riskyForStable` is true, we request Y out, and must add X to the pool's reserves.
+    ///         Else, we request X out, and must add Y to the pool's reserves.
+    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin) public override returns (uint deltaIn) {
+        bytes32 poolId = pid; // avoids stack too deep errors
+        int128 invariant = invariantOf(poolId); // gas savings
+        Reserve.Data storage res = reserves[poolId]; // gas savings
         (uint RX1, uint RY2) = (res.RX1, res.RY2);
 
         uint reserveX;
         uint reserveY;
-        {
-            if(addXRemoveY) {
-                int128 nextRX1 = getDeltaInWithStableOut(pid, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
-                reserveX = nextRX1.parseUnits();
-                reserveY = RY2 - deltaOut;
-                deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
-            } else {
-                int128 nextRY2 = getDeltaInWithRiskyOut(pid, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-                reserveX = RX1 - deltaOut;
-                reserveY = invariant.add(nextRY2).parseUnits();
-                deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
-            }
+        
+        if(riskyForStable) {
+            int128 nextRX1 = getRiskyInWithStableOut(poolId, deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
+            reserveX = nextRX1.sub(invariant).parseUnits();
+            reserveY = RY2 - deltaOut;
+            deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
+        } else {
+            int128 nextRY2 = getStableInWithRiskyOut(poolId, deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
+            reserveX = RX1 - deltaOut;
+            reserveY = invariant.add(nextRY2).parseUnits();
+            deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
         }
+        
 
         require(deltaInMax >= deltaIn, "Too expensive");
-        int128 postInvariant = calcInvariant(pid, reserveX, reserveY, res.liquidity);
+        int128 postInvariant = calcInvariant(poolId, reserveX, reserveY, res.liquidity);
         require(postInvariant.parseUnits() >= invariant.parseUnits(), "Invalid invariant");
 
         {// avoids stack too deep errors
-        bool xToY = addXRemoveY;
-        address to = msg.sender;
-        uint margin = xToY ? margin_.BX1 : margin_.BY2;
-        if(margin >= deltaIn) {
-            { // avoids stack too deep errors, sending the asset out that we are removing
-            uint deltaOut_ = deltaOut;
-            address token = xToY ? stable : risky;
-            uint preBalance = xToY ? balanceStable() : balanceRisky();
-            IERC20(token).safeTransfer(to, deltaOut_);
-            uint postBalance = xToY ? balanceStable() : balanceRisky();
-            require(postBalance >= preBalance - deltaOut_, "Sent too much tokens");
-            }
-
-            if(xToY) {
+        bool swapYOut = riskyForStable;
+        uint amountOut = deltaOut;
+        uint amountIn = deltaIn;
+        if(fromMargin) {
+            if(swapYOut) {
                 margins.withdraw(deltaIn, uint(0));
+                uint balanceY = balanceStable();
+                IERC20(stable).safeTransfer(msg.sender, amountOut);
+                require(balanceStable() >= balanceY - amountOut, "Sent too much tokens");
             } else {
                 margins.withdraw(uint(0), deltaIn);
+                uint balanceX = balanceRisky();
+                IERC20(risky).safeTransfer(msg.sender, amountOut);
+                require(balanceRisky() >= balanceX - amountOut, "Sent too much tokens");
             }
         } else {
-            {
-            uint deltaOut_ = deltaOut;
-            uint deltaIn_ = deltaIn;
-            uint balanceX = balanceRisky();
-            uint balanceY = balanceStable();
-            address token = xToY ? stable : risky;
-            IERC20(token).safeTransfer(to, deltaOut_);
-            IPrimitiveSwapCallback(msg.sender).swapCallback(xToY ? deltaIn_ : 0, xToY ? 0 : deltaIn_);
-            uint postBX1 = balanceRisky();
-            uint postBY2 = balanceStable();
-            uint deltaX_ = xToY ? deltaIn_ : deltaOut_;
-            uint deltaY_ = xToY ? deltaOut_ : deltaIn_;
-            require(postBX1 >= (xToY ? balanceX + deltaX_ : balanceX - deltaX_), "Not enough risky");
-            require(postBY2 >= (xToY ? balanceY - deltaY_ : balanceY + deltaY_), "Not enough stable");
+            if(swapYOut) {
+                uint balanceX = balanceRisky();
+                IPrimitiveSwapCallback(msg.sender).swapCallback(amountIn, 0);
+                require(balanceRisky() >= balanceX + amountIn, "Not enough risky");
+
+                uint balanceY = balanceStable();
+                IERC20(stable).safeTransfer(msg.sender, amountOut);
+                require(balanceStable() >= balanceY - amountOut, "Sent too much tokens");
+            } else {
+                uint balanceY = balanceStable();
+                IPrimitiveSwapCallback(msg.sender).swapCallback(0 ,amountIn);
+                require(balanceStable() >= balanceY + amountIn, "Not enough risky");
+
+
+                uint balanceX = balanceRisky();
+                IERC20(risky).safeTransfer(msg.sender, amountOut);
+                require(balanceRisky() >= balanceX - amountOut, "Sent too much tokens");
             }
         }
+
+        res.swap(swapYOut, amountIn, amountOut);
+        emit Swap(msg.sender, poolId, swapYOut, amountIn, amountOut);
         }
-        
-        bytes32 pid_ = pid;
-        uint deltaOut_ = deltaOut;
-        res.swap(addXRemoveY, deltaIn, deltaOut);
-        emit Updated(pid, reserveX, reserveY, block.number);
-        emit Swap(msg.sender, pid, addXRemoveY, deltaIn, deltaOut_);
+
+        emit Updated(poolId, reserveX, reserveY, block.number);
     }
 
 
@@ -369,7 +365,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @notice  Fetches a new R2 from a decreased R1.
-    function getDeltaInWithRiskyOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
+    function getStableInWithRiskyOut(bytes32 pid, uint deltaXOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RX1 = res.RX1 - deltaXOut; // new reserve1 value.
@@ -377,7 +373,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @notice  Fetches a new R1 from a decreased R2.
-    function getDeltaInWithStableOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
+    function getRiskyInWithStableOut(bytes32 pid, uint deltaYOut) public view returns (int128) {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         uint RY2 = res.RY2 - deltaYOut;

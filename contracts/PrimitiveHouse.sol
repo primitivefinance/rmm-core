@@ -143,17 +143,17 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax);
+        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax, true);
     }
 
     function swapXForY(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, true, deltaOut, type(uint256).max);
+        engine.swap(pid, true, deltaOut, type(uint256).max, true);
     }
 
     function swapYForX(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, false, deltaOut, type(uint256).max);
+        engine.swap(pid, false, deltaOut, type(uint256).max, true);
     }
     
     // ===== Callback Implementations =====
