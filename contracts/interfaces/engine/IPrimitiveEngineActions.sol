@@ -14,8 +14,8 @@ interface IPrimitiveEngineActions {
     function deposit(address owner, uint deltaX, uint deltaY) external returns (bool);
     function withdraw(uint deltaX, uint deltaY) external returns (bool);
     // Lending
-    function lend(bytes32 pid, uint nonce, uint deltaL) external returns (uint);
-    function claim(bytes32 pid, uint nonce, uint deltaL) external returns (uint);
-    function borrow(bytes32 pid, address owner, uint nonce, uint deltaL, uint maxPremium) external returns (uint);
+    function lend(bytes32 pid, uint nonce, uint deltaL) external returns (bool);
+    function claim(bytes32 pid, uint nonce, uint deltaL) external returns (bool);
+    function borrow(bytes32 pid, address owner, uint nonce, uint deltaL, uint maxPremium) external returns (bool);
     function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool fromMargin) external returns (uint, uint);
 }
