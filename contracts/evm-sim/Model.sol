@@ -71,12 +71,12 @@ contract Model is ICallback {
   /// @notice should execute an addYRemoveX swap, Y -> X.
   function swapAmountOutRisky(uint deltaX) external returns(uint) {
     // swap params: pool id, addXRemoveY, amountOut, maxAmountIn
-    return engine.swap(pid, false, deltaX, type(uint256).max);
+    return engine.swap(pid, false, deltaX, type(uint256).max, true);
   }
 
   /// @notice should execute an addXRemoveY swap, X -> Y.
   function swapAmountOutRiskFree(uint deltaY) external returns (uint) {
-    return engine.swap(pid, true, deltaY, type(uint256).max);
+    return engine.swap(pid, true, deltaY, type(uint256).max, true);
   }
 
 
