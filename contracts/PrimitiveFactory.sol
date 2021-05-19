@@ -6,11 +6,11 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     Generate PrimitiveEngine contracts
 
-import "./IPrimitiveFactory.sol";
+import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
-    event EngineCreated(address indexed from, address indexed risky, address indexed riskless, address engine);
+    event EngineCreated(address indexed from, address indexed risky, address indexed stable, address engine);
 
     address public override owner;
 
@@ -19,7 +19,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     struct Args {
         address factory;
         address risky;
-        address riskless;
+        address stable;
     }
 
     Args public override args; // Used instead of an initializer in Engine contract
@@ -29,14 +29,14 @@ contract PrimitiveFactory is IPrimitiveFactory {
     }
 
     /// @notice Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
-    function create(address risky, address riskless) external override returns (address engine) {
-        require(risky != riskless, "Cannot be same token");
+    function create(address risky, address stable) external override returns (address engine) {
+        require(risky != stable, "Cannot be same token");
         require(risky != address(0), "Cannot be zero address");
-        require(riskless != address(0), "Cannot be zero address");
-        engine = deploy(address(this), risky, riskless);
-        getEngine[risky][riskless] = engine;
-        getEngine[riskless][risky] = engine;
-        emit EngineCreated(msg.sender, risky, riskless, engine);
+        require(stable != address(0), "Cannot be zero address");
+        engine = deploy(address(this), risky, stable);
+        getEngine[risky][stable] = engine;
+        getEngine[stable][risky] = engine;
+        emit EngineCreated(msg.sender, risky, stable, engine);
     }
 
     /// @notice Deploys an engine contract with a `salt`.
@@ -44,9 +44,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///         From solidity docs: 
     ///         "It will compute the address from the address of the creating contract, 
     ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
-    function deploy(address factory, address risky, address riskless) internal returns (address engine) {
-        args = Args({factory: factory, risky: risky, riskless: riskless}); // Engines call this to get constructor args
-        engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, riskless))}());
+    function deploy(address factory, address risky, address stable) internal returns (address engine) {
+        args = Args({factory: factory, risky: risky, stable: stable}); // Engines call this to get constructor args
+        engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, stable))}());
         delete args;
     }
 }

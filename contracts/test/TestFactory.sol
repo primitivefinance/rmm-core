@@ -6,7 +6,7 @@ pragma solidity 0.8.0;
  * @dev     ONLY FOR TESTING PURPOSES.  
  */
 
-import "../IPrimitiveFactory.sol";
+import "../interfaces/IPrimitiveFactory.sol";
 import "./TestEngine.sol";
 
 contract TestFactory is IPrimitiveFactory {
