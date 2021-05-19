@@ -1,7 +1,7 @@
 pragma solidity 0.8.0;
 
 import "./IOracle.sol";
-import "../IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/Calibration.sol";
 import "../libraries/Reserve.sol";
 import "../libraries/Units.sol";
@@ -41,9 +41,9 @@ contract Model is ICallback {
     // set the asset price in the oracle
     oracle.setPrice(assetPrice);
     // create a curve in the engine
-    engine.create(params, assetPrice);
+    engine.create(strike, sigma, time, assetPrice);
     // store the pid in state
-    pid = engine.getPoolId(params);
+    pid = engine.getPoolId(strike, sigma, time);
   }
 
   // ===== Model Advancement =====
@@ -59,10 +59,10 @@ contract Model is ICallback {
     engine.deposit(msg.sender, deltaX, deltaY);
   }
   function depositCallback(uint deltaX, uint deltaY) external override {
-    IERC20 TX1 = IERC20(engine.TX1());
-    IERC20 TY2 = IERC20(engine.TY2());
-    if(deltaX > 0) TX1.safeTransfer(msg.sender, deltaX); // msg.sender is engine
-    if(deltaY > 0) TY2.safeTransfer(msg.sender, deltaY);
+    IERC20 risky = IERC20(engine.risky());
+    IERC20 stable = IERC20(engine.stable());
+    if(deltaX > 0) risky.safeTransfer(msg.sender, deltaX); // msg.sender is engine
+    if(deltaY > 0) stable.safeTransfer(msg.sender, deltaY);
   }
 
   function addXCallback(uint deltaX, uint deltaY) external override {}
@@ -71,12 +71,12 @@ contract Model is ICallback {
   /// @notice should execute an addYRemoveX swap, Y -> X.
   function swapAmountOutRisky(uint deltaX) external returns(uint) {
     // swap params: pool id, addXRemoveY, amountOut, maxAmountIn
-    return engine.swap(pid, false, deltaX, type(uint256).max);
+    return engine.swap(pid, false, deltaX, type(uint256).max, true);
   }
 
   /// @notice should execute an addXRemoveY swap, X -> Y.
   function swapAmountOutRiskFree(uint deltaY) external returns (uint) {
-    return engine.swap(pid, true, deltaY, type(uint256).max);
+    return engine.swap(pid, true, deltaY, type(uint256).max, true);
   }
 
 
@@ -88,7 +88,7 @@ contract Model is ICallback {
    }
 
   function getReserves() public view returns (uint, uint) {
-    Reserve.Data memory res = engine.getReserve(pid);
-    return (res.RX1, res.RY2);
+    (uint RX1, uint RY2, , , ) = engine.reserves(pid);
+    return (RX1, RY2);
   }
 }

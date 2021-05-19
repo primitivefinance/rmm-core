@@ -43,21 +43,21 @@ contract TestEngine is PrimitiveEngine {
     }
 
     function invariant(bytes32 pid) public view returns (int128) {
-        return getInvariantLast(pid);
+        return invariantOf(pid);
     }
 
     // ===== BS Library Entry ====
 
     function callDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.deltaCall(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function putDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculatePutDelta(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.deltaPut(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function d1(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculateD1(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.d1(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function moneyness(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {

@@ -6,12 +6,13 @@ pragma solidity 0.8.0;
  * @dev     ONLY FOR TESTING PURPOSES.  
  */
 
-import "../IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/ABDKMath64x64.sol";
 import "../libraries/BlackScholes.sol";
 import "../libraries/Calibration.sol";
 import "../libraries/ReplicationMath.sol";
-import "../libraries/SwapMath.sol";
+import "../libraries/Reserve.sol";
+import "../libraries/ReserveMath.sol";
 import "../libraries/Units.sol";
 
 contract TestBlackScholes {
@@ -42,32 +43,32 @@ contract TestBlackScholes {
     // ===== Replication Library Entry =====
 
     function proportionalVol(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = engine.getCalibration(pid);
-        return ReplicationMath.getProportionalVolatility(cal.sigma, cal.time);
+        (uint strike, uint sigma, uint time) = engine.settings(pid);
+        return ReplicationMath.getProportionalVolatility(sigma, time);
     }
 
     function tradingFunction(bytes32 pid) public view returns (int128) {
-        Calibration.Data memory cal = engine.getCalibration(pid);
-        Reserve.Data memory res = engine.getReserve(pid);
-        return ReplicationMath.getTradingFunction(res.RX1, res.liquidity, cal.strike, cal.sigma, cal.time);
+        (uint strike, uint sigma, uint time) = engine.settings(pid);
+        (uint RX1, , uint liquidity, ,) = engine.reserves(pid);
+        return ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
     }
 
     function invariant(bytes32 pid) public view returns (int128) {
-        return engine.getInvariantLast(pid);
+        return engine.invariantOf(pid);
     }
 
     // ===== BS Library Entry ====
 
     function callDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculateCallDelta(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.deltaCall(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function putDelta(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculatePutDelta(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.deltaPut(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function d1(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {
-        y = BlackScholes.calculateD1(assetPrice, self.strike, self.sigma, self.time);
+        y = BlackScholes.d1(assetPrice, self.strike, self.sigma, self.time);
     }
 
     function moneyness(Calibration.Data memory self, uint assetPrice) public view returns (int128 y) {

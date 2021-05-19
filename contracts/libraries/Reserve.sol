@@ -11,7 +11,7 @@ library Reserve {
     struct Data {
         // the reserve for the risky asset
         uint RX1;
-        // the reserve for the risk free asset
+        // the reserve for the stable asset
         uint RY2;
         // the total supply of liquidity shares
         uint liquidity;
@@ -42,7 +42,7 @@ library Reserve {
     }
 
     /// @notice Add to both reserves and total supply of liquidity
-    function mint(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+    function allocate(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
         reserve.RX1 += deltaX;
         reserve.RY2 += deltaY;
         reserve.liquidity += deltaL;
@@ -50,7 +50,7 @@ library Reserve {
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
-    function burn(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+    function remove(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
         reserve.RX1 -= deltaX;
         reserve.RY2 -= deltaY;
         reserve.liquidity -= deltaL;
