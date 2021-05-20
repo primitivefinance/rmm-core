@@ -16,14 +16,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
 
-    event Create(address indexed from, bytes32 indexed pid, Calibration.Data calibration); // Create pool
-    event Update(uint R1, uint R2, uint blockNumber); // Update pool reserves
-    event Deposited(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Depost margin
-    event Withdrawn(address indexed from, address indexed owner, uint deltaX, uint deltaY); // Withdraw margin
-    event AddedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Add liq to curve
-    event RemovedBoth(address indexed from, uint indexed nonce, uint deltaX, uint deltaY); // Remove liq
-    event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint deltaIn, uint deltaOut);
-
     address public constant NO_CALLER = address(21);
 
     IPrimitiveEngine public engine;
@@ -189,5 +181,10 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) public override {
+    }
+
+    /// @notice Returns the internal balances of risky and riskless tokens for an owner
+    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+        mar = _margins[owner];
     }
 }

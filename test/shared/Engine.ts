@@ -396,8 +396,8 @@ export interface Margin {
   unlocked: boolean
 }
 
-export async function getMargin(engine: Contract, owner: string, log?: boolean): Promise<Margin> {
-  const mar = await engine.getMargin(owner)
+export async function getMargin(contract: Contract, owner: string, log?: boolean): Promise<Margin> {
+  const mar = await contract.getMargin(owner)
   const margin: Margin = {
     owner: owner,
     BX1: new Wei(mar.BX1),
