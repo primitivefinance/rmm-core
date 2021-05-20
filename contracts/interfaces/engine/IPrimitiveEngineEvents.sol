@@ -20,4 +20,7 @@ interface IPrimitiveEngineEvents {
     event Claimed(address indexed from, bytes32 indexed pid, uint deltaL);
     event Borrowed(address indexed recipient, bytes32 indexed pid, uint deltaL, uint maxPremium);
     event Repaid(address indexed owner, bytes32 indexed pid, uint deltaL);
+
+    // ===== Flash =====
+    event Flash(address indexed from, address indexed receiver, address indexed token, uint amount, uint payment);
 }
