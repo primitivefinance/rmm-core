@@ -19,6 +19,10 @@ library Reserve {
         uint float;
         // the liquidity unavailable because it was borrowed
         uint debt;
+        // the total accrued fees of the risky token
+        uint feeRisky;
+        // the total accrued fees of the stable token
+        uint feeStable;
     }
 
     /// @notice  Fetches an Engine Registry's Reserve Data struct using a mapping of Reserve Ids.

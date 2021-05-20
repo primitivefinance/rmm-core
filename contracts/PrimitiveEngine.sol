@@ -13,7 +13,6 @@ import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
-import "./libraries/ReserveMath.sol";
 import "./libraries/Units.sol";
 import "./libraries/Transfers.sol";
 
@@ -96,13 +95,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
-        uint RY2 = ReserveMath.reserveStable(RX1, 1e18, strike, sigma, time).parseUnits();
+        uint RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
             RX1: RX1, // risky token balance
             RY2: RY2, // stable token balance
             liquidity: 1e18, // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0 // the LP shares borrowed from the float
+            debt: 0, // the LP shares borrowed from the float
+            feeRisky: 0,
+            feeStable: 0
         });
 
         uint balanceX = balanceRisky();
@@ -366,9 +367,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         if(token == stable) {
-            reserveOfToken = ReserveMath.reserveStable(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
         } else {
-            reserveOfToken = ReserveMath.reserveRisky(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getInverseTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
         }
     }
 
