@@ -18,7 +18,9 @@ interface IPrimitiveEngineView {
     function stable() external view returns (address);
 
     // ===== Pool States =====
-    function reserves(bytes32 pid) external view returns (uint RX1, uint RY2, uint liquidity, uint float, uint debt);
+    function reserves(bytes32 pid) external view returns (
+        uint RX1, uint RY2, uint liquidity, uint float, uint debt, uint feeRisky, uint feeStable
+        );
     function settings(bytes32 pid) external view returns (uint strike, uint sigma, uint time);
     function positions(bytes32 posId) external view returns (
         address owner, bytes32 pid, uint balanceX, uint balanceY, uint liquidity, uint float, uint debt
