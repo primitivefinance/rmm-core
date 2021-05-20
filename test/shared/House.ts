@@ -7,14 +7,14 @@ export const ERC20Events = {
 export type DepositFunction = (owner: string, deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type AddBothFromMarginFunction = (
-  pid: BytesLike,
-  owner: BytesLike,
+  pid: string,
+  owner: string,
   nonce: BigNumberish,
   deltaL: BigNumberish
 ) => Promise<Transaction>
 export type AddBothFromExternalFunction = (
-  pid: BytesLike,
-  owner: BytesLike,
+  pid: string,
+  owner: string,
   nonce: BigNumberish,
   deltaL: BigNumberish
 ) => Promise<Transaction>
@@ -71,23 +71,25 @@ export function createHouseFunctions({
   }
 
   const addBothFromMargin: AddBothFromMarginFunction = async (
-    pid: BytesLike,
+    pid: string,
+    owner: string,
     nonce: BigNumberish,
     deltaL: BigNumberish
   ): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.addBothFromMargin(pid, target.address, nonce, deltaL)
+    return target.addBothFromMargin(pid, owner, nonce, deltaL)
   }
 
   const addBothFromExternal: AddBothFromExternalFunction = async (
-    pid: BytesLike,
+    pid: string,
+    owner: string,
     nonce: BigNumberish,
     deltaL: BigNumberish
   ): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.addBothFromExternal(pid, target.address, nonce, deltaL)
+    return target.addBothFromExternal(pid, owner, nonce, deltaL)
   }
 
   const swap = async (

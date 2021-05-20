@@ -90,7 +90,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     /**
      * @notice Adds deltaL to global liquidity factor.
      */
-    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
+    function addBothFromMargin(bytes3 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
         bytes32 pid_ = pid;
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 

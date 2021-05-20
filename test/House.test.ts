@@ -2,6 +2,11 @@ import hre, { ethers, waffle } from 'hardhat'
 import { Wallet, constants, BigNumberish } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
 import { PERCENTAGE, parseWei, BigNumber, Wei } from './shared/Units'
+import { primitiveProtocolFixture } from './shared/fixtures'
+import { expect } from 'chai'
+import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes, IUniswapV3Pool } from '../typechain'
+import { encodePriceSqrt, expandTo18Decimals, getMinTick, getMaxTick } from './shared/utilities'
+import { EngineEvents, createEngineFunctions, CreateFunction } from './shared/Engine'
 import {
   DepositFunction,
   WithdrawFunction,
@@ -15,22 +20,15 @@ import {
 import {
   Calibration,
   Reserve,
-  EngineEvents,
   PoolParams,
   getReserve,
   getPoolParams,
   addBoth,
-  ERC20Events,
   getMargin,
   getDeltaIn,
   removeBoth,
-  createEngineFunctions,
-  CreateFunction,
-} from './shared/Engine'
-import { primitiveProtocolFixture } from './shared/fixtures'
-import { expect } from 'chai'
-import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes, IUniswapV3Pool } from '../typechain'
-import { encodePriceSqrt, expandTo18Decimals, getMinTick, getMaxTick } from './shared/utilities'
+  getPosition,
+} from './shared/utilities'
 
 const { createFixtureLoader } = waffle
 
@@ -85,8 +83,6 @@ describe('Primitive House tests', function () {
     const maxTick = getMaxTick(TICK_SPACING)
 
     await callee.mint(uniPool.address, signer.address, minTick, maxTick, expandTo18Decimals(1))
-
-    console.log(house.address, 'house')
 
     return {
       engine,
@@ -155,7 +151,7 @@ describe('Primitive House tests', function () {
   })
 
   describe('#create', function () {
-    it('Engine::Create: Generates a new Curve', async function () {
+    it('House::Create: Generates a new Curve', async function () {
       const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
       await expect(create(cal, spot.raw)).to.not.be.reverted
       const len = (await engine.getAllPoolsLength()).toString()
@@ -251,6 +247,20 @@ describe('Primitive House tests', function () {
         it('Fail House::Withdraw > margin balance Y', async function () {
           await expect(withdraw(0, amount.mul(2))).to.be.reverted
         })
+      })
+    })
+  })
+  describe('Liquidity', function () {
+    this.beforeEach(async function () {})
+    const deltaL = parseWei('1').raw
+
+    describe('#addBoth', function () {
+      describe('Success Assertions', function () {
+        it('House::Add liquidity from external balance', async function () {
+          expect(() => addBothFromExternal(poolId, signer.address, 0, deltaL))
+        })
+
+        it('House::Add liquidity from margin account', async function () {})
       })
     })
   })
