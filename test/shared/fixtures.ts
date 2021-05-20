@@ -1,12 +1,11 @@
 import { waffle } from 'hardhat'
-import { BigNumber, ethers, Wallet } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
-
+import { deriveUniPoolAddress } from '../shared/deriveUniPoolAddress'
 import { abi as TOKEN_ABI, bytecode as TOKEN_BYTECODE } from '../../artifacts/contracts/test/Token.sol/Token.json'
-import {
-  abi as ENGINE_ABI,
-  bytecode as ENGINE_BYTECODE,
-} from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
+import { abi as ENGINE_ABI } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
+import { abi as POOL_ABI } from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json'
+import { abi as Test_Engine_Abi } from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
 import {
   abi as HOUSE_ABI,
   bytecode as HOUSE_BYTECODE,
@@ -23,17 +22,10 @@ import {
   abi as CALLEE_ABI,
   bytecode as CALLEE_BYTECODE,
 } from '../../artifacts/contracts/test/TestCallee.sol/TestCallee.json'
-
 import {
   abi as Test_Fac_Abi,
   bytecode as Test_Fac_Bytecode,
 } from '../../artifacts/contracts/test/TestFactory.sol/TestFactory.json'
-
-import {
-  abi as Test_Engine_Abi,
-  bytecode as Test_Engine_Bytecode,
-} from '../../artifacts/contracts/test/TestEngine.sol/TestEngine.json'
-
 import {
   abi as BS_ABI,
   bytecode as BS_BYTECODE,
@@ -47,6 +39,7 @@ import {
   TestEngine,
   TestBlackScholes,
   IUniswapV3Factory,
+  IUniswapV3Pool,
   IERC20,
   TestCallee,
 } from '../../typechain'
@@ -94,6 +87,7 @@ export const primitiveProtocolFixture: Fixture<{
   TX1: IERC20
   TY2: IERC20
   uniFactory: IUniswapV3Factory
+  uniPool: IUniswapV3Pool
   house: PrimitiveHouse
   factory: PrimitiveFactory
   engine: PrimitiveEngine
@@ -123,7 +117,11 @@ export const primitiveProtocolFixture: Fixture<{
 
   const fee = 3000
 
+  const tokens = [TX1, TY2]
   await uniFactory.createPool(TX1.address, TY2.address, fee)
+  const uniPoolAddress = await deriveUniPoolAddress(uniFactory, fee, tokens)
+  const uniPool = new ethers.Contract(uniPoolAddress, POOL_ABI, wallet) as IUniswapV3Pool
+
   await house.initialize(engine.address, uniFactory.address, fee)
   await callee.initialize(engine.address, uniFactory.address, fee)
 
@@ -135,7 +133,7 @@ export const primitiveProtocolFixture: Fixture<{
     },
     [engine.address]
   )) as TestBlackScholes
-  return { TX1, TY2, uniFactory, house, factory, engine, callee, bs }
+  return { TX1, TY2, uniFactory, uniPool, house, factory, engine, callee, bs }
 }
 
 export const testEngineFixture: Fixture<{
@@ -146,7 +144,7 @@ export const testEngineFixture: Fixture<{
   testEngine: TestEngine
   bs: TestBlackScholes
 }> = async ([wallet], provider) => {
-  const { TX1, TY2, uniFactory, house, factory, engine, callee, bs } = await primitiveProtocolFixture([wallet], provider)
+  const { TX1, TY2, engine, callee, bs } = await primitiveProtocolFixture([wallet], provider)
   const testFactory = (await waffle.deployContract(
     wallet,
     {

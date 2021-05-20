@@ -21,4 +21,5 @@ interface IPrimitiveHouse is IPrimitiveLendingCallback, IPrimitiveLiquidityCallb
     function swapYForX(bytes32 pid, uint deltaOut) external;
     // Lending
     function lend(bytes32 pid, uint nonce, uint deltaL) external;
+    function getMargin(address owner) external view returns (Margin.Data memory);
 }
