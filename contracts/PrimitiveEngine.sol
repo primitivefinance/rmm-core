@@ -357,6 +357,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         emit Repaid(owner, pid, deltaL);
     }
 
+
     // ===== Swap and Liquidity Math =====
 
     /// @inheritdoc IPrimitiveEngineView
@@ -401,5 +402,40 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @notice Returns the length of the allPools array that has all pool Ids
     function getAllPoolsLength() public view override returns (uint len) {
         len = allPools.length;
+    }
+
+     // ===== Flashes =====
+
+    function flashLoan(IERC3156FlashBorrower receiver, address token, uint amount, bytes calldata data) external override returns (bool) {
+        uint fee = flashFee(token, amount); // reverts if unsupported token
+
+        uint balance = token == stable ? balanceStable() : balanceRisky();
+        IERC20(token).safeTransfer(address(receiver), amount);
+        require(
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) 
+            == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            "IERC3156: Callback failed"
+        );
+
+        uint balanceAfter = token == stable ? balanceStable() : balanceRisky();
+
+        require(balance + fee <= balanceAfter, "Not enough returned");
+
+        uint payment = balanceAfter - balance;
+
+        emit Flash(msg.sender, address(receiver), token, amount, payment);
+        return true;
+    }
+
+
+    function flashFee(address token, uint amount) public view override returns (uint) {
+        require(token == stable || token == risky, "Not supported");
+        uint fee = 5e16;
+        return amount * fee / 1e6;
+    }
+
+    function maxFlashLoan(address token) public view override returns (uint) {
+        if(token != stable || token != risky) return 0; // not supported
+        return token == stable ? balanceStable() : balanceRisky();
     }
 }

@@ -5,10 +5,13 @@ pragma abicoder v2;
 import "./engine/IPrimitiveEngineActions.sol";
 import "./engine/IPrimitiveEngineEvents.sol";
 import "./engine/IPrimitiveEngineView.sol";
+import "./IERC3156FlashLender.sol";
+
 
 interface IPrimitiveEngine is 
     IPrimitiveEngineActions, 
     IPrimitiveEngineEvents, 
-    IPrimitiveEngineView 
+    IPrimitiveEngineView,
+    IERC3156FlashLender
 {
 }
