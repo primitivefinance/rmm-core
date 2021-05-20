@@ -1,5 +1,5 @@
 import hre, { ethers, waffle } from 'hardhat'
-import { Wallet, constants } from 'ethers'
+import { Wallet, constants, BigNumberish } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
 import { PERCENTAGE, parseWei, BigNumber, Wei } from './shared/Units'
 import {
@@ -171,7 +171,7 @@ describe('Primitive House tests', function () {
   describe('---Margin---', () => {
     this.beforeEach(async function () {})
 
-    const checkMargin = async (who, deltaX, deltaY) => {
+    const checkMargin = async (who: string, deltaX: BigNumberish, deltaY: BigNumberish) => {
       const { owner, BX1, BY2, unlocked } = await getMargin(house, who)
       expect(owner).to.be.eq(who)
       expect(BX1.raw).to.be.eq(deltaX)
@@ -180,53 +180,76 @@ describe('Primitive House tests', function () {
     }
 
     describe('#deposit', function () {
-      describe('sucess cases', function () {
+      const amount = parseWei('200').raw
+      describe('Success Assertions', function () {
+        // OWN MARGIN ACCOUNT
         it('House::Deposit 200 X to own margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer.address, amount, 0))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, amount, 0)
           await checkMargin(signer.address, amount, 0)
         })
-
         it('House::Deposit 200 Y to own margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer.address, 0, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, 0, amount)
           await checkMargin(signer.address, 0, amount)
         })
-
         it('House::Deposit 200 X and 200 Y to own margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer.address, amount, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, amount, amount)
           await checkMargin(signer.address, amount, amount)
         })
 
+        // OTHER MARGIN ACCOUNT
         it('House::Deposit 200 X to signer2 margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer2.address, amount, 0))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, amount, 0)
           await checkMargin(signer2.address, amount, 0)
         })
-
         it('House::Deposit 200 Y to signer2 margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer2.address, 0, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, 0, amount)
           await checkMargin(signer2.address, 0, amount)
         })
-
         it('House::Deposit 200 X and 200 Y to signer2` margin account', async function () {
-          const amount = parseWei('200').raw
           await expect(deposit(signer2.address, amount, amount))
             .to.emit(engine, EngineEvents.DEPOSITED)
             .withArgs(house.address, house.address, amount, amount)
           await checkMargin(signer2.address, amount, amount)
+        })
+      })
+    })
+
+    describe('#withdraw', function () {
+      const amount = parseWei('200').raw
+      this.beforeEach(async function () {
+        await deposit(signer.address, amount, amount)
+      })
+      describe('Success Assertions', function () {
+        it('House::Withdraw 200 X from own margin account', async function () {
+          await expect(() => withdraw(amount, 0)).to.changeTokenBalance(TX1, signer, amount)
+          await checkMargin(signer.address, 0, amount)
+        })
+        it('House::Withdraw 200 Y from own margin account', async function () {
+          await expect(() => withdraw(0, amount)).to.changeTokenBalance(TY2, signer, amount)
+          await checkMargin(signer.address, amount, 0)
+        })
+        it('House::Withdraw 200 X and 200 Y from own margin account', async function () {
+          await expect(() => withdraw(amount, amount)).to.changeTokenBalance(TX1, signer, amount)
+          await checkMargin(signer.address, 0, 0)
+        })
+      })
+
+      describe('Failure Assertions', function () {
+        it('Fail House::Withdraw > margin balance X', async function () {
+          await expect(withdraw(amount.mul(2), 0)).to.be.reverted
+        })
+        it('Fail House::Withdraw > margin balance Y', async function () {
+          await expect(withdraw(0, amount.mul(2))).to.be.reverted
         })
       })
     })

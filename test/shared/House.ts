@@ -67,7 +67,7 @@ export function createHouseFunctions({
   }
 
   const withdraw: WithdrawFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
-    return engine.withdraw(deltaX, deltaY)
+    return target.withdraw(deltaX, deltaY)
   }
 
   const addBothFromMargin: AddBothFromMarginFunction = async (
