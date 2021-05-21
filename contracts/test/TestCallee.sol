@@ -100,14 +100,14 @@ contract TestCallee is IPrimitiveHouse {
         if (deltaY > 0) IERC20(stable).safeTransfer(CALLER, deltaY);
     }
 
-    function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+    function repayFromExternal(bytes32 pid, address owner,  uint deltaL) public override lock {
         CALLER = msg.sender;
-        engine.repay(pid, owner, nonce, deltaL, false);
+        engine.repay(pid, owner, deltaL, false);
     }
 
-    function repayFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+    function repayFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
         CALLER = msg.sender;
-        (uint deltaX, uint deltaY) = engine.repay(pid, owner, nonce, deltaL, true);
+        (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
 
@@ -167,7 +167,7 @@ contract TestCallee is IPrimitiveHouse {
      */
     function lend(bytes32 pid, uint nonce, uint deltaL) public override lock {
         CALLER = msg.sender;
-        engine.lend(pid, nonce, deltaL);
+        engine.lend(pid, deltaL);
     }
     
     // ===== Callback Implementations =====
@@ -176,7 +176,7 @@ contract TestCallee is IPrimitiveHouse {
         if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) public override executionLock {
+    function repayFromExternalCallback(bytes32 pid, address owner, uint deltaL) public override executionLock {
         engine.allocate(pid, owner, deltaL, false);
     }
 
