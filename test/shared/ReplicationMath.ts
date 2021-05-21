@@ -1,7 +1,7 @@
 import bn from 'bignumber.js'
 import { Wei, PERCENTAGE, YEAR, formatEther, parseEther, toBN, BigNumberish, parseWei } from './Units'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
-import { Calibration } from './Engine'
+import { Calibration } from './utilities'
 
 export function getProportionalVol(sigma: BigNumberish, time: BigNumberish): number {
   return Number(

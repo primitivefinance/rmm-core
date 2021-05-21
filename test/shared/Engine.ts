@@ -118,7 +118,8 @@ export function createEngineFunctions({
     // mint the tokens to the engine before we call create()
     await TX1.mint(engine.address, RX1.raw)
     await TY2.mint(engine.address, RY2.raw)
-    return engine.create(calibration, spot)
+    const { strike, sigma, time } = calibration
+    return engine.create(strike, sigma, time, spot)
   }
 
   const lend: LendFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {

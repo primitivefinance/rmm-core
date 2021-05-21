@@ -3,10 +3,18 @@ pragma solidity 0.8.0;
 
 import "../interfaces/IPrimitiveEngine.sol";
 import "../interfaces/IPrimitiveHouse.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import "../libraries/Margin.sol";
 import "../libraries/Position.sol";
+
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import '@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol';
+
+import '@uniswap/v3-core/contracts/libraries/SafeCast.sol';
+
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import '@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol';
+import '@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol';
 
 contract TestCallee is IPrimitiveHouse {
     using SafeERC20 for IERC20;
@@ -264,7 +272,7 @@ contract TestCallee is IPrimitiveHouse {
         int256 amount0Delta,
         int256 amount1Delta,
         bytes calldata data
-    ) external override {
+    ) external {
         address sender = abi.decode(data, (address));
 
         emit SwapCallback(amount0Delta, amount1Delta);
@@ -295,7 +303,7 @@ contract TestCallee is IPrimitiveHouse {
         uint256 amount0Owed,
         uint256 amount1Owed,
         bytes calldata data
-    ) external override {
+    ) external {
         address sender = abi.decode(data, (address));
 
         emit MintCallback(amount0Owed, amount1Owed);
