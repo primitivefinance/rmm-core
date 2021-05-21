@@ -182,4 +182,9 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
     function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) public override {
     }
+
+    /// @notice Returns the internal balances of risky and riskless tokens for an owner
+    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+        mar = _margins[owner];
+    }
 }

@@ -136,7 +136,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
         Margin.Data storage mar = margins.fetch(msg.sender);
-        margins.withdraw(deltaX, deltaY);
 
         if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);

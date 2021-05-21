@@ -5,6 +5,8 @@ import "./callback/IPrimitiveMarginCallback.sol";
 import "./callback/IPrimitiveLendingCallback.sol";
 import "./callback/IPrimitiveLiquidityCallback.sol";
 import "./callback/IPrimitiveSwapCallback.sol";
+import "../libraries/Margin.sol";
+
 interface IPrimitiveHouse is IPrimitiveLendingCallback, IPrimitiveLiquidityCallback, IPrimitiveMarginCallback, IPrimitiveSwapCallback {
     // init
     function initialize(address engine_, address factory_, uint24 fee_) external;
@@ -21,4 +23,5 @@ interface IPrimitiveHouse is IPrimitiveLendingCallback, IPrimitiveLiquidityCallb
     function swapYForX(bytes32 pid, uint deltaOut) external;
     // Lending
     function lend(bytes32 pid, uint nonce, uint deltaL) external;
+    function getMargin(address owner) external view returns (Margin.Data memory);
 }
