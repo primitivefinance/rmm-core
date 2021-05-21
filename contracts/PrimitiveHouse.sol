@@ -111,14 +111,14 @@ contract PrimitiveHouse is IPrimitiveHouse {
         pos.allocate(deltaL); // Update position liquidity
     }
 
-    function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+    function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
         CALLER = msg.sender;
-        engine.repay(pid, owner, nonce, deltaL, false);
+        engine.repay(pid, owner, deltaL, false);
     }
 
-    function repayFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
+    function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock {
         CALLER = msg.sender;
-        (uint deltaX, uint deltaY) = engine.repay(pid, owner, nonce, deltaL, true);
+        (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
 
@@ -132,7 +132,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
     function lend(bytes32 pid, uint nonce, uint deltaL) public override lock useCallerContext {
-        engine.lend(pid, nonce, deltaL);
+        engine.lend(pid, deltaL);
         
         // cant use callback, must maintain msg.sender
         if (deltaL > 0) {
@@ -180,7 +180,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrowCallback(Position.Data calldata pos, uint deltaL) public override {
     }
 
-    function repayFromExternalCallback(bytes32 pid, address owner, uint nonce, uint deltaL) public override {
+    function repayFromExternalCallback(bytes32 pid, address owner,  uint deltaL) public override {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner

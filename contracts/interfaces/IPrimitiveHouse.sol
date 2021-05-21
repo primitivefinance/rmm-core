@@ -15,8 +15,8 @@ interface IPrimitiveHouse is IPrimitiveLendingCallback, IPrimitiveLiquidityCallb
     function withdraw(uint deltaX, uint deltaY) external;
     function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
     function allocate(bytes32 pid, address owner, uint deltaL) external;
-    function repayFromExternal(bytes32 pid, address owner, uint nonce, uint deltaL) external;
-    function repayFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
+    function repayFromExternal(bytes32 pid, address owner, uint deltaL) external;
+    function repayFromMargin(bytes32 pid, address owner, uint deltaL) external;
     // Swap
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn) external;
     function swapXForY(bytes32 pid, uint deltaOut) external;

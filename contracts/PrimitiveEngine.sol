@@ -13,7 +13,6 @@ import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
-import "./libraries/ReserveMath.sol";
 import "./libraries/Units.sol";
 import "./libraries/Transfers.sol";
 
@@ -42,14 +41,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for Position.Data;
     using Transfers for IERC20;
 
-    uint public constant _NO_NONCE = type(uint).max;
+    uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
     bytes32 public constant _NO_POOL = bytes32(0);
 
     address public immutable override factory;
     address public immutable override risky;
     address public immutable override stable;
+    uint256 public immutable override fee;
 
-    uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
     modifier lock(bytes32 pid) {
@@ -57,6 +56,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         _POOL_ID = pid;
         _;
         _POOL_ID = _NO_POOL;
+    }
+
+    modifier onlyFactoryOwner() {
+        require(msg.sender == IPrimitiveFactory(factory).owner(), "Not owner");
+        _;
     }
 
     bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
@@ -67,9 +71,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public override reserves;
 
 
-    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
+    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
-        (factory, risky, stable) = IPrimitiveFactory(msg.sender).args(); 
+        (factory, risky, stable) = IPrimitiveFactory(msg.sender).args();
+        fee = FEE;
     }
 
     /// @notice Returns the risky token balance of this contract
@@ -96,7 +101,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
-        uint RY2 = ReserveMath.reserveStable(RX1, 1e18, strike, sigma, time).parseUnits();
+        uint RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
             RX1: RX1, // risky token balance
             RY2: RY2, // stable token balance
@@ -185,7 +190,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
@@ -242,14 +247,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
             int128 nextRX1 = compute(poolId, risky, RY2 - deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
             reserveX = nextRX1.sub(invariant).parseUnits();
             reserveY = RY2 - deltaOut;
-            deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
+            deltaIn =  (reserveX - RX1) * 1e4 /  (1e4 - fee); // nextRX1 = RX1 + detlaIn * (1 - fee)
         } else {
             int128 nextRY2 = compute(poolId, stable, RX1 - deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
             reserveX = RX1 - deltaOut;
             reserveY = invariant.add(nextRY2).parseUnits();
-            deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
+            deltaIn =  (reserveY - RY2) * 1e4 /  (1e4 - fee);
         }
-        
 
         require(deltaInMax >= deltaIn, "Too expensive");
         int128 postInvariant = calcInvariant(poolId, reserveX, reserveY, res.liquidity);
@@ -303,7 +307,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+    function lend(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
         positions.lend(factory, pid, deltaL); // increment position float factor by `deltaL`
 
@@ -314,7 +318,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+    function claim(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
         positions.claim(factory, pid, deltaL); // increment position float factor by `deltaL`
 
@@ -325,7 +329,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
+    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
         Reserve.Data storage res = reserves[pid];
         require(res.float >= deltaL && deltaL > 0, "Insufficient float"); // fail early if not enough float to borrow
 
@@ -344,11 +348,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
         if (isInternal) {
             (deltaX, deltaY) = allocate(pid, owner, deltaL, true);
         } else {
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
+            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, deltaL);
         }
 
         Reserve.Data storage res = reserves[pid];
@@ -365,9 +369,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration.Data memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         if(token == stable) {
-            reserveOfToken = ReserveMath.reserveStable(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
         } else {
-            reserveOfToken = ReserveMath.reserveRisky(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getInverseTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
         }
     }
 
@@ -406,19 +410,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
      // ===== Flashes =====
 
     function flashLoan(IERC3156FlashBorrower receiver, address token, uint amount, bytes calldata data) external override returns (bool) {
-        uint fee = flashFee(token, amount); // reverts if unsupported token
+        uint fee_ = flashFee(token, amount); // reverts if unsupported token
 
         uint balance = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) 
+            receiver.onFlashLoan(msg.sender, token, amount, fee_, data) 
             == keccak256("ERC3156FlashBorrower.onFlashLoan"),
             "IERC3156: Callback failed"
         );
 
         uint balanceAfter = token == stable ? balanceStable() : balanceRisky();
 
-        require(balance + fee <= balanceAfter, "Not enough returned");
+        require(balance + fee_ <= balanceAfter, "Not enough returned");
 
         uint payment = balanceAfter - balance;
 
@@ -429,8 +433,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     function flashFee(address token, uint amount) public view override returns (uint) {
         require(token == stable || token == risky, "Not supported");
-        uint fee = 5e16;
-        return amount * fee / 1e6;
+        return amount * fee / 1000;
     }
 
     function maxFlashLoan(address token) public view override returns (uint) {
