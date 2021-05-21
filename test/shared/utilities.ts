@@ -1,4 +1,5 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, BigNumberish } from './Units'
+import { BytesLike } from 'ethers'
 import { IUniswapV3Factory, IERC20 } from '../../typechain'
 import bn from 'bignumber.js'
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'

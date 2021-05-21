@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { BigNumber, ethers } from 'ethers'
 import { Fixture } from 'ethereum-waffle'
-import { deriveUniPoolAddress } from '../shared/deriveUniPoolAddress'
+import { deriveUniPoolAddress } from '../shared/utilities'
 import { abi as TOKEN_ABI, bytecode as TOKEN_BYTECODE } from '../../artifacts/contracts/test/Token.sol/Token.json'
 import { abi as ENGINE_ABI } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
 import { abi as POOL_ABI } from '@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json'

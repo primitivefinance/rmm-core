@@ -1,4 +1,5 @@
-import { constants, Wallet, Transaction, BytesLike, BigNumberish } from 'ethers'
+import { constants, Wallet, Transaction, BigNumberish } from 'ethers'
+import { BytesLike } from 'ethers'
 import { IERC20, PrimitiveHouse, PrimitiveEngine } from '../../typechain'
 
 export const ERC20Events = {

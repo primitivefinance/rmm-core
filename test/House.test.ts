@@ -35,14 +35,12 @@ const { createFixtureLoader } = waffle
 describe('Primitive House tests', function () {
   const wallets = waffle.provider.getWallets()
   const [signer, signer2] = wallets
-  // Contracts
-  // Pool settings
   let poolId: string, calibration: Calibration, reserve: Reserve
-  // External settings
+
   let spot: Wei
-  // Invariant checks
-  let preInvariant: BigNumber, postInvariant: BigNumber
-  // Engine Functions
+  let preInvariant: BigNumber
+  let postInvariant: BigNumber
+
   let deposit: DepositFunction,
     withdraw: WithdrawFunction,
     lend: LendFunction,
@@ -52,7 +50,6 @@ describe('Primitive House tests', function () {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
 
-  const INITIAL_MARGIN = parseWei('1000')
   const TICK_SPACING = 60
 
   const protocolFixture: Fixture<{
@@ -138,7 +135,7 @@ describe('Primitive House tests', function () {
 
     // Create pool
     await create(calibration, spot.raw)
-    poolId = await engine.getPoolId(calibration)
+    poolId = await engine.getPoolId(strike, sigma, time)
     reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
 
@@ -250,7 +247,7 @@ describe('Primitive House tests', function () {
       })
     })
   })
-  describe('Liquidity', function () {
+  describe('---Liquidity---', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
