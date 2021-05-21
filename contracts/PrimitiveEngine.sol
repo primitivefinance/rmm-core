@@ -191,7 +191,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
@@ -308,7 +308,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+    function lend(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
         positions.lend(factory, pid, deltaL); // increment position float factor by `deltaL`
 
@@ -319,7 +319,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint nonce, uint deltaL) public lock(pid) override returns (bool) {
+    function claim(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
         positions.claim(factory, pid, deltaL); // increment position float factor by `deltaL`
 
@@ -330,7 +330,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint nonce, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
+    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
         Reserve.Data storage res = reserves[pid];
         require(res.float >= deltaL && deltaL > 0, "Insufficient float"); // fail early if not enough float to borrow
 
@@ -349,11 +349,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint nonce, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
         if (isInternal) {
             (deltaX, deltaY) = allocate(pid, owner, deltaL, true);
         } else {
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, nonce, deltaL);
+            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, deltaL);
         }
 
         Reserve.Data storage res = reserves[pid];
