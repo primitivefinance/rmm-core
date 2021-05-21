@@ -1,33 +1,37 @@
 import hre, { ethers, waffle } from 'hardhat'
 import { Wallet, constants } from 'ethers'
 import { PERCENTAGE, parseWei, BigNumber, Wei } from './shared/Units'
+import { primitiveProtocolFixture } from './shared/fixtures'
+import { expect } from 'chai'
+import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes } from '../typechain'
 import {
-  Calibration,
-  Reserve,
   EngineEvents,
-  PoolParams,
-  getReserve,
-  getPoolParams,
-  addBoth,
   ERC20Events,
-  getMargin,
-  getDeltaIn,
-  removeBoth,
   createEngineFunctions,
   SwapFunction,
   DepositFunction,
   WithdrawFunction,
   AddLiquidityFunction,
   CreateFunction,
-  getPosition,
   LendFunction,
   ClaimFunction,
   BorrowFunction,
   RepayFunction,
 } from './shared/Engine'
-import { primitiveProtocolFixture } from './shared/fixtures'
-import { expect } from 'chai'
-import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes } from '../typechain'
+
+import {
+  Calibration,
+  Reserve,
+  PoolParams,
+  getReserve,
+  getPoolParams,
+  addBoth,
+  getMargin,
+  getDeltaIn,
+  removeBoth,
+  getPosition,
+} from './shared/utilities'
+
 const { createFixtureLoader } = waffle
 
 describe('Primitive Engine', function () {
