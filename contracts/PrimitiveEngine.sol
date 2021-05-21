@@ -41,14 +41,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for Position.Data;
     using Transfers for IERC20;
 
-    uint public constant _NO_NONCE = type(uint).max;
+    uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
     bytes32 public constant _NO_POOL = bytes32(0);
 
     address public immutable override factory;
     address public immutable override risky;
     address public immutable override stable;
+    uint256 public immutable override fee;
 
-    uint public _NONCE = _NO_NONCE;
     bytes32 public _POOL_ID = _NO_POOL;
 
     modifier lock(bytes32 pid) {
@@ -56,6 +56,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         _POOL_ID = pid;
         _;
         _POOL_ID = _NO_POOL;
+    }
+
+    modifier onlyFactoryOwner() {
+        require(msg.sender == IPrimitiveFactory(factory).owner(), "Not owner");
+        _;
     }
 
     bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
@@ -66,9 +71,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public override reserves;
 
 
-    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Riskless'
+    /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
-        (factory, risky, stable) = IPrimitiveFactory(msg.sender).args(); 
+        (factory, risky, stable) = IPrimitiveFactory(msg.sender).args();
+        fee = FEE;
     }
 
     /// @notice Returns the risky token balance of this contract
@@ -101,9 +107,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             RY2: RY2, // stable token balance
             liquidity: 1e18, // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0, // the LP shares borrowed from the float
-            feeRisky: 0,
-            feeStable: 0
+            debt: 0 // the LP shares borrowed from the float
         });
 
         uint balanceX = balanceRisky();
@@ -244,14 +248,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
             int128 nextRX1 = compute(poolId, risky, RY2 - deltaOut); // remove Y from reserves, and use calculate the new X reserve value.
             reserveX = nextRX1.sub(invariant).parseUnits();
             reserveY = RY2 - deltaOut;
-            deltaIn =  reserveX > RX1 ? reserveX - RX1 : RX1 - reserveX; // the diff between new X and current X is the deltaIn
+            deltaIn =  (reserveX - RX1) * 1e4 /  (1e4 - fee); // nextRX1 = RX1 + detlaIn * (1 - fee)
         } else {
             int128 nextRY2 = compute(poolId, stable, RX1 - deltaOut); // subtract X from reserves, and use to calculate the new Y reserve value.
             reserveX = RX1 - deltaOut;
             reserveY = invariant.add(nextRY2).parseUnits();
-            deltaIn =  reserveY > RY2 ? reserveY - RY2 : RY2 - reserveY; // the diff between new Y and current Y is the deltaIn
+            deltaIn =  (reserveY - RY2) * 1e4 /  (1e4 - fee);
         }
-        
 
         require(deltaInMax >= deltaIn, "Too expensive");
         int128 postInvariant = calcInvariant(poolId, reserveX, reserveY, res.liquidity);
@@ -408,19 +411,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
      // ===== Flashes =====
 
     function flashLoan(IERC3156FlashBorrower receiver, address token, uint amount, bytes calldata data) external override returns (bool) {
-        uint fee = flashFee(token, amount); // reverts if unsupported token
+        uint fee_ = flashFee(token, amount); // reverts if unsupported token
 
         uint balance = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) 
+            receiver.onFlashLoan(msg.sender, token, amount, fee_, data) 
             == keccak256("ERC3156FlashBorrower.onFlashLoan"),
             "IERC3156: Callback failed"
         );
 
         uint balanceAfter = token == stable ? balanceStable() : balanceRisky();
 
-        require(balance + fee <= balanceAfter, "Not enough returned");
+        require(balance + fee_ <= balanceAfter, "Not enough returned");
 
         uint payment = balanceAfter - balance;
 
@@ -431,8 +434,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     function flashFee(address token, uint amount) public view override returns (uint) {
         require(token == stable || token == risky, "Not supported");
-        uint fee = 5e16;
-        return amount * fee / 1e6;
+        return amount * fee / 1000;
     }
 
     function maxFlashLoan(address token) public view override returns (uint) {

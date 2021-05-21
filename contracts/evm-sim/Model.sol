@@ -88,7 +88,7 @@ contract Model is ICallback {
    }
 
   function getReserves() public view returns (uint, uint) {
-    (uint RX1, uint RY2, , , , ,) = engine.reserves(pid);
+    (uint RX1, uint RY2, , ,) = engine.reserves(pid);
     return (RX1, RY2);
   }
 }
