@@ -21,14 +21,6 @@ library Reserve {
         uint debt;
     }
 
-    /// @notice  Fetches an Engine Registry's Reserve Data struct using a mapping of Reserve Ids.
-    function fetch(
-        mapping(bytes32 => Data) storage reserves,
-        address engine
-    ) internal returns (Data storage) {
-        return reserves[getReserveId(engine)];
-    }
-
     /// @notice Increases one reserve value and decreases the other by different amounts
     function swap(Data storage reserve, bool addXRemoveY, uint deltaIn, uint deltaOut) internal returns (Data storage) {
         if(addXRemoveY) {
@@ -74,11 +66,5 @@ library Reserve {
     function removeFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
         reserve.float -= deltaL;
         return reserve;
-    }
-
-    /// @notice  Fetches the reserve Id, which is an encoded `owner`.
-    /// @return  The reserve Id as a bytes32.
-    function getReserveId(address engine) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(engine));
     }
 }
