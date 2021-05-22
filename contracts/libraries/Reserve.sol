@@ -19,6 +19,23 @@ library Reserve {
         uint float;
         // the liquidity unavailable because it was borrowed
         uint debt;
+        // oracle items
+        uint cumulativeRisky;
+        uint cumulativeStable;
+        uint cumulativeLiquidity;
+        uint32 blockTimestamp;
+    }
+
+    function _blockTimestamp() internal returns (uint32 blockTimestamp) {
+        blockTimestamp = uint32(block.timestamp);
+    }
+
+    function update(Data storage res) internal returns (Data storage) {
+        uint32 deltaTime = _blockTimestamp() - res.blockTimestamp; 
+        res.cumulativeRisky += res.RX1 * deltaTime;
+        res.cumulativeStable += res.RY2 * deltaTime;
+        res.cumulativeLiquidity += res.liquidity * deltaTime;
+        return res;
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
@@ -30,7 +47,7 @@ library Reserve {
             reserve.RX1 -= deltaOut;
             reserve.RY2 += deltaIn;
         }
-        return reserve;
+        return update(reserve);
     }
 
     /// @notice Add to both reserves and total supply of liquidity
@@ -38,7 +55,7 @@ library Reserve {
         reserve.RX1 += deltaX;
         reserve.RY2 += deltaY;
         reserve.liquidity += deltaL;
-        return reserve;
+        return update(reserve);
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
@@ -46,7 +63,7 @@ library Reserve {
         reserve.RX1 -= deltaX;
         reserve.RY2 -= deltaY;
         reserve.liquidity -= deltaL;
-        return reserve;
+        return update(reserve);
     }
 
     /// @notice Increases available float to borrow, called when lending

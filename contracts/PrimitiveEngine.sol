@@ -107,7 +107,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
             RY2: RY2, // stable token balance
             liquidity: 1e18, // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0 // the LP shares borrowed from the float
+            debt: 0, // the LP shares borrowed from the float
+            cumulativeRisky: 0,
+            cumulativeStable: 0,
+            cumulativeLiquidity: 0,
+            blockTimestamp: Reserve._blockTimestamp()
         });
 
         uint balanceX = balanceRisky();
