@@ -64,6 +64,10 @@ contract PrimitiveHouse is IPrimitiveHouse {
         require(address(uniPool) != address(0), "POOL UNINITIALIZED");
     }
 
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
+      engine.create(strike, sigma, time, riskyPrice);
+    }
+
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
@@ -157,6 +161,11 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
     
     // ===== Callback Implementations =====
+    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+        if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
     function depositCallback(uint deltaX, uint deltaY) public override executionLock {
         if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);

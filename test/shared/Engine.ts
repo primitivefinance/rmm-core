@@ -122,12 +122,12 @@ export function createEngineFunctions({
     return engine.create(strike, sigma, time, spot)
   }
 
-  const lend: LendFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
-    return engine.lend(pid, nonce, deltaL)
+  const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.lend(pid, deltaL)
   }
 
-  const claim: ClaimFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
-    return engine.claim(pid, nonce, deltaL)
+  const claim: ClaimFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.claim(pid, deltaL)
   }
   const borrow: BorrowFunction = async (
     pid: BytesLike,

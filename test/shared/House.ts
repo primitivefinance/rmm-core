@@ -32,10 +32,17 @@ export type RepayFromExternalFunction = (
   deltaL: BigNumberish
 ) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type LendFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type LendFunction = (pid: BytesLike, deltaL: BigNumberish) => Promise<Transaction>
 export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
+export type CreateFunction = (
+  strike: BigNumberish,
+  sigma: BigNumberish,
+  time: BigNumberish,
+  riskyPrice: BigNumberish
+) => Promise<Transaction>
 
 export interface HouseFunctions {
+  create: CreateFunction
   deposit: DepositFunction
   withdraw: WithdrawFunction
   addBothFromMargin: AddBothFromMarginFunction
@@ -57,6 +64,17 @@ export function createHouseFunctions({
   TY2: IERC20
   engine: PrimitiveEngine
 }): HouseFunctions {
+  const create: CreateFunction = async (
+    strike: BigNumberish,
+    sigma: BigNumberish,
+    time: BigNumberish,
+    riskyPrice: BigNumberish
+  ): Promise<Transaction> => {
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    return target.create(strike, sigma, time, riskyPrice)
+  }
+
   const deposit: DepositFunction = async (
     owner: string,
     deltaX: BigNumberish,
@@ -111,11 +129,12 @@ export function createHouseFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const lend: LendFunction = async (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish): Promise<Transaction> => {
-    return engine.lend(pid, nonce, deltaL)
+  const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
+    return engine.lend(pid, deltaL)
   }
 
   return {
+    create,
     deposit,
     withdraw,
     addBothFromMargin,
