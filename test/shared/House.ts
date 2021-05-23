@@ -1,24 +1,15 @@
 import { constants, Wallet, Transaction, BigNumberish } from 'ethers'
-import { BytesLike } from 'ethers'
+import { BytesLike, BigNumber } from 'ethers'
 import { IERC20, PrimitiveHouse, PrimitiveEngine } from '../../typechain'
+import { parseWei } from './Units'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
 }
 export type DepositFunction = (owner: string, deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
-export type AddBothFromMarginFunction = (
-  pid: string,
-  owner: string,
-  nonce: BigNumberish,
-  deltaL: BigNumberish
-) => Promise<Transaction>
-export type AddBothFromExternalFunction = (
-  pid: string,
-  owner: string,
-  nonce: BigNumberish,
-  deltaL: BigNumberish
-) => Promise<Transaction>
+export type AllocateFromMarginFunction = (pid: string, owner: string, deltaL: BigNumberish) => Promise<Transaction>
+export type AllocateFromExternalFunction = (pid: string, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type RepayFromMarginFunction = (
   pid: BytesLike,
   owner: BytesLike,
@@ -45,8 +36,8 @@ export interface HouseFunctions {
   create: CreateFunction
   deposit: DepositFunction
   withdraw: WithdrawFunction
-  addBothFromMargin: AddBothFromMarginFunction
-  addBothFromExternal: AddBothFromExternalFunction
+  allocateFromMargin: AllocateFromMarginFunction
+  allocateFromExternal: AllocateFromExternalFunction
   swapXForY: SwapFunction
   swapYForX: SwapFunction
   lend: LendFunction
@@ -89,26 +80,24 @@ export function createHouseFunctions({
     return target.withdraw(deltaX, deltaY)
   }
 
-  const addBothFromMargin: AddBothFromMarginFunction = async (
+  const allocateFromMargin: AllocateFromMarginFunction = async (
     pid: string,
     owner: string,
-    nonce: BigNumberish,
     deltaL: BigNumberish
   ): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.addBothFromMargin(pid, owner, nonce, deltaL)
+    return target.allocateFromMargin(pid, owner, deltaL)
   }
 
-  const addBothFromExternal: AddBothFromExternalFunction = async (
+  const allocateFromExternal: AllocateFromExternalFunction = async (
     pid: string,
     owner: string,
-    nonce: BigNumberish,
     deltaL: BigNumberish
   ): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    return target.addBothFromExternal(pid, owner, nonce, deltaL)
+    return target.allocateFromExternal(pid, owner, deltaL)
   }
 
   const swap = async (
@@ -137,8 +126,8 @@ export function createHouseFunctions({
     create,
     deposit,
     withdraw,
-    addBothFromMargin,
-    addBothFromExternal,
+    allocateFromMargin,
+    allocateFromExternal,
     swapXForY,
     swapYForX,
     lend,
