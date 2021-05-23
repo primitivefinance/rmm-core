@@ -11,8 +11,8 @@ import {
   DepositFunction,
   WithdrawFunction,
   LendFunction,
-  AddBothFromMarginFunction,
-  AddBothFromExternalFunction,
+  AllocateFromMarginFunction,
+  AllocateFromExternalFunction,
   RepayFromMarginFunction,
   RepayFromExternalFunction,
   createHouseFunctions,
@@ -24,7 +24,6 @@ import {
   PoolParams,
   getReserve,
   getPoolParams,
-  addBoth,
   getMargin,
   getDeltaIn,
   removeBoth,
@@ -45,8 +44,8 @@ describe('Primitive House tests', function () {
   let deposit: DepositFunction,
     withdraw: WithdrawFunction,
     lend: LendFunction,
-    addBothFromMargin: AddBothFromMarginFunction,
-    addBothFromExternal: AddBothFromExternalFunction,
+    allocateFromMargin: AllocateFromMarginFunction,
+    allocateFromExternal: AllocateFromExternalFunction,
     create: CreateFunction
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -115,7 +114,7 @@ describe('Primitive House tests', function () {
     spot = parseWei('1000')
 
     // House functions
-    ;({ create, deposit, withdraw, addBothFromExternal, addBothFromMargin, lend } = createHouseFunctions({
+    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
@@ -235,13 +234,26 @@ describe('Primitive House tests', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
-    describe('--addBoth--', function () {
+    describe('--allocate--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
-          expect(() => addBothFromExternal(poolId, signer.address, 0, deltaL))
+          await allocateFromExternal(poolId, signer.address, deltaL)
         })
 
-        it('House::Add liquidity from margin account', async function () {})
+        it('House::Add liquidity from margin account', async function () {
+          await deposit(signer.address, BigNumber.from(parseWei('1000').raw), BigNumber.from(parseWei('1000').raw))
+          await allocateFromMargin(poolId, signer.address, deltaL)
+        })
+      })
+
+      describe('Failure Assertions', function () {
+        it('House::Fail to add liquidity from external balance', async function () {
+          await allocateFromExternal(poolId, signer.address, deltaL)
+        })
+
+        it('House::Fail to liquidity from margin account due to insufficient balance', async function () {
+          await allocateFromMargin(poolId, signer.address, deltaL)
+        })
       })
     })
   })

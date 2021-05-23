@@ -21,8 +21,8 @@ interface IPrimitiveHouse is
     function create(uint strike, uint sigma, uint time, uint riskyPrice) external;
     function deposit(address owner, uint deltaX, uint deltaY) external;
     function withdraw(uint deltaX, uint deltaY) external;
-    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
-    function allocate(bytes32 pid, address owner, uint deltaL) external;
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) external;
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) external;
     function repayFromExternal(bytes32 pid, address owner, uint deltaL) external;
     function repayFromMargin(bytes32 pid, address owner, uint deltaL) external;
     // Swap
