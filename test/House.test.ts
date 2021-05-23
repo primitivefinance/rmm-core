@@ -6,7 +6,7 @@ import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes, IUniswapV3Pool } from '../typechain'
 import { encodePriceSqrt, expandTo18Decimals, getMinTick, getMaxTick } from './shared/utilities'
-import { EngineEvents, createEngineFunctions, CreateFunction } from './shared/Engine'
+import { EngineEvents, createEngineFunctions } from './shared/Engine'
 import {
   DepositFunction,
   WithdrawFunction,
@@ -16,6 +16,7 @@ import {
   RepayFromMarginFunction,
   RepayFromExternalFunction,
   createHouseFunctions,
+  CreateFunction,
 } from './shared/House'
 import {
   Calibration,
@@ -49,6 +50,7 @@ describe('Primitive House tests', function () {
     create: CreateFunction
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
+  const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
 
   const TICK_SPACING = 60
 
@@ -112,32 +114,19 @@ describe('Primitive House tests', function () {
     // init external settings
     spot = parseWei('1000')
 
-    // Calibration struct
-    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
-    calibration = { strike, sigma, time }
-
     // House functions
-    ;({ deposit, withdraw, addBothFromExternal, addBothFromMargin, lend } = createHouseFunctions({
+    ;({ create, deposit, withdraw, addBothFromExternal, addBothFromMargin, lend } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
       engine,
     }))
 
-    // Engine Functions
-    ;({ create } = createEngineFunctions({
-      target: callee,
-      TX1,
-      TY2,
-      engine,
-      bs,
-    }))
-
     // Create pool
-    await create(calibration, spot.raw)
+    await create(strike, sigma, time, spot.raw)
     poolId = await engine.getPoolId(strike, sigma, time)
     reserve = await getReserve(engine, poolId)
-    preInvariant = await engine.getInvariantLast(poolId)
+    preInvariant = await engine.invariantOf(poolId)
 
     // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
@@ -147,17 +136,12 @@ describe('Primitive House tests', function () {
     hre.tracer.nameTags[TY2.address] = 'Riskless Token'
   })
 
-  describe('#create', function () {
-    it('House::Create: Generates a new Curve', async function () {
-      const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
-      await expect(create(cal, spot.raw)).to.not.be.reverted
-      const len = (await engine.getAllPoolsLength()).toString()
-      const pid = await engine.allPools(+len - 1)
-      const settings = await engine.getCalibration(pid)
-      settings.map((val, i) => {
-        const keys = Object.keys(cal)
-        expect(val).to.be.eq(cal[keys[i]])
-      })
+  describe('---create---', function () {
+    it('House::Creates a new Curve', async function () {
+      await expect(create(strike.mul(2), sigma, time, spot.raw)).to.not.be.reverted
+    })
+    it('House::Fails to create a new curve that already exists', async function () {
+      await expect(create(strike, sigma, time, spot.raw)).to.be.reverted
     })
   })
 
@@ -172,7 +156,7 @@ describe('Primitive House tests', function () {
       expect(unlocked).to.be.eq(false)
     }
 
-    describe('#deposit', function () {
+    describe('--deposit--', function () {
       const amount = parseWei('200').raw
       describe('Success Assertions', function () {
         // OWN MARGIN ACCOUNT
@@ -217,7 +201,7 @@ describe('Primitive House tests', function () {
       })
     })
 
-    describe('#withdraw', function () {
+    describe('--withdraw--', function () {
       const amount = parseWei('200').raw
       this.beforeEach(async function () {
         await deposit(signer.address, amount, amount)
@@ -251,7 +235,7 @@ describe('Primitive House tests', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
-    describe('#addBoth', function () {
+    describe('--addBoth--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
           expect(() => addBothFromExternal(poolId, signer.address, 0, deltaL))

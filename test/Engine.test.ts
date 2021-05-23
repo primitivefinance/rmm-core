@@ -59,6 +59,7 @@ describe('Primitive Engine', function () {
   let loadFixture: ReturnType<typeof createFixtureLoader>
 
   const INITIAL_MARGIN = parseWei('1000')
+  const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
 
   before('Generate fixture loader', async function () {
     loadFixture = createFixtureLoader([signer, signer2])
@@ -70,9 +71,6 @@ describe('Primitive Engine', function () {
     // init external settings
     nonce = 0
     spot = parseWei('1000')
-    // Calibration struct
-    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
-    calibration = { strike, sigma, time }
     // Engine functions
     ;({ deposit, withdraw, addLiquidity, swapXForY, swapYForX, create, lend, claim, borrow, repay } = createEngineFunctions({
       target: callee,
@@ -82,7 +80,7 @@ describe('Primitive Engine', function () {
       bs,
     }))
     // Create pool
-    await create(calibration, spot.raw)
+    await create(strike, sigma, time, spot.raw)
     poolId = await engine.getPoolId(calibration)
     reserve = await getReserve(engine, poolId)
     preInvariant = await engine.getInvariantLast(poolId)
@@ -112,21 +110,21 @@ describe('Primitive Engine', function () {
   describe('#create', function () {
     describe('sucess cases', function () {
       it('Engine::Create: Generates a new Curve', async function () {
-        const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
-        await expect(create(cal, spot.raw)).to.not.be.reverted
+        const calStruct = { strike: strike, sigma: sigma, time: time }
+        await expect(create(calStruct, spot.raw)).to.not.be.reverted
         const len = (await engine.getAllPoolsLength()).toString()
         const pid = await engine.allPools(+len - 1)
         const settings = await engine.getCalibration(pid)
         settings.map((val, i) => {
-          const keys = Object.keys(cal)
-          expect(val).to.be.eq(cal[keys[i]])
+          const keys = Object.keys(calStruct)
+          expect(val).to.be.eq(calStruct[keys[i]])
         })
       })
     })
 
     describe('fail cases', function () {
       it('Fail Engine::Create: Already created', async function () {
-        await expect(engine.create(calibration, spot.raw)).to.be.revertedWith('Already created')
+        await expect(engine.create(strike, sigma, time, spot.raw)).to.be.revertedWith('Already created')
       })
       it('Fail Engine::Create: time is 0', async function () {
         const cal = { strike: parseWei('500').raw, sigma: calibration.sigma, time: 0 }
@@ -142,12 +140,14 @@ describe('Primitive Engine', function () {
       })
       it('Fail Engine::Create: Not enough risky tokens', async function () {
         const cal = { strike: parseWei('1500').raw, sigma: calibration.sigma, time: calibration.time }
-        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough risky tokens')
+        await expect(engine.create(cal.strike, cal.sigma, cal.time, spot.raw)).to.be.revertedWith('Not enough risky tokens')
       })
       it('Fail Engine::Create: Not enough riskless tokens', async function () {
         const cal = { strike: parseWei('750').raw, sigma: calibration.sigma, time: calibration.time }
         await TX1.mint(engine.address, parseWei('100').raw)
-        await expect(engine.create(cal, spot.raw)).to.be.revertedWith('Not enough riskless tokens')
+        await expect(engine.create(cal.strike, cal.sigma, cal.time, spot.raw)).to.be.revertedWith(
+          'Not enough riskless tokens'
+        )
       })
     })
   })
@@ -398,10 +398,10 @@ describe('Primitive Engine', function () {
             params
           )
           // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-          await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
-            engine,
-            EngineEvents.SWAP
-          )
+          await expect(
+            engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256, false),
+            'Engine:Swap'
+          ).to.emit(engine, EngineEvents.SWAP)
 
           const postReserve = await engine.getReserve(poolId)
           //expect(postInvariant).to.be.gte(new Wei(invariant).float)
@@ -444,10 +444,10 @@ describe('Primitive Engine', function () {
           )
 
           // TODO: Swap deltaIn amount is different from esimated deltaIn
-          await expect(engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256), 'Engine:Swap').to.emit(
-            engine,
-            EngineEvents.SWAP
-          )
+          await expect(
+            engine.swap(poolId, addXRemoveY, amount.raw, ethers.constants.MaxUint256, false),
+            'Engine:Swap'
+          ).to.emit(engine, EngineEvents.SWAP)
 
           const postReserve = await engine.getReserve(poolId)
           //expect(postInvariant).to.be.gte(new Wei(invariant).float)
@@ -492,7 +492,7 @@ describe('Primitive Engine', function () {
         })
 
         it('Fail Callee::Swap: Too expensive', async function () {
-          await expect(engine.swap(poolId, true, 1, 0)).to.be.revertedWith('Too expensive')
+          await expect(engine.swap(poolId, true, 1, 0, false)).to.be.revertedWith('Too expensive')
         })
         it('Fail Callee::Swap: Invalid invariant', async function () {})
         it('Fail Callee::Swap: Sent too much tokens', async function () {})
@@ -524,7 +524,7 @@ describe('Primitive Engine', function () {
 
       describe('fail cases', function () {
         it('Fail Engine::lend: Not enough liquidity', async function () {
-          await expect(engine.lend(poolId, nonce, 1001)).to.be.revertedWith('Not enough liquidity')
+          await expect(engine.lend(poolId, 1001)).to.be.revertedWith('Not enough liquidity')
         })
       })
     })
