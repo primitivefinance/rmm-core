@@ -71,6 +71,10 @@ contract TestCallee is IPrimitiveHouse {
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override executionLock {
+      engine.create(strike, sigma, time, riskyPrice);
+    }
+
     function deposit(address owner, uint deltaX, uint deltaY) public override lock {
         CALLER = msg.sender;
         engine.deposit(msg.sender, deltaX, deltaY);
@@ -116,15 +120,25 @@ contract TestCallee is IPrimitiveHouse {
 
     }
 
-    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock {
-        CALLER = msg.sender;
-        (uint deltaX, uint deltaY) = engine.allocate(pid, address(this), deltaL, true);
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
+        bytes32 pid_ = pid;
+        (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-
-        Position.Data storage pos = _positions.fetch(engine.factory(), owner, pid);
+        address factory = engine.factory();
+        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
+
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
+        bytes32 pid_ = pid;
+        engine.allocate(pid_, address(this),  deltaL, false);
+
+        address factory = engine.factory();
+        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        pos.allocate(deltaL); // Update position liquidity
+    }
+
 
     function addLiquidityFailTX1(bytes32 pid, uint nonce, uint deltaL) public lock reset {
         CALLER = msg.sender;
@@ -136,15 +150,6 @@ contract TestCallee is IPrimitiveHouse {
         CALLER = msg.sender;
         ORDER_TYPE = Fails.TY2;
         engine.allocate(pid, msg.sender, deltaL, false);
-    }
-
-    function allocate(bytes32 pid, address owner, uint deltaL) public override lock {
-        CALLER = msg.sender;
-        engine.allocate(pid, address(this), deltaL, false);
-
-        address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid);
-        pos.allocate(deltaL); // Update position liquidity
     }
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
@@ -171,6 +176,11 @@ contract TestCallee is IPrimitiveHouse {
     }
     
     // ===== Callback Implementations =====
+    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+        if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
     function allocateCallback(uint deltaX, uint deltaY) public override executionLock {
         if(deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
