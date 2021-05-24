@@ -95,21 +95,19 @@ contract PrimitiveHouse is IPrimitiveHouse {
      * @notice Adds deltaL to global liquidity factor.
      */
     function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        bytes32 pid_ = pid;
-        (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
+        (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(factory, owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        bytes32 pid_ = pid;
-        engine.allocate(pid_, address(this),  deltaL, false);
+        engine.allocate(pid, address(this),  deltaL, false);
 
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(factory, owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
