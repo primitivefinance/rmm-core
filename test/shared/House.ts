@@ -1,7 +1,6 @@
-import { constants, Wallet, Transaction, BigNumberish } from 'ethers'
-import { BytesLike, BigNumber } from 'ethers'
+import { constants, Wallet, Transaction, BigNumberish, BytesLike } from 'ethers'
 import { IERC20, PrimitiveHouse, PrimitiveEngine } from '../../typechain'
-import { parseWei } from './Units'
+import { parseWei, Wei } from './Units'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',

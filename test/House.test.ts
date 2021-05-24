@@ -29,29 +29,38 @@ import {
   removeBoth,
   getPosition,
 } from './shared/utilities'
+import { strike, sigma, time, minTick, maxTick } from './shared/config'
 
 const { createFixtureLoader } = waffle
 
 describe('Primitive House tests', function () {
   const wallets = waffle.provider.getWallets()
   const [signer, signer2] = wallets
-  let poolId: string, calibration: Calibration, reserve: Reserve
+
+  let poolId: string
+  let calibration: Calibration
+  let reserve: Reserve
 
   let spot: Wei
   let preInvariant: BigNumber
   let postInvariant: BigNumber
 
-  let deposit: DepositFunction,
-    withdraw: WithdrawFunction,
-    lend: LendFunction,
-    allocateFromMargin: AllocateFromMarginFunction,
-    allocateFromExternal: AllocateFromExternalFunction,
-    create: CreateFunction
+  let deposit: DepositFunction
+  let withdraw: WithdrawFunction
+  let lend: LendFunction
+  let allocateFromMargin: AllocateFromMarginFunction
+  let allocateFromExternal: AllocateFromExternalFunction
+  let create: CreateFunction
+
+  let engine: PrimitiveEngine
+  let callee: TestCallee
+  let house: PrimitiveHouse
+  let TX1: IERC20
+  let TY2: IERC20
+  let bs: TestBlackScholes
+  let uniPool: IUniswapV3Pool
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
-  const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
-
-  const TICK_SPACING = 60
 
   const protocolFixture: Fixture<{
     engine: PrimitiveEngine
@@ -77,9 +86,6 @@ describe('Primitive House tests', function () {
 
     await uniPool.initialize(encodePriceSqrt(1, 1))
 
-    const minTick = getMinTick(TICK_SPACING)
-    const maxTick = getMaxTick(TICK_SPACING)
-
     await callee.mint(uniPool.address, signer.address, minTick, maxTick, expandTo18Decimals(1))
 
     return {
@@ -92,14 +98,6 @@ describe('Primitive House tests', function () {
       uniPool,
     }
   }
-
-  let engine: PrimitiveEngine
-  let callee: TestCallee
-  let house: PrimitiveHouse
-  let TX1: IERC20
-  let TY2: IERC20
-  let bs: TestBlackScholes
-  let uniPool: IUniswapV3Pool
 
   before('Generate fixture loader', async function () {
     loadFixture = createFixtureLoader(wallets)
@@ -248,11 +246,11 @@ describe('Primitive House tests', function () {
 
       describe('Failure Assertions', function () {
         it('House::Fail to add liquidity from external balance', async function () {
-          await allocateFromExternal(poolId, signer.address, deltaL)
+          await expect(allocateFromExternal(poolId, signer.address, deltaL.mul(100))).to.be.reverted // TODO: FIX THIS
         })
 
         it('House::Fail to liquidity from margin account due to insufficient balance', async function () {
-          await allocateFromMargin(poolId, signer.address, deltaL)
+          await expect(allocateFromMargin(poolId, signer.address, deltaL.mul(100))).to.be.reverted
         })
       })
     })
