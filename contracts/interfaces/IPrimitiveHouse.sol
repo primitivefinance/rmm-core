@@ -5,16 +5,24 @@ import "./callback/IPrimitiveMarginCallback.sol";
 import "./callback/IPrimitiveLendingCallback.sol";
 import "./callback/IPrimitiveLiquidityCallback.sol";
 import "./callback/IPrimitiveSwapCallback.sol";
+import "./callback/IPrimitiveCreateCallback.sol";
 import "../libraries/Margin.sol";
 
-interface IPrimitiveHouse is IPrimitiveLendingCallback, IPrimitiveLiquidityCallback, IPrimitiveMarginCallback, IPrimitiveSwapCallback {
+interface IPrimitiveHouse is 
+  IPrimitiveCreateCallback,
+  IPrimitiveLendingCallback, 
+  IPrimitiveLiquidityCallback, 
+  IPrimitiveMarginCallback, 
+  IPrimitiveSwapCallback 
+{
     // init
     function initialize(address engine_, address factory_, uint24 fee_) external;
     // Margin
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) external;
     function deposit(address owner, uint deltaX, uint deltaY) external;
     function withdraw(uint deltaX, uint deltaY) external;
-    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) external;
-    function allocate(bytes32 pid, address owner, uint deltaL) external;
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) external;
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) external;
     function repayFromExternal(bytes32 pid, address owner, uint deltaL) external;
     function repayFromMargin(bytes32 pid, address owner, uint deltaL) external;
     // Swap

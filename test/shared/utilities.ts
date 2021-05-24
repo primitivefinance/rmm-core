@@ -191,7 +191,7 @@ export interface Reserve {
 }
 
 export async function getReserve(engine: Contract, poolId: string, log?: boolean): Promise<Reserve> {
-  const res = await engine.getReserve(poolId)
+  const res = await engine.reserves(poolId)
   const reserve: Reserve = {
     RX1: new Wei(res.RX1),
     RY2: new Wei(res.RY2),

@@ -64,6 +64,10 @@ contract PrimitiveHouse is IPrimitiveHouse {
         require(address(uniPool) != address(0), "POOL UNINITIALIZED");
     }
 
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
+      engine.create(strike, sigma, time, riskyPrice);
+    }
+
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
@@ -90,24 +94,20 @@ contract PrimitiveHouse is IPrimitiveHouse {
     /**
      * @notice Adds deltaL to global liquidity factor.
      */
-    function addBothFromMargin(bytes32 pid, address owner, uint nonce, uint deltaL) public override lock useCallerContext {
-        bytes32 pid_ = pid;
-        (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
+        (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(factory, owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
-    /**
-     * @notice Adds deltaL to global liquidity factor using the CALLER risky and stable balance.
-     */
-    function allocate(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        engine.allocate(pid, address(this), deltaL, false);
-        bytes32 pid_ = pid;
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
+        engine.allocate(pid, address(this),  deltaL, false);
+
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(factory, owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -157,6 +157,11 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
     
     // ===== Callback Implementations =====
+    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+        if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+    }
+
     function depositCallback(uint deltaX, uint deltaY) public override executionLock {
         if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);

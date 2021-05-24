@@ -6,16 +6,17 @@ import { primitiveProtocolFixture } from './shared/fixtures'
 import { expect } from 'chai'
 import { IERC20, PrimitiveHouse, TestCallee, PrimitiveEngine, TestBlackScholes, IUniswapV3Pool } from '../typechain'
 import { encodePriceSqrt, expandTo18Decimals, getMinTick, getMaxTick } from './shared/utilities'
-import { EngineEvents, createEngineFunctions, CreateFunction } from './shared/Engine'
+import { EngineEvents, createEngineFunctions } from './shared/Engine'
 import {
   DepositFunction,
   WithdrawFunction,
   LendFunction,
-  AddBothFromMarginFunction,
-  AddBothFromExternalFunction,
+  AllocateFromMarginFunction,
+  AllocateFromExternalFunction,
   RepayFromMarginFunction,
   RepayFromExternalFunction,
   createHouseFunctions,
+  CreateFunction,
 } from './shared/House'
 import {
   Calibration,
@@ -23,34 +24,43 @@ import {
   PoolParams,
   getReserve,
   getPoolParams,
-  addBoth,
   getMargin,
   getDeltaIn,
   removeBoth,
   getPosition,
 } from './shared/utilities'
+import { strike, sigma, time, minTick, maxTick } from './shared/config'
 
 const { createFixtureLoader } = waffle
 
 describe('Primitive House tests', function () {
   const wallets = waffle.provider.getWallets()
   const [signer, signer2] = wallets
-  let poolId: string, calibration: Calibration, reserve: Reserve
+
+  let poolId: string
+  let calibration: Calibration
+  let reserve: Reserve
 
   let spot: Wei
   let preInvariant: BigNumber
   let postInvariant: BigNumber
 
-  let deposit: DepositFunction,
-    withdraw: WithdrawFunction,
-    lend: LendFunction,
-    addBothFromMargin: AddBothFromMarginFunction,
-    addBothFromExternal: AddBothFromExternalFunction,
-    create: CreateFunction
+  let deposit: DepositFunction
+  let withdraw: WithdrawFunction
+  let lend: LendFunction
+  let allocateFromMargin: AllocateFromMarginFunction
+  let allocateFromExternal: AllocateFromExternalFunction
+  let create: CreateFunction
+
+  let engine: PrimitiveEngine
+  let callee: TestCallee
+  let house: PrimitiveHouse
+  let TX1: IERC20
+  let TY2: IERC20
+  let bs: TestBlackScholes
+  let uniPool: IUniswapV3Pool
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
-
-  const TICK_SPACING = 60
 
   const protocolFixture: Fixture<{
     engine: PrimitiveEngine
@@ -76,9 +86,6 @@ describe('Primitive House tests', function () {
 
     await uniPool.initialize(encodePriceSqrt(1, 1))
 
-    const minTick = getMinTick(TICK_SPACING)
-    const maxTick = getMaxTick(TICK_SPACING)
-
     await callee.mint(uniPool.address, signer.address, minTick, maxTick, expandTo18Decimals(1))
 
     return {
@@ -92,14 +99,6 @@ describe('Primitive House tests', function () {
     }
   }
 
-  let engine: PrimitiveEngine
-  let callee: TestCallee
-  let house: PrimitiveHouse
-  let TX1: IERC20
-  let TY2: IERC20
-  let bs: TestBlackScholes
-  let uniPool: IUniswapV3Pool
-
   before('Generate fixture loader', async function () {
     loadFixture = createFixtureLoader(wallets)
   })
@@ -112,32 +111,19 @@ describe('Primitive House tests', function () {
     // init external settings
     spot = parseWei('1000')
 
-    // Calibration struct
-    const [strike, sigma, time] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600]
-    calibration = { strike, sigma, time }
-
     // House functions
-    ;({ deposit, withdraw, addBothFromExternal, addBothFromMargin, lend } = createHouseFunctions({
+    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
       engine,
     }))
 
-    // Engine Functions
-    ;({ create } = createEngineFunctions({
-      target: callee,
-      TX1,
-      TY2,
-      engine,
-      bs,
-    }))
-
     // Create pool
-    await create(calibration, spot.raw)
+    await create(strike, sigma, time, spot.raw)
     poolId = await engine.getPoolId(strike, sigma, time)
     reserve = await getReserve(engine, poolId)
-    preInvariant = await engine.getInvariantLast(poolId)
+    preInvariant = await engine.invariantOf(poolId)
 
     // name tags
     hre.tracer.nameTags[signer.address] = 'Signer'
@@ -147,17 +133,12 @@ describe('Primitive House tests', function () {
     hre.tracer.nameTags[TY2.address] = 'Riskless Token'
   })
 
-  describe('#create', function () {
-    it('House::Create: Generates a new Curve', async function () {
-      const cal = { strike: parseWei('1250').raw, sigma: calibration.sigma, time: calibration.time }
-      await expect(create(cal, spot.raw)).to.not.be.reverted
-      const len = (await engine.getAllPoolsLength()).toString()
-      const pid = await engine.allPools(+len - 1)
-      const settings = await engine.getCalibration(pid)
-      settings.map((val, i) => {
-        const keys = Object.keys(cal)
-        expect(val).to.be.eq(cal[keys[i]])
-      })
+  describe('---create---', function () {
+    it('House::Creates a new Curve', async function () {
+      await expect(create(strike.mul(2), sigma, time, spot.raw)).to.not.be.reverted
+    })
+    it('House::Fails to create a new curve that already exists', async function () {
+      await expect(create(strike, sigma, time, spot.raw)).to.be.reverted
     })
   })
 
@@ -172,7 +153,7 @@ describe('Primitive House tests', function () {
       expect(unlocked).to.be.eq(false)
     }
 
-    describe('#deposit', function () {
+    describe('--deposit--', function () {
       const amount = parseWei('200').raw
       describe('Success Assertions', function () {
         // OWN MARGIN ACCOUNT
@@ -217,7 +198,7 @@ describe('Primitive House tests', function () {
       })
     })
 
-    describe('#withdraw', function () {
+    describe('--withdraw--', function () {
       const amount = parseWei('200').raw
       this.beforeEach(async function () {
         await deposit(signer.address, amount, amount)
@@ -251,13 +232,26 @@ describe('Primitive House tests', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
-    describe('#addBoth', function () {
+    describe('--allocate--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
-          expect(() => addBothFromExternal(poolId, signer.address, 0, deltaL))
+          await allocateFromExternal(poolId, signer.address, deltaL)
         })
 
-        it('House::Add liquidity from margin account', async function () {})
+        it('House::Add liquidity from margin account', async function () {
+          await deposit(signer.address, BigNumber.from(parseWei('1000').raw), BigNumber.from(parseWei('1000').raw))
+          await allocateFromMargin(poolId, signer.address, deltaL)
+        })
+      })
+
+      describe('Failure Assertions', function () {
+        it('House::Fail to add liquidity from external balance', async function () {
+          await expect(allocateFromExternal(poolId, signer.address, deltaL.mul(100))).to.be.reverted // TODO: FIX THIS
+        })
+
+        it('House::Fail to liquidity from margin account due to insufficient balance', async function () {
+          await expect(allocateFromMargin(poolId, signer.address, deltaL.mul(100))).to.be.reverted
+        })
       })
     })
   })
