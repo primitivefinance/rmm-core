@@ -174,6 +174,15 @@ contract TestCallee is IPrimitiveHouse {
         CALLER = msg.sender;
         engine.lend(pid, deltaL);
     }
+
+    function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
+      CALLER = msg.sender;
+      engine.borrow(pid, address(this), deltaL, type(uint256).max);
+      
+      address factory = engine.factory();
+      Position.Data storage pos = _positions.borrow(factory, pid, deltaL);
+      CALLER = NO_CALLER;
+    }
     
     // ===== Callback Implementations =====
     function createCallback(uint deltaX, uint deltaY) public override executionLock {
@@ -215,7 +224,7 @@ contract TestCallee is IPrimitiveHouse {
         if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function borrowCallback(Position.Data calldata pos, uint deltaL) public override {
+    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner

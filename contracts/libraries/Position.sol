@@ -50,9 +50,8 @@ library Position {
     function borrow(mapping(bytes32 => Data) storage positions, address factory, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, factory, msg.sender, pid);
         position.liquidity += deltaL; // increase liquidity
-        IBorrow(msg.sender).borrowCallback(position, deltaL); // trigger the callback so we can remove liquidity
         position.debt += deltaL; // add the debt post position manipulation
-        require(position.balanceX >= deltaL, "Check the borrow factor invariant");
+        position.balanceX += deltaL;
         return position;
     }
 

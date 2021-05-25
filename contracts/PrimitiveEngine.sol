@@ -341,10 +341,22 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
         uint deltaY = deltaL * res.RY2 / liquidity; // amount of stable asset
         
+        uint preRisky = IERC20(risky).balanceOf(address(this));
+        uint preRiskless = IERC20(stable).balanceOf(address(this));
+        
         // trigger callback before position debt is increased, so liquidity can be removed
+        IERC20(stable).safeTransfer(msg.sender, deltaY);
+        IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY); // trigger the callback so we can remove liquidity
         Position.Data storage pos = positions.borrow(factory, pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.borrowFloat(deltaL);
+
+        uint postRisky = IERC20(risky).balanceOf(address(this));
+        uint postRiskless = IERC20(stable).balanceOf(address(this));
+        
+        require(postRisky >= preRisky + (deltaL - deltaX), "IRY");
+        require(postRiskless == preRiskless - deltaY, "IRL");
+
         emit Borrowed(recipient, pid, deltaL, maxPremium);
         return true;
     }
