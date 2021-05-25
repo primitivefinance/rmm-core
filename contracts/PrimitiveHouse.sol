@@ -111,13 +111,11 @@ contract PrimitiveHouse is IPrimitiveHouse {
         pos.allocate(deltaL); // Update position liquidity
     }
 
-    function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
-        CALLER = msg.sender;
+    function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
         engine.repay(pid, owner, deltaL, false);
     }
 
-    function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock {
-        CALLER = msg.sender;
+    function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock useCallerContext {
         (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
@@ -127,6 +125,12 @@ contract PrimitiveHouse is IPrimitiveHouse {
         pos.allocate(deltaL); // Update position liquidity
     }
 
+    function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
+      engine.borrow(pid, address(this), deltaL, type(uint256).max);
+      
+      address factory = engine.factory();
+      Position.Data storage pos = _positions.borrow(factory, pid, deltaL);
+    }
     
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
@@ -182,7 +186,30 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function swapCallback(uint deltaX, uint deltaY) public override {
     }
 
-    function borrowCallback(Position.Data calldata pos, uint deltaL) public override {
+    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override executionLock {
+      uint preBY2 = stable.balanceOf(address(this));
+
+
+      bytes memory placeholder = '0x';
+
+      bool zeroForOne = stable > risky ? false : true;
+
+      (int256 res0, int256 res1) = uniPool.swap(
+        address(this),
+        zeroForOne,
+        int256(deltaY),
+        uint160(0),
+        placeholder
+      );
+
+      uint riskyNeeded = zeroForOne ? deltaL - (deltaX + uint(res0)) : deltaL - (deltaX + uint(res1));
+      risky.safeTransferFrom(CALLER, msg.sender, riskyNeeded);
+      risky.safeTransfer(
+        msg.sender,
+        zeroForOne ? uint(res0) : uint(res1)
+     );
+      uint postBY2 = stable.balanceOf(address(this));
+      require(postBY2 >= preBY2 - deltaY);
     }
 
     function repayFromExternalCallback(bytes32 pid, address owner,  uint deltaL) public override {
