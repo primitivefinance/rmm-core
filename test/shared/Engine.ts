@@ -32,7 +32,6 @@ export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNum
 export type BorrowFunction = (
   pid: BytesLike,
   recipient: string,
-  nonce: BigNumberish,
   deltaL: BigNumberish,
   maxPremium: BigNumberish
 ) => Promise<Transaction>
@@ -132,11 +131,10 @@ export function createEngineFunctions({
   const borrow: BorrowFunction = async (
     pid: BytesLike,
     recipient: string,
-    nonce: BigNumberish,
     deltaL: BigNumberish,
     maxPremium: BigNumberish
   ): Promise<Transaction> => {
-    return target.borrow(pid, recipient, nonce, deltaL, maxPremium)
+    return target.borrow(pid, recipient, deltaL, maxPremium)
   }
   const repay: RepayFunction = async (
     pid: BytesLike,
