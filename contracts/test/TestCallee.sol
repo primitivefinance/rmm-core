@@ -170,7 +170,7 @@ contract TestCallee is IPrimitiveHouse {
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
-    function lend(bytes32 pid, uint nonce, uint deltaL) public override lock {
+    function lend(bytes32 pid, uint deltaL) public override lock {
         CALLER = msg.sender;
         engine.lend(pid, deltaL);
     }

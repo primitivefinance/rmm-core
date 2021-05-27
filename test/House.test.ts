@@ -254,5 +254,15 @@ describe('Primitive House tests', function () {
         })
       })
     })
+
+    describe('--lend--', function () {
+      describe('Success Assertions', function () {
+        it('House::Add float from ', async function () {
+          await lend(poolId, deltaL)
+        })
+      })
+
+      describe('Failure Assertions', function () {})
+    })
   })
 })

@@ -135,7 +135,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
-    function lend(bytes32 pid, uint nonce, uint deltaL) public override lock useCallerContext {
+    function lend(bytes32 pid, uint deltaL) public override lock useCallerContext {
         engine.lend(pid, deltaL);
         
         // cant use callback, must maintain msg.sender
