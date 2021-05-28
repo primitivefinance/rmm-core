@@ -49,7 +49,6 @@ library Position {
     /// @notice Adds a debt balance of `deltaL` to `position`
     function borrow(mapping(bytes32 => Data) storage positions, address where, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, where, msg.sender, pid);
-        position.liquidity += deltaL; // increase liquidity
         position.debt += deltaL; // add the debt post position manipulation
         position.balanceRisky += deltaL;
         return position;

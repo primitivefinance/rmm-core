@@ -75,6 +75,7 @@ library Reserve {
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
     function borrowFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
         reserve.float -= deltaL;
+        reserve.liquidity -= deltaL;
         reserve.debt += deltaL;
         return reserve;
     }

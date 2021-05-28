@@ -22,7 +22,8 @@ export type RepayFromExternalFunction = (
   deltaL: BigNumberish
 ) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type LendFunction = (owner: string, pid: BytesLike, deltaL: BigNumberish) => Promise<Transaction>
+export type LendFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
+export type BorrowFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type CreateFunction = (
   strike: BigNumberish,
@@ -40,6 +41,7 @@ export interface HouseFunctions {
   swapXForY: SwapFunction
   swapYForX: SwapFunction
   lend: LendFunction
+  borrow: BorrowFunction
 }
 
 // ===== Engine Functions ====
@@ -116,11 +118,16 @@ export function createHouseFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const lend: LendFunction = async (owner: string, pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
+  const lend: LendFunction = async (pid: BytesLike, owner: string, deltaL: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
     await target.allocateFromExternal(pid, owner, deltaL)
     return target.lend(pid, deltaL)
+  }
+
+  const borrow: BorrowFunction = async (pid: BytesLike, owner: string, deltaL: BigNumberish): Promise<Transaction> => {
+    await lend(pid, owner, BigNumber.from(deltaL).mul(10))
+    return target.borrow(pid, owner, deltaL)
   }
 
   return {
@@ -132,5 +139,6 @@ export function createHouseFunctions({
     swapXForY,
     swapYForX,
     lend,
+    borrow,
   }
 }
