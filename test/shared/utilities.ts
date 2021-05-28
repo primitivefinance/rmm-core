@@ -233,8 +233,8 @@ export async function getPosition(contract: Contract, owner: string, pid: BytesL
     console.log(`
       owner: ${pos.owner},
       nonce: ${pos.nonce},
-      BX1: ${formatEther(pos.BX1)},
-      BY2: ${formatEther(pos.BY2)},
+      BX1: ${formatEther(pos.balanceRisky)},
+      BY2: ${formatEther(pos.balanceStable)},
       liquidity: ${formatEther(pos.liquidity)},
       float: ${formatEther(pos.float)},
       debt: ${formatEther(pos.debt)}

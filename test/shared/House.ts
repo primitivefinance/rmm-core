@@ -119,7 +119,7 @@ export function createHouseFunctions({
   const lend: LendFunction = async (owner: string, pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-    await target.allocateFromExternal(pid, owner, BigNumber.from(deltaL).mul(10))
+    await target.allocateFromExternal(pid, owner, deltaL)
     return target.lend(pid, deltaL)
   }
 
