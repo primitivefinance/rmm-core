@@ -115,7 +115,7 @@ contract TestCallee is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
 
-        Position.Data storage pos = _positions.fetch(engine.factory(), owner, pid);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
 
     }
@@ -126,7 +126,7 @@ contract TestCallee is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -135,7 +135,7 @@ contract TestCallee is IPrimitiveHouse {
         engine.allocate(pid_, address(this),  deltaL, false);
 
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -180,7 +180,7 @@ contract TestCallee is IPrimitiveHouse {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
       address factory = engine.factory();
-      Position.Data storage pos = _positions.borrow(factory, pid, deltaL);
+      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
       CALLER = NO_CALLER;
     }
     

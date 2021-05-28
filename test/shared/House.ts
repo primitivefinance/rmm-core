@@ -1,6 +1,6 @@
 import { constants, Wallet, Transaction, BigNumberish, BytesLike } from 'ethers'
 import { IERC20, PrimitiveHouse, PrimitiveEngine } from '../../typechain'
-import { parseWei, Wei } from './Units'
+import { parseWei, Wei, BigNumber } from './Units'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -22,7 +22,7 @@ export type RepayFromExternalFunction = (
   deltaL: BigNumberish
 ) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type LendFunction = (pid: BytesLike, deltaL: BigNumberish) => Promise<Transaction>
+export type LendFunction = (owner: string, pid: BytesLike, deltaL: BigNumberish) => Promise<Transaction>
 export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type CreateFunction = (
   strike: BigNumberish,
@@ -47,7 +47,6 @@ export function createHouseFunctions({
   target,
   TX1,
   TY2,
-  engine,
 }: {
   target: PrimitiveHouse
   TX1: IERC20
@@ -117,8 +116,11 @@ export function createHouseFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
-    return engine.lend(pid, deltaL)
+  const lend: LendFunction = async (owner: string, pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    await target.allocateFromExternal(pid, owner, BigNumber.from(deltaL).mul(10))
+    return target.lend(pid, deltaL)
   }
 
   return {

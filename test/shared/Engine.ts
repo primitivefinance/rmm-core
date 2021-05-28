@@ -29,12 +29,7 @@ export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: 
 export type CreateFunction = (calibration: Calibration, spot: BigNumberish) => Promise<Transaction>
 export type LendFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
-export type BorrowFunction = (
-  pid: BytesLike,
-  recipient: string,
-  deltaL: BigNumberish,
-  maxPremium: BigNumberish
-) => Promise<Transaction>
+export type BorrowFunction = (pid: BytesLike, recipient: string, deltaL: BigNumberish) => Promise<Transaction>
 export type RepayFunction = (
   pid: BytesLike,
   owner: string,
@@ -128,13 +123,8 @@ export function createEngineFunctions({
   const claim: ClaimFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
     return engine.claim(pid, deltaL)
   }
-  const borrow: BorrowFunction = async (
-    pid: BytesLike,
-    recipient: string,
-    deltaL: BigNumberish,
-    maxPremium: BigNumberish
-  ): Promise<Transaction> => {
-    return target.borrow(pid, recipient, deltaL, maxPremium)
+  const borrow: BorrowFunction = async (pid: BytesLike, recipient: string, deltaL: BigNumberish): Promise<Transaction> => {
+    return target.borrow(pid, recipient, deltaL)
   }
   const repay: RepayFunction = async (
     pid: BytesLike,
