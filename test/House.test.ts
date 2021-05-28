@@ -17,6 +17,7 @@ import {
   RepayFromExternalFunction,
   createHouseFunctions,
   CreateFunction,
+  BorrowFunction,
 } from './shared/House'
 import {
   Calibration,
@@ -48,6 +49,7 @@ describe('Primitive House tests', function () {
   let deposit: DepositFunction
   let withdraw: WithdrawFunction
   let lend: LendFunction
+  let borrow: BorrowFunction
   let allocateFromMargin: AllocateFromMarginFunction
   let allocateFromExternal: AllocateFromExternalFunction
   let create: CreateFunction
@@ -112,7 +114,7 @@ describe('Primitive House tests', function () {
     spot = parseWei('1000')
 
     // House functions
-    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend } = createHouseFunctions({
+    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend, borrow } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
@@ -238,6 +240,11 @@ describe('Primitive House tests', function () {
       expect(float.raw).to.be.eq(deltaL)
     }
 
+    const checkBorrow = async (who: string, deltaL: BigNumberish) => {
+      const { debt, float } = await getPosition(house, who, poolId, true)
+      expect(debt.raw).to.be.eq(deltaL)
+    }
+
     describe('--allocate--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
@@ -260,8 +267,21 @@ describe('Primitive House tests', function () {
     describe('--lend--', function () {
       describe('Success Assertions', function () {
         it('House::Add float from ', async function () {
-          await lend(signer.address, poolId, deltaL)
+          await lend(poolId, signer.address, deltaL)
           await checkLiquidity(signer.address, deltaL)
+        })
+      })
+
+      describe('Failure Assertions', function () {})
+    })
+
+    describe('--borrow--', function () {
+      describe('Success Assertions', function () {
+        it('House::Add float from ', async function () {
+          await getReserve(engine, poolId, true)
+          await borrow(poolId, signer.address, deltaL)
+          await checkBorrow(signer.address, deltaL)
+          await getReserve(engine, poolId, true)
         })
       })
 

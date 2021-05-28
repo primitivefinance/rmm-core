@@ -100,7 +100,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
         (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -108,7 +107,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
         engine.allocate(pid, address(this),  deltaL, false);
 
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -122,7 +120,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
 
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -130,7 +127,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
-      address factory = engine.factory();
       Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
     }
     
@@ -187,11 +183,18 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override executionLock {
       uint preBY2 = stable.balanceOf(address(this));
 
-
       bytes memory placeholder = '0x';
 
-      bool zeroForOne = stable > risky ? false : true;
+      console.log("pre stable balance: %s", preBY2);
 
+      uint riskyNeeded = deltaL - deltaX;
+      IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, riskyNeeded);
+      IERC20(engine.stable()).safeTransfer(CALLER, deltaY);
+
+      uint postBY2 = stable.balanceOf(address(this));
+      require(postBY2 >= preBY2 - deltaY);
+/*
+      bool zeroForOne = stable > risky ? true : false;
       (int256 res0, int256 res1) = uniPool.swap(
         address(this),
         zeroForOne,
@@ -206,11 +209,14 @@ contract PrimitiveHouse is IPrimitiveHouse {
         msg.sender,
         zeroForOne ? uint(res0) : uint(res1)
      );
-      uint postBY2 = stable.balanceOf(address(this));
-      require(postBY2 >= preBY2 - deltaY);
+    */
     }
 
     function repayFromExternalCallback(bytes32 pid, address owner,  uint deltaL) public override {
+    }
+
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata date) external {
+
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
