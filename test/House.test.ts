@@ -233,10 +233,7 @@ describe('Primitive House tests', function () {
     const deltaL = parseWei('1').raw
 
     const checkLiquidity = async (who: string, deltaL: BigNumberish) => {
-      const { owner, liquidity, float } = await getPosition(house, who, poolId)
-
-      console.log('HEREEEEE')
-      expect(owner).to.be.eq(who)
+      const { liquidity, float } = await getPosition(house, who, poolId, true)
       expect(liquidity.raw).to.be.eq(deltaL)
       expect(float.raw).to.be.eq(deltaL)
     }
