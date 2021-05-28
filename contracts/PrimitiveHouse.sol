@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 
+import "hardhat/console.sol";
+
 contract PrimitiveHouse is IPrimitiveHouse {
     using SafeERC20 for IERC20;
     using Margin for mapping(address => Margin.Data);
@@ -99,7 +101,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -107,7 +109,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
         engine.allocate(pid, address(this),  deltaL, false);
 
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -121,7 +123,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
         _margins.withdraw(deltaX, deltaY);
 
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -129,7 +131,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
       address factory = engine.factory();
-      Position.Data storage pos = _positions.borrow(factory, pid, deltaL);
+      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
     }
     
     /**
@@ -137,12 +139,8 @@ contract PrimitiveHouse is IPrimitiveHouse {
      */
     function lend(bytes32 pid, uint deltaL) public override lock useCallerContext {
         engine.lend(pid, deltaL);
-        
-        // cant use callback, must maintain msg.sender
-        if (deltaL > 0) {
-            // increment position float factor by `deltaL`
-            _positions.lend(engine.factory(), pid, deltaL);
-        } 
+
+        _positions.lend(address(this), pid, deltaL);
     }
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
@@ -218,5 +216,9 @@ contract PrimitiveHouse is IPrimitiveHouse {
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
     function getMargin(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
+    }
+
+    function getPosition(address owner, bytes32 pid) public view returns (Position.Data memory pos) {
+        pos = _positions[keccak256(abi.encodePacked(address(this), owner, pid))];
     }
 }

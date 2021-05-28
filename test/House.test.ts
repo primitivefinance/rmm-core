@@ -232,6 +232,15 @@ describe('Primitive House tests', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
+    const checkLiquidity = async (who: string, deltaL: BigNumberish) => {
+      const { owner, liquidity, float } = await getPosition(house, who, poolId)
+
+      console.log('HEREEEEE')
+      expect(owner).to.be.eq(who)
+      expect(liquidity.raw).to.be.eq(deltaL)
+      expect(float.raw).to.be.eq(deltaL)
+    }
+
     describe('--allocate--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
@@ -245,10 +254,6 @@ describe('Primitive House tests', function () {
       })
 
       describe('Failure Assertions', function () {
-        it('House::Fail to add liquidity from external balance', async function () {
-          await expect(allocateFromExternal(poolId, signer.address, deltaL.mul(100))).to.be.reverted // TODO: FIX THIS
-        })
-
         it('House::Fail to liquidity from margin account due to insufficient balance', async function () {
           await expect(allocateFromMargin(poolId, signer.address, deltaL.mul(100))).to.be.reverted
         })
@@ -258,7 +263,8 @@ describe('Primitive House tests', function () {
     describe('--lend--', function () {
       describe('Success Assertions', function () {
         it('House::Add float from ', async function () {
-          await lend(poolId, deltaL)
+          await lend(signer.address, poolId, deltaL)
+          await checkLiquidity(signer.address, deltaL)
         })
       })
 

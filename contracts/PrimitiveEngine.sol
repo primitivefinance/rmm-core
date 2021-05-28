@@ -177,7 +177,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         bytes32 pid_ = pid;
-        Position.Data storage pos = positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL);
 
         { // scope for invariant checks, avoids stack too deep errors
@@ -228,7 +228,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
         
-        positions.remove(factory, pid, deltaL); // Updated position liqudiity
+        positions.remove(address(this), pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL);
         
         emit Updated(pid, reserveX, reserveY, block.number);
@@ -313,7 +313,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function lend(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
-        positions.lend(factory, pid, deltaL); // increment position float factor by `deltaL`
+        positions.lend(address(this), pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
@@ -324,7 +324,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function claim(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
-        positions.claim(factory, pid, deltaL); // increment position float factor by `deltaL`
+        positions.claim(address(this), pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
@@ -347,7 +347,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // trigger callback before position debt is increased, so liquidity can be removed
         IERC20(stable).safeTransfer(msg.sender, deltaY);
         IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY); // trigger the callback so we can remove liquidity
-        Position.Data storage pos = positions.borrow(factory, pid, deltaL); // increase liquidity + debt
+        Position.Data storage pos = positions.borrow(address(this), pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.borrowFloat(deltaL);
 

@@ -210,7 +210,6 @@ export async function getReserve(engine: Contract, poolId: string, log?: boolean
 
 export interface Position {
   owner: string
-  nonce: number
   BX1: Wei
   BY2: Wei
   liquidity: Wei
@@ -219,19 +218,12 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(
-  engine: Contract,
-  owner: string,
-  nonce: number,
-  pid: BytesLike,
-  log?: boolean
-): Promise<Position> {
-  const pos = await engine.getPosition(owner, nonce, pid)
+export async function getPosition(contract: Contract, owner: string, pid: BytesLike, log?: boolean): Promise<Position> {
+  const pos = await contract.getPosition(owner, pid)
   const position: Position = {
     owner: pos.owner,
-    nonce: pos.nonce,
-    BX1: new Wei(pos.BX1),
-    BY2: new Wei(pos.BY2),
+    BX1: new Wei(pos.balanceRisky),
+    BY2: new Wei(pos.balanceStable),
     liquidity: new Wei(pos.liquidity),
     float: new Wei(pos.float),
     debt: new Wei(pos.debt),
