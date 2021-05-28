@@ -1,4 +1,8 @@
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
+
+/// @title  The action functions for the Primitive Engine contract
+/// @author Primitive
 
 import "../../libraries/Calibration.sol";
 
