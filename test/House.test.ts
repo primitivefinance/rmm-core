@@ -14,10 +14,10 @@ import {
   AllocateFromMarginFunction,
   AllocateFromExternalFunction,
   RepayFromMarginFunction,
-  RepayFromExternalFunction,
   createHouseFunctions,
   CreateFunction,
   BorrowFunction,
+  RepayFromExternalFunction,
 } from './shared/House'
 import {
   Calibration,
@@ -53,6 +53,7 @@ describe('Primitive House tests', function () {
   let allocateFromMargin: AllocateFromMarginFunction
   let allocateFromExternal: AllocateFromExternalFunction
   let create: CreateFunction
+  let repayFromExternal: RepayFromExternalFunction
 
   let engine: PrimitiveEngine
   let callee: TestCallee
@@ -114,7 +115,16 @@ describe('Primitive House tests', function () {
     spot = parseWei('1000')
 
     // House functions
-    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend, borrow } = createHouseFunctions({
+    ;({
+      create,
+      deposit,
+      withdraw,
+      allocateFromExternal,
+      allocateFromMargin,
+      lend,
+      borrow,
+      repayFromExternal,
+    } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
@@ -235,14 +245,19 @@ describe('Primitive House tests', function () {
     const deltaL = parseWei('1').raw
 
     const checkLiquidity = async (who: string, deltaL: BigNumberish) => {
-      const { liquidity, float } = await getPosition(house, who, poolId, true)
+      const { liquidity, float } = await getPosition(house, who, poolId)
       expect(liquidity.raw).to.be.eq(deltaL)
       expect(float.raw).to.be.eq(deltaL)
     }
 
     const checkBorrow = async (who: string, deltaL: BigNumberish) => {
-      const { debt, float } = await getPosition(house, who, poolId, true)
+      const { debt } = await getPosition(house, who, poolId)
       expect(debt.raw).to.be.eq(deltaL)
+    }
+
+    const checkRepayState = async (who: string, deltaL: BigNumberish) => {
+      await getReserve(engine, poolId)
+      await getPosition(house, who, poolId)
     }
 
     describe('--allocate--', function () {
@@ -266,7 +281,7 @@ describe('Primitive House tests', function () {
 
     describe('--lend--', function () {
       describe('Success Assertions', function () {
-        it('House::Add float from ', async function () {
+        it('House::Add float from signer', async function () {
           await lend(poolId, signer.address, deltaL)
           await checkLiquidity(signer.address, deltaL)
         })
@@ -277,15 +292,20 @@ describe('Primitive House tests', function () {
 
     describe('--borrow--', function () {
       describe('Success Assertions', function () {
-        it('House::Add float from ', async function () {
-          await getReserve(engine, poolId, true)
+        it('House::Split LP shares and provide premium in risky asset', async function () {
           await borrow(poolId, signer.address, deltaL)
           await checkBorrow(signer.address, deltaL)
-          await getReserve(engine, poolId, true)
         })
       })
+    })
 
-      describe('Failure Assertions', function () {})
+    describe('--repay--', function () {
+      describe('Success Assertions', function () {
+        it('House::Repay borrow', async function () {
+          await borrow(poolId, signer.address, deltaL)
+          await repayFromExternal(poolId, signer.address, deltaL)
+        })
+      })
     })
   })
 })

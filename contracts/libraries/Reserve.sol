@@ -80,6 +80,14 @@ library Reserve {
         return reserve;
     }
 
+    /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow 
+    function repayFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
+        reserve.float += deltaL;
+        reserve.liquidity += deltaL;
+        reserve.debt -= deltaL;
+        return reserve;
+    }
+
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
     function removeFloat(Data storage reserve, uint deltaL) internal returns (Data storage) {
         reserve.float -= deltaL;

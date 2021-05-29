@@ -195,8 +195,8 @@ contract TestCallee is IPrimitiveHouse {
         if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function repayFromExternalCallback(bytes32 pid, address owner, uint deltaL) public override executionLock {
-        engine.allocate(pid, owner, deltaL, false);
+    function repayFromExternalCallback(uint deltaStable) public override {
+      IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
     }
 
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
