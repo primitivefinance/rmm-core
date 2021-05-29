@@ -72,7 +72,6 @@ library Position {
     /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
     function repay(Data storage position, uint deltaL) internal returns (Data storage) {
         require(position.debt >= uint(0), "No loan to repay");
-        position.liquidity -= deltaL;
         position.debt -= deltaL;
         return position;
     }

@@ -365,15 +365,37 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
+        Reserve.Data storage res = reserves[pid];
+        Position.Data storage pos = positions.fetch(address(this), owner, pid);
+        
+        require(
+          res.debt >= deltaL &&
+          pos.debt >= deltaL,
+          "Insufficient Global Debt"
+        ); 
+
+        uint preRisky = IERC20(risky).balanceOf(address(this));
+        uint preStable = IERC20(stable).balanceOf(address(this));
+
         if (isInternal) {
-            (deltaX, deltaY) = allocate(pid, owner, deltaL, true);
+          (deltaRisky, deltaStable) = allocate(pid, owner, deltaL, true);
         } else {
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, deltaL);
+          deltaRisky = deltaL * res.RX1 / res.liquidity;
+          deltaStable = deltaL * res.RY2 / res.liquidity;
+          IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable);
+
+          require(
+            IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable,
+            "IS"
+          );
+
+          Margin.Data storage mar = margins[owner];
+          res.repayFloat(deltaL);
+          pos.repay(deltaL);
+          mar.deposit(deltaL - deltaRisky, uint(0));
         }
 
-        Reserve.Data storage res = reserves[pid];
-        res.addFloat(deltaL);
         emit Repaid(owner, pid, deltaL);
     }
 

@@ -15,12 +15,7 @@ export type RepayFromMarginFunction = (
   nonce: BigNumberish,
   deltaL: BigNumberish
 ) => Promise<Transaction>
-export type RepayFromExternalFunction = (
-  pid: BytesLike,
-  owner: BytesLike,
-  nonce: BigNumberish,
-  deltaL: BigNumberish
-) => Promise<Transaction>
+export type RepayFromExternalFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
 export type LendFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type BorrowFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
@@ -42,6 +37,7 @@ export interface HouseFunctions {
   swapYForX: SwapFunction
   lend: LendFunction
   borrow: BorrowFunction
+  repayFromExternal: RepayFromExternalFunction
 }
 
 // ===== Engine Functions ====
@@ -130,6 +126,14 @@ export function createHouseFunctions({
     return target.borrow(pid, owner, deltaL)
   }
 
+  const repayFromExternal: RepayFromExternalFunction = async (
+    pid: BytesLike,
+    owner: string,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    return target.repayFromExternal(pid, owner, deltaL)
+  }
+
   return {
     create,
     deposit,
@@ -140,5 +144,6 @@ export function createHouseFunctions({
     swapYForX,
     lend,
     borrow,
+    repayFromExternal,
   }
 }
