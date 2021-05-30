@@ -368,18 +368,22 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(address(this), owner, pid);
+        Margin.Data storage mar = margins[owner];
         
         require(
           res.debt >= deltaL &&
           pos.debt >= deltaL,
-          "Insufficient Global Debt"
+          "ID"
         ); 
 
         uint preRisky = IERC20(risky).balanceOf(address(this));
         uint preStable = IERC20(stable).balanceOf(address(this));
 
         if (isInternal) {
-          (deltaRisky, deltaStable) = allocate(pid, owner, deltaL, true);
+          (deltaRisky,) = allocate(pid, owner, deltaL, true);
+          positions.remove(address(this), pid, deltaL);
+          pos.repay(deltaL);
+          mar.deposit(deltaL - deltaRisky, uint(0));
         } else {
           deltaRisky = deltaL * res.RX1 / res.liquidity;
           deltaStable = deltaL * res.RY2 / res.liquidity;
@@ -390,7 +394,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             "IS"
           );
 
-          Margin.Data storage mar = margins[owner];
           res.repayFloat(deltaL);
           pos.repay(deltaL);
           mar.deposit(deltaL - deltaRisky, uint(0));

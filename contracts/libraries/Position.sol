@@ -41,7 +41,6 @@ library Position {
     /// @notice Decrease the balance of liquidity
     function remove(mapping(bytes32 => Data) storage positions, address where, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, where, msg.sender, pid);
-        require(position.debt == uint(0), "Has debt");
         position.liquidity -= deltaL;
         return position;
     }

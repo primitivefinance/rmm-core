@@ -112,16 +112,24 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        engine.repay(pid, address(this), deltaL, false);
+        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, false);
+
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        pos.repay(deltaL);
+        
+        Margin.Data storage mar = _margins.fetch(owner);
+        mar.deposit(deltaL - deltaRisky, uint(0));
+
     }
 
     function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock useCallerContext {
-        (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true);
-
-        _margins.withdraw(deltaX, deltaY);
+        (uint deltaRisky,) = engine.repay(pid, owner, deltaL, true);
 
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
-        pos.allocate(deltaL); // Update position liquidity
+        pos.repay(deltaL);
+
+        Margin.Data storage mar = _margins.fetch(owner);
+        mar.deposit(deltaL - deltaRisky, uint(0));
     }
 
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
