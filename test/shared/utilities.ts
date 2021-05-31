@@ -32,7 +32,7 @@ export const deriveUniPoolAddress = async (factory: IUniswapV3Factory, fee: BigN
 }
 
 export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
-  const { RX1, RY2, liquidity, float } = params.reserve
+  const { RX1, RY2, liquidity, float, debt } = params.reserve
   const deltaX = deltaL.mul(RX1).div(liquidity)
   const deltaY = deltaL.mul(RY2).div(liquidity)
   const postRX1 = deltaX.add(RX1)
@@ -44,6 +44,7 @@ export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams,
       RY2: postRY2,
       liquidity: postLiquidity,
       float: float,
+      debt: debt,
     },
     calibration: params.calibration,
   }
@@ -52,7 +53,7 @@ export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams,
 }
 
 export function removeBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
-  const { RX1, RY2, liquidity, float } = params.reserve
+  const { RX1, RY2, liquidity, float, debt } = params.reserve
   const deltaX = deltaL.mul(RX1).div(liquidity)
   const deltaY = deltaL.mul(RY2).div(liquidity)
   const postRX1 = RX1.sub(deltaX)
@@ -64,6 +65,7 @@ export function removeBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolPara
       RY2: postRY2,
       liquidity: postLiquidity,
       float: float,
+      debt: debt,
     },
     calibration: params.calibration,
   }
@@ -112,6 +114,7 @@ export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128:
       RY2: postRY2,
       liquidity: params.reserve.liquidity,
       float: params.reserve.float,
+      debt: params.reserve.debt,
     },
     calibration: params.calibration,
   }
@@ -144,6 +147,7 @@ export function getDeltaOut(deltaIn: Wei, addXRemoveY: boolean, invariantInt128:
       RY2: postRY2,
       liquidity: params.reserve.liquidity,
       float: params.reserve.float,
+      debt: params.reserve.debt,
     },
     calibration: params.calibration,
   }
@@ -188,6 +192,7 @@ export interface Reserve {
   RY2: Wei
   liquidity: Wei
   float: Wei
+  debt: Wei
 }
 
 export async function getReserve(engine: Contract, poolId: string, log?: boolean): Promise<Reserve> {
@@ -197,6 +202,7 @@ export async function getReserve(engine: Contract, poolId: string, log?: boolean
     RY2: new Wei(res.RY2),
     liquidity: new Wei(res.liquidity),
     float: new Wei(res.float),
+    debt: new Wei(res.debt),
   }
   if (log)
     console.log(`
@@ -204,13 +210,13 @@ export async function getReserve(engine: Contract, poolId: string, log?: boolean
       RY2: ${formatEther(res.RY2)},
       liquidity: ${formatEther(res.liquidity)},
       float: ${formatEther(res.float)}
+      debt: ${formatEther(res.debt)}
     `)
   return reserve
 }
 
 export interface Position {
   owner: string
-  nonce: number
   BX1: Wei
   BY2: Wei
   liquidity: Wei
@@ -219,19 +225,12 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(
-  engine: Contract,
-  owner: string,
-  nonce: number,
-  pid: BytesLike,
-  log?: boolean
-): Promise<Position> {
-  const pos = await engine.getPosition(owner, nonce, pid)
+export async function getPosition(contract: Contract, owner: string, pid: BytesLike, log?: boolean): Promise<Position> {
+  const pos = await contract.getPosition(owner, pid)
   const position: Position = {
     owner: pos.owner,
-    nonce: pos.nonce,
-    BX1: new Wei(pos.BX1),
-    BY2: new Wei(pos.BY2),
+    BX1: new Wei(pos.balanceRisky),
+    BY2: new Wei(pos.balanceStable),
     liquidity: new Wei(pos.liquidity),
     float: new Wei(pos.float),
     debt: new Wei(pos.debt),
@@ -241,8 +240,8 @@ export async function getPosition(
     console.log(`
       owner: ${pos.owner},
       nonce: ${pos.nonce},
-      BX1: ${formatEther(pos.BX1)},
-      BY2: ${formatEther(pos.BY2)},
+      BX1: ${formatEther(pos.balanceRisky)},
+      BY2: ${formatEther(pos.balanceStable)},
       liquidity: ${formatEther(pos.liquidity)},
       float: ${formatEther(pos.float)},
       debt: ${formatEther(pos.debt)}
