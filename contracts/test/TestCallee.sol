@@ -199,10 +199,6 @@ contract TestCallee is IPrimitiveHouse {
       IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
     }
 
-    function repayFromMarginCallback(bytes32 pid, uint deltaL) public override returns (uint deltaRisky, uint deltaStable) {
-      (deltaRisky, deltaStable) = engine.allocate(pid, address(this), deltaL, true);
-    }
-
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
         IERC20 risky = IERC20(engine.risky());
         IERC20 stable = IERC20(engine.stable());
