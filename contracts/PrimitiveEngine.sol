@@ -379,11 +379,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
         deltaStable = deltaL * res.RY2 / res.liquidity;
 
         if (isInternal) {
-          margins.withdraw(deltaRisky, deltaStable);
+          margins.withdraw(deltaL - deltaRisky, deltaStable);
 
           res.allocate(deltaRisky, deltaStable, deltaL);
           pos.repay(deltaL);
-          mar.deposit(deltaL - deltaRisky, uint(0));
         } else {
           uint preStable = IERC20(stable).balanceOf(address(this));
           IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable);
