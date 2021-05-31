@@ -123,13 +123,15 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock useCallerContext {
-        (uint deltaRisky,) = engine.repay(pid, owner, deltaL, true);
+        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, true);
+
 
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.repay(deltaL);
 
-        Margin.Data storage mar = _margins.fetch(owner);
+        Margin.Data storage mar = _margins[owner];
         mar.deposit(deltaL - deltaRisky, uint(0));
+
     }
 
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
@@ -220,6 +222,10 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
     function repayFromExternalCallback(uint deltaStable) public override {
       IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
+    }
+
+    function repayFromMarginCallback(bytes32 pid, uint deltaL) public override returns (uint deltaRisky, uint deltaStable) {
+      (deltaRisky, deltaStable) = engine.allocate(pid, address(this), deltaL, true);
     }
 
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata date) external {
