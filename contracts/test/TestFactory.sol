@@ -10,7 +10,6 @@ import "../interfaces/IPrimitiveFactory.sol";
 import "./TestEngine.sol";
 
 contract TestFactory is IPrimitiveFactory {
-    event EngineCreated(address indexed from, address indexed risky, address indexed riskless, address engine);
 
     address public override owner;
 

@@ -30,7 +30,7 @@ interface IPrimitiveFactory {
         address stable
     );
 
-    /// @return The engine address for a risky and stable token
+    /// @return engine The engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);
 
     /// @return The controlling address of this factory contract, which is used in the Engine contracts for setting fees
