@@ -27,7 +27,7 @@ library BlackScholes {
         uint256 k,
         uint256 o,
         uint256 t
-    ) internal pure returns (int128 d1) {
+    ) internal pure returns (int128 auxiliary) {
         // ln( F / K )
         int128 moneyness = logSimpleMoneyness(s, k);
         // (r + volatility^2 / 2), r = 0 for simplicity. This should be fixed.
@@ -38,7 +38,7 @@ library BlackScholes {
         int128 numerator = moneyness.add(vol.mul(time));
         // volatility * sqrt(T - t)
         int128 denominator = o.percentage().mul(time.sqrt());
-        d1 = numerator.div(denominator);
+        auxiliary = numerator.div(denominator);
     }
 
     /// @notice Returns the `delta` greek of a call option
@@ -48,8 +48,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = d1(s,k,o,t);
-        delta = d1.getCDF();
+        delta = d1(s,k,o,t).getCDF();
     }
 
     /// @notice Returns the `delta` greek of a put option
@@ -59,8 +58,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = d1(s,k,o,t);
-        delta = d1.getCDF().sub(uint(1).fromUInt());
+        delta = d1(s,k,o,t).getCDF().sub(uint(1).fromUInt());
     }
 
     /// @dev     Calculates the log simple moneyness.
