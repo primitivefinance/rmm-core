@@ -23,7 +23,7 @@ interface IPrimitiveEngineActions {
     /// @param  deltaL  The quantity of liquidity units to get allocated
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @return deltaX  The amount of risky tokens that were allocated
-    /// @return deltaY  The amount of stable tokens that were allocated
+    /// deltaY  The amount of stable tokens that were allocated
     function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin) external returns (uint, uint);
 
     /// @notice Unallocates risky and stable tokens from a specific curve with `pid`

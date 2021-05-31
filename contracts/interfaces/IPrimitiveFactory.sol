@@ -22,8 +22,8 @@ interface IPrimitiveFactory {
 
     /// @notice Transiently set so the Engine can set immutable variables without constructor args
     /// @return factory The smart contract deploying the Engine contract
-    /// @return risky   The risky token
-    /// @return stable  The stable token
+    /// risky   The risky token
+    /// stable  The stable token
     function args() external view returns (
         address factory,
         address risky,
