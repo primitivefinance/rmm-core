@@ -4,6 +4,7 @@ import '@nomiclabs/hardhat-waffle'
 import 'prettier-plugin-solidity'
 import 'hardhat-tracer'
 import 'hardhat-gas-reporter'
+import 'solidity-coverage'
 
 export default {
   networks: {
