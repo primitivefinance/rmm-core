@@ -4,16 +4,17 @@ pragma abicoder v2;
 
 /// @title   Primitive Factory
 /// @author  Primitive
-/// @dev     Generate PrimitiveEngine contracts
+/// @dev     Deploy new PrimitiveEngine contracts
 
 import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
-    event EngineCreated(address indexed from, address indexed risky, address indexed stable, address engine);
 
+    /// @inheritdoc IPrimitiveFactory
     address public override owner;
 
+    /// @inheritdoc IPrimitveFactory
     mapping(address => mapping(address => address)) public override getEngine;
 
     struct Args {
@@ -22,13 +23,14 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address stable;
     }
 
+    /// @inheritdoc IPrimitiveFactory
     Args public override args; // Used instead of an initializer in Engine contract
 
     constructor() {
         owner = msg.sender;
     }
 
-    /// @notice Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
+    /// @inheritdoc IPrimitiveFactory
     function create(address risky, address stable) external override returns (address engine) {
         require(risky != stable, "Cannot be same token");
         require(risky != address(0), "Cannot be zero address");
@@ -44,6 +46,10 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///         From solidity docs: 
     ///         "It will compute the address from the address of the creating contract, 
     ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
+    /// @param  factory The address of the deploying smart contract
+    /// @param  risky A risky token address
+    /// @param  stable  A stable token address
+    /// @return engine  The engine contract address which was deployed
     function deploy(address factory, address risky, address stable) internal returns (address engine) {
         args = Args({factory: factory, risky: risky, stable: stable}); // Engines call this to get constructor args
         engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, stable))}());

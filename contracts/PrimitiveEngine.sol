@@ -44,9 +44,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
     uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
     bytes32 public constant _NO_POOL = bytes32(0);
 
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
+    /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override fee;
 
     bytes32 public _POOL_ID = _NO_POOL;
@@ -65,9 +69,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
 
+    /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration.Data) public override settings;
+    /// @inheritdoc IPrimitiveEngineView
     mapping(address => Margin.Data) public override margins;
+    /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Position.Data) public override positions;
+    /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Reserve.Data) public override reserves;
 
 
@@ -419,19 +427,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     // ===== View ===== 
 
-    /// @notice Calculates the invariant for `reserveX` and `reserveY` reserve values
+    /// @inheritdoc IPrimitiveEngineView
     function calcInvariant(bytes32 pid, uint reserveX, uint reserveY, uint postLiquidity) public view override returns (int128 invariant) {
         Calibration.Data memory cal = settings[pid];
         invariant = ReplicationMath.calcInvariant(reserveX, reserveY, postLiquidity, cal.strike, cal.sigma, cal.time);
     }
 
-    /// @notice Calculates the invariant for the current reserve values of a pool.
+    /// @inheritdoc IPrimitiveEngineView
     function invariantOf(bytes32 pid) public view override returns (int128 invariant) {
         Reserve.Data memory res = reserves[pid];
         invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
     }
 
-    /// @notice Returns a kaccak256 hash of a pool's calibration parameters
+    /// @inheritdoc IPrimitiveEngineView
     function getPoolId(uint strike, uint sigma, uint time) public view override returns(bytes32 pid) {
         pid = keccak256(
             abi.encodePacked(
@@ -444,13 +452,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
 
-    /// @notice Returns the length of the allPools array that has all pool Ids
+    /// @inheritdoc IPrimitiveEngineView
     function getAllPoolsLength() public view override returns (uint len) {
         len = allPools.length;
     }
 
-     // ===== Flashes =====
+    // ===== Flashes =====
 
+    /// @inheritdoc IERC3156FlashLender
     function flashLoan(IERC3156FlashBorrower receiver, address token, uint amount, bytes calldata data) external override returns (bool) {
         uint fee_ = flashFee(token, amount); // reverts if unsupported token
 
@@ -472,12 +481,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return true;
     }
 
-
+    /// @inheritdoc IERC3156FlashLender
     function flashFee(address token, uint amount) public view override returns (uint) {
         require(token == stable || token == risky, "Not supported");
         return amount * fee / 1000;
     }
 
+    /// @inheritdoc IERC3156FlashLender
     function maxFlashLoan(address token) public view override returns (uint) {
         if(token != stable || token != risky) return 0; // not supported
         return token == stable ? balanceStable() : balanceRisky();
