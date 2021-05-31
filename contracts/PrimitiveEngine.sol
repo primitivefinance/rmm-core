@@ -144,10 +144,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
-        Margin.Data storage mar = margins.fetch(msg.sender);
+        margins.withdraw(deltaX, deltaY);
 
         if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);
+
         emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
@@ -177,7 +178,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         bytes32 pid_ = pid;
-        Position.Data storage pos = positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL);
 
         { // scope for invariant checks, avoids stack too deep errors
@@ -209,9 +210,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(deltaX * deltaY > 0, "Deltas are 0");
         reserveX = RX1 - deltaX;
         reserveY = RY2 - deltaY;
-        int128 invariant = invariantOf(pid);
-        int128 postInvariant = calcInvariant(pid, reserveX, reserveY, liquidity);
-        require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Updated state
@@ -228,7 +226,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
         
-        positions.remove(factory, pid, deltaL); // Updated position liqudiity
+        positions.remove(address(this), pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL);
         
         emit Updated(pid, reserveX, reserveY, block.number);
@@ -313,7 +311,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function lend(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
-        positions.lend(factory, pid, deltaL); // increment position float factor by `deltaL`
+        positions.lend(address(this), pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
@@ -324,7 +322,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function claim(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
         require(deltaL > 0, "Cannot be zero");
-        positions.claim(factory, pid, deltaL); // increment position float factor by `deltaL`
+        positions.claim(address(this), pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
@@ -341,10 +339,23 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint deltaX = deltaL * res.RX1 / liquidity; // amount of risky asset
         uint deltaY = deltaL * res.RY2 / liquidity; // amount of stable asset
         
+        uint preRisky = IERC20(risky).balanceOf(address(this));
+        uint preRiskless = IERC20(stable).balanceOf(address(this));
+        
         // trigger callback before position debt is increased, so liquidity can be removed
-        Position.Data storage pos = positions.borrow(factory, pid, deltaL); // increase liquidity + debt
+        IERC20(stable).safeTransfer(msg.sender, deltaY);
+        IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY); // trigger the callback so we can remove liquidity
+        Position.Data storage pos = positions.borrow(address(this), pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
+        res.remove(deltaX, deltaY, deltaL);
         res.borrowFloat(deltaL);
+
+        uint postRisky = IERC20(risky).balanceOf(address(this));
+        uint postRiskless = IERC20(stable).balanceOf(address(this));
+        
+        require(postRisky >= preRisky + (deltaL - deltaX), "IRY");
+        require(postRiskless >= preRiskless - deltaY, "IRL");
+
         emit Borrowed(recipient, pid, deltaL, maxPremium);
         return true;
     }
@@ -352,15 +363,42 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
+        Reserve.Data storage res = reserves[pid];
+        Position.Data storage pos = positions.fetch(address(this), owner, pid);
+        Margin.Data storage mar = margins[owner];
+
+        require(
+          res.debt >= deltaL &&
+          pos.debt >= deltaL,
+          "ID"
+        ); 
+
+
+        deltaRisky = deltaL * res.RX1 / res.liquidity;
+        deltaStable = deltaL * res.RY2 / res.liquidity;
+
         if (isInternal) {
-            (deltaX, deltaY) = allocate(pid, owner, deltaL, true);
+          margins.withdraw(deltaRisky, deltaStable);
+
+          res.allocate(deltaRisky, deltaStable, deltaL);
+          pos.repay(deltaL);
+          mar.deposit(deltaL - deltaRisky, uint(0));
         } else {
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(pid, owner, deltaL);
+          uint preStable = IERC20(stable).balanceOf(address(this));
+          IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable);
+
+          require(
+            IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable,
+            "IS"
+          );
+          
+          res.allocate(deltaRisky, deltaStable, deltaL);
+          res.repayFloat(deltaL);
+          pos.repay(deltaL);
+          mar.deposit(deltaL - deltaRisky, uint(0));
         }
 
-        Reserve.Data storage res = reserves[pid];
-        res.addFloat(deltaL);
         emit Repaid(owner, pid, deltaL);
     }
 

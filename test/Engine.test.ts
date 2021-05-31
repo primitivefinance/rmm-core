@@ -534,7 +534,7 @@ describe('Primitive Engine', function () {
       })
       describe('success cases', function () {
         it('Engine::borrow: Increase a positions loan debt', async function () {
-          await expect(borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)).to.not.be.reverted.to.emit(
+          await expect(borrow(poolId, signer.address, 1000, constants.MaxUint256)).to.not.be.reverted.to.emit(
             engine,
             EngineEvents.BORROWED
           )
@@ -544,7 +544,7 @@ describe('Primitive Engine', function () {
     describe('#repay', function () {
       this.beforeEach(async function () {
         await lend(poolId, nonce, 1000)
-        await borrow(poolId, signer.address, nonce, 1000, constants.MaxUint256)
+        await borrow(poolId, signer.address, 1000, constants.MaxUint256)
       })
       describe('success cases', function () {
         it('Engine::repay: Decrease a positions loan debt', async function () {
