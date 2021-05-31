@@ -200,28 +200,22 @@ contract TestCallee is IPrimitiveHouse {
     }
 
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
-        IERC20 risky = IERC20(engine.risky());
-        IERC20 stable = IERC20(engine.stable());
-        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function depositCallback(uint deltaX, uint deltaY) public override {
         if(ORDER_TYPE == Fails.NONE) {
-            IERC20 risky = IERC20(engine.risky());
-            IERC20 stable = IERC20(engine.stable());
-            if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-            if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+            if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+            if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
         } else  {
             // do nothing, will fail early because no tokens were sent into it
         } 
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
-        IERC20 risky = IERC20(engine.risky());
-        IERC20 stable = IERC20(engine.stable());
-        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {

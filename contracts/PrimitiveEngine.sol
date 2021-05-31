@@ -190,9 +190,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         pos.allocate(deltaL);
 
         { // scope for invariant checks, avoids stack too deep errors
-        bytes32 pid_ = pid;
-        int128 preInvariant = invariantOf(pid_);
-        int128 postInvariant = calcInvariant(pid_, reserveX, reserveY, liquidity);
+        bytes32 poolId = pid;
+        int128 preInvariant = invariantOf(poolId);
+        int128 postInvariant = calcInvariant(poolId, reserveX, reserveY, liquidity);
         require(postInvariant.parseUnits() >= preInvariant.parseUnits(), "Invalid invariant");
         }
 
