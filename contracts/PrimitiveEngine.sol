@@ -144,10 +144,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
-        Margin.Data storage mar = margins.fetch(msg.sender);
+        margins.withdraw(deltaX, deltaY);
 
         if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);
+
         emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
@@ -209,9 +210,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(deltaX * deltaY > 0, "Deltas are 0");
         reserveX = RX1 - deltaX;
         reserveY = RY2 - deltaY;
-        int128 invariant = invariantOf(pid);
-        int128 postInvariant = calcInvariant(pid, reserveX, reserveY, liquidity);
-        require(invariant.parseUnits() >= postInvariant.parseUnits(), "Invalid invariant");
         }
 
         // Updated state
@@ -369,31 +367,33 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(address(this), owner, pid);
         Margin.Data storage mar = margins[owner];
-        
+
         require(
           res.debt >= deltaL &&
           pos.debt >= deltaL,
           "ID"
         ); 
 
-        uint preRisky = IERC20(risky).balanceOf(address(this));
-        uint preStable = IERC20(stable).balanceOf(address(this));
+
+        deltaRisky = deltaL * res.RX1 / res.liquidity;
+        deltaStable = deltaL * res.RY2 / res.liquidity;
 
         if (isInternal) {
-          (deltaRisky,) = allocate(pid, owner, deltaL, true);
-          positions.remove(address(this), pid, deltaL);
+          margins.withdraw(deltaRisky, deltaStable);
+
+          res.allocate(deltaRisky, deltaStable, deltaL);
           pos.repay(deltaL);
           mar.deposit(deltaL - deltaRisky, uint(0));
         } else {
-          deltaRisky = deltaL * res.RX1 / res.liquidity;
-          deltaStable = deltaL * res.RY2 / res.liquidity;
+          uint preStable = IERC20(stable).balanceOf(address(this));
           IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable);
 
           require(
             IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable,
             "IS"
           );
-
+          
+          res.allocate(deltaRisky, deltaStable, deltaL);
           res.repayFloat(deltaL);
           pos.repay(deltaL);
           mar.deposit(deltaL - deltaRisky, uint(0));

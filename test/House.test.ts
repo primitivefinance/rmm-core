@@ -54,6 +54,7 @@ describe('Primitive House tests', function () {
   let allocateFromExternal: AllocateFromExternalFunction
   let create: CreateFunction
   let repayFromExternal: RepayFromExternalFunction
+  let repayFromMargin: RepayFromMarginFunction
 
   let engine: PrimitiveEngine
   let callee: TestCallee
@@ -124,6 +125,7 @@ describe('Primitive House tests', function () {
       lend,
       borrow,
       repayFromExternal,
+      repayFromMargin,
     } = createHouseFunctions({
       target: house,
       TX1,
@@ -256,8 +258,8 @@ describe('Primitive House tests', function () {
     }
 
     const checkRepayState = async (who: string, deltaL: BigNumberish) => {
-      await getReserve(engine, poolId)
-      await getPosition(house, who, poolId)
+      await getReserve(engine, poolId, true)
+      await getPosition(house, who, poolId, true)
     }
 
     describe('--allocate--', function () {
@@ -301,9 +303,16 @@ describe('Primitive House tests', function () {
 
     describe('--repay--', function () {
       describe('Success Assertions', function () {
-        it('House::Repay borrow', async function () {
+        it('House::Repay borrow from external', async function () {
           await borrow(poolId, signer.address, deltaL)
           await repayFromExternal(poolId, signer.address, deltaL)
+        })
+        it('House::Repay borrow from margin', async function () {
+          await deposit(signer.address, BigNumber.from(parseWei('1000').raw), BigNumber.from(parseWei('1000').raw))
+          await borrow(poolId, signer.address, deltaL)
+          await checkRepayState(signer.address, deltaL)
+          await repayFromMargin(poolId, signer.address, deltaL)
+          await checkRepayState(signer.address, deltaL)
         })
       })
     })
