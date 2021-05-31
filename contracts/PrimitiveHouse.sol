@@ -6,8 +6,8 @@ import "./interfaces/IPrimitiveHouse.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "hardhat/console.sol";
 
@@ -191,7 +191,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override executionLock {
       uint preBY2 = stable.balanceOf(address(this));
 
-      bytes memory placeholder = '0x';
+      bytes memory placeholder = "0x";
 
       uint riskyNeeded = deltaL - deltaX;
       IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, riskyNeeded);
