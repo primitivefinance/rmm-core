@@ -1,6 +1,6 @@
 import { constants, Wallet, Transaction, BigNumberish, BytesLike } from 'ethers'
 import { IERC20, PrimitiveHouse, PrimitiveEngine } from '../../typechain'
-import { parseWei, Wei } from './Units'
+import { parseWei, Wei, BigNumber } from './Units'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -9,20 +9,11 @@ export type DepositFunction = (owner: string, deltaX: BigNumberish, deltaY: BigN
 export type WithdrawFunction = (deltaX: BigNumberish, deltaY: BigNumberish) => Promise<Transaction>
 export type AllocateFromMarginFunction = (pid: string, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type AllocateFromExternalFunction = (pid: string, owner: string, deltaL: BigNumberish) => Promise<Transaction>
-export type RepayFromMarginFunction = (
-  pid: BytesLike,
-  owner: BytesLike,
-  nonce: BigNumberish,
-  deltaL: BigNumberish
-) => Promise<Transaction>
-export type RepayFromExternalFunction = (
-  pid: BytesLike,
-  owner: BytesLike,
-  nonce: BigNumberish,
-  deltaL: BigNumberish
-) => Promise<Transaction>
+export type RepayFromMarginFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
+export type RepayFromExternalFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type SwapFunction = (pid: BytesLike, deltaOut: BigNumberish, deltaInMax: BigNumberish) => Promise<Transaction>
-export type LendFunction = (pid: BytesLike, deltaL: BigNumberish) => Promise<Transaction>
+export type LendFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
+export type BorrowFunction = (pid: BytesLike, owner: string, deltaL: BigNumberish) => Promise<Transaction>
 export type ClaimFunction = (pid: BytesLike, nonce: BigNumberish, deltaL: BigNumberish) => Promise<Transaction>
 export type CreateFunction = (
   strike: BigNumberish,
@@ -40,6 +31,9 @@ export interface HouseFunctions {
   swapXForY: SwapFunction
   swapYForX: SwapFunction
   lend: LendFunction
+  borrow: BorrowFunction
+  repayFromExternal: RepayFromExternalFunction
+  repayFromMargin: RepayFromMarginFunction
 }
 
 // ===== Engine Functions ====
@@ -47,7 +41,6 @@ export function createHouseFunctions({
   target,
   TX1,
   TY2,
-  engine,
 }: {
   target: PrimitiveHouse
   TX1: IERC20
@@ -117,8 +110,32 @@ export function createHouseFunctions({
     return swap(pid, false, deltaOut, deltaInMax)
   }
 
-  const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {
-    return engine.lend(pid, deltaL)
+  const lend: LendFunction = async (pid: BytesLike, owner: string, deltaL: BigNumberish): Promise<Transaction> => {
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    await target.allocateFromExternal(pid, owner, deltaL)
+    return target.lend(pid, deltaL)
+  }
+
+  const borrow: BorrowFunction = async (pid: BytesLike, owner: string, deltaL: BigNumberish): Promise<Transaction> => {
+    await lend(pid, owner, BigNumber.from(deltaL).mul(10))
+    return target.borrow(pid, owner, deltaL)
+  }
+
+  const repayFromExternal: RepayFromExternalFunction = async (
+    pid: BytesLike,
+    owner: string,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    return target.repayFromExternal(pid, owner, deltaL)
+  }
+
+  const repayFromMargin: RepayFromMarginFunction = async (
+    pid: BytesLike,
+    owner: string,
+    deltaL: BigNumberish
+  ): Promise<Transaction> => {
+    return target.repayFromMargin(pid, owner, deltaL)
   }
 
   return {
@@ -130,5 +147,8 @@ export function createHouseFunctions({
     swapXForY,
     swapYForX,
     lend,
+    borrow,
+    repayFromExternal,
+    repayFromMargin,
   }
 }

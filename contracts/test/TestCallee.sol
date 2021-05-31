@@ -115,7 +115,7 @@ contract TestCallee is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
 
-        Position.Data storage pos = _positions.fetch(engine.factory(), owner, pid);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
 
     }
@@ -126,7 +126,7 @@ contract TestCallee is IPrimitiveHouse {
 
         _margins.withdraw(deltaX, deltaY);
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -135,7 +135,7 @@ contract TestCallee is IPrimitiveHouse {
         engine.allocate(pid_, address(this),  deltaL, false);
 
         address factory = engine.factory();
-        Position.Data storage pos = _positions.fetch(factory, owner, pid_);
+        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -170,9 +170,18 @@ contract TestCallee is IPrimitiveHouse {
     /**
      * @notice Puts `deltaL` LP shares up to be borrowed.
      */
-    function lend(bytes32 pid, uint nonce, uint deltaL) public override lock {
+    function lend(bytes32 pid, uint deltaL) public override lock {
         CALLER = msg.sender;
         engine.lend(pid, deltaL);
+    }
+
+    function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
+      CALLER = msg.sender;
+      engine.borrow(pid, address(this), deltaL, type(uint256).max);
+      
+      address factory = engine.factory();
+      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
+      CALLER = NO_CALLER;
     }
     
     // ===== Callback Implementations =====
@@ -186,8 +195,8 @@ contract TestCallee is IPrimitiveHouse {
         if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function repayFromExternalCallback(bytes32 pid, address owner, uint deltaL) public override executionLock {
-        engine.allocate(pid, owner, deltaL, false);
+    function repayFromExternalCallback(uint deltaStable) public override {
+      IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
     }
 
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
@@ -215,7 +224,7 @@ contract TestCallee is IPrimitiveHouse {
         if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function borrowCallback(Position.Data calldata pos, uint deltaL) public override {
+    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner

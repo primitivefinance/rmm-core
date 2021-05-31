@@ -14,9 +14,10 @@ import {
   AllocateFromMarginFunction,
   AllocateFromExternalFunction,
   RepayFromMarginFunction,
-  RepayFromExternalFunction,
   createHouseFunctions,
   CreateFunction,
+  BorrowFunction,
+  RepayFromExternalFunction,
 } from './shared/House'
 import {
   Calibration,
@@ -48,9 +49,12 @@ describe('Primitive House tests', function () {
   let deposit: DepositFunction
   let withdraw: WithdrawFunction
   let lend: LendFunction
+  let borrow: BorrowFunction
   let allocateFromMargin: AllocateFromMarginFunction
   let allocateFromExternal: AllocateFromExternalFunction
   let create: CreateFunction
+  let repayFromExternal: RepayFromExternalFunction
+  let repayFromMargin: RepayFromMarginFunction
 
   let engine: PrimitiveEngine
   let callee: TestCallee
@@ -112,7 +116,17 @@ describe('Primitive House tests', function () {
     spot = parseWei('1000')
 
     // House functions
-    ;({ create, deposit, withdraw, allocateFromExternal, allocateFromMargin, lend } = createHouseFunctions({
+    ;({
+      create,
+      deposit,
+      withdraw,
+      allocateFromExternal,
+      allocateFromMargin,
+      lend,
+      borrow,
+      repayFromExternal,
+      repayFromMargin,
+    } = createHouseFunctions({
       target: house,
       TX1,
       TY2,
@@ -232,6 +246,22 @@ describe('Primitive House tests', function () {
     this.beforeEach(async function () {})
     const deltaL = parseWei('1').raw
 
+    const checkLiquidity = async (who: string, deltaL: BigNumberish) => {
+      const { liquidity, float } = await getPosition(house, who, poolId)
+      expect(liquidity.raw).to.be.eq(deltaL)
+      expect(float.raw).to.be.eq(deltaL)
+    }
+
+    const checkBorrow = async (who: string, deltaL: BigNumberish) => {
+      const { debt } = await getPosition(house, who, poolId)
+      expect(debt.raw).to.be.eq(deltaL)
+    }
+
+    const checkRepayState = async (who: string, deltaL: BigNumberish) => {
+      await getReserve(engine, poolId, true)
+      await getPosition(house, who, poolId, true)
+    }
+
     describe('--allocate--', function () {
       describe('Success Assertions', function () {
         it('House::Add liquidity from external balance', async function () {
@@ -245,12 +275,44 @@ describe('Primitive House tests', function () {
       })
 
       describe('Failure Assertions', function () {
-        it('House::Fail to add liquidity from external balance', async function () {
-          await expect(allocateFromExternal(poolId, signer.address, deltaL.mul(100))).to.be.reverted // TODO: FIX THIS
-        })
-
         it('House::Fail to liquidity from margin account due to insufficient balance', async function () {
           await expect(allocateFromMargin(poolId, signer.address, deltaL.mul(100))).to.be.reverted
+        })
+      })
+    })
+
+    describe('--lend--', function () {
+      describe('Success Assertions', function () {
+        it('House::Add float from signer', async function () {
+          await lend(poolId, signer.address, deltaL)
+          await checkLiquidity(signer.address, deltaL)
+        })
+      })
+
+      describe('Failure Assertions', function () {})
+    })
+
+    describe('--borrow--', function () {
+      describe('Success Assertions', function () {
+        it('House::Split LP shares and provide premium in risky asset', async function () {
+          await borrow(poolId, signer.address, deltaL)
+          await checkBorrow(signer.address, deltaL)
+        })
+      })
+    })
+
+    describe('--repay--', function () {
+      describe('Success Assertions', function () {
+        it('House::Repay borrow from external', async function () {
+          await borrow(poolId, signer.address, deltaL)
+          await repayFromExternal(poolId, signer.address, deltaL)
+        })
+        it('House::Repay borrow from margin', async function () {
+          await deposit(signer.address, BigNumber.from(parseWei('1000').raw), BigNumber.from(parseWei('1000').raw))
+          await borrow(poolId, signer.address, deltaL)
+          await checkRepayState(signer.address, deltaL)
+          await repayFromMargin(poolId, signer.address, deltaL)
+          await checkRepayState(signer.address, deltaL)
         })
       })
     })
