@@ -224,10 +224,6 @@ contract PrimitiveHouse is IPrimitiveHouse {
       IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
     }
 
-    function repayFromMarginCallback(bytes32 pid, uint deltaL) public override returns (uint deltaRisky, uint deltaStable) {
-      (deltaRisky, deltaStable) = engine.allocate(pid, address(this), deltaL, true);
-    }
-
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata date) external {
 
     }
