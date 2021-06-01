@@ -43,7 +43,7 @@ contract TestBlackScholes {
     // ===== Replication Library Entry =====
 
     function proportionalVol(bytes32 pid) public view returns (int128) {
-        (uint strike, uint sigma, uint time) = engine.settings(pid);
+        (, uint sigma, uint time) = engine.settings(pid);
         return ReplicationMath.getProportionalVolatility(sigma, time);
     }
 
