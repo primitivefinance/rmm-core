@@ -125,8 +125,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint balanceX = balanceRisky();
         uint balanceY = balanceStable();
         IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
-        require(balanceRisky() >= RX1, "Not enough risky tokens");
-        require(balanceStable() >= RY2, "Not enough stable tokens");
+        require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
+        require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
     
         allPools.push(pid);
         emit Updated(pid, RX1, RY2, block.number);
@@ -353,7 +353,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // trigger callback before position debt is increased, so liquidity can be removed
         IERC20(stable).safeTransfer(msg.sender, deltaY);
         IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY); // trigger the callback so we can remove liquidity
-        Position.Data storage pos = positions.borrow(address(this), pid, deltaL); // increase liquidity + debt
+        positions.borrow(address(this), pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.remove(deltaX, deltaY, deltaL);
         res.borrowFloat(deltaL);
