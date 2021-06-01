@@ -49,9 +49,17 @@ contract TestCallee is IPrimitiveHouse {
         reentrant = 0;
     }
 
+    modifier useCallerContext() {
+      require(CALLER == NO_CALLER, "CSF"); // Caller set failure
+      CALLER = msg.sender;
+      _;
+      CALLER = NO_CALLER;
+    }
+
     modifier reset() {
         _;
         ORDER_TYPE = Fails.NONE;
+        
     }
 
     modifier executionLock() {
@@ -71,7 +79,7 @@ contract TestCallee is IPrimitiveHouse {
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override executionLock {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
       engine.create(strike, sigma, time, riskyPrice);
     }
 
@@ -217,7 +225,7 @@ contract TestCallee is IPrimitiveHouse {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+    function margins(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
 

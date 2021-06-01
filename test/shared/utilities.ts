@@ -31,7 +31,7 @@ export const deriveUniPoolAddress = async (factory: IUniswapV3Factory, fee: BigN
   return poolAddr
 }
 
-export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+export function allocate(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
   const { RX1, RY2, liquidity, float, debt } = params.reserve
   const deltaX = deltaL.mul(RX1).div(liquidity)
   const deltaY = deltaL.mul(RY2).div(liquidity)
@@ -52,7 +52,7 @@ export function addBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams,
   return [deltaX, deltaY, post, postInvariant]
 }
 
-export function removeBoth(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+export function remove(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
   const { RX1, RY2, liquidity, float, debt } = params.reserve
   const deltaX = deltaL.mul(RX1).div(liquidity)
   const deltaY = deltaL.mul(RY2).div(liquidity)
@@ -258,7 +258,7 @@ export interface Margin {
 }
 
 export async function getMargin(contract: Contract, owner: string, log?: boolean): Promise<Margin> {
-  const mar = await contract.getMargin(owner)
+  const mar = await contract.margins(owner)
   const margin: Margin = {
     owner: owner,
     BX1: new Wei(mar.BX1),
@@ -282,7 +282,7 @@ export interface Calibration {
 }
 
 export async function getCalibration(engine: Contract, poolId: string, log?: boolean): Promise<Calibration> {
-  const cal = await engine.getCalibration(poolId)
+  const cal = await engine.settings(poolId)
   const calibration: Calibration = {
     strike: toBN(cal.strike),
     sigma: +cal.sigma,

@@ -227,7 +227,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+    function margins(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
 

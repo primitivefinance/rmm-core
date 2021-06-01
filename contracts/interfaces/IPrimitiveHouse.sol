@@ -33,5 +33,5 @@ interface IPrimitiveHouse is
     function swapYForX(bytes32 pid, uint deltaOut) external;
     // Lending
     function lend(bytes32 pid, uint deltaL) external;
-    function getMargin(address owner) external view returns (Margin.Data memory);
+    function margins(address owner) external view returns (Margin.Data memory);
 }
