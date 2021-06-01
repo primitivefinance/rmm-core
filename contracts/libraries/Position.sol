@@ -28,7 +28,7 @@ library Position {
         address where,
         address owner,
         bytes32 pid
-    ) internal returns (Data storage) {
+    ) internal view returns (Data storage) {
          return position[getPositionId(where, owner, pid)];
     }
 
@@ -76,7 +76,7 @@ library Position {
 
     /// @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
     /// @return  The position Id as a bytes32.
-    function getPositionId(address where, address owner, bytes32 pid) internal view returns (bytes32) {
+    function getPositionId(address where, address owner, bytes32 pid) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(where, owner, pid));
     }
 }

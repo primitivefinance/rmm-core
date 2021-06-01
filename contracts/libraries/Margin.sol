@@ -24,7 +24,7 @@ library Margin {
     function fetch(
         mapping(address => Data) storage mar,
         address owner
-    ) internal returns (Data storage) {
+    ) internal view returns (Data storage) {
         require(owner != address(0x0), "No owner");
         return mar[owner];
     }

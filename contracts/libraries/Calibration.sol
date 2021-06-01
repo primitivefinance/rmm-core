@@ -22,14 +22,14 @@ library Calibration {
     function fetch(
         mapping(bytes32 => Data) storage settings,
         address engine
-    ) internal returns (Data storage) {
+    ) internal view returns (Data storage) {
         return settings[getCalibrationId(engine)];
     }
 
     /// @notice  Fetches the reserve Id, which is an encoded `owner`.
     /// @return  The reserve Id as a bytes32.
     // @TODO: make these more deterministic?
-    function getCalibrationId(address engine) internal view returns (bytes32) {
+    function getCalibrationId(address engine) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(engine));
     }
 }

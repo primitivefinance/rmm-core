@@ -125,7 +125,6 @@ contract TestCallee is IPrimitiveHouse {
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -133,8 +132,6 @@ contract TestCallee is IPrimitiveHouse {
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
         bytes32 pid_ = pid;
         engine.allocate(pid_, address(this),  deltaL, false);
-
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -178,9 +175,7 @@ contract TestCallee is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
       CALLER = msg.sender;
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
-      
-      address factory = engine.factory();
-      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(address(this), pid, deltaL);
       CALLER = NO_CALLER;
     }
     

@@ -26,7 +26,7 @@ library Reserve {
         uint32 blockTimestamp;
     }
 
-    function _blockTimestamp() internal returns (uint32 blockTimestamp) {
+    function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
         blockTimestamp = uint32(block.timestamp);
     }
 

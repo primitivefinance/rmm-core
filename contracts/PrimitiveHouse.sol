@@ -137,7 +137,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
-      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(address(this), pid, deltaL);
     }
     
     /**
