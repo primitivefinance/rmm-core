@@ -45,7 +45,7 @@ interface IPrimitiveEngineEvents {
     // ===== Swaps =====
     /// @notice Swaps either risky for stable tokens or stable for risky.
     /// @param  from    TThe calling `msg.sender`
-    /// @param  pid     
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  addXRemoveY  If true, a swap from the risky token to the stable token
     /// @param  deltaIn  The amount of tokens paid
     /// @param  deltaOut The amount of tokens received
@@ -54,26 +54,26 @@ interface IPrimitiveEngineEvents {
     // ===== Lending =====
     /// @notice Liquidity shares added to the float to be borrowed
     /// @param  from   The calling `msg.sender`
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL  The amount of liquidity shares loaned
     event Loaned(address indexed from, bytes32 indexed pid, uint deltaL);
 
     /// @notice Liquidity shares removed from the float
     /// @param  from   The calling `msg.sender`
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL  The amount of liquidity shares removed from the float
     event Claimed(address indexed from, bytes32 indexed pid, uint deltaL);
 
     /// @notice Adds liqidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient The owner of the position which receives liquidity shares
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL The amount of liquidity shares borrowed, and added as debt
     /// @param  maxPremium  The maximum amount of risky tokens to pay as a `premium` to collateralize the position
     event Borrowed(address indexed recipient, bytes32 indexed pid, uint deltaL, uint maxPremium);
 
     /// @notice Repays a borrowed position, reduces liquidity shares of position and debt.
     /// @param  owner   The owner of the position to repay
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL  The amount of liquidity to pay
     event Repaid(address indexed owner, bytes32 indexed pid, uint deltaL);
 

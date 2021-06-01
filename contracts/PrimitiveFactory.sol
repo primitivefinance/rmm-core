@@ -14,7 +14,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @inheritdoc IPrimitiveFactory
     address public override owner;
 
-    /// @inheritdoc IPrimitveFactory
+    /// @inheritdoc IPrimitiveFactory
     mapping(address => mapping(address => address)) public override getEngine;
 
     struct Args {
