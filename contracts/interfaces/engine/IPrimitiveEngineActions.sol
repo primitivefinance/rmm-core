@@ -23,7 +23,7 @@ interface IPrimitiveEngineActions {
     /// @param  deltaL  The quantity of liquidity units to get allocated
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @return deltaX  The amount of risky tokens that were allocated
-    /// @return deltaY  The amount of stable tokens that were allocated
+    /// deltaY  The amount of stable tokens that were allocated
     function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin) external returns (uint, uint);
 
     /// @notice Unallocates risky and stable tokens from a specific curve with `pid`
@@ -57,19 +57,19 @@ interface IPrimitiveEngineActions {
 
     // Lending
     /// @notice Increases the `msg.sender`'s position's float value. Lends liquidity.
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL  The amount of liquidity to add to the float
     /// @return Whether the call was successful or not
     function lend(bytes32 pid, uint deltaL) external returns (bool);
 
     /// @notice Reduces the `msg.sender`'s position's float value. Removes loaned liquidity.
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  deltaL  The amount of liquidity to remove from the float
     /// @return Whether the call was successful or not
     function claim(bytes32 pid, uint deltaL) external returns (bool);
 
     /// @notice Increases the `msg.sender`'s position's liquidity value and also adds the same to the debt value.
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  owner   The position owner to grant the borrowed liquidity shares
     /// @param  deltaL  The amount of liquidity to borrow and add as debt
     /// @param  maxPremium  The max amount of `premium` that can be collected from the `msg.sender` to collateralize the position
@@ -77,8 +77,7 @@ interface IPrimitiveEngineActions {
     function borrow(bytes32 pid, address owner, uint deltaL, uint maxPremium) external returns (bool);
 
     /// @notice Reduces the `msg.sender`'s position's liquidity value and also reduces the same to the debt value.
-    /// @param Documents a parameter just like in doxygen (must be followed by parameter name)
-    /// @param  pid
+    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  owner   The position owner to grant the borrowed liquidity shares
     /// @param  deltaL  The amount of liquidity to borrow and add as debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
