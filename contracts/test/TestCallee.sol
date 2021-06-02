@@ -7,14 +7,14 @@ import "../libraries/Margin.sol";
 import "../libraries/Position.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol';
+import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 
-import '@uniswap/v3-core/contracts/libraries/SafeCast.sol';
+import "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import '@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol';
-import '@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol';
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 
 contract TestCallee is IPrimitiveHouse {
     using SafeERC20 for IERC20;
@@ -49,9 +49,17 @@ contract TestCallee is IPrimitiveHouse {
         reentrant = 0;
     }
 
+    modifier useCallerContext() {
+      require(CALLER == NO_CALLER, "CSF"); // Caller set failure
+      CALLER = msg.sender;
+      _;
+      CALLER = NO_CALLER;
+    }
+
     modifier reset() {
         _;
         ORDER_TYPE = Fails.NONE;
+        
     }
 
     modifier executionLock() {
@@ -71,7 +79,7 @@ contract TestCallee is IPrimitiveHouse {
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override executionLock {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
       engine.create(strike, sigma, time, riskyPrice);
     }
 
@@ -125,7 +133,6 @@ contract TestCallee is IPrimitiveHouse {
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -133,8 +140,6 @@ contract TestCallee is IPrimitiveHouse {
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
         bytes32 pid_ = pid;
         engine.allocate(pid_, address(this),  deltaL, false);
-
-        address factory = engine.factory();
         Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
@@ -178,9 +183,7 @@ contract TestCallee is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
       CALLER = msg.sender;
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
-      
-      address factory = engine.factory();
-      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(address(this), pid, deltaL);
       CALLER = NO_CALLER;
     }
     
@@ -200,35 +203,29 @@ contract TestCallee is IPrimitiveHouse {
     }
 
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
-        IERC20 risky = IERC20(engine.risky());
-        IERC20 stable = IERC20(engine.stable());
-        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function depositCallback(uint deltaX, uint deltaY) public override {
         if(ORDER_TYPE == Fails.NONE) {
-            IERC20 risky = IERC20(engine.risky());
-            IERC20 stable = IERC20(engine.stable());
-            if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-            if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+            if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+            if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
         } else  {
             // do nothing, will fail early because no tokens were sent into it
         } 
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
-        IERC20 risky = IERC20(engine.risky());
-        IERC20 stable = IERC20(engine.stable());
-        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+    function margins(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
 

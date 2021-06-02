@@ -51,8 +51,8 @@ describe('Math', function () {
       bs,
     }))
     // Create pool
-    await create(calibration, spot.raw)
-    poolId = await engine.getPoolId(calibration)
+    await create(strike, sigma, time, spot.raw)
+    poolId = await engine.getPoolId(strike, sigma, time)
     reserve = await getReserve(engine, poolId)
 
     hre.tracer.nameTags[signer.address] = 'Signer'

@@ -6,8 +6,8 @@ import "./interfaces/IPrimitiveHouse.sol";
 import "./libraries/Position.sol";
 import "./libraries/Margin.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import "hardhat/console.sol";
 
@@ -137,7 +137,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
-      Position.Data storage pos = _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(address(this), pid, deltaL);
     }
     
     /**
@@ -181,10 +181,8 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
-        IERC20 risky = IERC20(engine.risky());
-        IERC20 stable = IERC20(engine.stable());
-        if(deltaX > 0) risky.safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) stable.safeTransferFrom(CALLER, msg.sender, deltaY);
+        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
+        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
     function swapCallback(uint deltaX, uint deltaY) public override {
@@ -193,7 +191,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override executionLock {
       uint preBY2 = stable.balanceOf(address(this));
 
-      bytes memory placeholder = '0x';
+      bytes memory placeholder = "0x";
 
       uint riskyNeeded = deltaL - deltaX;
       IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, riskyNeeded);
@@ -229,7 +227,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function getMargin(address owner) public override view returns (Margin.Data memory mar) {
+    function margins(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
 

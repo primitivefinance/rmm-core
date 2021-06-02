@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
@@ -32,5 +33,5 @@ interface IPrimitiveHouse is
     function swapYForX(bytes32 pid, uint deltaOut) external;
     // Lending
     function lend(bytes32 pid, uint deltaL) external;
-    function getMargin(address owner) external view returns (Margin.Data memory);
+    function margins(address owner) external view returns (Margin.Data memory);
 }
