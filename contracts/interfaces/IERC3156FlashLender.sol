@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
-import "./IERC3156FlashBorrower.sol";
 
+import "./IERC3156FlashBorrower.sol";
 
 interface IERC3156FlashLender {
 

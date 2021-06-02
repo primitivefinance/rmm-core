@@ -27,7 +27,7 @@ import {
   getPoolParams,
   getMargin,
   getDeltaIn,
-  removeBoth,
+  remove,
   getPosition,
 } from './shared/utilities'
 import { strike, sigma, time, minTick, maxTick } from './shared/config'
