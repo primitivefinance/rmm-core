@@ -1,6 +1,6 @@
 import hre from 'hardhat'
 import { deployMockContract, MockContract } from 'ethereum-waffle'
-import { Wallet } from 'ethers'
+import { Wallet, Contract } from 'ethers'
 
 import {
   PrimitiveEngine,
@@ -13,27 +13,35 @@ import {
 
 export type PrimitiveEngineFixture = {
   primitiveEngine: PrimitiveEngine
-  primitiveFactory: MockContract
+  primitiveFactory: PrimitiveFactory
+  signers: Wallet[]
+  risky: MockContract
+  stable: MockContract
 }
 
 export async function primitiveEngineFixture(signers: Wallet[]): Promise<PrimitiveEngineFixture> {
   const [deployer] = signers
 
   // TODO: Find a way to use TypeChain to load the ABI
-  const primiveFactoryArtifact = await hre.artifacts.readArtifact('PrimitiveFactory')
-  const primitiveFactory = await deployMockContract(deployer, primiveFactoryArtifact.abi)
+  const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
 
-  primitiveFactory.mock.args.returns({
-    factory: '',
-    risky: '',
-    stable: '',
-  })
+  const risky = await deployMockContract(deployer, erc20Artifact.abi)
+  const stable = await deployMockContract(deployer, erc20Artifact.abi)
+
+  const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
+
+  await primitiveFactory.create(risky.address, stable.address)
 
   const primitiveEngine = await new PrimitiveEngine__factory(deployer).deploy()
+
+  primitiveEngine.attach(await primitiveFactory.getEngine(risky.address, stable.address))
 
   return {
     primitiveEngine,
     primitiveFactory,
+    signers,
+    risky,
+    stable,
   }
 }
 
