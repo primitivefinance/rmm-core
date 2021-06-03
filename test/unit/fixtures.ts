@@ -31,10 +31,8 @@ export async function primitiveEngineFixture(signers: Wallet[]): Promise<Primiti
   const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
 
   await primitiveFactory.create(risky.address, stable.address)
-
-  const primitiveEngine = await new PrimitiveEngine__factory(deployer).deploy()
-
-  primitiveEngine.attach(await primitiveFactory.getEngine(risky.address, stable.address))
+  const addr = await primitiveFactory.getEngine(risky.address, stable.address)
+  const primitiveEngine = PrimitiveEngine__factory.connect(addr, deployer)
 
   return {
     primitiveEngine,
