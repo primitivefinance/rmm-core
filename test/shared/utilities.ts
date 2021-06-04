@@ -1,9 +1,12 @@
 import { Wei, toBN, formatEther, parseEther, parseWei, fromInt, BigNumber, BigNumberish } from './Units'
-import { BytesLike } from 'ethers'
-import { IUniswapV3Factory, IERC20 } from '../../typechain'
+import { BytesLike, utils } from 'ethers'
 import bn from 'bignumber.js'
-import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
 import { Contract } from '@ethersproject/contracts'
+
+import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
+
+import { IUniswapV3Factory, IERC20 } from '../../typechain'
+
 
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 })
 
@@ -312,4 +315,25 @@ export function calculateInvariant(params: PoolParams): number {
   const input: number = getTradingFunction(params.reserve.RX1, params.reserve.liquidity, params.calibration)
   const invariant: Wei = params.reserve.RY2.sub(parseEther(input > 0.0001 ? input.toString() : '0'))
   return invariant.float
+}
+
+export function getCreate2Address(
+  factoryAddress: string,
+  [stable, risky]: [string, string],
+  bytecode: string,
+): string {
+  const encodedArguments = utils.defaultAbiCoder.encode(
+    ['address', 'address'],
+    [stable, risky],
+  );
+
+  const create2Inputs = [
+    '0xff',
+    factoryAddress,
+    utils.keccak256(encodedArguments),
+    utils.keccak256(bytecode),
+  ];
+
+  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join('')}`;
+  return utils.getAddress(`0x${utils.keccak256(sanitizedInputs).slice(-40)}`);
 }
