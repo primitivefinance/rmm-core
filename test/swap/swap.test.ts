@@ -58,6 +58,7 @@ describe('swap', () => {
   })
 
   it('should swap through TestEngineSwap contract using useRef', async () => {
+    const [deployer] = context.signers
     const pid = await context.primitiveEngine.getPoolId(strike, sigma, time)
     ;({ create } = createEngineFunctions({
       target: context.testEngineSwap,
@@ -65,6 +66,7 @@ describe('swap', () => {
       TY2: context.stable,
       engine: context.primitiveEngine,
       bs: context.bs,
+      signer: deployer,
     }))
 
     await create(strike, sigma, time, utils.parseEther('1100'))

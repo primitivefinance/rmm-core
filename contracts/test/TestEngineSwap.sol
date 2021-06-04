@@ -29,7 +29,7 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
     }
 
     function create(address engine, uint strike, uint sigma, uint time, uint spot) external useRef(setCaller()) {
-        IPrimitiveEngine(engine).create(strike, sigma, time, spot);
+        //IPrimitiveEngine(engine).create(strike, sigma, time, spot);
     }
 
     /// @notice Swaps on the Engine and asserts the balances after
@@ -66,7 +66,7 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
     // ===== useRef =====
 
     function setCaller() public returns (bytes memory data) {
-        data = abi.encodePacked(msg.sender);
+        data = abi.encode(msg.sender);
     }
 
     function useRefCallback(bytes calldata data) public override {
