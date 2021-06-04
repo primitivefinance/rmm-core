@@ -1,47 +1,53 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
+/// @title   High-level Test contract for calling into the PrimitiveEngine
+/// @author  Primitive
+/// @dev     ONLY FOR TESTING PURPOSES.
+
 import "../interfaces/IPrimitiveEngine.sol";
 import "../interfaces/IPrimitiveHouse.sol";
 import "../libraries/Margin.sol";
 import "../libraries/Position.sol";
+import "./TestUniswapCallee.sol";
+import "./Transfers.sol";
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uniswap/v3-core/contracts/interfaces/IERC20Minimal.sol";
 
-import "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
-
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
-import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
-
-contract TestCallee is IPrimitiveHouse {
-    using SafeERC20 for IERC20;
-    using SafeCast for uint256;
+contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
+    using Transfers for IERC20; // safeTransfer
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
 
-    address public constant NO_CALLER = address(21);
-
-    IERC20 public risky;
-    IERC20 public stable;
-    IPrimitiveEngine public engine;
-    IUniswapV3Factory public uniFactory;
-
-    address public CALLER = NO_CALLER;
-    Fails public ORDER_TYPE = Fails.NONE;
-    uint private reentrant;
-
+    /// @notice Different failure cases
     enum Fails { NONE, TX1, TY2 }
 
+    /// @notice Original caller context is set to NO_CALLER when not executing
+    address public constant NO_CALLER = address(21);
+
+    /// @notice A risky token like WETH
+    IERC20 public risky;
+    /// @notice A stable token like DAI
+    IERC20 public stable;
+    /// @notice The Primitive Engine core contract
+    IPrimitiveEngine public engine;
+    /// @notice Uniswap V3 factory
+    IUniswapV3Factory public uniFactory;
+    /// @notice Stores the orgiinal caller of this contract's functions to ref in callbacks
+    address public CALLER = NO_CALLER;
+    /// @notice Used to trigger different failure cases in the callbacks
+    Fails public ORDER_TYPE = Fails.NONE;
+    /// @notice Standard mutex
+    uint private reentrant;
+    /// @notice This contract's own margin state. This contract will have its own margin acc w/ the Engine
     mapping(address => Margin.Data) public _margins;
+    /// @notice This contract's own position state. This contract has its own positions w/ the Engine
     mapping(bytes32 => Position.Data) public _positions;
 
     constructor() {}
 
+    /// @notice Reentrancy guard
     modifier lock() {
         require(reentrant != 1, "locked");
         reentrant = 1;
@@ -49,6 +55,7 @@ contract TestCallee is IPrimitiveHouse {
         reentrant = 0;
     }
 
+    /// @notice Sets caller refs
     modifier useCallerContext() {
       require(CALLER == NO_CALLER, "CSF"); // Caller set failure
       CALLER = msg.sender;
@@ -56,12 +63,14 @@ contract TestCallee is IPrimitiveHouse {
       CALLER = NO_CALLER;
     }
 
+    /// @notice Resets failure case refs
     modifier reset() {
         _;
         ORDER_TYPE = Fails.NONE;
         
     }
 
+    /// @notice Modifer for callbacks to only be called during an execution of the public fns
     modifier executionLock() {
         require(reentrant == 1, "Not guarded");
         require(CALLER != NO_CALLER, "No caller set");
@@ -69,6 +78,7 @@ contract TestCallee is IPrimitiveHouse {
         _;
     }
 
+    /// @notice Sets up the engine and tokens for this high-level contract
     function initialize(address engine_, address factory_, uint24 fee_) public override {
         require(address(engine) == address(0), "Already initialized");
         engine = IPrimitiveEngine(engine_);
@@ -76,58 +86,60 @@ contract TestCallee is IPrimitiveHouse {
         stable = IERC20(engine.stable());
     }
 
-    /**
-     * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
-     */
+    /// @notice Initializes a new pool with these params. Uses spot price `riskyPrice` to determine initial reserves.
     function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
-      engine.create(strike, sigma, time, riskyPrice);
+      CALLER = msg.sender;
+      engine.create(strike, sigma, time, riskyPrice); // will trigger a callback
     }
 
     function deposit(address owner, uint deltaX, uint deltaY) public override lock {
         CALLER = msg.sender;
-        engine.deposit(msg.sender, deltaX, deltaY);
+        engine.deposit(msg.sender, deltaX, deltaY); // will trigger a callback
     }
 
+    /// @notice Fails in the depositCallback because no risky tokens are sent as deposit
     function depositFailTX1(uint deltaX, uint deltaY) public lock reset {
         CALLER = msg.sender;
         ORDER_TYPE = Fails.TX1;
         engine.deposit(msg.sender, deltaX, deltaY);
     }
 
+    /// @notice Fails in the depositCallback because no stable tokens are sent as deposit
     function depositFailTY2(uint deltaX, uint deltaY) public lock reset {
         CALLER = msg.sender;
         ORDER_TYPE = Fails.TY2;
         engine.deposit(msg.sender, deltaX, deltaY);
     }
 
-    /**
-     * @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
-     */
+    /// @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
      function withdraw(uint deltaX, uint deltaY) public override lock {
+        CALLER = msg.sender;
         engine.withdraw(deltaX, deltaY);
-
         _margins.withdraw(deltaX, deltaY);
 
         if (deltaX > 0) IERC20(risky).safeTransfer(CALLER, deltaX);
         if (deltaY > 0) IERC20(stable).safeTransfer(CALLER, deltaY);
     }
 
+    /// @notice Triggers the repayCallback to spend tokens from balance
     function repayFromExternal(bytes32 pid, address owner,  uint deltaL) public override lock {
         CALLER = msg.sender;
         engine.repay(pid, owner, deltaL, false);
     }
 
+    /// @notice Uses margin balance in the Engine to repay debt
     function repayFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
         CALLER = msg.sender;
-        (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true);
+        (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true); // call repay
 
-        _margins.withdraw(deltaX, deltaY);
+        _margins.withdraw(deltaX, deltaY); // take out any profits
 
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.allocate(deltaL); // Update position liquidity
 
     }
 
+    /// @notice Uses margin balance to add liquidity to a `pid`
     function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
         bytes32 pid_ = pid;
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
@@ -137,6 +149,7 @@ contract TestCallee is IPrimitiveHouse {
         pos.allocate(deltaL); // Update position liquidity
     }
 
+    /// @notice Pays tokens in the allocateCallback as liquidity to the `pid`
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
         bytes32 pid_ = pid;
         engine.allocate(pid_, address(this),  deltaL, false);
@@ -144,42 +157,45 @@ contract TestCallee is IPrimitiveHouse {
         pos.allocate(deltaL); // Update position liquidity
     }
 
-
-    function addLiquidityFailTX1(bytes32 pid, uint nonce, uint deltaL) public lock reset {
+    /// @notice Allocates liquidity to a curve but fails to pay in callback because no risky tokens
+    function allocateFailRisky(bytes32 pid, uint nonce, uint deltaL) public lock reset {
         CALLER = msg.sender;
         ORDER_TYPE = Fails.TX1;
         engine.allocate(pid, msg.sender, deltaL, false);
     }
 
-    function addLiquidityFailTY2(bytes32 pid, uint nonce, uint deltaL) public lock reset {
+    /// @notice Allocates liquidity to a curve but fails to pay in callback because no stable tokens
+    function allocateFailStable(bytes32 pid, uint nonce, uint deltaL) public lock reset {
         CALLER = msg.sender;
         ORDER_TYPE = Fails.TY2;
         engine.allocate(pid, msg.sender, deltaL, false);
     }
 
+    /// @notice Executes an Engine swap
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
         CALLER = msg.sender;
         engine.swap(pid, addXRemoveY, deltaOut, deltaInMax, true);
     }
 
-    function swapXForY(bytes32 pid, uint deltaOut) public override lock {
+    /// @notice Swaps the risky tokens for stable tokens in the Engine
+    function swapRiskyForStable(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
         engine.swap(pid, true, deltaOut, type(uint256).max, true);
     }
 
-    function swapYForX(bytes32 pid, uint deltaOut) public override lock {
+    /// @notice Swaps stable tokens for the risky in the Engine
+    function swapStableForRisky(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
         engine.swap(pid, false, deltaOut, type(uint256).max, true);
     }
     
-    /**
-     * @notice Puts `deltaL` LP shares up to be borrowed.
-     */
+    /// @notice Initiates a liquidity loan through the Engine
     function lend(bytes32 pid, uint deltaL) public override lock {
         CALLER = msg.sender;
         engine.lend(pid, deltaL);
     }
 
+    /// @notice Initiates a borrowed position with the Engine
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
       CALLER = msg.sender;
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
@@ -188,39 +204,53 @@ contract TestCallee is IPrimitiveHouse {
     }
     
     // ===== Callback Implementations =====
-    function createCallback(uint deltaX, uint deltaY) public override executionLock {
-        if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+
+    /// @notice Uses the `CALLER` context to pay tokens during callbacks.
+    /// @dev    WARNING: Unsafe pattern, only used for testing
+    function _transferFromContext(address token, uint amount) internal {
+        require(CALLER != address(0x0), "CALLER not set");
+        if(amount > 0) IERC20(token).transferFrom(CALLER, msg.sender, amount);
     }
 
+    /// @notice Triggered on a new pool being created
+    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+        _transferFromContext(risky, deltaX);
+        _transferFromContext(stable, deltaY);
+    }
+
+    /// @notice Triggered when providing liquidity to a curve
     function allocateCallback(uint deltaX, uint deltaY) public override executionLock {
-        if(deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+        _transferFromContext(risky, deltaX);
+        _transferFromContext(stable, deltaY);
     }
 
     function repayFromExternalCallback(uint deltaStable) public override {
-      IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
+        _transferFromContext(stable, deltaStable);
     }
 
+    /// @notice Triggered when removing liquidity
     function removeCallback(uint deltaX, uint deltaY) public override executionLock {
-        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
+        _transferFromContext(risky, deltaX);
+        _transferFromContext(stable, deltaY);
     }
 
+    /// @notice Triggered when adding to margin balance
     function depositCallback(uint deltaX, uint deltaY) public override {
         if(ORDER_TYPE == Fails.NONE) {
-            if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
-            if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
-        } else  {
-            // do nothing, will fail early because no tokens were sent into it
-        } 
+            _transferFromContext(risky, deltaX);
+            _transferFromContext(stable, deltaY);
+        }
     }
 
+    /// @notice Triggered during an engine.swap() call which allows us to pay the swap
+    /// @dev    CALLER is set before engine.swap() is called so it can be referenced here
+    ///         `msg.sender` should be the engine.
     function swapCallback(uint deltaX, uint deltaY) public override {
-        if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
-        if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
+        _transferFromContext(risky, deltaX);
+        _transferFromContext(stable, deltaY);
     }
 
+    /// @notice TODO: Delete this?
     function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {
     }
 
@@ -228,106 +258,4 @@ contract TestCallee is IPrimitiveHouse {
     function margins(address owner) public override view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
-
-    // UNI V3 METHODS
-    function swapExact0For1(
-        address pool,
-        uint256 amount0In,
-        address recipient,
-        uint160 sqrtPriceLimitX96
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, true, amount0In.toInt256(), sqrtPriceLimitX96, abi.encode(msg.sender));
-    }
-
-    function swap0ForExact1(
-        address pool,
-        uint256 amount1Out,
-        address recipient,
-        uint160 sqrtPriceLimitX96
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, true, -amount1Out.toInt256(), sqrtPriceLimitX96, abi.encode(msg.sender));
-    }
-
-    function swapExact1For0(
-        address pool,
-        uint256 amount1In,
-        address recipient,
-        uint160 sqrtPriceLimitX96
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, false, amount1In.toInt256(), sqrtPriceLimitX96, abi.encode(msg.sender));
-    }
-
-    function swap1ForExact0(
-        address pool,
-        uint256 amount0Out,
-        address recipient,
-        uint160 sqrtPriceLimitX96
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, false, -amount0Out.toInt256(), sqrtPriceLimitX96, abi.encode(msg.sender));
-    }
-
-    function swapToLowerSqrtPrice(
-        address pool,
-        uint160 sqrtPriceX96,
-        address recipient
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, true, type(int256).max, sqrtPriceX96, abi.encode(msg.sender));
-    }
-
-    function swapToHigherSqrtPrice(
-        address pool,
-        uint160 sqrtPriceX96,
-        address recipient
-    ) external {
-        IUniswapV3Pool(pool).swap(recipient, false, type(int256).max, sqrtPriceX96, abi.encode(msg.sender));
-    }
-
-    event SwapCallback(int256 amount0Delta, int256 amount1Delta);
-
-    function uniswapV3SwapCallback(
-        int256 amount0Delta,
-        int256 amount1Delta,
-        bytes calldata data
-    ) external {
-        address sender = abi.decode(data, (address));
-
-        emit SwapCallback(amount0Delta, amount1Delta);
-
-        if (amount0Delta > 0) {
-            IERC20Minimal(IUniswapV3Pool(msg.sender).token0()).transferFrom(sender, msg.sender, uint256(amount0Delta));
-        } else if (amount1Delta > 0) {
-            IERC20Minimal(IUniswapV3Pool(msg.sender).token1()).transferFrom(sender, msg.sender, uint256(amount1Delta));
-        } else {
-            // if both are not gt 0, both must be 0.
-            assert(amount0Delta == 0 && amount1Delta == 0);
-        }
-    }
-
-    function mint(
-        address pool,
-        address recipient,
-        int24 tickLower,
-        int24 tickUpper,
-        uint128 amount
-    ) external {
-        IUniswapV3Pool(pool).mint(recipient, tickLower, tickUpper, amount, abi.encode(msg.sender));
-    }
-
-    event MintCallback(uint256 amount0Owed, uint256 amount1Owed);
-
-    function uniswapV3MintCallback(
-        uint256 amount0Owed,
-        uint256 amount1Owed,
-        bytes calldata data
-    ) external {
-        address sender = abi.decode(data, (address));
-
-        emit MintCallback(amount0Owed, amount1Owed);
-        if (amount0Owed > 0)
-            IERC20Minimal(IUniswapV3Pool(msg.sender).token0()).transferFrom(sender, msg.sender, amount0Owed);
-        if (amount1Owed > 0)
-            IERC20Minimal(IUniswapV3Pool(msg.sender).token1()).transferFrom(sender, msg.sender, amount1Owed);
-    }
-
-
 }
