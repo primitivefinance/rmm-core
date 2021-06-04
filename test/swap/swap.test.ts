@@ -14,6 +14,7 @@ import {
   TestEngineSwap,
   TestEngineSwap__factory,
 } from '../../typechain'
+import { parseWei } from '../shared/Units'
 
 export type TestEngineSwapFixture = {
   primitiveEngine: PrimitiveEngine
@@ -68,6 +69,10 @@ describe('swap', () => {
       bs: context.bs,
       signer: deployer,
     }))
+
+    // Need to mint tokens to the user to spend
+    await context.risky.mock.balanceOf.withArgs(deployer.address).returns(parseWei('100000').raw)
+    await context.stable.mock.balanceOf.withArgs(deployer.address).returns(parseWei('100000').raw)
 
     await create(strike, sigma, time, utils.parseEther('1100'))
     console.log(await context.primitiveEngine.reserves(pid))
