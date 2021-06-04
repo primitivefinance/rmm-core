@@ -1,7 +1,7 @@
 import { parseWei, fromInt, fromMantissa } from './Units'
 import { constants, Transaction, BytesLike, BigNumberish, BigNumber } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
-import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes } from '../../typechain'
+import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes, TestEngineSwap } from '../../typechain'
 import {
   Calibration,
   Reserve,
@@ -15,6 +15,7 @@ import {
   getPosition,
   calcRY2WithXOut,
 } from './utilities'
+import { MockContract } from '@ethereum-waffle/mock-contract'
 
 // @TODO: Fix where these are, I cheated this
 export {
@@ -85,9 +86,9 @@ export function createEngineFunctions({
   engine,
   bs,
 }: {
-  target: TestCallee
-  TX1: IERC20
-  TY2: IERC20
+  target: TestCallee | MockContract | TestEngineSwap
+  TX1: IERC20 | MockContract
+  TY2: IERC20 | MockContract
   engine: PrimitiveEngine
   bs: TestBlackScholes
 }): EngineFunctions {
@@ -143,8 +144,8 @@ export function createEngineFunctions({
     // set riskless reserve using trading function
     const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
     // mint the tokens to the engine before we call create()
-    await TX1.mint(engine.address, RX1.raw)
-    await TY2.mint(engine.address, RY2.raw)
+    if (TX1 instanceof IERC20) await TX1.mint(engine.address, RX1.raw)
+    if (TY2 instanceof IERC20) await TY2.mint(engine.address, RY2.raw)
 
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)

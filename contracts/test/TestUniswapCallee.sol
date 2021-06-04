@@ -9,6 +9,7 @@ import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.so
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 
 contract TestUniswapCallee {
+    using SafeCast for uint256;
 
     event SwapCallback(int256 amount0Delta, int256 amount1Delta);
     event MintCallback(uint256 amount0Owed, uint256 amount1Owed);

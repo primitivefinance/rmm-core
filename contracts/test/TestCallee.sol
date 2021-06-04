@@ -9,11 +9,11 @@ import "../interfaces/IPrimitiveEngine.sol";
 import "../interfaces/IPrimitiveHouse.sol";
 import "../libraries/Margin.sol";
 import "../libraries/Position.sol";
+import "../libraries/Transfers.sol";
 import "./TestUniswapCallee.sol";
-import "./Transfers.sol";
 
 
-contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
+contract TestCallee is TestUniswapCallee {
     using Transfers for IERC20; // safeTransfer
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
@@ -38,7 +38,7 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     address public CALLER = NO_CALLER;
     /// @notice Used to trigger different failure cases in the callbacks
     Fails public ORDER_TYPE = Fails.NONE;
-    /// @notice Standard mutex
+    /// @dev Standard mutex
     uint private reentrant;
     /// @notice This contract's own margin state. This contract will have its own margin acc w/ the Engine
     mapping(address => Margin.Data) public _margins;
@@ -79,7 +79,7 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Sets up the engine and tokens for this high-level contract
-    function initialize(address engine_, address factory_, uint24 fee_) public override {
+    function initialize(address engine_, address factory_, uint24 fee_) public {
         require(address(engine) == address(0), "Already initialized");
         engine = IPrimitiveEngine(engine_);
         risky = IERC20(engine.risky());
@@ -87,12 +87,12 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Initializes a new pool with these params. Uses spot price `riskyPrice` to determine initial reserves.
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public lock useCallerContext {
       CALLER = msg.sender;
       engine.create(strike, sigma, time, riskyPrice); // will trigger a callback
     }
 
-    function deposit(address owner, uint deltaX, uint deltaY) public override lock {
+    function deposit(address owner, uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.deposit(msg.sender, deltaX, deltaY); // will trigger a callback
     }
@@ -112,7 +112,7 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Removes deltaX and deltaY to internal balance of `msg.sender`.
-     function withdraw(uint deltaX, uint deltaY) public override lock {
+     function withdraw(uint deltaX, uint deltaY) public lock {
         CALLER = msg.sender;
         engine.withdraw(deltaX, deltaY);
         _margins.withdraw(deltaX, deltaY);
@@ -122,13 +122,13 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Triggers the repayCallback to spend tokens from balance
-    function repayFromExternal(bytes32 pid, address owner,  uint deltaL) public override lock {
+    function repayFromExternal(bytes32 pid, address owner,  uint deltaL) public lock {
         CALLER = msg.sender;
         engine.repay(pid, owner, deltaL, false);
     }
 
     /// @notice Uses margin balance in the Engine to repay debt
-    function repayFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
+    function repayFromMargin(bytes32 pid, address owner, uint deltaL) public lock {
         CALLER = msg.sender;
         (uint deltaX, uint deltaY) = engine.repay(pid, owner, deltaL, true); // call repay
 
@@ -140,7 +140,7 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Uses margin balance to add liquidity to a `pid`
-    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock {
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public lock {
         bytes32 pid_ = pid;
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
@@ -150,7 +150,7 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Pays tokens in the allocateCallback as liquidity to the `pid`
-    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock {
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public lock {
         bytes32 pid_ = pid;
         engine.allocate(pid_, address(this),  deltaL, false);
         Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
@@ -172,31 +172,31 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     }
 
     /// @notice Executes an Engine swap
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public lock {
         CALLER = msg.sender;
         engine.swap(pid, addXRemoveY, deltaOut, deltaInMax, true);
     }
 
     /// @notice Swaps the risky tokens for stable tokens in the Engine
-    function swapRiskyForStable(bytes32 pid, uint deltaOut) public override lock {
+    function swapRiskyForStable(bytes32 pid, uint deltaOut) public lock {
         CALLER = msg.sender;
         engine.swap(pid, true, deltaOut, type(uint256).max, true);
     }
 
     /// @notice Swaps stable tokens for the risky in the Engine
-    function swapStableForRisky(bytes32 pid, uint deltaOut) public override lock {
+    function swapStableForRisky(bytes32 pid, uint deltaOut) public lock {
         CALLER = msg.sender;
         engine.swap(pid, false, deltaOut, type(uint256).max, true);
     }
     
     /// @notice Initiates a liquidity loan through the Engine
-    function lend(bytes32 pid, uint deltaL) public override lock {
+    function lend(bytes32 pid, uint deltaL) public lock {
         CALLER = msg.sender;
         engine.lend(pid, deltaL);
     }
 
     /// @notice Initiates a borrowed position with the Engine
-    function borrow(bytes32 pid, address owner, uint deltaL) public override lock {
+    function borrow(bytes32 pid, address owner, uint deltaL) public lock {
       CALLER = msg.sender;
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       _positions.borrow(address(this), pid, deltaL);
@@ -207,35 +207,35 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
 
     /// @notice Uses the `CALLER` context to pay tokens during callbacks.
     /// @dev    WARNING: Unsafe pattern, only used for testing
-    function _transferFromContext(address token, uint amount) internal {
+    function _transferFromContext(IERC20 token, uint amount) internal {
         require(CALLER != address(0x0), "CALLER not set");
-        if(amount > 0) IERC20(token).transferFrom(CALLER, msg.sender, amount);
+        if(amount > 0) token.transferFrom(CALLER, msg.sender, amount);
     }
 
     /// @notice Triggered on a new pool being created
-    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+    function createCallback(uint deltaX, uint deltaY) public executionLock {
         _transferFromContext(risky, deltaX);
         _transferFromContext(stable, deltaY);
     }
 
     /// @notice Triggered when providing liquidity to a curve
-    function allocateCallback(uint deltaX, uint deltaY) public override executionLock {
+    function allocateCallback(uint deltaX, uint deltaY) public executionLock {
         _transferFromContext(risky, deltaX);
         _transferFromContext(stable, deltaY);
     }
 
-    function repayFromExternalCallback(uint deltaStable) public override {
+    function repayFromExternalCallback(uint deltaStable) public {
         _transferFromContext(stable, deltaStable);
     }
 
     /// @notice Triggered when removing liquidity
-    function removeCallback(uint deltaX, uint deltaY) public override executionLock {
+    function removeCallback(uint deltaX, uint deltaY) public executionLock {
         _transferFromContext(risky, deltaX);
         _transferFromContext(stable, deltaY);
     }
 
     /// @notice Triggered when adding to margin balance
-    function depositCallback(uint deltaX, uint deltaY) public override {
+    function depositCallback(uint deltaX, uint deltaY) public {
         if(ORDER_TYPE == Fails.NONE) {
             _transferFromContext(risky, deltaX);
             _transferFromContext(stable, deltaY);
@@ -245,17 +245,17 @@ contract TestCallee is IPrimitiveHouse, TestUniswapCallee {
     /// @notice Triggered during an engine.swap() call which allows us to pay the swap
     /// @dev    CALLER is set before engine.swap() is called so it can be referenced here
     ///         `msg.sender` should be the engine.
-    function swapCallback(uint deltaX, uint deltaY) public override {
+    function swapCallback(uint deltaX, uint deltaY) public {
         _transferFromContext(risky, deltaX);
         _transferFromContext(stable, deltaY);
     }
 
     /// @notice TODO: Delete this?
-    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override {
+    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public {
     }
 
     /// @notice Returns the internal balances of risky and riskless tokens for an owner
-    function margins(address owner) public override view returns (Margin.Data memory mar) {
+    function margins(address owner) public view returns (Margin.Data memory mar) {
         mar = _margins[owner];
     }
 }

@@ -28,16 +28,16 @@ contract TestPosition {
     }
 
     /// @return The position storage item
-    function shouldFetch(address where, address owner, bytes32 pid) public view returns (Position.Data storage) {
+    function shouldFetch(address where, address owner, bytes32 pid) public view returns (Position.Data memory) {
         return _shouldFetch(where, owner, pid);
     }
 
-    function _shouldFetch(address where, address owner, bytes32 pid) internal view returns (Position.Data storage) {
+    function _shouldFetch(address where, address owner, bytes32 pid) internal view returns (Position.Data memory) {
         return positions.fetch(where, owner, pid);
     }
 
     /// @notice Increments a position's liquidity
-    function shouldAllocate(bytes32 pid, uint amount) public returns(Position.Data storage) {
+    function shouldAllocate(bytes32 pid, uint amount) public returns (Position.Data memory) {
         pos = positions[pid];
         uint pre = pos.liquidity;
         positions[pid].allocate(amount);
@@ -46,16 +46,16 @@ contract TestPosition {
     }
 
     /// @notice Decrements a position's liquidity
-    function shouldRemove(bytes32 pid, address where, uint amount) public returns(Position.Data storage) {
+    function shouldRemove(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
         pos = _shouldFetch(where, msg.sender, pid);
         uint pre = pos.liquidity;
-        positions.remove(where, pod, amount);
+        positions.remove(where, pid, amount);
         uint post = pos.liquidity;
         assert(post + amount >= pre);
     }
 
     /// @notice Increments debt and balanceRisky for a position
-    function shouldBorrow(bytes32 pid, address where, uint amount) public returns(Position.Data storage) {
+    function shouldBorrow(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
         pos = _shouldFetch(where, msg.sender, pid);
         uint pre = pos.debt;
         positions.borrow(where, pid, amount);
@@ -65,7 +65,7 @@ contract TestPosition {
     }
 
     /// @notice Increments a position's float
-    function shouldLend(bytes32 pid, address where, uint amount) public returns(Position.Data storage) {
+    function shouldLend(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
         pos = _shouldFetch(where, msg.sender, pid);
         uint pre = pos.float;
         positions.lend(where, pid, amount);
@@ -74,7 +74,7 @@ contract TestPosition {
     }
 
     /// @notice Decrements a positions float
-    function shouldClaim(bytes32 pid, address where, uint amount) public returns(Position.Data storage) {
+    function shouldClaim(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
         pos = _shouldFetch(where, msg.sender, pid);
         uint pre = pos.float;
         positions.borrow(where, pid, amount);
@@ -83,13 +83,13 @@ contract TestPosition {
     }
 
     /// @notice Decrements a position's debt by reducing its liquidity
-    function shouldRepay(bytes32 pid, address where, uint amount) public returns(Position.Data storage) {
+    function shouldRepay(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
         pos = _shouldFetch(where, msg.sender, pid);
         uint pre = pos.debt;
         positions.borrow(where, pid, amount);
         uint post = pos.debt;
         assert(post + amount >= pre);
-        assert(pos.riskyBalance >= post);
+        assert(pos.balanceRisky >= post);
     }
 
     /// @return posId The keccak256 hash of `where` `owner` and `pid` is the position id

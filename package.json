@@ -17,7 +17,9 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "test:logs": "hardhat test --logs",
-    "test:engine": "hardhat test ./test/Engine.test.ts"
+    "test:engine": "hardhat test ./test/Engine.test.ts",
+    "test:ref": "hardhat test ./test/useRef.test.ts",
+    "test:swap": "hardhat test ./test/swap/swap.test.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
