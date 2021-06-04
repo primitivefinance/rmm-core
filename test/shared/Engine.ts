@@ -1,5 +1,5 @@
 import { parseWei, fromInt, fromMantissa } from './Units'
-import { constants, Transaction, BytesLike, BigNumberish, BigNumber } from 'ethers'
+import { constants, Transaction, BytesLike, BigNumberish, BigNumber, Wallet } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
 import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes, TestEngineSwap } from '../../typechain'
 import {
@@ -85,12 +85,14 @@ export function createEngineFunctions({
   TY2,
   engine,
   bs,
+  signer,
 }: {
-  target: TestCallee | MockContract | TestEngineSwap
-  TX1: IERC20 | MockContract
-  TY2: IERC20 | MockContract
+  target: TestCallee | TestEngineSwap
+  TX1: MockContract
+  TY2: MockContract
   engine: PrimitiveEngine
   bs: TestBlackScholes
+  signer: Wallet
 }): EngineFunctions {
   const deposit: DepositFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
@@ -144,14 +146,15 @@ export function createEngineFunctions({
     // set riskless reserve using trading function
     const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
     // mint the tokens to the engine before we call create()
-    if (TX1 instanceof IERC20) await TX1.mint(engine.address, RX1.raw)
-    if (TY2 instanceof IERC20) await TY2.mint(engine.address, RY2.raw)
+    await TX1.mock.balanceOf.withArgs(engine.address).returns(RX1.raw)
+    await TY2.mock.balanceOf.withArgs(engine.address).returns(RY2.raw)
 
-    await TX1.approve(target.address, constants.MaxUint256)
-    await TY2.approve(target.address, constants.MaxUint256)
+    await TX1.mock.allowance.withArgs(signer.address, target.address).returns(constants.MaxUint256)
+    await TY2.mock.allowance.withArgs(signer.address, target.address).returns(constants.MaxUint256)
 
     // Note: Found the bug. We added a callback to create function, so testCallee must call.
-    return target.create(strike, sigma, time, spot)
+    console.log('calling target create')
+    return target.create(engine.address, strike, sigma, time, spot)
   }
 
   const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {

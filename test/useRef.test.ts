@@ -32,8 +32,7 @@ describe('useRef', () => {
   describe('stores calldata as a ref', () => {
     it('should set set the owner', async () => {
       const [deployer] = context.signers
-      const data = context.useRef.interface.encodeFunctionData('setOwner', [deployer.address])
-      await context.useRef.testRef(data)
+      await context.useRef.testRef()
       expect(await context.useRef.owner1()).to.be.eq(deployer.address)
       expect(await context.useRef.owner()).to.be.eq(ethers.constants.AddressZero)
     })

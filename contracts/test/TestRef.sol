@@ -15,7 +15,11 @@ contract TestRef is useRef {
     address public owner1;
 
     /// @notice Entry point to trigger the `useRef` modifier
-    function testRef(bytes memory data) external useRef(data) {}
+    function testRef() external useRef(setCaller()) {}
+
+    function setCaller() public returns (bytes memory data) {
+        data = abi.encode(msg.sender);
+    }
 
     /// @notice Function to set a reference
     function setOwner(address owner_) public {
@@ -27,7 +31,7 @@ contract TestRef is useRef {
 
     /// @notice Triggered on entering a function with the `useRef` modifier
     function useRefCallback(bytes memory data) public override {
-        address(this).call(data);
+        setOwner(abi.decode(data, (address)));
     }
 
     /// @notice Triggered at the end of a function call with the `useRef` modifier
