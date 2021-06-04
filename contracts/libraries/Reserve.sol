@@ -26,10 +26,12 @@ library Reserve {
         uint32 blockTimestamp;
     }
 
+    /// @notice Block timestamp but as a uint32
     function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
         blockTimestamp = uint32(block.timestamp);
     }
 
+    /// @notice Adds to the cumulative reserves
     function update(Data storage res) internal returns (Data storage) {
         uint32 deltaTime = _blockTimestamp() - res.blockTimestamp; 
         res.cumulativeRisky += res.RX1 * deltaTime;
