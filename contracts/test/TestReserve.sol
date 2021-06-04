@@ -24,47 +24,47 @@ contract TestReserve {
 
     /// @return blockTimestamp The uint32 block.timestamp
     function shouldBlockTimestamp() public view returns (uint32 blockTimestamp) {
-        blockTimestamp = _blockTimestamp();
-        assert(uint(blockTimestamp) === block.timestamp);
+        blockTimestamp = Reserve._blockTimestamp();
+        assert(uint(blockTimestamp) == block.timestamp);
     }
 
     /// @notice Adds amounts to cumulative reserves
-    function shouldUpdate(bytes32 resId) public useRef(resId) returns (Data storage) {
+    function shouldUpdate(bytes32 resId) public useRef(resId) returns (Reserve.Data memory) {
         return res.update();
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
-    function shouldSwap(bytes32 resId, bool addXRemoveY, uint deltaIn, uint deltaOut) public useRef(resId) returns (Data storage) {
+    function shouldSwap(bytes32 resId, bool addXRemoveY, uint deltaIn, uint deltaOut) public useRef(resId) returns (Reserve.Data memory) {
         return res.swap(addXRemoveY, deltaIn, deltaOut);
     }
 
     /// @notice Add to both reserves and total supply of liquidity
-    function shouldAllocate(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Data storage) {
-       return res.allocate(deltaX, deltaY, deltaL)
+    function shouldAllocate(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
+       return res.allocate(deltaX, deltaY, deltaL);
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
-    function shouldRemove(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Data storage) {
-       return res.remove(uint deltaX, uint deltaY, uint deltaL);
+    function shouldRemove(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
+       return res.remove(deltaX, deltaY, deltaL);
     }
 
     /// @notice Increases available float to borrow, called when lending
-    function shouldAddFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Data storage) {
-       return res.addFloat(uint deltaL);
+    function shouldAddFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
+       return res.addFloat(deltaL);
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function shouldRemoveFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Data storage) {
+    function shouldRemoveFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
        return res.removeFloat(deltaL);
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function shouldBorrowFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Data storage) {
+    function shouldBorrowFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
        return res.borrowFloat(deltaL);
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow 
-    function shouldRepayFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Data storage) {
+    function shouldRepayFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
        return res.repayFloat(deltaL);
     }
 }

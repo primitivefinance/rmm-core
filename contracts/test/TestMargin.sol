@@ -18,13 +18,14 @@ contract TestMargin {
 
     modifier useRef(address owner) {
         margin = margins[owner];
+        _;
     }
 
     /// @notice Adds to risky and riskless token balances
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function shouldDeposit(uint deltaX, uint deltaY) public useRef returns (Data storage) {
+    function shouldDeposit(uint deltaX, uint deltaY) public useRef(msg.sender) returns (Margin.Data memory) {
         uint preX = margin.BX1;
         uint preY = margin.BY2;
         margin.deposit(deltaX, deltaY);
@@ -37,7 +38,7 @@ contract TestMargin {
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function shouldWithdraw(uint deltaX, uint deltaY) public returns (Data storage) {
+    function shouldWithdraw(uint deltaX, uint deltaY) public returns (Margin.Data memory) {
         uint preX = margin.BX1;
         uint preY = margin.BY2;
         margin = margins.withdraw(deltaX, deltaY);
