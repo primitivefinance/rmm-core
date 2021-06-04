@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-/**
- * @title   Black Scholes Math Lib TEST contract
- * @author  Primitive
- * @dev     ONLY FOR TESTING PURPOSES.  
- */
+/// @title   Black Scholes Math Lib API Test
+/// @author  Primitive
+/// @dev     ONLY FOR TESTING PURPOSES.
 
 import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/ABDKMath64x64.sol";
@@ -21,6 +19,7 @@ contract TestBlackScholes {
     using BlackScholes for *;
     using CumulativeNormalDistribution for *;
 
+    /// @notice The Engin contract which uses this black-scholes math
     IPrimitiveEngine public engine;
 
     constructor(address engine_)  {
