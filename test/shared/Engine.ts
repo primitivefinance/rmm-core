@@ -155,6 +155,7 @@ export function createEngineFunctions({
     // Note: Found the bug. We added a callback to create function, so testCallee must call.
     console.log('calling target create')
     console.log(await TX1.balanceOf(engine.address))
+    console.log(await TX1.balanceOf(signer.address))
     return target.create(engine.address, strike, sigma, time, spot)
   }
 
