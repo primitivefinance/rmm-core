@@ -25,7 +25,6 @@ library Margin {
         mapping(address => Data) storage mar,
         address owner
     ) internal view returns (Data storage) {
-        require(owner != address(0x0), "No owner");
         return mar[owner];
     }
 

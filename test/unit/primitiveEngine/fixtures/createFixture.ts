@@ -7,22 +7,22 @@ export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: En
 
 export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<PrimitiveEngineCreateFixture> {
   const [deployer] = signers
-  const engineFixture = await loadFixture(primitiveEngineFixture)
+  const context = await loadFixture(primitiveEngineFixture)
 
   const create = await new EngineCreate__factory(deployer).deploy(
-    engineFixture.primitiveEngine.address,
-    engineFixture.risky.address,
-    engineFixture.stable.address
+    context.primitiveEngine.address,
+    context.risky.address,
+    context.stable.address
   )
 
-  await engineFixture.stable.mint(deployer.address, constants.MaxUint256)
-  await engineFixture.risky.mint(deployer.address, constants.MaxUint256)
+  await context.stable.mint(deployer.address, constants.MaxUint256)
+  await context.risky.mint(deployer.address, constants.MaxUint256)
 
-  await engineFixture.stable.approve(create.address, constants.MaxUint256)
-  await engineFixture.risky.approve(create.address, constants.MaxUint256)
+  await context.stable.approve(create.address, constants.MaxUint256)
+  await context.risky.approve(create.address, constants.MaxUint256)
 
   return {
     create,
-    ...engineFixture,
+    ...context,
   }
 }
