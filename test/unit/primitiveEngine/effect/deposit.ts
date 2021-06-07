@@ -4,12 +4,12 @@ import { Wallet } from 'ethers'
 import { parseWei, PERCENTAGE } from '../../../shared/Units'
 const { createFixtureLoader } = waffle
 
-import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
+import { primitiveEngineDepositFixture, PrimitiveEngineDepositFixture } from '../fixtures/depositFixture'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
 describe('create', function () {
-  let context: PrimitiveEngineCreateFixture
+  let context: PrimitiveEngineDepositFixture
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
 
@@ -18,7 +18,8 @@ describe('create', function () {
   })
 
   beforeEach(async function () {
-    context = await loadFixture(primitiveEngineCreateFixture)
+    context = await loadFixture(primitiveEngineDepositFixture)
+    await context.create.create()
   })
 
   describe('when the parameters are valid', function () {
