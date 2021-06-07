@@ -1,16 +1,16 @@
 import hre from 'hardhat'
 import { deployMockContract, MockContract } from 'ethereum-waffle'
-import { Wallet, Contract, constants } from 'ethers'
+import { constants, Wallet } from 'ethers'
 
 import {
+  Token,
+  Token__factory,
   PrimitiveEngine,
   PrimitiveEngine__factory,
   PrimitiveFactory,
   PrimitiveFactory__factory,
   PrimitiveHouse,
   PrimitiveHouse__factory,
-  Token,
-  Token__factory,
 } from '../../typechain'
 
 export type PrimitiveEngineFixture = {
@@ -30,6 +30,7 @@ export async function primitiveEngineFixture(signers: Wallet[]): Promise<Primiti
   const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
   await primitiveFactory.create(risky.address, stable.address)
   const addr = await primitiveFactory.getEngine(risky.address, stable.address)
+
   const primitiveEngine = PrimitiveEngine__factory.connect(addr, deployer)
 
   return {

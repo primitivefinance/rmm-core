@@ -7,7 +7,7 @@ import { TestBlackScholes, TestBlackScholes__factory } from '../../../../typecha
 
 import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
 
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseEther('1100')]
+const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
 describe('create', () => {
   let context: PrimitiveEngineCreateFixture, create: CreateFunction
