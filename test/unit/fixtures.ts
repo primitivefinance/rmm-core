@@ -9,26 +9,23 @@ import {
   PrimitiveFactory__factory,
   PrimitiveHouse,
   PrimitiveHouse__factory,
+  Token,
+  Token__factory,
 } from '../../typechain'
 
 export type PrimitiveEngineFixture = {
   primitiveFactory: PrimitiveFactory
   primitiveEngine: PrimitiveEngine
   signers: Wallet[]
-  risky: MockContract
-  stable: MockContract
+  risky: Token
+  stable: Token
 }
 
 export async function primitiveEngineFixture(signers: Wallet[]): Promise<PrimitiveEngineFixture> {
   const [deployer] = signers
 
-  const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
-
-  const risky = await deployMockContract(deployer, erc20Artifact.abi)
-  const stable = await deployMockContract(deployer, erc20Artifact.abi)
-
-  await risky.mock.balanceOf.withArgs(deployer.address).returns(constants.MaxUint256)
-  await stable.mock.balanceOf.withArgs(deployer.address).returns(constants.MaxUint256)
+  const risky = await new Token__factory(deployer).deploy()
+  const stable = await new Token__factory(deployer).deploy()
 
   const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
   await primitiveFactory.create(risky.address, stable.address)

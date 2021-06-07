@@ -1,37 +1,39 @@
 import { expect } from 'chai'
 import { loadFixture } from 'ethereum-waffle'
 import { constants } from 'ethers'
+import { createEngineFunctions, CreateFunction } from '../../../shared/Engine'
 import { parseEther, parseWei, PERCENTAGE } from '../../../shared/Units'
+import { TestBlackScholes, TestBlackScholes__factory } from '../../../../typechain'
 
 import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseEther('1100')]
 
 describe('create', () => {
-  let context: PrimitiveEngineCreateFixture
+  let context: PrimitiveEngineCreateFixture, create: CreateFunction
 
   beforeEach(async () => {
     context = await loadFixture(primitiveEngineCreateFixture)
     const [deployer] = context.signers
-    await context.risky.mock.allowance.withArgs(deployer.address, context.create.address).returns(constants.MaxUint256)
-    await context.stable.mock.allowance.withArgs(deployer.address, context.create.address).returns(constants.MaxUint256)
-
-    await context.risky.mock.transferFrom
-      .withArgs(deployer.address, context.primitiveEngine.address, context.create.address)
-      .returns(true)
-    await context.stable.mock.transferFrom
-      .withArgs(deployer.address, context.primitiveEngine.address, context.create.address)
-      .returns(constants.MaxUint256)
+    const bs = await new TestBlackScholes__factory(deployer).deploy(context.primitiveEngine.address)
+    ;({ create } = createEngineFunctions({
+      target: context.create,
+      TX1: context.risky,
+      TY2: context.stable,
+      engine: context.primitiveEngine,
+      signer: deployer,
+      bs: bs,
+    }))
   })
 
   describe('when the parameters are valid', () => {
     it('deploys a new pool', async () => {
-      await context.create.create(strike, sigma, time, spot)
+      await create(strike, sigma, time, spot)
     })
 
     it('emits the Create event', async () => {
       const [deployer] = context.signers
-      await expect(context.create.create(strike, sigma, time, spot))
+      await expect(create(strike, sigma, time, spot))
         .to.emit(context.primitiveFactory, 'Create')
         .withArgs(
           deployer.address,
