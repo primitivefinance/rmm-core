@@ -2,9 +2,9 @@
 pragma solidity 0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../../interfaces/engine/IPrimitiveEngineView.sol";
+import "../../interfaces/IPrimitiveEngine.sol";
 
-contract TestCalleeCreate {
+contract EngineCreate {
     using SafeERC20 for IERC20;
 
     address public engine;
@@ -18,14 +18,9 @@ contract TestCalleeCreate {
       stable = _stable;
     }
 
-    function getEngineRisky() public view returns (address risky) {
-      risky = IPrimitiveEngineView(engine).risky();
-    }
-
-    function createPool(uint strike, uint sigma, uint time, uint riskyPrice) public { 
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public { 
       CALLER = msg.sender;
-      address tx1 = IPrimitiveEngineView(engine).risky();
-      //IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice);
+      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice);
     }
 
     function createCallback(uint deltaX, uint deltaY) public {
@@ -34,7 +29,7 @@ contract TestCalleeCreate {
     }
 
     function name() public view returns (string memory) {
-      return "TestCalleeCreate";
+      return "EngineCreate";
     }
 }
 
