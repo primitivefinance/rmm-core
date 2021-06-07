@@ -20,11 +20,16 @@ describe('deposit', function () {
   })
 
   describe('when the parameters are valid', function () {
-    it('adds to the margin account', async function () {
+    it('adds to the user margin account', async function () {
       await context.deposit.deposit(signer.address, parseWei('1000').raw, parseWei('1000').raw)
+      expect(await context.primitiveEngine.margins(signer.address)).to.be.deep.eq([
+        parseWei('1000').raw,
+        parseWei('1000').raw,
+        false,
+      ])
     })
 
-    it('reverts when the external account does not have enough funds', async function () {
+    it('reverts when the user has insufficient funds', async function () {
       await expect(context.deposit.deposit(signer.address, constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be
         .reverted
     })
