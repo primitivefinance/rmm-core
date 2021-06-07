@@ -100,16 +100,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
 
         pid = getPoolId(strike, sigma, time);
-        require(settings[pid].time == 0, "Already created");
+        //require(settings[pid].time == 0, "Already created");
         settings[pid] = Calibration.Data({
             strike: strike,
             sigma: sigma,
             time: time
         });
 
-        int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
-        uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
-        uint RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
+        //int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
+        uint RX1 = 1e18;//uint(1).fromUInt().sub(delta).parseUnits();
+        uint RY2 = 1e18;//ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
             RX1: RX1, // risky token balance
             RY2: RY2, // stable token balance
@@ -122,11 +122,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
             blockTimestamp: Reserve._blockTimestamp()
         });
 
-        uint balanceX = balanceRisky();
-        uint balanceY = balanceStable();
-        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
-        require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
-        require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
+        //uint balanceX = balanceRisky();
+        //uint balanceY = balanceStable();
+        //IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
+        //require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
+        //require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
     
         allPools.push(pid);
         emit Updated(pid, RX1, RY2, block.number);

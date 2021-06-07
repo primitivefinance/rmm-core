@@ -1,8 +1,11 @@
-import hre from 'hardhat'
-import { deployMockContract, MockContract } from 'ethereum-waffle'
-import { Wallet, Contract } from 'ethers'
+import hre, { ethers } from 'hardhat'
+import { deployMockContract, MockContract, deployContract } from 'ethereum-waffle'
+import { constants, Contract, Wallet, Signer } from 'ethers'
+import { abi as PrimitiveEngineAbi } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
 
 import {
+  Token,
+  Token__factory,
   PrimitiveEngine,
   PrimitiveEngine__factory,
   PrimitiveFactory,
@@ -10,33 +13,35 @@ import {
   PrimitiveHouse,
   PrimitiveHouse__factory,
 } from '../../typechain'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 export type PrimitiveEngineFixture = {
-  primitiveEngine: PrimitiveEngine
   primitiveFactory: PrimitiveFactory
+  primitiveEngine: PrimitiveEngine
   signers: Wallet[]
-  risky: MockContract
-  stable: MockContract
+  risky: Token
+  stable: Token
 }
 
 export async function primitiveEngineFixture(signers: Wallet[]): Promise<PrimitiveEngineFixture> {
   const [deployer] = signers
 
-  // TODO: Find a way to use TypeChain to load the ABI
-  const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
+  const risky = await new Token__factory(deployer).deploy()
+  const stable = await new Token__factory(deployer).deploy()
 
-  const risky = await deployMockContract(deployer, erc20Artifact.abi)
-  const stable = await deployMockContract(deployer, erc20Artifact.abi)
-
-  const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
-
+  const primitiveFactory = ((await (
+    await ethers.getContractFactory('PrimitiveFactory')
+  ).deploy()) as unknown) as PrimitiveFactory
   await primitiveFactory.create(risky.address, stable.address)
   const addr = await primitiveFactory.getEngine(risky.address, stable.address)
-  const primitiveEngine = PrimitiveEngine__factory.connect(addr, deployer)
+
+  console.log('deployed addr:', { addr })
+  const primitiveEngine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as PrimitiveEngine
+  console.log('calling risky', await primitiveEngine.risky())
 
   return {
-    primitiveEngine,
     primitiveFactory,
+    primitiveEngine,
     signers,
     risky,
     stable,
@@ -52,7 +57,12 @@ export type PrimitiveFactoryFixture = {
 
 export async function primitiveFactoryFixture(signers: Wallet[]): Promise<PrimitiveFactoryFixture> {
   const [deployer] = signers
-  const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
+
+  const primitiveFactoryArtifact = await hre.artifacts.readArtifact('PrimitiveFactory')
+  const primitiveFactory = await deployContract(
+    deployer,
+    primitiveFactoryArtifact
+  ) as PrimitiveFactory
 
   const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
 

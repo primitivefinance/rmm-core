@@ -1,7 +1,15 @@
 import { parseWei, fromInt, fromMantissa } from './Units'
 import { constants, Transaction, BytesLike, BigNumberish, BigNumber, Wallet } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
-import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes, TestEngineSwap } from '../../typechain'
+import {
+  IERC20,
+  TestCallee,
+  PrimitiveEngine,
+  TestBlackScholes,
+  TestEngineSwap,
+  Token,
+  TestCalleeCreate,
+} from '../../typechain'
 import {
   Calibration,
   Reserve,
@@ -84,15 +92,15 @@ export function createEngineFunctions({
   TX1,
   TY2,
   engine,
-  bs,
   signer,
+  bs,
 }: {
-  target: TestCallee | TestEngineSwap
-  TX1: MockContract
-  TY2: MockContract
+  target: TestCalleeCreate
+  TX1: Token
+  TY2: Token
   engine: PrimitiveEngine
-  bs: TestBlackScholes
   signer: Wallet
+  bs: TestBlackScholes
 }): EngineFunctions {
   const deposit: DepositFunction = async (deltaX: BigNumberish, deltaY: BigNumberish): Promise<Transaction> => {
     await TX1.approve(target.address, constants.MaxUint256)
@@ -138,24 +146,12 @@ export function createEngineFunctions({
     time: number,
     spot: BigNumberish
   ): Promise<Transaction> => {
-    // get delta of pool's calibration
-    const calibration: Calibration = { strike, sigma, time }
-    const delta = await bs.callDelta(calibration, spot)
-    // set risky reserve to 1 - delta
-    const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
-    // set riskless reserve using trading function
-    const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
-    // mint the tokens to the engine before we call create()
-    await TX1.mock.balanceOf.withArgs(engine.address).returns(RX1.raw)
-    await TY2.mock.balanceOf.withArgs(engine.address).returns(RY2.raw)
-
-    await TX1.mock.allowance.withArgs(signer.address, target.address).returns(constants.MaxUint256)
-    await TY2.mock.allowance.withArgs(signer.address, target.address).returns(constants.MaxUint256)
-
-    // Note: Found the bug. We added a callback to create function, so testCallee must call.
-    console.log('calling target create')
-    console.log(await TX1.balanceOf(engine.address))
-    return target.create(engine.address, strike, sigma, time, spot)
+    await TX1.mint(signer.address, parseWei('10000').raw)
+    await TY2.mint(signer.address, parseWei('10000').raw)
+    await TX1.approve(target.address, constants.MaxUint256)
+    await TY2.approve(target.address, constants.MaxUint256)
+    console.log('calling target create', await target.name(), { strike, sigma, time, spot })
+    return target.createPool(strike, sigma, time, spot)
   }
 
   const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {

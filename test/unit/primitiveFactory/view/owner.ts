@@ -1,25 +1,24 @@
+import { waffle } from 'hardhat'
 import { expect } from 'chai';
-import {
-  loadFixture,
-} from 'ethereum-waffle';
 
+import setupContext from '../../context';
 import {
   primitiveFactoryFixture,
-  PrimitiveFactoryFixture,
-} from '../../fixtures';
+} from '../../fixtures'
 
-describe('owner', () => {
-  let context: PrimitiveFactoryFixture;
-
-  beforeEach(async () => {
-    context = await loadFixture(primitiveFactoryFixture);
+describe('owner', async function () {
+  before(async function () {
+    await setupContext(
+      waffle.provider,
+      primitiveFactoryFixture,
+    );
   });
 
-  it('returns the deployer of the contract as the owner', async () => {
-    const [deployer] = context.signers;
+  it('returns the deployer of the contract as the owner', async function () {
+    const [deployer] = this.signers;
 
     expect(
-      await context.primitiveFactory.owner(),
+      await this.contracts.factory.owner(),
     ).to.equal(deployer.address);
   });
 });
