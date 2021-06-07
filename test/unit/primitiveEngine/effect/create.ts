@@ -1,21 +1,15 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants, Wallet } from 'ethers'
-import { createEngineFunctions, CreateFunction } from '../../../shared/Engine'
-import { parseEther, parseWei, PERCENTAGE } from '../../../shared/Units'
-import { TestBlackScholes, TestBlackScholes__factory } from '../../../../typechain'
+import { Wallet } from 'ethers'
+import { parseWei, PERCENTAGE } from '../../../shared/Units'
 const { createFixtureLoader } = waffle
 
-import {
-  primitiveEngineCreateFixture,
-  PrimitiveEngineCreateFixture,
-  PrimitiveFactoryFixture,
-} from '../fixtures/createFixture'
+import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
 describe('create', function () {
-  let context: PrimitiveEngineCreateFixture, create: CreateFunction
+  let context: PrimitiveEngineCreateFixture
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
 
@@ -25,41 +19,28 @@ describe('create', function () {
 
   beforeEach(async function () {
     context = await loadFixture(primitiveEngineCreateFixture)
-    const [deployer] = context.signers
-    const bs = await new TestBlackScholes__factory(deployer).deploy(context.primitiveEngine.address)
-    ;({ create } = createEngineFunctions({
-      target: context.create,
-      TX1: context.risky,
-      TY2: context.stable,
-      engine: context.primitiveEngine,
-      signer: deployer,
-      bs: bs,
-    }))
-    console.log('calling risky 2', await context.primitiveEngine.risky())
   })
 
   describe('when the parameters are valid', function () {
-    it.only('deploys a new pool', async function () {
-      console.log('calling risky 3', await context.primitiveEngine.risky())
-      console.log('calling risky 4', await context.create.risky())
-      console.log('actual engine addr', context.primitiveEngine.address)
-      console.log('engine address in callee', await context.create.engine())
-      console.log(strike.toString(), sigma.toString(), time.toString(), spot.toString())
-      console.log(await context.create.getEngineRisky())
+    it('deploys a new pool', async function () {
       await context.create.createPool(strike, sigma, time, spot)
     })
 
     it('emits the Create event', async function () {
-      const [deployer] = context.signers
-      await expect(create(strike, sigma, time, spot))
-        .to.emit(context.primitiveFactory, 'Create')
+      await expect(context.create.createPool(strike, sigma, time, spot))
+        .to.emit(context.primitiveEngine, 'Create')
         .withArgs(
-          deployer.address,
-          '0x0f9be503f4dda9fd2a3c37ac50ff9d7a0459677a989225e86f32b16fea06a547',
+          context.create.address,
+          '0x92b9da098c9dca76cf51e44da14c7c2aabadddf120c176f7e1d4d1cb6a599455',
           strike,
           sigma,
           time
         )
+    })
+
+    it('reverts when the pool already exists', async function () {
+      await context.create.createPool(strike, sigma, time, spot)
+      await expect(context.create.createPool(strike, sigma, time, spot)).to.be.revertedWith('Already created')
     })
   })
 })
