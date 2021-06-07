@@ -15,4 +15,10 @@ export default {
     currency: 'USD',
     gasPrice: 100,
   },
+  paths: {
+    sources: './contracts',
+    tests: './test',
+    cache: './cache',
+    artifacts: './artifacts',
+  },
 }
