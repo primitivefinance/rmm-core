@@ -1,7 +1,15 @@
 import { parseWei, fromInt, fromMantissa } from './Units'
 import { constants, Transaction, BytesLike, BigNumberish, BigNumber, Wallet } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
-import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes, TestEngineSwap, Token, Create } from '../../typechain'
+import {
+  IERC20,
+  TestCallee,
+  PrimitiveEngine,
+  TestBlackScholes,
+  TestEngineSwap,
+  Token,
+  TestCalleeCreate,
+} from '../../typechain'
 import {
   Calibration,
   Reserve,
@@ -87,7 +95,7 @@ export function createEngineFunctions({
   signer,
   bs,
 }: {
-  target: TestCallee | TestEngineSwap | Create
+  target: TestCalleeCreate
   TX1: Token
   TY2: Token
   engine: PrimitiveEngine
@@ -138,21 +146,12 @@ export function createEngineFunctions({
     time: number,
     spot: BigNumberish
   ): Promise<Transaction> => {
-    // get delta of pool's calibration
-    const calibration: Calibration = { strike, sigma, time }
-    const delta = await bs.callDelta(calibration, spot)
-    // set risky reserve to 1 - delta
-    const RX1 = parseWei(1 - fromMantissa(fromInt(delta.toString())))
-    // set riskless reserve using trading function
-    const RY2 = parseWei(getTradingFunction(RX1, parseWei('1'), calibration))
-
     await TX1.mint(signer.address, parseWei('10000').raw)
     await TY2.mint(signer.address, parseWei('10000').raw)
     await TX1.approve(target.address, constants.MaxUint256)
     await TY2.approve(target.address, constants.MaxUint256)
-
-    // Note: Found the bug. We added a callback to create function, so testCallee must call.
-    return target.create(engine.address, strike, sigma, time, spot)
+    console.log('calling target create', await target.name(), { strike, sigma, time, spot })
+    return target.createPool(strike, sigma, time, spot)
   }
 
   const lend: LendFunction = async (pid: BytesLike, deltaL: BigNumberish): Promise<Transaction> => {

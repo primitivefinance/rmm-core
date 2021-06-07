@@ -2,15 +2,15 @@ import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
 import { Wallet, constants } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
 
-import { Create, Create__factory } from '../../../../typechain'
+import { TestCalleeCreate, TestCalleeCreate__factory } from '../../../../typechain'
 
-export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: Create }
+export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: TestCalleeCreate }
 
 export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<PrimitiveEngineCreateFixture> {
   const [deployer] = signers
   const engineFixture = await loadFixture(primitiveEngineFixture)
 
-  const create = await new Create__factory(deployer).deploy(
+  const create = await new TestCalleeCreate__factory(deployer).deploy(
     engineFixture.primitiveEngine.address,
     engineFixture.risky.address,
     engineFixture.stable.address
