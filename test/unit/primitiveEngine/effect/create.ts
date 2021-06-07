@@ -46,7 +46,7 @@ describe('create', function () {
       console.log('engine address in callee', await context.create.engine())
       console.log(strike.toString(), sigma.toString(), time.toString(), spot.toString())
       console.log(await context.create.getEngineRisky())
-      //await context.create.createPool(strike, sigma, time, spot)
+      await context.create.createPool(strike, sigma, time, spot)
     })
 
     it('emits the Create event', async function () {
