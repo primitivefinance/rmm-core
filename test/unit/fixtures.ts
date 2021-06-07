@@ -1,8 +1,10 @@
 import hre from 'hardhat'
 import { deployMockContract, MockContract } from 'ethereum-waffle'
-import { Wallet, Contract, constants } from 'ethers'
+import { constants, Wallet } from 'ethers'
 
 import {
+  Token,
+  Token__factory,
   PrimitiveEngine,
   PrimitiveEngine__factory,
   PrimitiveFactory,
@@ -15,24 +17,23 @@ export type PrimitiveEngineFixture = {
   primitiveFactory: PrimitiveFactory
   primitiveEngine: PrimitiveEngine
   signers: Wallet[]
-  risky: MockContract
-  stable: MockContract
+  risky: Token
+  stable: Token
 }
 
 export async function primitiveEngineFixture(signers: Wallet[]): Promise<PrimitiveEngineFixture> {
   const [deployer] = signers
 
-  const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
+  const risky = await new Token__factory(deployer).deploy()
+  const stable = await new Token__factory(deployer).deploy()
 
-  const risky = await deployMockContract(deployer, erc20Artifact.abi)
-  const stable = await deployMockContract(deployer, erc20Artifact.abi)
-
-  await risky.mock.balanceOf.withArgs(deployer.address).returns(constants.MaxUint256)
-  await stable.mock.balanceOf.withArgs(deployer.address).returns(constants.MaxUint256)
+  await risky.mint(deployer.address, constants.MaxUint256.div(4))
+  await stable.mint(deployer.address, constants.MaxUint256.div(4))
 
   const primitiveFactory = await new PrimitiveFactory__factory(deployer).deploy()
   await primitiveFactory.create(risky.address, stable.address)
   const addr = await primitiveFactory.getEngine(risky.address, stable.address)
+
   const primitiveEngine = PrimitiveEngine__factory.connect(addr, deployer)
 
   return {
