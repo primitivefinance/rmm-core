@@ -1,112 +1,131 @@
+import { waffle } from 'hardhat';
 import { expect } from 'chai';
-import {
-  loadFixture,
-} from 'ethereum-waffle';
 import {
   constants,
 } from 'ethers';
 
 import {
-  primitiveFactoryFixture,
-  PrimitiveFactoryFixture,
-} from '../../fixtures';
-
-import {
   getCreate2Address,
 } from '../../../shared/utilities';
 
-import bytecode from '../bytecode';
+import {
+  primitiveFactoryFixture,
+} from '../../fixtures'
 
-describe('create', () => {
-  let context: PrimitiveFactoryFixture;
+import setupContext from '../../context';
 
-  beforeEach(async () => {
-    context = await loadFixture(primitiveFactoryFixture);
-  });
+describe('create', function () {
+  before(async function () {
+    await setupContext(
+      waffle.provider,
+      primitiveFactoryFixture
+    );
+  })
 
-  describe('when the parameters are valid', () => {
-    it('deploys a new PrimitiveEngine', async () => {
-      await context.primitiveFactory.create(
-        context.risky.address,
-        context.stable.address,
+  describe('when the parameters are valid', function () {
+    it('deploys a new PrimitiveEngine', async function () {
+      expect(
+        await this.contracts.factory.getEngine(
+          this.mocks.risky.address,
+          this.mocks.stable.address,
+        )
+      ).to.equal(constants.AddressZero);
+
+      await this.contracts.factory.create(
+        this.mocks.risky.address,
+        this.mocks.stable.address,
       );
     });
 
-    it('saves the new engine', async () => {
-      const engineAddress = await context.primitiveFactory.callStatic.create(
-        context.risky.address,
-        context.stable.address,
+    it('saves the new engine', async function () {
+      expect(
+        await this.contracts.factory.getEngine(
+          this.mocks.risky.address,
+          this.mocks.stable.address,
+        )
+      ).to.equal(constants.AddressZero);
+
+      const engineAddress = await this.contracts.factory.callStatic.create(
+        this.mocks.risky.address,
+        this.mocks.stable.address,
       );
 
-      await context.primitiveFactory.create(
-        context.risky.address,
-        context.stable.address,
+      await this.contracts.factory.create(
+        this.mocks.risky.address,
+        this.mocks.stable.address,
       );
 
       expect(
-        await context.primitiveFactory.getEngine(
-          context.risky.address,
-          context.stable.address,
+        await this.contracts.factory.getEngine(
+          this.mocks.risky.address,
+          this.mocks.stable.address,
         ),
       ).to.equal(engineAddress);
 
       expect(
-        await context.primitiveFactory.getEngine(
-          context.stable.address,
-          context.risky.address,
+        await this.contracts.factory.getEngine(
+          this.mocks.stable.address,
+          this.mocks.risky.address,
         ),
       ).to.equal(engineAddress);
     });
 
-    it('emits the EngineCreated event', async () => {
-      const [deployer] = context.signers;
+    it('emits the EngineCreated event', async function () {
+      const [deployer] = this.signers;
 
+      /*
       const poolAddress = getCreate2Address(
-        context.primitiveFactory.address,
+        this.contracts.factory.address,
         [
-          context.risky.address,
-          context.stable.address,
+          this.mocks.risky.address,
+          this.mocks.stable.address,
         ],
-        bytecode,
+        (await hre.artifacts.readArtifact('PrimitiveEngine')).bytecode,
+      );
+      */
+
+      const engineAddress = await this.contracts.factory.callStatic.create(
+        this.mocks.risky.address,
+        this.mocks.stable.address,
       );
 
       await expect(
-        context.primitiveFactory.create(
-          context.risky.address,
-          context.stable.address,
+        this.contracts.factory.create(
+          this.mocks.risky.address,
+          this.mocks.stable.address,
         ),
-      ).to.emit(context.primitiveFactory, 'EngineCreated').withArgs(
+      ).to.emit(this.contracts.factory, 'EngineCreated').withArgs(
         deployer.address,
-        context.risky.address,
-        context.stable.address,
-        poolAddress,
+        this.mocks.risky.address,
+        this.mocks.stable.address,
+        engineAddress,
       );
     });
   });
 
-  describe('when the parameters are invalid', () => {
-    it('reverts when tokens are the same', async () => {
+  describe('when the parameters are invalid', function () {
+    it('reverts when tokens are the same', async function () {
       await expect(
-        context.primitiveFactory.create(
-          context.risky.address,
-          context.risky.address,
+        this.contracts.factory.create(
+          this.mocks.risky.address,
+          this.mocks.risky.address,
         ),
       ).to.revertedWith('Cannot be same token');
     });
 
-    it('reverts when the risky asset is address 0', async () => {
+    it('reverts when the risky asset is address 0', async function () {
       await expect(
-        context.primitiveFactory.create(
+        this.contracts.factory.create(
           constants.AddressZero,
-          context.stable.address,
+          this.mocks.stable.address,
         ),
       ).to.revertedWith('Cannot be zero address');
     });
 
-    it('reverts when the stable asset is address 0', async () => {
+    it('reverts when the stable asset is address 0', async function () {
       await expect(
-        context.primitiveFactory.create(
-          context.risky.address,
+        this.contracts.factory.create(
+          this.mocks.risky.address,
           constants.AddressZero,
         ),
       ).to.revertedWith('Cannot be zero address');
