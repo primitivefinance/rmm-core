@@ -1,14 +1,12 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
-import { parseWei, PERCENTAGE } from '../../../shared/Units'
+import { constants, Wallet } from 'ethers'
+import { parseWei } from '../../../shared/Units'
 const { createFixtureLoader } = waffle
 
 import { primitiveEngineDepositFixture, PrimitiveEngineDepositFixture } from '../fixtures/depositFixture'
 
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
-
-describe('create', function () {
+describe('deposit', function () {
   let context: PrimitiveEngineDepositFixture
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
@@ -19,29 +17,16 @@ describe('create', function () {
 
   beforeEach(async function () {
     context = await loadFixture(primitiveEngineDepositFixture)
-    await context.create.create()
   })
 
   describe('when the parameters are valid', function () {
-    it('deploys a new pool', async function () {
-      await context.create.createPool(strike, sigma, time, spot)
+    it('adds to the margin account', async function () {
+      await context.deposit.deposit(signer.address, parseWei('1000').raw, parseWei('1000').raw)
     })
 
-    it('emits the Create event', async function () {
-      await expect(context.create.createPool(strike, sigma, time, spot))
-        .to.emit(context.primitiveEngine, 'Create')
-        .withArgs(
-          context.create.address,
-          '0x92b9da098c9dca76cf51e44da14c7c2aabadddf120c176f7e1d4d1cb6a599455',
-          strike,
-          sigma,
-          time
-        )
-    })
-
-    it('reverts when the pool already exists', async function () {
-      await context.create.createPool(strike, sigma, time, spot)
-      await expect(context.create.createPool(strike, sigma, time, spot)).to.be.revertedWith('Already created')
+    it('reverts when the external account does not have enough funds', async function () {
+      await expect(context.deposit.deposit(signer.address, constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be
+        .reverted
     })
   })
 })
