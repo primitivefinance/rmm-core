@@ -1,6 +1,6 @@
 import hre, { ethers } from 'hardhat'
-import { deployMockContract, MockContract } from 'ethereum-waffle'
-import { constants, Contract, Wallet } from 'ethers'
+import { deployMockContract, MockContract, deployContract } from 'ethereum-waffle'
+import { constants, Contract, Wallet, Signer } from 'ethers'
 import { abi as PrimitiveEngineAbi } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
 
 import {
@@ -13,6 +13,7 @@ import {
   PrimitiveHouse,
   PrimitiveHouse__factory,
 } from '../../typechain'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 export type PrimitiveEngineFixture = {
   primitiveFactory: PrimitiveFactory
@@ -56,9 +57,12 @@ export type PrimitiveFactoryFixture = {
 
 export async function primitiveFactoryFixture(signers: Wallet[]): Promise<PrimitiveFactoryFixture> {
   const [deployer] = signers
-  const primitiveFactory = ((await (
-    await ethers.getContractFactory('PrimitiveFactory')
-  ).deploy()) as unknown) as PrimitiveFactory
+
+  const primitiveFactoryArtifact = await hre.artifacts.readArtifact('PrimitiveFactory')
+  const primitiveFactory = await deployContract(
+    deployer,
+    primitiveFactoryArtifact
+  ) as PrimitiveFactory
 
   const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
 
