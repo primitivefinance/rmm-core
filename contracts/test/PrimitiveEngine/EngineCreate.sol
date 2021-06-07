@@ -18,11 +18,7 @@ contract EngineCreate {
       stable = _stable;
     }
 
-    function getEngineRisky() public view returns (address risky) {
-      risky = IPrimitiveEngineView(engine).risky();
-    }
-
-    function createPool(uint strike, uint sigma, uint time, uint riskyPrice) public { 
+    function create(uint strike, uint sigma, uint time, uint riskyPrice) public { 
       CALLER = msg.sender;
       IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice);
     }
@@ -33,7 +29,7 @@ contract EngineCreate {
     }
 
     function name() public view returns (string memory) {
-      return "TestCalleeCreate";
+      return "EngineCreate";
     }
 }
 
