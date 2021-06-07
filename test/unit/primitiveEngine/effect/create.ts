@@ -6,7 +6,11 @@ import { parseEther, parseWei, PERCENTAGE } from '../../../shared/Units'
 import { TestBlackScholes, TestBlackScholes__factory } from '../../../../typechain'
 const { createFixtureLoader } = waffle
 
-import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
+import {
+  primitiveEngineCreateFixture,
+  PrimitiveEngineCreateFixture,
+  PrimitiveFactoryFixture,
+} from '../fixtures/createFixture'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
@@ -22,7 +26,6 @@ describe('create', function () {
   beforeEach(async function () {
     context = await loadFixture(primitiveEngineCreateFixture)
     const [deployer] = context.signers
-    console.log({ signer, deployer })
     const bs = await new TestBlackScholes__factory(deployer).deploy(context.primitiveEngine.address)
     ;({ create } = createEngineFunctions({
       target: context.create,
