@@ -1,5 +1,6 @@
 import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
 import { PrimitiveEngine, PrimitiveFactory, PrimitiveHouse } from '../typechain'
 
