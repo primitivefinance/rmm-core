@@ -1,27 +1,16 @@
 import { expect } from 'chai'
 import { loadFixture } from 'ethereum-waffle'
-import { constants } from 'ethers'
-import { parseEther, parseWei, PERCENTAGE } from '../../../shared/Units'
+import { parseWei, PERCENTAGE } from '../../../shared/Units'
 
 import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
 
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseEther('1100')]
+const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
 describe('create', () => {
   let context: PrimitiveEngineCreateFixture
 
   beforeEach(async () => {
     context = await loadFixture(primitiveEngineCreateFixture)
-    const [deployer] = context.signers
-    await context.risky.mock.allowance.withArgs(deployer.address, context.create.address).returns(constants.MaxUint256)
-    await context.stable.mock.allowance.withArgs(deployer.address, context.create.address).returns(constants.MaxUint256)
-
-    await context.risky.mock.transferFrom
-      .withArgs(deployer.address, context.primitiveEngine.address, context.create.address)
-      .returns(true)
-    await context.stable.mock.transferFrom
-      .withArgs(deployer.address, context.primitiveEngine.address, context.create.address)
-      .returns(constants.MaxUint256)
   })
 
   describe('when the parameters are valid', () => {

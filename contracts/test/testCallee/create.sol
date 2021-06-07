@@ -24,8 +24,8 @@ contract Create {
     }
 
     function createCallback(uint deltaX, uint deltaY) public {
-        IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
-        IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
+        IERC20(risky).safeTransferFrom(CALLER, engine, deltaX);
+        IERC20(stable).safeTransferFrom(CALLER, engine, deltaY);
     }
 }
 
