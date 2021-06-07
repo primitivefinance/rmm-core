@@ -29,6 +29,15 @@ describe('deposit', function () {
       ])
     })
 
+    it('adds to the margin account of another address when specified', async function () {
+      await context.deposit.deposit(context.deposit.address, parseWei('1000').raw, parseWei('1000').raw)
+      expect(await context.primitiveEngine.margins(context.deposit.address)).to.be.deep.eq([
+        parseWei('1000').raw,
+        parseWei('1000').raw,
+        false,
+      ])
+    })
+
     it('reverts when the user has insufficient funds', async function () {
       await expect(context.deposit.deposit(signer.address, constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be
         .reverted
