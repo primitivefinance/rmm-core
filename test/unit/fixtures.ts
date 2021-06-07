@@ -28,12 +28,14 @@ export async function primitiveEngineFixture(signers: Wallet[]): Promise<Primiti
   const risky = await new Token__factory(deployer).deploy()
   const stable = await new Token__factory(deployer).deploy()
 
-  const primitiveFactory = (await (await ethers.getContractFactory('PrimitiveFactory')).deploy()) as PrimitiveFactory
+  const primitiveFactory = ((await (
+    await ethers.getContractFactory('PrimitiveFactory')
+  ).deploy()) as unknown) as PrimitiveFactory
   await primitiveFactory.create(risky.address, stable.address)
   const addr = await primitiveFactory.getEngine(risky.address, stable.address)
 
   console.log('deployed addr:', { addr })
-  const primitiveEngine = (await ethers.getContractAt(PrimitiveEngineAbi, addr)) as PrimitiveEngine
+  const primitiveEngine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as PrimitiveEngine
   console.log('calling risky', await primitiveEngine.risky())
 
   return {
@@ -54,7 +56,9 @@ export type PrimitiveFactoryFixture = {
 
 export async function primitiveFactoryFixture(signers: Wallet[]): Promise<PrimitiveFactoryFixture> {
   const [deployer] = signers
-  const primitiveFactory = (await (await ethers.getContractFactory('PrimitiveFactory')).deploy()) as PrimitiveFactory
+  const primitiveFactory = ((await (
+    await ethers.getContractFactory('PrimitiveFactory')
+  ).deploy()) as unknown) as PrimitiveFactory
 
   const erc20Artifact = await hre.artifacts.readArtifact('ERC20')
 
