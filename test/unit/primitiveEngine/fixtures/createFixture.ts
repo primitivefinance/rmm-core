@@ -1,5 +1,5 @@
 import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
-import { Wallet } from 'ethers'
+import { Wallet, constants } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
 
 import { Create, Create__factory } from '../../../../typechain'
@@ -16,8 +16,11 @@ export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<P
     engineFixture.stable.address
   )
 
+  await engineFixture.stable.approve(create.address, constants.MaxUint256)
+  await engineFixture.risky.approve(create.address, constants.MaxUint256)
+
   return {
-    ...engineFixture,
     create,
+    ...engineFixture,
   }
 }
