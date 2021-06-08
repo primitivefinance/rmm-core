@@ -26,11 +26,11 @@ contract TestMargin {
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
     function shouldDeposit(uint deltaX, uint deltaY) public useRef(msg.sender) returns (Margin.Data memory) {
-        uint128 preX = margin.riskyBalance;
-        uint128 preY = margin.stableBalance;
+        uint128 preX = margin.balanceRisky;
+        uint128 preY = margin.balanceStable;
         margin.deposit(deltaX, deltaY);
-        assert(preX + deltaX >= margin.riskyBalance);
-        assert(preY + deltaY >= margin.stableBalance);
+        assert(preX + deltaX >= margin.balanceRisky);
+        assert(preY + deltaY >= margin.balanceStable);
         return margin;
     }
 
@@ -39,11 +39,11 @@ contract TestMargin {
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
     function shouldWithdraw(uint deltaX, uint deltaY) public useRef(msg.sender) returns (Margin.Data memory) {
-        uint128 preX = margin.riskyBalance;
-        uint128 preY = margin.stableBalance;
+        uint128 preX = margin.balanceRisky;
+        uint128 preY = margin.balanceStable;
         margin = margins.withdraw(deltaX, deltaY);
-        assert(preX - deltaX >= margin.riskyBalance);
-        assert(preY - deltaY >= margin.stableBalance);
+        assert(preX - deltaX >= margin.balanceRisky);
+        assert(preY - deltaY >= margin.balanceStable);
         return margin;
     }
 }
