@@ -1,28 +1,31 @@
 import { ethers } from 'hardhat'
-import { PrimitiveEngineDepositFixture, primitiveEngineDepositFixture } from './depositFixture'
-import { constants } from 'ethers'
+import { BigNumber, constants } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
-import { EngineAllocate } from '../../../../typechain'
+import { EngineAllocate, EngineDeposit } from '../../../../typechain'
+import { Wallet } from 'ethers'
 import { parseWei, PERCENTAGE } from '../../../shared/Units'
 import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from './createFixture'
 
 const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
-export type PrimitiveEngineAllocateFixture = PrimitiveEngineDepositFixture &
-  PrimitiveEngineCreateFixture & { allocate: EngineAllocate; pid: string }
+export type PrimitiveEngineAllocateFixture = PrimitiveEngineCreateFixture & {
+  deposit: EngineDeposit
+  allocate: EngineAllocate
+  pid: string
+  strike: BigNumber
+  sigma: number
+  time: number
+}
 
-export async function primitiveEngineAllocateFixture(): Promise<PrimitiveEngineAllocateFixture> {
-  const createFixture = await loadFixture(primitiveEngineCreateFixture)
-  console.log(await createFixture.create.engine())
-  const depositFixture = await loadFixture(primitiveEngineDepositFixture)
-  console.log(await depositFixture.deposit.engine())
+export async function primitiveEngineAllocateFixture(signers: Wallet[]): Promise<PrimitiveEngineAllocateFixture> {
+  const [deployer] = signers
+  const context = await loadFixture(primitiveEngineCreateFixture)
 
-  const context = {
-    ...createFixture,
-    ...depositFixture,
-  }
-
-  console.log(context)
+  const deposit = ((await (await ethers.getContractFactory('EngineDeposit')).deploy(
+    context.primitiveEngine.address,
+    context.risky.address,
+    context.stable.address
+  )) as unknown) as EngineDeposit
 
   const allocate = ((await (await ethers.getContractFactory('EngineAllocate')).deploy(
     context.primitiveEngine.address,
@@ -30,16 +33,26 @@ export async function primitiveEngineAllocateFixture(): Promise<PrimitiveEngineA
     context.stable.address
   )) as unknown) as EngineAllocate
 
+  await context.stable.mint(deployer.address, constants.MaxUint256)
+  await context.risky.mint(deployer.address, constants.MaxUint256)
+
   await context.stable.approve(allocate.address, constants.MaxUint256)
   await context.risky.approve(allocate.address, constants.MaxUint256)
 
-  await context.deposit.deposit(allocate.address, parseWei('1000').raw, parseWei('1000').raw)
+  await context.stable.approve(deposit.address, constants.MaxUint256)
+  await context.risky.approve(deposit.address, constants.MaxUint256)
+
+  await deposit.deposit(allocate.address, parseWei('1000').raw, parseWei('1000').raw)
 
   const pid = await context.primitiveEngine.getPoolId(strike, sigma, time)
 
   return {
+    deposit,
     allocate,
     pid,
+    strike,
+    sigma,
+    time,
     ...context,
   }
 }
