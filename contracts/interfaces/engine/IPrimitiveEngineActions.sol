@@ -4,8 +4,6 @@ pragma solidity 0.8.0;
 /// @title  The action functions for the Primitive Engine contract
 /// @author Primitive
 
-import "../../libraries/Calibration.sol";
-
 interface IPrimitiveEngineActions {
     // Curve
     /// @notice Initializes a curve with parameters in the `settings` storage mapping in the Engine

@@ -8,7 +8,6 @@ pragma abicoder v2;
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
-import "./libraries/Calibration.sol";
 import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
@@ -32,7 +31,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using BlackScholes for int128;
     using ReplicationMath for int128;
     using Units for *;
-    using Calibration for mapping(bytes32 => Calibration.Data);
     using Reserve for mapping(bytes32 => Reserve.Data);
     using Reserve for Reserve.Data;
     using Margin for mapping(address => Margin.Data);
@@ -40,6 +38,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
     using Transfers for IERC20;
+    
+    struct Calibration {// Parameters of each pool
+        uint128 strike; // strike price of the option
+        uint64 sigma;   // implied volatility of the option
+        uint64 time;    // the time in seconds until the option expires
+    }
 
     uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
     bytes32 public constant _NO_POOL = bytes32(0);
@@ -70,7 +74,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
 
     /// @inheritdoc IPrimitiveEngineView
-    mapping(bytes32 => Calibration.Data) public override settings;
+    mapping(bytes32 => Calibration) public override settings;
     /// @inheritdoc IPrimitiveEngineView
     mapping(address => Margin.Data) public override margins;
     /// @inheritdoc IPrimitiveEngineView
@@ -98,13 +102,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function create(uint strike, uint sigma, uint time, uint riskyPrice) external override returns(bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
-
         pid = getPoolId(strike, sigma, time);
+
         require(settings[pid].time == 0, "Already created");
-        settings[pid] = Calibration.Data({
-            strike: strike,
-            sigma: sigma,
-            time: time
+        settings[pid] = Calibration({
+            strike: uint128(strike),
+            sigma: uint64(sigma),
+            time: uint64(time)
         });
 
         int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
@@ -413,12 +417,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     function compute(bytes32 pid, address token, uint reserve) public view override returns (int128 reserveOfToken) {
         require(token == risky || token == stable, "Not an engine token");
-        Calibration.Data memory cal = settings[pid];
+        Calibration memory cal = settings[pid];
         Reserve.Data memory res = reserves[pid];
         if(token == stable) {
-            reserveOfToken = ReplicationMath.getTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getTradingFunction(reserve, res.liquidity, uint(cal.strike), uint(cal.sigma), uint(cal.time));
         } else {
-            reserveOfToken = ReplicationMath.getInverseTradingFunction(reserve, res.liquidity, cal.strike, cal.sigma, cal.time);
+            reserveOfToken = ReplicationMath.getInverseTradingFunction(reserve, res.liquidity, uint(cal.strike), uint(cal.sigma), uint(cal.time));
         }
     }
 
@@ -426,8 +430,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineView
     function calcInvariant(bytes32 pid, uint reserveX, uint reserveY, uint postLiquidity) public view override returns (int128 invariant) {
-        Calibration.Data memory cal = settings[pid];
-        invariant = ReplicationMath.calcInvariant(reserveX, reserveY, postLiquidity, cal.strike, cal.sigma, cal.time);
+        Calibration memory cal = settings[pid];
+        invariant = ReplicationMath.calcInvariant(reserveX, reserveY, postLiquidity, uint(cal.strike), uint(cal.sigma), uint(cal.time));
     }
 
     /// @inheritdoc IPrimitiveEngineView

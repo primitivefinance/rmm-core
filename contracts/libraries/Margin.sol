@@ -15,7 +15,7 @@ library Margin {
         uint128 stableBalance;
     }
 
-    /// @notice Adds to risky and riskless token balances
+    /// @notice Adds to risky and stable token balances
     /// @param  mar     The margin data in storage to manipulate
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
