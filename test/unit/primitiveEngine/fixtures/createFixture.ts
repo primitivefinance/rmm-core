@@ -16,8 +16,8 @@ export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<P
     context.stable.address
   )) as unknown) as EngineCreate
 
-  await context.stable.mint(deployer.address, constants.MaxUint256)
-  await context.risky.mint(deployer.address, constants.MaxUint256)
+  await context.stable.mint(deployer.address, constants.MaxUint256.div(4))
+  await context.risky.mint(deployer.address, constants.MaxUint256.div(4))
 
   await context.stable.approve(create.address, constants.MaxUint256)
   await context.risky.approve(create.address, constants.MaxUint256)
