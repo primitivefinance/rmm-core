@@ -143,8 +143,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if(deltaX > 0) require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
         if(deltaY > 0) require(balanceStable() >= balanceY + deltaY, "Not enough stable");
     
-        Margin.Data storage mar = margins.fetch(owner);
-        mar.deposit(deltaX, deltaY);
+        Margin.Data storage margin = margins[owner];
+        margin.deposit(deltaX, deltaY); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, owner, deltaX, deltaY);
         return true;
     }
@@ -152,11 +152,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
-        margins.withdraw(deltaX, deltaY);
-
+        margins.withdraw(deltaX, deltaY); // removes risky and/or stable token balances from `msg.sender`
         if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);
-
         emit Withdrawn(msg.sender, deltaX, deltaY);
         return true;
     }
@@ -176,7 +174,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint reserveY = RY2 + deltaY;
 
         if(fromMargin) {
-            margins.withdraw(deltaX, deltaY); // uses `msg.sender` margin account
+            margins.withdraw(deltaX, deltaY); // removes tokens from `msg.sender` margin account
         } else {
             uint balanceX = balanceRisky();
             uint balanceY = balanceStable();
@@ -222,8 +220,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         // Updated state
         if(isInternal) {
-            Margin.Data storage mar = margins.fetch(msg.sender);
-            mar.deposit(deltaX, deltaY);
+            Margin.Data storage margin = margins[msg.sender];
+            margin.deposit(deltaX, deltaY);
         } else {
             uint balanceX = balanceRisky();
             uint balanceY = balanceStable();
@@ -374,7 +372,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(address(this), owner, pid);
-        Margin.Data storage mar = margins[owner];
+        Margin.Data storage margin = margins[owner];
 
         require(
           res.debt >= deltaL &&
@@ -403,7 +401,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
           res.allocate(deltaRisky, deltaStable, deltaL);
           res.repayFloat(deltaL);
           pos.repay(deltaL);
-          mar.deposit(deltaL - deltaRisky, uint(0));
+          margin.deposit(deltaL - deltaRisky, uint(0));
         }
 
         emit Repaid(owner, pid, deltaL);
@@ -461,9 +459,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IERC3156FlashLender
     function flashLoan(IERC3156FlashBorrower receiver, address token, uint amount, bytes calldata data) external override returns (bool) {
         uint fee_ = flashFee(token, amount); // reverts if unsupported token
-
         uint balance = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);
+        
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee_, data) 
             == keccak256("ERC3156FlashBorrower.onFlashLoan"),
@@ -471,9 +469,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         );
 
         uint balanceAfter = token == stable ? balanceStable() : balanceRisky();
-
         require(balance + fee_ <= balanceAfter, "Not enough returned");
-
         uint payment = balanceAfter - balance;
 
         emit Flash(msg.sender, address(receiver), token, amount, payment);
