@@ -100,21 +100,21 @@ contract PrimitiveHouse is IPrimitiveHouse {
         (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        Position.Data storage pos = _positions.fetch(owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
         engine.allocate(pid, address(this),  deltaL, false);
 
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        Position.Data storage pos = _positions.fetch(owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
     function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
         (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, false);
 
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        Position.Data storage pos = _positions.fetch(owner, pid);
         pos.repay(deltaL);
         
         Margin.Data storage mar = _margins[owner];
@@ -126,7 +126,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
         (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, true);
 
 
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        Position.Data storage pos = _positions.fetch(owner, pid);
         pos.repay(deltaL);
 
         Margin.Data storage mar = _margins[owner];
@@ -137,7 +137,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
       
-      _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(pid, deltaL);
     }
     
     /**
@@ -146,7 +146,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     function lend(bytes32 pid, uint deltaL) public override lock useCallerContext {
         engine.lend(pid, deltaL);
 
-        _positions.lend(address(this), pid, deltaL);
+        _positions.lend(pid, deltaL);
     }
 
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {

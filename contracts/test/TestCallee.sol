@@ -134,7 +134,7 @@ contract TestCallee is TestUniswapCallee {
 
         _margins.withdraw(deltaX, deltaY); // take out any profits
 
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid);
+        Position.Data storage pos = _positions.fetch(owner, pid);
         pos.allocate(deltaL); // Update position liquidity
 
     }
@@ -145,7 +145,7 @@ contract TestCallee is TestUniswapCallee {
         (uint deltaX, uint deltaY) = engine.allocate(pid_, address(this),  deltaL, true);
 
         _margins.withdraw(deltaX, deltaY);
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
+        Position.Data storage pos = _positions.fetch(owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -153,7 +153,7 @@ contract TestCallee is TestUniswapCallee {
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public lock {
         bytes32 pid_ = pid;
         engine.allocate(pid_, address(this),  deltaL, false);
-        Position.Data storage pos = _positions.fetch(address(this), owner, pid_);
+        Position.Data storage pos = _positions.fetch(owner, pid_);
         pos.allocate(deltaL); // Update position liquidity
     }
 
@@ -199,7 +199,7 @@ contract TestCallee is TestUniswapCallee {
     function borrow(bytes32 pid, address owner, uint deltaL) public lock {
       CALLER = msg.sender;
       engine.borrow(pid, address(this), deltaL, type(uint256).max);
-      _positions.borrow(address(this), pid, deltaL);
+      _positions.borrow(pid, deltaL);
       CALLER = NO_CALLER;
     }
     
