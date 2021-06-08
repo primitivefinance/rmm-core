@@ -190,14 +190,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 pid_ = pid;
         Position.Data storage pos = positions.fetch(address(this), owner, pid_);
         pos.allocate(deltaL);
-
-        { // scope for invariant checks, avoids stack too deep errors
-        bytes32 poolId = pid;
-        int128 preInvariant = invariantOf(poolId);
-        int128 postInvariant = calcInvariant(poolId, reserveX, reserveY, liquidity);
-        require(postInvariant.parseUnits() >= preInvariant.parseUnits(), "Invalid invariant");
-        }
-
         res.allocate(deltaX, deltaY, deltaL);
         emit Updated(pid, reserveX, reserveY, block.number);
         emit Allocated(msg.sender, deltaX, deltaY);
@@ -238,7 +230,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         
         positions.remove(address(this), pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL);
-        
         emit Updated(pid, reserveX, reserveY, block.number);
         emit Removed(msg.sender, deltaX, deltaY);
     }
