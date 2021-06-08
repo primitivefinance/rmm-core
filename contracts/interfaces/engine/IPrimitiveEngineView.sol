@@ -81,9 +81,9 @@ interface IPrimitiveEngineView {
 
     /// @notice                 Fetchs the margin position of `owner`
     /// @param  owner           The margin account's owner
-    /// @return riskyBalance    The balance of the risky token
-    /// stableBalance           The balance of the stable token
-    function margins(address owner) external view returns (uint128 riskyBalance, uint128 stableBalance);
+    /// @return balanceRisky    The balance of the risky token
+    /// balanceStable           The balance of the stable token
+    function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
 
     /// @param  strike  The strike price of the pool
     /// @param  sigma   The volatility of the pool

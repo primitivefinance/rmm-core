@@ -6,30 +6,26 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     This library is a generalized position data structure for any engine.
 
-interface IBorrow {
-    function borrowCallback(Position.Data calldata pos, uint deltaL) external returns (uint);
-}
-
 library Position {
     struct Data {
-        address owner;  // Address that controls the position
-        bytes32 pid;    // Keccak hash of the engine factory and calibration
-        uint balanceRisky;  // Balance of risky asset
-        uint balanceStable;  // Balance of stable asset
-        uint liquidity; // Balance of liquidity
-        uint float;     // Balance of loaned liquidity
-        uint debt;      // Balance of borrowed liquidity
+        uint128 balanceRisky;  // Balance of risky asset
+        uint128 balanceStable; // Balance of stable asset
+        uint liquidity;     // Balance of liquidity
+        uint float;         // Balance of loaned liquidity
+        uint debt;          // Balance of borrowed liquidity
     }
 
-    /// @notice  An Engine's mapping of position Ids to Data structs can be used to fetch any position.
-    /// @dev     Used across all Engines.
+    /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
+    /// @dev    Used across all Engines.
+    /// @param  position    Mapping of position Ids to Positions
+    /// @param  owner       Controlling address of the position
+    /// @param  pid         Keccak256 hash of the pool parameters: strike, volatility, and time until expiry
     function fetch(
-        mapping(bytes32 => Data) storage position,
-        address where,
+        mapping(bytes32 => Data) storage positions,
         address owner,
         bytes32 pid
     ) internal view returns (Data storage) {
-         return position[getPositionId(where, owner, pid)];
+         return positions[getPositionId(owner, pid)];
     }
 
     /// @notice Add to the balance of liquidity
@@ -74,9 +70,11 @@ library Position {
         return position;
     }
 
-    /// @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
-    /// @return  The position Id as a bytes32.
-    function getPositionId(address where, address owner, bytes32 pid) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(where, owner, pid));
+    /// @notice  Fetches the position Id, which is an encoded `owner` and `pid`.
+    /// @param   owner  Controlling address of the position
+    /// @param   pid    Keccak hash of the pool parameters: strike, volatility, and time until expiry
+    /// @return  posId  Keccak hash of the owner and pid
+    function getPositionId(address owner, bytes32 pid) internal pure returns (bytes32 posId) {
+        posId = keccak256(abi.encodePacked(owner, pid));
     }
 }
