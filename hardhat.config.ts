@@ -5,12 +5,22 @@ import 'prettier-plugin-solidity'
 import 'hardhat-tracer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import { HardhatUserConfig } from 'hardhat/config'
 
-export default {
+const config: HardhatUserConfig = {
   networks: {
-    hardhat: {},
+    hardhat: {
+    },
   },
-  solidity: { version: '0.8.0', settings: { optimizer: { enabled: true, runs: 400 } } },
+  solidity: {
+    version: '0.8.0',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 400,
+      },
+    },
+  },
   gasReporter: {
     currency: 'USD',
     gasPrice: 100,
@@ -21,4 +31,6 @@ export default {
     cache: './cache',
     artifacts: './artifacts',
   },
-}
+};
+
+export default config;
