@@ -23,11 +23,11 @@ describe('create', function () {
 
   describe('when the parameters are valid', function () {
     it('deploys a new pool', async function () {
-      await context.create.createPool(strike, sigma, time, spot)
+      await context.create.create(strike, sigma, time, spot)
     })
 
     it('emits the Create event', async function () {
-      await expect(context.create.createPool(strike, sigma, time, spot))
+      await expect(context.create.create(strike, sigma, time, spot))
         .to.emit(context.primitiveEngine, 'Create')
         .withArgs(
           context.create.address,
@@ -39,8 +39,8 @@ describe('create', function () {
     })
 
     it('reverts when the pool already exists', async function () {
-      await context.create.createPool(strike, sigma, time, spot)
-      await expect(context.create.createPool(strike, sigma, time, spot)).to.be.revertedWith('Already created')
+      await context.create.create(strike, sigma, time, spot)
+      await expect(context.create.create(strike, sigma, time, spot)).to.be.revertedWith('Already created')
     })
   })
 })
