@@ -25,7 +25,6 @@ describe('deposit', function () {
       expect(await context.primitiveEngine.margins(signer.address)).to.be.deep.eq([
         parseWei('1000').raw,
         parseWei('1000').raw,
-        false,
       ])
     })
 
@@ -34,7 +33,6 @@ describe('deposit', function () {
       expect(await context.primitiveEngine.margins(context.deposit.address)).to.be.deep.eq([
         parseWei('1000').raw,
         parseWei('1000').raw,
-        false,
       ])
     })
 

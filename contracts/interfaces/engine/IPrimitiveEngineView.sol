@@ -84,7 +84,7 @@ interface IPrimitiveEngineView {
     /// @return BX1     The balance of the risky token
     /// BY2     The balance of the stable token
     /// unlocked If the margin position is unlocked, only during execution is it locked.
-    function margins(address owner) external view returns (uint BX1, uint BY2, bool unlocked);
+    function margins(address owner) external view returns (uint128 BX1, uint128 BY2);
 
     /// @param  strike  The strike price of the pool
     /// @param  sigma   The volatility of the pool
