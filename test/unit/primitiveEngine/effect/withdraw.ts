@@ -25,7 +25,6 @@ describe('withdraw', function () {
       expect(await context.primitiveEngine.margins(context.deposit.address)).to.be.deep.eq([
         BigNumber.from(0),
         BigNumber.from(0),
-        false,
       ])
     })
 
