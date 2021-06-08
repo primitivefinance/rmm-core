@@ -16,7 +16,7 @@ library Position {
 
     /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
     /// @dev    Used across all Engines.
-    /// @param  position    Mapping of position Ids to Positions
+    /// @param  positions    Mapping of position Ids to Positions
     /// @param  owner       Controlling address of the position
     /// @param  pid         Keccak256 hash of the pool parameters: strike, volatility, and time until expiry
     function fetch(
@@ -29,23 +29,23 @@ library Position {
 
     /// @notice Add to the balance of liquidity
     function allocate(Data storage position, uint deltaL) internal returns (Data storage) {
-        position.liquidity += castDown(deltaL);
+        position.liquidity += castDown(int256(deltaL));
         return position;
     }
 
     /// @notice Decrease the balance of liquidity
     function remove(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        position.liquidity -= castDown(deltaL);
+        position.liquidity -= castDown(int256(deltaL));
         return position;
     }
 
     /// @notice Adds a debt balance of `deltaL` to `position`
     function borrow(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        int128 liquidity = position.liqudiity;
+        int128 liquidity = position.liquidity;
         require(liquidity <= 0, "Must borrow from 0");
-        position.liquidity -= castDown(deltaL); // add the debt post position manipulation
+        position.liquidity -= castDown(int256(deltaL)); // add the debt post position manipulation
         position.balanceRisky += uint128(deltaL);
         return position;
     }
@@ -67,7 +67,7 @@ library Position {
 
     /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
     function repay(Data storage position, uint deltaL) internal returns (Data storage) {
-        position.liquidity += downCast(deltaL);
+        position.liquidity += castDown(int256(deltaL));
         return position;
     }
 
@@ -85,7 +85,6 @@ library Position {
     }
 
     function castUp(int128 value) internal pure returns (int256 z) {
-        require(value < 2**255);
         z = int256(value);
     }
 }

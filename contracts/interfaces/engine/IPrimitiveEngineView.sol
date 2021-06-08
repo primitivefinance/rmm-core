@@ -68,15 +68,12 @@ interface IPrimitiveEngineView {
 
     /// @notice Fetches The position data struct using a position id
     /// @param  posId   The position id
-    /// @return owner   The address that owns the position
-    /// pid             The pool id hash
-    /// balanceX        The risky balance of the position debt
-    /// balanceY        The stable balance of the position debt
-    /// liquidity       The liquidity shares in the position
+    /// @return balanceRisky    The risky balance of the position debt
+    /// balanceStable   The stable balance of the position debt
     /// float           The liquidity shares that are marked for loans
-    /// debt            The position debt denominated in liquidity shares
+    /// liquidity       The liquidity shares in the position
     function positions(bytes32 posId) external view returns (
-        address owner, bytes32 pid, uint balanceX, uint balanceY, uint liquidity, uint float, uint debt
+        uint128 balanceRisky, uint128 balanceStable, uint128 float, int128 liquidity
     );
 
     /// @notice                 Fetchs the margin position of `owner`
