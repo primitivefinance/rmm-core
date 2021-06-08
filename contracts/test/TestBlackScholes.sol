@@ -8,16 +8,22 @@ pragma solidity 0.8.0;
 import "../interfaces/IPrimitiveEngine.sol";
 import "../libraries/ABDKMath64x64.sol";
 import "../libraries/BlackScholes.sol";
-import "../libraries/Calibration.sol";
 import "../libraries/ReplicationMath.sol";
 import "../libraries/Reserve.sol";
 import "../libraries/Units.sol";
+
 
 contract TestBlackScholes {
     using Units for *;
     using ReplicationMath for *;
     using BlackScholes for *;
     using CumulativeNormalDistribution for *;
+
+    struct Calibration {// Parameters of each pool
+        uint128 strike; // strike price of the option
+        uint64 sigma;   // implied volatility of the option
+        uint64 time;    // the time in seconds until the option expires
+    }
 
     /// @notice The Engin contract which uses this black-scholes math
     IPrimitiveEngine public engine;
@@ -42,14 +48,14 @@ contract TestBlackScholes {
     // ===== Replication Library Entry =====
 
     function proportionalVol(bytes32 pid) public view returns (int128) {
-        (, uint sigma, uint time) = engine.settings(pid);
-        return ReplicationMath.getProportionalVolatility(sigma, time);
+        (, uint64 sigma, uint64 time) = engine.settings(pid);
+        return ReplicationMath.getProportionalVolatility(uint(sigma), uint(time));
     }
 
     function tradingFunction(bytes32 pid) public view returns (int128) {
-        (uint strike, uint sigma, uint time) = engine.settings(pid);
+        (uint128 strike, uint64 sigma, uint64 time) = engine.settings(pid);
         (uint RX1, , uint liquidity, , , , , ,) = engine.reserves(pid);
-        return ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
+        return ReplicationMath.getTradingFunction(RX1, liquidity, uint(strike), uint(sigma), uint(time));
     }
 
     function invariant(bytes32 pid) public view returns (int128) {
@@ -58,19 +64,19 @@ contract TestBlackScholes {
 
     // ===== BS Library Entry ====
 
-    function callDelta(Calibration.Data memory self, uint assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.deltaCall(assetPrice, self.strike, self.sigma, self.time);
+    function callDelta(Calibration memory self, uint assetPrice) public pure returns (int128 y) {
+        y = BlackScholes.deltaCall(assetPrice, uint(self.strike), uint(self.sigma), uint(self.time));
     }
 
-    function putDelta(Calibration.Data memory self, uint assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.deltaPut(assetPrice, self.strike, self.sigma, self.time);
+    function putDelta(Calibration memory self, uint assetPrice) public pure returns (int128 y) {
+        y = BlackScholes.deltaPut(assetPrice, uint(self.strike), uint(self.sigma), uint(self.time));
     }
 
-    function d1(Calibration.Data memory self, uint assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.d1(assetPrice, self.strike, self.sigma, self.time);
+    function d1(Calibration memory self, uint assetPrice) public pure returns (int128 y) {
+        y = BlackScholes.d1(assetPrice, uint(self.strike), uint(self.sigma), uint(self.time));
     }
 
-    function moneyness(Calibration.Data memory self, uint assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.logSimpleMoneyness(assetPrice, self.strike);
+    function moneyness(Calibration memory self, uint assetPrice) public pure returns (int128 y) {
+        y = BlackScholes.logSimpleMoneyness(assetPrice, uint(self.strike));
     }
 }

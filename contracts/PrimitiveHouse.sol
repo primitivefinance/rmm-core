@@ -77,7 +77,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
         engine.deposit(address(this), deltaX, deltaY);
 
         // Update Margin state
-        Margin.Data storage mar = _margins.fetch(owner);
+        Margin.Data storage mar = _margins[owner];
         mar.deposit(deltaX, deltaY);
     }
 
@@ -117,7 +117,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
         Position.Data storage pos = _positions.fetch(address(this), owner, pid);
         pos.repay(deltaL);
         
-        Margin.Data storage mar = _margins.fetch(owner);
+        Margin.Data storage mar = _margins[owner];
         mar.deposit(deltaL - deltaRisky, uint(0));
 
     }
