@@ -10,9 +10,9 @@ library Margin {
     // Every margin position in an Engine has this data structure, optimized for 1 storage slot.
     struct Data {
         // Balance of the RISKY, aka underlying asset.
-        uint128 riskyBalance;
+        uint128 balanceRisky;
         // Balance of the RISK-FREE, aka "quote" asset, a stablecoin.
-        uint128 stableBalance;
+        uint128 balanceStable;
     }
 
     /// @notice Adds to risky and stable token balances
@@ -21,8 +21,8 @@ library Margin {
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
     function deposit(Data storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
-        if(deltaX > 0) mar.riskyBalance += uint128(deltaX);
-        if(deltaY > 0) mar.stableBalance += uint128(deltaY);
+        if(deltaX > 0) mar.balanceRisky += uint128(deltaX);
+        if(deltaY > 0) mar.balanceStable += uint128(deltaY);
         return mar;
     }
 
@@ -33,8 +33,8 @@ library Margin {
     /// @return The margin data storage item
     function withdraw(mapping(address => Data) storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
         Data storage margin = mar[msg.sender];
-        if(deltaX > 0) margin.riskyBalance -= uint128(deltaX);
-        if(deltaY > 0) margin.stableBalance -= uint128(deltaY);
+        if(deltaX > 0) margin.balanceRisky -= uint128(deltaX);
+        if(deltaY > 0) margin.balanceStable -= uint128(deltaY);
         return margin;
     }
 }
