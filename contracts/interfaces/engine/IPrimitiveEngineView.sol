@@ -72,8 +72,9 @@ interface IPrimitiveEngineView {
     /// balanceStable   The stable balance of the position debt
     /// float           The liquidity shares that are marked for loans
     /// liquidity       The liquidity shares in the position
+    /// debt            The liquidity shares in debt, must be repaid
     function positions(bytes32 posId) external view returns (
-        uint128 balanceRisky, uint128 balanceStable, uint128 float, int128 liquidity
+        uint128 balanceRisky, uint128 balanceStable, uint128 float, uint128 liquidity, uint128 debt
     );
 
     /// @notice                 Fetchs the margin position of `owner`

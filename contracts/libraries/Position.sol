@@ -11,7 +11,8 @@ library Position {
         uint128 balanceRisky;  // Balance of risky asset
         uint128 balanceStable; // Balance of stable asset
         uint128 float;         // Balance of loaned liquidity
-        int128 liquidity;     // Balance of liquidity, which is negative if a debt exists
+        uint128 liquidity;     // Balance of liquidity, which is negative if a debt exists
+        uint128 debt;          // Balance of liquidity debt that must be paid back
     }
 
     /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
@@ -29,23 +30,23 @@ library Position {
 
     /// @notice Add to the balance of liquidity
     function allocate(Data storage position, uint deltaL) internal returns (Data storage) {
-        position.liquidity += castDown(int256(deltaL));
+        position.liquidity += uint128(deltaL);
         return position;
     }
 
     /// @notice Decrease the balance of liquidity
     function remove(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        position.liquidity -= castDown(int256(deltaL));
+        position.liquidity -= uint128(deltaL);
         return position;
     }
 
     /// @notice Adds a debt balance of `deltaL` to `position`
     function borrow(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        int128 liquidity = position.liquidity;
-        require(liquidity <= 0, "Must borrow from 0");
-        position.liquidity -= castDown(int256(deltaL)); // add the debt post position manipulation
+        uint128 liquidity = position.liquidity;
+        require(liquidity == 0, "Must borrow from 0");
+        position.debt += uint128(deltaL); // add the debt post position manipulation
         position.balanceRisky += uint128(deltaL);
         return position;
     }
@@ -54,7 +55,7 @@ library Position {
     function lend(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
         position.float += uint128(deltaL);
-        require(uint(castUp(position.liquidity)) >= uint256(position.float), "Not enough liquidity");
+        require(uint(position.liquidity) >= uint256(position.float), "Not enough liquidity");
         return position;
     }
 
@@ -67,7 +68,7 @@ library Position {
 
     /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
     function repay(Data storage position, uint deltaL) internal returns (Data storage) {
-        position.liquidity += castDown(int256(deltaL));
+        position.liquidity -= uint128(deltaL);
         return position;
     }
 
@@ -77,14 +78,5 @@ library Position {
     /// @return  posId  Keccak hash of the owner and pid
     function getPositionId(address owner, bytes32 pid) internal pure returns (bytes32 posId) {
         posId = keccak256(abi.encodePacked(owner, pid));
-    }
-
-    function castDown(int256 value) internal pure returns (int128 z) {
-        z = int128(value);
-        require(value == z, "overflow");
-    }
-
-    function castUp(int128 value) internal pure returns (int256 z) {
-        z = int256(value);
     }
 }
