@@ -1,7 +1,8 @@
+import { ethers } from 'hardhat'
 import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
 import { Wallet, constants } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
-import { EngineCreate, EngineCreate__factory } from '../../../../typechain'
+import { EngineCreate } from '../../../../typechain'
 
 export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: EngineCreate }
 
@@ -9,11 +10,11 @@ export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<P
   const [deployer] = signers
   const context = await loadFixture(primitiveEngineFixture)
 
-  const create = await new EngineCreate__factory(deployer).deploy(
+  const create = ((await (await ethers.getContractFactory('EngineCreate')).deploy(
     context.primitiveEngine.address,
     context.risky.address,
     context.stable.address
-  )
+  )) as unknown) as EngineCreate
 
   await context.stable.mint(deployer.address, constants.MaxUint256)
   await context.risky.mint(deployer.address, constants.MaxUint256)
