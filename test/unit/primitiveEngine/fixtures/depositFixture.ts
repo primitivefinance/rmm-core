@@ -1,10 +1,15 @@
 import { ethers } from 'hardhat'
 import { PrimitiveEngineFixture, primitiveEngineFixture } from '../../fixtures'
-import { Wallet, constants } from 'ethers'
+import { Wallet, constants, Transaction } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
 import { EngineDeposit } from '../../../../typechain'
+import { BigNumberish } from '../../../shared/Units'
 
-export type PrimitiveEngineDepositFixture = PrimitiveEngineFixture & { deposit: EngineDeposit }
+export type PrimitiveEngineDepositFixture = PrimitiveEngineFixture & {
+  deposit: EngineDeposit
+  depositFunction: DepositFunction
+}
+export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish, from?: Wallet) => Promise<Transaction>
 
 export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<PrimitiveEngineDepositFixture> {
   const [deployer] = signers
@@ -22,8 +27,24 @@ export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<
   await context.stable.approve(deposit.address, constants.MaxUint256)
   await context.risky.approve(deposit.address, constants.MaxUint256)
 
+  const depositFunction: DepositFunction = async (
+    deltaX: BigNumberish,
+    deltaY: BigNumberish,
+    from?: Wallet
+  ): Promise<Transaction> => {
+    if (from) {
+      context.risky.connect(from)
+      context.stable.connect(from)
+      deposit.connect(from)
+    }
+    await context.risky.approve(deposit.address, constants.MaxUint256)
+    await context.stable.approve(deposit.address, constants.MaxUint256)
+    return deposit.deposit(deposit.address, deltaX, deltaY)
+  }
+
   return {
     deposit,
+    depositFunction,
     ...context,
   }
 }

@@ -5,6 +5,7 @@ import { parseWei, BigNumber } from '../../../shared/Units'
 const { createFixtureLoader } = waffle
 
 import { primitiveEngineAllocateFixture, PrimitiveEngineAllocateFixture } from '../fixtures/allocateFixture'
+import { Fixture } from '@ethereum-waffle/provider'
 
 describe('withdraw', function () {
   let context: PrimitiveEngineAllocateFixture
