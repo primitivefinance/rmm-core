@@ -1,5 +1,5 @@
 import { createFixtureLoader, Fixture, MockProvider } from 'ethereum-waffle'
-import { Contracts, Mocks } from '../../types'
+import { Contracts, EngineFunctions, Mocks } from '../../types'
 
 export default async function setupContext(provider: MockProvider, fixture: Fixture<any>) {
   const loadFixture = createFixtureLoader(provider.getWallets(), provider)
@@ -7,7 +7,7 @@ export default async function setupContext(provider: MockProvider, fixture: Fixt
   beforeEach(async function () {
     const loadedFixture = await loadFixture(fixture)
 
-    this.contracts = {} as Contracts
+    this.contracts = {} as Contracts & EngineFunctions
     this.mocks = {} as Mocks
 
     this.signers = loadedFixture.signers

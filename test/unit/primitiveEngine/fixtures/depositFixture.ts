@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat'
-import { PrimitiveEngineFixture, primitiveEngineFixture } from '../../fixtures'
+import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from './createFixture'
 import { Wallet, constants, Transaction } from 'ethers'
 import { loadFixture } from 'ethereum-waffle'
 import { EngineDeposit } from '../../../../typechain'
 import { BigNumberish } from '../../../shared/Units'
 
-export type PrimitiveEngineDepositFixture = PrimitiveEngineFixture & {
+export type PrimitiveEngineDepositFixture = PrimitiveEngineCreateFixture & {
   deposit: EngineDeposit
   depositFunction: DepositFunction
 }
@@ -13,7 +13,7 @@ export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish, from?
 
 export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<PrimitiveEngineDepositFixture> {
   const [deployer] = signers
-  const context = await loadFixture(primitiveEngineFixture)
+  const context = await primitiveEngineCreateFixture(signers)
 
   const deposit = ((await (await ethers.getContractFactory('EngineDeposit')).deploy(
     context.primitiveEngine.address,
