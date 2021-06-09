@@ -5,12 +5,19 @@ import { abi as PrimitiveEngineAbi } from '../../artifacts/contracts/PrimitiveEn
 
 import { Token, PrimitiveEngine, PrimitiveFactory, PrimitiveHouse } from '../../typechain'
 
-export type PrimitiveEngineFixture = {
+interface Contracts {
   primitiveFactory: PrimitiveFactory
   primitiveEngine: PrimitiveEngine
-  signers: Wallet[]
   risky: Token
   stable: Token
+}
+
+interface Functions {}
+
+export type PrimitiveEngineFixture = {
+  signers: Wallet[]
+  contracts: Contracts
+  functions: Functions
 }
 
 export async function primitiveEngineFixture(signers: Wallet[]): Promise<PrimitiveEngineFixture> {
@@ -22,11 +29,9 @@ export async function primitiveEngineFixture(signers: Wallet[]): Promise<Primiti
   const primitiveEngine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as PrimitiveEngine
 
   return {
-    primitiveFactory,
-    primitiveEngine,
     signers,
-    risky,
-    stable,
+    contracts: { primitiveFactory, primitiveEngine, risky, stable },
+    functions: {},
   }
 }
 

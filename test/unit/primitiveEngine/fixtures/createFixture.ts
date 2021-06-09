@@ -4,7 +4,13 @@ import { Wallet, constants } from 'ethers'
 import { deployContract, loadFixture } from 'ethereum-waffle'
 import { EngineCreate } from '../../../../typechain'
 
-export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: EngineCreate }
+interface Contracts {
+  create: EngineCreate
+}
+
+interface Functions {}
+
+export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { contracts: Contracts; functions: Functions }
 
 export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<PrimitiveEngineCreateFixture> {
   const context = await primitiveEngineFixture(signers)
@@ -19,16 +25,22 @@ export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<P
   ])) as EngineCreate */
 
   const create = ((await (await ethers.getContractFactory('EngineCreate')).deploy(
-    context.primitiveEngine.address,
-    context.risky.address,
-    context.stable.address
+    context.contracts.primitiveEngine.address,
+    context.contracts.risky.address,
+    context.contracts.stable.address
   )) as unknown) as EngineCreate
 
-  await context.stable.approve(create.address, constants.MaxUint256)
-  await context.risky.approve(create.address, constants.MaxUint256)
+  await context.contracts.stable.approve(create.address, constants.MaxUint256)
+  await context.contracts.risky.approve(create.address, constants.MaxUint256)
 
   return {
-    create,
     ...context,
+    contracts: {
+      ...context.contracts,
+      create: create,
+    },
+    functions: {
+      ...context.functions,
+    },
   }
 }
