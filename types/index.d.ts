@@ -2,6 +2,9 @@ import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
+import { DepositFunction } from '../test/unit/primitiveEngine/fixtures/depositFixture'
+import { SwapFunction } from '../test/unit/primitiveEngine/fixtures/swapFixture'
+
 import {
   EngineAllocate,
   EngineCreate,
@@ -11,6 +14,12 @@ import {
   PrimitiveFactory,
   PrimitiveHouse,
 } from '../typechain'
+
+interface EngineFunctions {
+  depositFunction: DepositFunction
+  swapXForY: SwapFunction
+  swapYForX: SwapFunction
+}
 
 export interface Contracts {
   primitiveEngine: PrimitiveEngine
@@ -33,7 +42,7 @@ export interface Mocks {
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
-    contracts: Contracts
+    contracts: Contracts & EngineFunctions
     mocks: Mocks
   }
 }

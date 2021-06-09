@@ -1,10 +1,10 @@
-import hre, { ethers } from 'hardhat'
-import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
+import hre from 'hardhat'
+import { primitiveEngineDepositFixture, PrimitiveEngineDepositFixture } from '../fixtures/depositFixture'
 import { Wallet, constants, BytesLike, BigNumberish, Transaction } from 'ethers'
-import { loadFixture, deployContract } from 'ethereum-waffle'
-import { EngineSwap, EngineSwap__factory } from '../../../../typechain'
+import { deployContract } from 'ethereum-waffle'
+import { EngineSwap } from '../../../../typechain'
 
-export type PrimitiveEngineSwapFixture = PrimitiveEngineCreateFixture & {
+export type PrimitiveEngineSwapFixture = PrimitiveEngineDepositFixture & {
   swap: EngineSwap
   swapXForY: SwapFunction
   swapYForX: SwapFunction
@@ -18,7 +18,7 @@ export type SwapFunction = (
 
 export async function primitiveEngineSwapFixture(this, signers: Wallet[]): Promise<PrimitiveEngineSwapFixture> {
   const [deployer] = signers
-  const context = await primitiveEngineCreateFixture(signers)
+  const context = await primitiveEngineDepositFixture(signers)
   const swapArtifact = await hre.artifacts.readArtifact('EngineSwap')
   const swap = (await deployContract(signers[0], swapArtifact, [
     context.primitiveEngine.address,
