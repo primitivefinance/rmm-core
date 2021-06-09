@@ -42,7 +42,8 @@ export interface Mocks {
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
-    contracts: Contracts & EngineFunctions
+    contracts: Contracts
+    functions: EngineFunctions
     mocks: Mocks
   }
 }

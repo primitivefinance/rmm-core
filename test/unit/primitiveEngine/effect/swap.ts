@@ -35,7 +35,7 @@ describe('swap', function () {
     describe('sucess cases', function () {
       it('Engine::Swap: Swap X to Y from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
-        await this.contracts.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
         const invariant = await this.contracts.primitiveEngine.invariantOf(poolId)
         const amount = parseWei('100')
         const params: PoolParams = await getPoolParams(this.contracts.primitiveEngine, poolId)
@@ -71,7 +71,7 @@ describe('swap', function () {
           params
         )
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-        await expect(this.contracts.swapXForY(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
+        await expect(this.functions.swapXForY(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
           this.contracts.primitiveEngine,
           EngineEvents.SWAP
         )
@@ -83,7 +83,7 @@ describe('swap', function () {
       })
 
       it('Engine::Swap: Swap Y to X from EOA', async function () {
-        await this.contracts.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
         const invariant = await this.contracts.primitiveEngine.invariantOf(poolId)
         const amount = parseWei('0.2')
         const params: PoolParams = await getPoolParams(this.contracts.primitiveEngine, poolId)
@@ -120,7 +120,7 @@ describe('swap', function () {
         )
 
         // TODO: Swap deltaIn amount is different from esimated deltaIn
-        await expect(this.contracts.swapYForX(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
+        await expect(this.functions.swapYForX(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
           this.contracts.primitiveEngine,
           EngineEvents.SWAP
         )

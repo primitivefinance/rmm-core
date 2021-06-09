@@ -5,9 +5,17 @@ import { loadFixture } from 'ethereum-waffle'
 import { EngineDeposit } from '../../../../typechain'
 import { BigNumberish } from '../../../shared/Units'
 
-export type PrimitiveEngineDepositFixture = PrimitiveEngineCreateFixture & {
+interface Contracts {
   deposit: EngineDeposit
+}
+
+interface Functions {
   depositFunction: DepositFunction
+}
+
+export type PrimitiveEngineDepositFixture = PrimitiveEngineCreateFixture & {
+  contracts: Contracts
+  functions: Functions
 }
 export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish, from?: Wallet) => Promise<Transaction>
 
@@ -16,16 +24,15 @@ export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<
   const context = await primitiveEngineCreateFixture(signers)
 
   const deposit = ((await (await ethers.getContractFactory('EngineDeposit')).deploy(
-    context.primitiveEngine.address,
-    context.risky.address,
-    context.stable.address
+    context.contracts.primitiveEngine.address,
+    context.contracts.risky.address,
+    context.contracts.stable.address
   )) as unknown) as EngineDeposit
 
-  await context.stable.mint(deployer.address, constants.MaxUint256.div(4))
-  await context.risky.mint(deployer.address, constants.MaxUint256.div(4))
-
-  await context.stable.approve(deposit.address, constants.MaxUint256)
-  await context.risky.approve(deposit.address, constants.MaxUint256)
+  await context.contracts.stable.mint(deployer.address, constants.MaxUint256.div(4))
+  await context.contracts.risky.mint(deployer.address, constants.MaxUint256.div(4))
+  await context.contracts.stable.approve(deposit.address, constants.MaxUint256)
+  await context.contracts.risky.approve(deposit.address, constants.MaxUint256)
 
   const depositFunction: DepositFunction = async (
     deltaX: BigNumberish,
@@ -33,18 +40,24 @@ export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<
     from?: Wallet
   ): Promise<Transaction> => {
     if (from) {
-      context.risky.connect(from)
-      context.stable.connect(from)
+      context.contracts.risky.connect(from)
+      context.contracts.stable.connect(from)
       deposit.connect(from)
     }
-    await context.risky.approve(deposit.address, constants.MaxUint256)
-    await context.stable.approve(deposit.address, constants.MaxUint256)
+    await context.contracts.risky.approve(deposit.address, constants.MaxUint256)
+    await context.contracts.stable.approve(deposit.address, constants.MaxUint256)
     return deposit.deposit(deposit.address, deltaX, deltaY)
   }
 
   return {
-    deposit,
-    depositFunction,
     ...context,
+    contracts: {
+      ...context.contracts,
+      deposit: deposit,
+    },
+    functions: {
+      ...context.functions,
+      depositFunction: depositFunction,
+    },
   }
 }
