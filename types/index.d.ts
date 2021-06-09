@@ -13,9 +13,9 @@ import {
 } from '../typechain'
 
 export interface Contracts {
-  engine: PrimitiveEngine
+  primitiveEngine: PrimitiveEngine
   house: PrimitiveHouse
-  factory: PrimitiveFactory
+  primitiveFactory: PrimitiveFactory
   swap: EngineSwap
   deposit: EngineDeposit
   allocate: EngineAllocate

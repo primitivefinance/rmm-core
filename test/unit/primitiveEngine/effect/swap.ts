@@ -27,7 +27,7 @@ describe('swap', function () {
   describe('when the parameters are valid', function () {
     beforeEach(async function () {
       await this.contracts.create.create(strike, sigma, time, spot)
-      poolId = await this.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.primitiveEngine.getPoolId(strike, sigma, time)
     })
 
     it('swaps risky for stable', async function () {

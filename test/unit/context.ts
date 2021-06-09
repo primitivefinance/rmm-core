@@ -7,14 +7,13 @@ export default async function setupContext(provider: MockProvider, fixture: Fixt
   beforeEach(async function () {
     const loadedFixture = await loadFixture(fixture)
 
-    this.contracts = loadedFixture as Contracts
+    this.contracts = {} as Contracts
     this.mocks = {} as Mocks
 
     this.signers = loadedFixture.signers
-    this.contracts.factory = loadedFixture.primitiveFactory
-    this.mocks.stable = loadedFixture.stable
-    this.mocks.risky = loadedFixture.risky
-    this.contracts.swap = loadedFixture.swap
-    this.engine = loadedFixture.primitiveEngine
+
+    // we have context this.contracts, and we have another object, and we want to assign all the items
+    // of our fixture object to our contracts
+    Object.keys(loadedFixture).map((contract) => (this.contracts[contract] = loadedFixture[contract]))
   })
 }
