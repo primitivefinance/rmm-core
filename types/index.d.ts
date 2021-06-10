@@ -10,6 +10,7 @@ interface Contracts {
   risky: ContractTypes.Token
   stable: ContractTypes.Token
   engineCreate: ContractTypes.TestEngineCreate
+  engineDeposit: ContractTypes.TestEngineDeposit
 }
 
 export interface Mocks {
