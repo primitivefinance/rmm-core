@@ -7,11 +7,10 @@ export default async function setupContext(provider: MockProvider, fixture: Fixt
   beforeEach(async function () {
     const loadedFixture = await loadFixture(fixture)
 
+    this.mocks = {} as Mocks
+    this.signers = loadedFixture.signers
     this.contracts = {} as Contracts
     this.functions = {} as EngineFunctions
-    this.mocks = {} as Mocks
-
-    this.signers = loadedFixture.signers
 
     // we have context this.contracts, and we have another object, and we want to assign all the items
     // of our fixture object to our contracts

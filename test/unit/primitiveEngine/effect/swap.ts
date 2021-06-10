@@ -1,14 +1,10 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BytesLike, constants, Wallet } from 'ethers'
-import { parseWei, PERCENTAGE } from '../../../shared/Units'
-const { createFixtureLoader } = waffle
-
-import { primitiveEngineSwapFixture, PrimitiveEngineSwapFixture } from '../fixtures/swapFixture'
-import { PrimitiveEngine } from '../../../../typechain'
-
-import { getPoolParams, PoolParams, getDeltaIn } from '../../../shared/Engine'
 import { EngineEvents, ERC20Events } from '../events'
+import { BytesLike, constants, Wallet } from 'ethers'
+import { Wei, parseWei, PERCENTAGE } from '../../../shared/Units'
+import { primitiveEngineSwapFixture } from '../fixtures/swapFixture'
+import { getPoolParams, PoolParams, getDeltaIn } from '../../../shared/Engine'
 import setupContext from '../../context'
 
 const INITIAL_MARGIN = parseWei('1000')
@@ -22,7 +18,10 @@ describe('swap', function () {
 
   describe('--swap--', function () {
     let poolId: BytesLike
+    let deployer: Wallet
+
     beforeEach(async function () {
+      deployer = this.signers[0]
       await this.contracts.create.create(strike, sigma, time, spot)
       poolId = await this.contracts.primitiveEngine.getPoolId(strike, sigma, time)
     })
@@ -35,11 +34,11 @@ describe('swap', function () {
     describe('sucess cases', function () {
       it('Engine::Swap: Swap X to Y from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
-        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
-        const invariant = await this.contracts.primitiveEngine.invariantOf(poolId)
-        const amount = parseWei('100')
-        const params: PoolParams = await getPoolParams(this.contracts.primitiveEngine, poolId)
-        const addXRemoveY: boolean = true
+        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
+        const invariant = await this.contracts.primitiveEngine.invariantOf(poolId) // store inariant current
+        const amount = parseWei('100') // amount to swap
+        const params: PoolParams = await getPoolParams(this.contracts.primitiveEngine, poolId) // gets calibrationm
+        const addXRemoveY: boolean = true // are we swapping risky tokens to stable tokens?
         const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
           amount,
           addXRemoveY,
@@ -53,7 +52,7 @@ describe('swap', function () {
         ).to.emit(this.contracts.primitiveEngine, EngineEvents.SWAP)
 
         const postReserve = await this.contracts.primitiveEngine.reserves(poolId)
-        //expect(postInvariant).to.be.gte(new Wei(invariant).float)
+        expect(Math.abs(postInvariant)).to.be.gte(Math.abs(new Wei(invariant).float))
         expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq(postReserve.RX1) // FIX
         expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
       })
@@ -82,7 +81,7 @@ describe('swap', function () {
         expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
       })
 
-      it('Engine::Swap: Swap Y to X from EOA', async function () {
+      it('Engine::Swap: Swap Y to X from EOA from margin', async function () {
         await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
         const invariant = await this.contracts.primitiveEngine.invariantOf(poolId)
         const amount = parseWei('0.2')
@@ -97,7 +96,7 @@ describe('swap', function () {
 
         // TODO: Swap deltaIn amount is different from esimated deltaIn
         await expect(
-          this.contracts.primitiveEngine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, false),
+          this.contracts.primitiveEngine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true),
           'Engine:Swap'
         ).to.emit(this.contracts.primitiveEngine, EngineEvents.SWAP)
 

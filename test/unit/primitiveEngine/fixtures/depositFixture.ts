@@ -46,7 +46,7 @@ export async function primitiveEngineDepositFixture(signers: Wallet[]): Promise<
     }
     await context.contracts.risky.approve(deposit.address, constants.MaxUint256)
     await context.contracts.stable.approve(deposit.address, constants.MaxUint256)
-    return deposit.deposit(deposit.address, deltaX, deltaY)
+    return deposit.deposit(deployer.address, deltaX, deltaY)
   }
 
   return {
