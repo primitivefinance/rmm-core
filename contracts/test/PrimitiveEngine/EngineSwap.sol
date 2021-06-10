@@ -4,9 +4,7 @@ pragma solidity 0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/IPrimitiveEngine.sol";
 
-import "hardhat/console.sol";
-
-contract EngineCreate {
+contract EngineSwap {
     using SafeERC20 for IERC20;
 
     address public engine;
@@ -21,18 +19,18 @@ contract EngineCreate {
       stable = _stable;
     }
 
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public {
+    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin) public { 
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice);
+      IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, deltaInMax, fromMargin);
     }
 
-    function createCallback(uint deltaX, uint deltaY) public {
+    function swapCallback(uint deltaX, uint deltaY) public {
         IERC20(risky).safeTransferFrom(CALLER, engine, deltaX);
         IERC20(stable).safeTransferFrom(CALLER, engine, deltaY);
     }
 
     function name() public view returns (string memory) {
-      return "EngineCreate";
+      return "EngineSwap";
     }
 }
 

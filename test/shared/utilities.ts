@@ -7,7 +7,6 @@ import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath
 
 import { IUniswapV3Factory, IERC20 } from '../../typechain'
 
-
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 })
 
 export function encodePriceSqrt(reserve1: BigNumberish, reserve0: BigNumberish): BigNumber {
@@ -85,6 +84,8 @@ export interface Swap {
   postInvariant: number
 }
 
+const FEE = 30
+
 /**
  * @notice  Calculates the required deltaIn if requesting deltaOut
  * @param deltaOut The amount of tokens requested out (swapped out of pool)
@@ -104,11 +105,21 @@ export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128:
   if (addXRemoveY) {
     postRX1 = calcRX1WithYOut(deltaOut, params)
     postRY2 = RY2.sub(deltaOut)
-    deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
+    deltaIn = postRX1.gt(RX1)
+      ? postRX1
+          .sub(RX1)
+          .mul(1e4)
+          .div(1e4 - FEE)
+      : RX1.sub(postRX1)
   } else {
     postRY2 = calcRY2WithXOut(deltaOut, params)
     postRX1 = RX1.sub(deltaOut)
-    deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
+    deltaIn = postRY2.gt(RY2)
+      ? postRY2
+          .sub(RY2)
+          .mul(1e4)
+          .div(1e4 - FEE)
+      : RY2.sub(postRY2)
   }
 
   const postParams: PoolParams = {
@@ -198,7 +209,7 @@ export interface Reserve {
   debt: Wei
 }
 
-export async function getReserve(engine: Contract, poolId: string, log?: boolean): Promise<Reserve> {
+export async function getReserve(engine: Contract, poolId: BytesLike, log?: boolean): Promise<Reserve> {
   const res = await engine.reserves(poolId)
   const reserve: Reserve = {
     RX1: new Wei(res.RX1),
@@ -284,7 +295,7 @@ export interface Calibration {
   time: number
 }
 
-export async function getCalibration(engine: Contract, poolId: string, log?: boolean): Promise<Calibration> {
+export async function getCalibration(engine: Contract, poolId: BytesLike, log?: boolean): Promise<Calibration> {
   const cal = await engine.settings(poolId)
   const calibration: Calibration = {
     strike: toBN(cal.strike),
@@ -305,7 +316,7 @@ export interface PoolParams {
   calibration: Calibration
 }
 
-export async function getPoolParams(engine: Contract, poolId: string, log?: boolean): Promise<PoolParams> {
+export async function getPoolParams(engine: Contract, poolId: BytesLike, log?: boolean): Promise<PoolParams> {
   const reserve: Reserve = await getReserve(engine, poolId, log)
   const calibration: Calibration = await getCalibration(engine, poolId, log)
   return { reserve, calibration }
@@ -317,23 +328,11 @@ export function calculateInvariant(params: PoolParams): number {
   return invariant.float
 }
 
-export function getCreate2Address(
-  factoryAddress: string,
-  [stable, risky]: [string, string],
-  bytecode: string,
-): string {
-  const encodedArguments = utils.defaultAbiCoder.encode(
-    ['address', 'address'],
-    [stable, risky],
-  );
+export function getCreate2Address(factoryAddress: string, [stable, risky]: [string, string], bytecode: string): string {
+  const encodedArguments = utils.defaultAbiCoder.encode(['address', 'address'], [stable, risky])
 
-  const create2Inputs = [
-    '0xff',
-    factoryAddress,
-    utils.keccak256(encodedArguments),
-    utils.keccak256(bytecode),
-  ];
+  const create2Inputs = ['0xff', factoryAddress, utils.keccak256(encodedArguments), utils.keccak256(bytecode)]
 
-  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join('')}`;
-  return utils.getAddress(`0x${utils.keccak256(sanitizedInputs).slice(-40)}`);
+  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join('')}`
+  return utils.getAddress(`0x${utils.keccak256(sanitizedInputs).slice(-40)}`)
 }
