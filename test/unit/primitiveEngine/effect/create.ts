@@ -1,12 +1,12 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants } from 'ethers'
-import hre from 'hardhat'
 
 import { parseWei, PERCENTAGE } from '../../../shared/Units'
 import { loadContext } from '../../context'
 
-import * as ContractTypes from '../../../../typechain'
+import {
+  createFragment,
+} from '../fragments'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
@@ -17,19 +17,16 @@ describe('create', function () {
     await loadContext(
       waffle.provider,
       ['factory', 'engineCreate', 'risky', 'stable'],
-      async (signers, contracts) => {
-        await contracts.factory.create(contracts.risky.address, contracts.stable.address)
-        engineAddress = await contracts.factory.getEngine(contracts.risky.address, contracts.stable.address)
-
-        await contracts.stable.mint(signers[0].address, constants.MaxUint256)
-        await contracts.risky.mint(signers[0].address, constants.MaxUint256)
-        await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
-        await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
-
-        contracts.engine = await hre.ethers.getContractAt('PrimitiveEngine', engineAddress) as ContractTypes.PrimitiveEngine
-      },
+      createFragment,
     );
   });
+
+  beforeEach(async function () {
+    engineAddress = await this.contracts.factory.getEngine(
+      this.contracts.risky.address,
+      this.contracts.stable.address
+    )
+  })
 
   describe('when the parameters are valid', function () {
     it('deploys a new pool', async function () {
