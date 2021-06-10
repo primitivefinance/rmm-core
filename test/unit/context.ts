@@ -34,7 +34,7 @@ async function deploy(contractName: string, deployer: Wallet): Promise<Contract>
   return contract;
 }
 
-type ContractName = 'factory' | 'risky' | 'stable' | 'engineCreate'
+type ContractName = 'factory' | 'risky' | 'stable' | 'engineCreate' | 'engineDeposit'
 
 export async function loadContext(
   provider: MockProvider,
@@ -54,6 +54,9 @@ export async function loadContext(
         switch (contractName) {
           case 'engineCreate':
             loadedContracts.engineCreate = await deploy('TestEngineCreate', deployer) as ContractTypes.TestEngineCreate
+            break;
+          case 'engineDeposit':
+            loadedContracts.engineDeposit = await deploy('TestEngineDeposit', deployer) as ContractTypes.TestEngineDeposit
             break;
           case 'factory':
             loadedContracts.factory = await deploy('PrimitiveFactory', deployer) as ContractTypes.PrimitiveFactory
