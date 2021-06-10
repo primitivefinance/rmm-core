@@ -39,4 +39,4 @@ declare module 'mocha' {
   }
 }
 
-type ContractName = 'factory' | 'tokens' | 'engineCreate' | 'engineDeposit' | 'engineSwap' | 'engine'
+type ContractName = 'engineCreate' | 'engineDeposit' | 'engineSwap'
