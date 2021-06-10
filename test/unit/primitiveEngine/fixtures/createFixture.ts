@@ -1,28 +1,46 @@
+import hre, { ethers } from 'hardhat'
 import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
 import { Wallet, constants } from 'ethers'
-import { loadFixture } from 'ethereum-waffle'
-import { EngineCreate, EngineCreate__factory } from '../../../../typechain'
+import { deployContract, loadFixture } from 'ethereum-waffle'
+import { EngineCreate } from '../../../../typechain'
 
-export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { create: EngineCreate }
+interface Contracts {
+  create: EngineCreate
+}
+
+interface Functions {}
+
+export type PrimitiveEngineCreateFixture = PrimitiveEngineFixture & { contracts: Contracts; functions: Functions }
 
 export async function primitiveEngineCreateFixture(signers: Wallet[]): Promise<PrimitiveEngineCreateFixture> {
-  const [deployer] = signers
-  const context = await loadFixture(primitiveEngineFixture)
+  const context = await primitiveEngineFixture(signers)
 
-  const create = await new EngineCreate__factory(deployer).deploy(
+  /*
+  const [deployer] = signers
+  const createArtifact = await hre.artifacts.readArtifact('EngineCreate')
+   const create = (await deployContract(deployer, createArtifact, [
     context.primitiveEngine.address,
     context.risky.address,
-    context.stable.address
-  )
+    context.stable.address,
+  ])) as EngineCreate */
 
-  await context.stable.mint(deployer.address, constants.MaxUint256)
-  await context.risky.mint(deployer.address, constants.MaxUint256)
+  const create = ((await (await ethers.getContractFactory('EngineCreate')).deploy(
+    context.contracts.primitiveEngine.address,
+    context.contracts.risky.address,
+    context.contracts.stable.address
+  )) as unknown) as EngineCreate
 
-  await context.stable.approve(create.address, constants.MaxUint256)
-  await context.risky.approve(create.address, constants.MaxUint256)
+  await context.contracts.stable.approve(create.address, constants.MaxUint256)
+  await context.contracts.risky.approve(create.address, constants.MaxUint256)
 
   return {
-    create,
     ...context,
+    contracts: {
+      ...context.contracts,
+      create: create,
+    },
+    functions: {
+      ...context.functions,
+    },
   }
 }
