@@ -1,5 +1,5 @@
 import { createFixtureLoader, Fixture, MockProvider } from 'ethereum-waffle'
-import { Contract, Wallet } from 'ethers'
+import { constants, Contract, Wallet } from 'ethers'
 import hre from 'hardhat'
 import {
   deployContract,
