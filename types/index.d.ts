@@ -1,34 +1,25 @@
 import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
+import * as ContractTypes from '../typechain'
 import { DepositFunction } from '../test/unit/primitiveEngine/fixtures/depositFixture'
 import { SwapFunction } from '../test/unit/primitiveEngine/fixtures/swapFixture'
 
-import {
-  EngineAllocate,
-  EngineCreate,
-  EngineDeposit,
-  EngineSwap,
-  PrimitiveEngine,
-  PrimitiveFactory,
-  PrimitiveHouse,
-} from '../typechain'
-
-interface EngineFunctions {
+export interface Functions {
   depositFunction: DepositFunction
   swapXForY: SwapFunction
   swapYForX: SwapFunction
 }
 
 export interface Contracts {
-  primitiveEngine: PrimitiveEngine
-  house: PrimitiveHouse
-  primitiveFactory: PrimitiveFactory
-  swap: EngineSwap
-  deposit: EngineDeposit
-  allocate: EngineAllocate
-  create: EngineCreate
+  engine: ContractTypes.PrimitiveEngine
+  house: ContractTypes.PrimitiveHouse
+  factory: ContractTypes.PrimitiveFactory
+  risky: ContractTypes.Token
+  stable: ContractTypes.Token
+  engineCreate: ContractTypes.EngineCreate
+  engineDeposit: ContractTypes.EngineDeposit
+  engineSwap: ContractTypes.EngineSwap
 }
 
 export interface Mocks {
@@ -43,7 +34,7 @@ declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
     contracts: Contracts
-    functions: EngineFunctions
+    functions: Functions
     mocks: Mocks
   }
 }

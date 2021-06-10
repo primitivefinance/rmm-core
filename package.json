@@ -19,7 +19,7 @@
     "test:logs": "hardhat test --logs",
     "test:engine": "hardhat test ./test/Engine.test.ts",
     "test:ref": "hardhat test ./test/useRef.test.ts",
-    "test:swap": "hardhat test ./test/swap/swap.test.ts",
+    "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts"
   },
   "devDependencies": {
