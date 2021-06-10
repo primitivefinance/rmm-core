@@ -4,8 +4,6 @@ import {
   constants,
 } from 'ethers';
 
-import { Contracts } from '../../../../types'
-
 import { loadContext } from '../../context';
 
 describe('create', function () {
@@ -13,7 +11,7 @@ describe('create', function () {
     await loadContext(
       waffle.provider,
       ['factory', 'risky', 'stable'],
-      async (contracts: Contracts) => {
+      async (signers, contracts) => {
         await contracts.risky.approve(contracts.factory.address, '1');
       },
     );

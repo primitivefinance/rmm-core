@@ -7,11 +7,7 @@ import {
 
 import { Contracts, Mocks } from '../../types'
 
-import {
-  PrimitiveFactory,
-  PrimitiveEngine,
-  Token,
-} from '../../typechain'
+import * as ContractTypes from '../../typechain'
 
 export async function setupContext(
   provider: MockProvider,
@@ -38,12 +34,12 @@ async function deploy(contractName: string, deployer: Wallet): Promise<Contract>
   return contract;
 }
 
-type ContractName = 'factory' | 'risky' | 'stable'
+type ContractName = 'factory' | 'risky' | 'stable' | 'engineCreate'
 
 export async function loadContext(
   provider: MockProvider,
   contracts: ContractName[],
-  action: (contracts: Contracts) => void,
+  action: (signers: Wallet[], contracts: Contracts) => void,
 ): Promise<void> {
   const loadFixture = createFixtureLoader(provider.getWallets(), provider)
 
@@ -56,21 +52,24 @@ export async function loadContext(
         const contractName = contracts[i]
 
         switch (contractName) {
+          case 'engineCreate':
+            loadedContracts.engineCreate = await deploy('TestEngineCreate', deployer) as ContractTypes.TestEngineCreate
+            break;
           case 'factory':
-            loadedContracts.factory = await deploy('PrimitiveFactory', deployer) as PrimitiveFactory
+            loadedContracts.factory = await deploy('PrimitiveFactory', deployer) as ContractTypes.PrimitiveFactory
             break;
           case 'risky':
-            loadedContracts.risky = await deploy('Token', deployer) as Token
+            loadedContracts.risky = await deploy('Token', deployer) as ContractTypes.Token
             break;
           case 'stable':
-            loadedContracts.stable = await deploy('Token', deployer) as Token
+            loadedContracts.stable = await deploy('Token', deployer) as ContractTypes.Token
             break;
           default:
             throw new Error('Unknown contract name');
         }
       }
 
-      await action(loadedContracts);
+      await action(signers, loadedContracts);
 
       return loadedContracts;
     })
