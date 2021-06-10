@@ -1,11 +1,11 @@
 import { createFixtureLoader, Fixture, MockProvider } from 'ethereum-waffle'
-import { Contracts, Mocks } from '../../types'
 import { Contract, Wallet } from 'ethers'
 import hre from 'hardhat'
 import {
   deployContract,
-  deployMockContract,
 } from 'ethereum-waffle'
+
+import { Contracts, Mocks } from '../../types'
 
 import {
   PrimitiveFactory,
@@ -41,6 +41,7 @@ async function deploy(contractName: string, deployer: Wallet): Promise<Contract>
 export async function loadContext(
   provider: MockProvider,
   contracts: string[],
+  action: (contracts: Contracts) => void,
 ): Promise<void> {
   const loadFixture = createFixtureLoader(provider.getWallets(), provider)
 
@@ -53,6 +54,9 @@ export async function loadContext(
         const contractName = contracts[i]
 
         switch (contractName) {
+          case 'engine':
+            // loadedContracts.engine = await deploy('PrimitiveEngine', deployer) as PrimitiveEngine
+            break;
           case 'factory':
             loadedContracts.factory = await deploy('PrimitiveFactory', deployer) as PrimitiveFactory
             break;
@@ -66,6 +70,8 @@ export async function loadContext(
             throw new Error('Unknown contract name');
         }
       }
+
+      await action(loadedContracts);
 
       return loadedContracts;
     })
