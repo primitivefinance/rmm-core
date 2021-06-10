@@ -15,6 +15,7 @@ contract EngineCreate {
     address public CALLER;
 
     constructor() {}
+
     function initialize(address _engine, address _risky, address _stable) public {
       engine = _engine;
       risky = _risky;
