@@ -38,3 +38,5 @@ declare module 'mocha' {
     mocks: Mocks
   }
 }
+
+type ContractName = 'factory' | 'tokens' | 'engineCreate' | 'engineDeposit' | 'engineSwap' | 'engine'
