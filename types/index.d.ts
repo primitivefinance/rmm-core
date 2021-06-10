@@ -1,13 +1,16 @@
 import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 
-import { PrimitiveEngine, PrimitiveFactory, PrimitiveHouse } from '../typechain'
+import * as ContractTypes from '../typechain'
 
-export interface Contracts {
-  engine: PrimitiveEngine
-  house: PrimitiveHouse
-  factory: PrimitiveFactory
+interface Contracts {
+  engine: ContractTypes.PrimitiveEngine
+  house: ContractTypes.PrimitiveHouse
+  factory: ContractTypes.PrimitiveFactory
+  risky: ContractTypes.Token
+  stable: ContractTypes.Token
+  engineCreate: ContractTypes.TestEngineCreate
+  engineDeposit: ContractTypes.TestEngineDeposit
 }
 
 export interface Mocks {
