@@ -12,7 +12,8 @@ contract EngineSwap {
     address public stable;
     address public CALLER;
 
-    constructor(address _engine, address _risky, address _stable) {
+    constructor() {}
+    function initialize(address _engine, address _risky, address _stable) public {
       engine = _engine;
       risky = _risky;
       stable = _stable;

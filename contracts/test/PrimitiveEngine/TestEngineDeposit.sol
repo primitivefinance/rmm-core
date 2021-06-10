@@ -4,7 +4,7 @@ pragma solidity 0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/IPrimitiveEngine.sol";
 
-contract EngineDeposit {
+contract TestEngineDeposit {
     using SafeERC20 for IERC20;
 
     address public engine;
@@ -12,14 +12,17 @@ contract EngineDeposit {
     address public stable;
     address public CALLER;
 
-    constructor() {}
-    function initialize(address _engine, address _risky, address _stable) public {
+    function deposit(
+      address _engine,
+      address _risky,
+      address _stable,
+      address owner,
+      uint256 dRisky,
+      uint256 dStable
+    ) public {
       engine = _engine;
       risky = _risky;
       stable = _stable;
-    }
-
-    function deposit(address owner, uint256 dRisky, uint256 dStable) public { 
       CALLER = msg.sender;
       IPrimitiveEngine(engine).deposit(owner, dRisky, dStable);
     }
@@ -27,10 +30,12 @@ contract EngineDeposit {
     function depositCallback(uint256 dRisky, uint256 dStable) public {
         IERC20(risky).safeTransferFrom(CALLER, engine, dRisky);
         IERC20(stable).safeTransferFrom(CALLER, engine, dStable);
+      engine = address(0);
+      risky = address(0);
+      stable = address(0);
     }
 
     function name() public view returns (string memory) {
       return "EngineDeposit";
     }
 }
-
