@@ -19,6 +19,7 @@ export interface Contracts {
   stable: ContractTypes.Token
   engineCreate: ContractTypes.EngineCreate
   engineDeposit: ContractTypes.EngineDeposit
+  engineWithdraw: ContractTypes.EngineWithdraw
   engineSwap: ContractTypes.EngineSwap
 }
 
@@ -39,4 +40,4 @@ declare module 'mocha' {
   }
 }
 
-type ContractName = 'engineCreate' | 'engineDeposit' | 'engineSwap'
+type ContractName = 'engineCreate' | 'engineDeposit' | 'engineSwap' | 'engineWithdraw'
