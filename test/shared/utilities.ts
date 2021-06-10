@@ -84,6 +84,8 @@ export interface Swap {
   postInvariant: number
 }
 
+const FEE = 30
+
 /**
  * @notice  Calculates the required deltaIn if requesting deltaOut
  * @param deltaOut The amount of tokens requested out (swapped out of pool)
@@ -103,11 +105,21 @@ export function getDeltaIn(deltaOut: Wei, addXRemoveY: boolean, invariantInt128:
   if (addXRemoveY) {
     postRX1 = calcRX1WithYOut(deltaOut, params)
     postRY2 = RY2.sub(deltaOut)
-    deltaIn = postRX1.gt(RX1) ? postRX1.sub(RX1) : RX1.sub(postRX1)
+    deltaIn = postRX1.gt(RX1)
+      ? postRX1
+          .sub(RX1)
+          .mul(1e4)
+          .div(1e4 - FEE)
+      : RX1.sub(postRX1)
   } else {
     postRY2 = calcRY2WithXOut(deltaOut, params)
     postRX1 = RX1.sub(deltaOut)
-    deltaIn = postRY2.gt(RY2) ? postRY2.sub(RY2) : RY2.sub(postRY2)
+    deltaIn = postRY2.gt(RY2)
+      ? postRY2
+          .sub(RY2)
+          .mul(1e4)
+          .div(1e4 - FEE)
+      : RY2.sub(postRY2)
   }
 
   const postParams: PoolParams = {
