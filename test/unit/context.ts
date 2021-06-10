@@ -38,9 +38,11 @@ async function deploy(contractName: string, deployer: Wallet): Promise<Contract>
   return contract;
 }
 
+type ContractName = 'factory' | 'risky' | 'stable'
+
 export async function loadContext(
   provider: MockProvider,
-  contracts: string[],
+  contracts: ContractName[],
   action: (contracts: Contracts) => void,
 ): Promise<void> {
   const loadFixture = createFixtureLoader(provider.getWallets(), provider)
@@ -54,9 +56,6 @@ export async function loadContext(
         const contractName = contracts[i]
 
         switch (contractName) {
-          case 'engine':
-            // loadedContracts.engine = await deploy('PrimitiveEngine', deployer) as PrimitiveEngine
-            break;
           case 'factory':
             loadedContracts.factory = await deploy('PrimitiveFactory', deployer) as PrimitiveFactory
             break;
