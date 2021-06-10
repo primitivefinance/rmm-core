@@ -21,6 +21,7 @@ export interface Contracts {
   engineDeposit: ContractTypes.EngineDeposit
   engineWithdraw: ContractTypes.EngineWithdraw
   engineSwap: ContractTypes.EngineSwap
+  engineAllocate: ContractTypes.EngineAllocate
 }
 
 export interface Mocks {
@@ -40,4 +41,4 @@ declare module 'mocha' {
   }
 }
 
-type ContractName = 'engineCreate' | 'engineDeposit' | 'engineSwap' | 'engineWithdraw'
+type ContractName = 'engineCreate' | 'engineDeposit' | 'engineSwap' | 'engineWithdraw' | 'engineAllocate'
