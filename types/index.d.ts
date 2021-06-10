@@ -1,14 +1,15 @@
 import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 
-import { PrimitiveEngine, PrimitiveFactory, PrimitiveHouse, Token } from '../typechain'
+import * as ContractTypes from '../typechain'
 
-export interface Contracts {
-  engine: PrimitiveEngine
-  house: PrimitiveHouse
-  factory: PrimitiveFactory
-  risky: Token
-  stable: Token
+interface Contracts {
+  engine: ContractTypes.PrimitiveEngine
+  house: ContractTypes.PrimitiveHouse
+  factory: ContractTypes.PrimitiveFactory
+  risky: ContractTypes.Token
+  stable: ContractTypes.Token
+  engineCreate: ContractTypes.TestEngineCreate
 }
 
 export interface Mocks {

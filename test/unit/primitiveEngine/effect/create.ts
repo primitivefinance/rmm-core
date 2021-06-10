@@ -1,46 +1,90 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
-import { parseWei, PERCENTAGE } from '../../../shared/Units'
-const { createFixtureLoader } = waffle
+import { constants } from 'ethers'
+import hre from 'hardhat'
 
-import { primitiveEngineCreateFixture, PrimitiveEngineCreateFixture } from '../fixtures/createFixture'
+import { parseWei, PERCENTAGE } from '../../../shared/Units'
+import { loadContext } from '../../context'
+
+import * as ContractTypes from '../../../../typechain'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 
 describe('create', function () {
-  let context: PrimitiveEngineCreateFixture
-  let loadFixture: ReturnType<typeof createFixtureLoader>
-  let [signer, signer2]: Wallet[] = waffle.provider.getWallets()
+  let engineAddress: string;
 
-  before('Generate fixture loader', async function () {
-    loadFixture = createFixtureLoader([signer, signer2])
-  })
+  before(async function () {
+    await loadContext(
+      waffle.provider,
+      ['factory', 'engineCreate', 'risky', 'stable'],
+      async (signers, contracts) => {
+        await contracts.factory.create(contracts.risky.address, contracts.stable.address)
+        engineAddress = await contracts.factory.getEngine(contracts.risky.address, contracts.stable.address)
 
-  beforeEach(async function () {
-    context = await loadFixture(primitiveEngineCreateFixture)
-  })
+        await contracts.stable.mint(signers[0].address, constants.MaxUint256)
+        await contracts.risky.mint(signers[0].address, constants.MaxUint256)
+        await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
+        await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
+
+        contracts.engine = await hre.ethers.getContractAt('PrimitiveEngine', engineAddress) as ContractTypes.PrimitiveEngine
+      },
+    );
+  });
 
   describe('when the parameters are valid', function () {
     it('deploys a new pool', async function () {
-      await context.create.create(strike, sigma, time, spot)
+      await this.contracts.engineCreate.create(
+        engineAddress,
+        this.contracts.risky.address,
+        this.contracts.stable.address,
+        strike,
+        sigma,
+        time,
+        spot,
+      );
     })
 
     it('emits the Create event', async function () {
-      await expect(context.create.create(strike, sigma, time, spot))
-        .to.emit(context.primitiveEngine, 'Create')
-        .withArgs(
-          context.create.address,
-          '0x92b9da098c9dca76cf51e44da14c7c2aabadddf120c176f7e1d4d1cb6a599455',
+      await expect(
+        this.contracts.engineCreate.create(
+          engineAddress,
+          this.contracts.risky.address,
+          this.contracts.stable.address,
           strike,
           sigma,
-          time
+          time,
+          spot,
         )
+      ).to.emit(this.contracts.engine, 'Create').withArgs(
+        this.contracts.engineCreate.address,
+        '0x779eb7e81ac17d5ef91f938add39a20c598fbbb64275a3d4df6d6c2f3e03947c',
+        strike,
+        sigma,
+        time
+      )
     })
 
     it('reverts when the pool already exists', async function () {
-      await context.create.create(strike, sigma, time, spot)
-      await expect(context.create.create(strike, sigma, time, spot)).to.be.revertedWith('Already created')
+      await this.contracts.engineCreate.create(
+        engineAddress,
+        this.contracts.risky.address,
+        this.contracts.stable.address,
+        strike,
+        sigma,
+        time,
+        spot,
+      );
+      await expect(
+        this.contracts.engineCreate.create(
+          engineAddress,
+          this.contracts.risky.address,
+          this.contracts.stable.address,
+          strike,
+          sigma,
+          time,
+          spot,
+        )
+      ).to.be.revertedWith('Already created')
     })
   })
 })
