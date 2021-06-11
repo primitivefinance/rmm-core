@@ -1,17 +1,14 @@
 import { expect } from 'chai'
-import { loadFixture } from 'ethereum-waffle'
 import { BigNumber } from '../../../shared/Units'
+import { waffle } from 'hardhat'
+import loadContext from '../../context'
 
-import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
-
-describe('fee', () => {
-  let context: PrimitiveEngineFixture
-
-  beforeEach(async () => {
-    context = await loadFixture(primitiveEngineFixture)
+describe('fee', function () {
+  beforeEach(async function () {
+    await loadContext(waffle.provider, [], async function () {})
   })
 
-  it('returns the swap fee', async () => {
-    expect(await context.primitiveEngine.fee()).to.equal('30')
+  it('returns the swap fee', async function () {
+    expect(await this.contracts.engine.fee()).to.equal('30')
   })
 })

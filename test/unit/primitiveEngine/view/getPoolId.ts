@@ -1,19 +1,16 @@
 import { expect } from 'chai'
-import { loadFixture } from 'ethereum-waffle'
 import { BigNumber } from '../../../shared/Units'
+import { waffle } from 'hardhat'
+import loadContext from '../../context'
 
-import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
-
-describe('getPoolId', () => {
-  let context: PrimitiveEngineFixture
-
-  beforeEach(async () => {
-    context = await loadFixture(primitiveEngineFixture)
+describe('getPoolId', function () {
+  beforeEach(async function () {
+    await loadContext(waffle.provider, [], async function () {})
   })
 
-  it('returns the poolId given settings', async () => {
+  it('returns the poolId given settings', async function () {
     expect(
-      await context.primitiveEngine.getPoolId(
+      await this.contracts.engine.getPoolId(
         BigNumber.from(10).pow(18),
         BigNumber.from(10).pow(18),
         BigNumber.from(10).pow(18)

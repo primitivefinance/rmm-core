@@ -6,6 +6,7 @@ import { Wei, parseWei, PERCENTAGE } from '../../../shared/Units'
 import loadContext from '../../context'
 import * as ContractTypes from '../../../../typechain'
 import { Contracts } from '../../../../types'
+import { getPoolParams, PoolParams, getDeltaIn } from '../../../shared/utilities'
 
 const INITIAL_MARGIN = parseWei('1000')
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
@@ -35,7 +36,6 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
 describe('swap', function () {
   before('Generate fixture loader', async function () {
     await loadContext(waffle.provider, ['engineCreate', 'engineSwap', 'engineDeposit'], swapFragment)
-    console.log('setup context', this.contracts, this.signers)
   })
 
   describe('--swap--', function () {
@@ -44,7 +44,7 @@ describe('swap', function () {
 
     beforeEach(async function () {
       deployer = this.signers[0]
-      await this.contracts.engineCreate.create(strike, sigma, time, spot, empty)
+      await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('0.01').raw, empty)
       poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
     })
 
@@ -92,7 +92,7 @@ describe('swap', function () {
           params
         )
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-        await expect(this.functions.swapXForY(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
+        await expect(this.functions.swapXForY(poolId, true, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
           this.contracts.engine,
           EngineEvents.SWAP
         )
@@ -141,10 +141,10 @@ describe('swap', function () {
         )
 
         // TODO: Swap deltaIn amount is different from esimated deltaIn
-        await expect(this.functions.swapYForX(poolId, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
-          this.contracts.engine,
-          EngineEvents.SWAP
-        )
+        await expect(
+          this.functions.swapYForX(poolId, false, amount.raw, constants.MaxUint256, false),
+          'Engine:Swap'
+        ).to.emit(this.contracts.engine, EngineEvents.SWAP)
 
         const postReserve = await this.contracts.engine.reserves(poolId)
         //expect(postInvariant).to.be.gte(new Wei(invariant).float)
