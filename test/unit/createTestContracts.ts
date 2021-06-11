@@ -58,6 +58,14 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.engineDeposit = (await deploy('EngineDeposit', deployer)) as ContractTypes.EngineDeposit
         await initializeTestContract(loadedContracts.engineDeposit, loadedContracts)
         break
+      case 'engineWithdraw':
+        loadedContracts.engineWithdraw = (await deploy('EngineWithdraw', deployer)) as ContractTypes.EngineWithdraw
+        await initializeTestContract(loadedContracts.engineWithdraw, loadedContracts)
+        break
+      case 'engineAllocate':
+        loadedContracts.engineAllocate = (await deploy('EngineAllocate', deployer)) as ContractTypes.EngineAllocate
+        await initializeTestContract(loadedContracts.engineAllocate, loadedContracts)
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }

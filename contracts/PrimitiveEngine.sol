@@ -171,6 +171,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (uint liquidity, uint RX1, uint RY2) = (res.liquidity, res.RX1, res.RY2);
         require(liquidity > 0, "Not initialized");
 
+
         deltaX = deltaL * RX1 / liquidity;
         deltaY = deltaL * RY2 / liquidity;
         require(deltaX * deltaY > 0, "Deltas are 0");
