@@ -102,6 +102,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) external override returns(bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
+        require(dLiquidity > 0, "Liquidity cannot be 0");
         pid = getPoolId(strike, sigma, time);
 
         require(settings[pid].time == 0, "Already created");
@@ -131,7 +132,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2, data);
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
-        positions.fetch(msg.sender, pid).allocate(dLiquidity); // give liquidity to `msg.sender`
+        positions.fetch(msg.sender, pid).allocate(dLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
         allPools.push(pid);
         emit Updated(pid, RX1, RY2, block.number);
         emit Create(msg.sender, pid, strike, sigma, time);
