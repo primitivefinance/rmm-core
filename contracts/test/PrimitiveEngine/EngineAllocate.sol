@@ -20,16 +20,16 @@ contract EngineAllocate {
       stable = _stable;
     }
 
-    function allocateFromMargin(bytes32 pid, address owner, uint dLiquidity) public  {
-        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, true);
+    function allocateFromMargin(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {
+        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, true, data);
     }
 
-    function allocateFromExternal(bytes32 pid, address owner, uint dLiquidity) public  {
+    function allocateFromExternal(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, false);
+        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, false, data);
     }
 
-    function allocateCallback(uint dRisky, uint dStable) public {
+    function allocateCallback(uint dRisky, uint dStable, bytes calldata data) public {
         IERC20(risky).safeTransferFrom(CALLER, msg.sender, dRisky);
         IERC20(stable).safeTransferFrom(CALLER, msg.sender, dStable);
     }

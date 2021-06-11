@@ -11,7 +11,7 @@ import { Contracts } from '../../../../types'
 
 const INITIAL_MARGIN = parseWei('1000')
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
-
+const empty: BytesLike = constants.HashZero
 export async function createFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.factory.create(contracts.risky.address, contracts.stable.address)
   const engineAdd = await contracts.factory.getEngine(contracts.risky.address, contracts.stable.address)
@@ -36,11 +36,7 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
 
 describe('swap', function () {
   before('Generate fixture loader', async function () {
-    await loadContext(
-      waffle.provider,
-      ['factory', 'risky', 'stable', 'engine', 'engineCreate', 'engineSwap', 'engineDeposit'],
-      swapFragment
-    )
+    await loadContext(waffle.provider, ['engineCreate', 'engineSwap', 'engineDeposit'], swapFragment)
     console.log('setup context', this.contracts, this.signers)
   })
 
@@ -50,13 +46,13 @@ describe('swap', function () {
 
     beforeEach(async function () {
       deployer = this.signers[0]
-      await this.contracts.engineCreate.create(strike, sigma, time, spot)
+      await this.contracts.engineCreate.create(strike, sigma, time, spot, empty)
       poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
     })
 
     it('swaps risky for stable', async function () {
       let [pid, riskyForStable, deltaOut, deltaInMax] = [poolId, true, parseWei('0.01').raw, constants.MaxUint256]
-      await this.contracts.engineSwap.swap(pid, riskyForStable, deltaOut, deltaInMax, false)
+      await this.contracts.engineSwap.swap(pid, riskyForStable, deltaOut, deltaInMax, false, empty)
     })
 
     describe('sucess cases', function () {
@@ -75,7 +71,7 @@ describe('swap', function () {
         )
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(
-          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true),
+          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true, empty),
           'Engine:Swap'
         ).to.emit(this.contracts.engine, EngineEvents.SWAP)
 
@@ -124,7 +120,7 @@ describe('swap', function () {
 
         // TODO: Swap deltaIn amount is different from esimated deltaIn
         await expect(
-          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true),
+          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true, empty),
           'Engine:Swap'
         ).to.emit(this.contracts.engine, EngineEvents.SWAP)
 
@@ -164,7 +160,7 @@ describe('swap', function () {
         await expect(
           this.contracts.engineSwap
             .connect(this.signers[1])
-            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false)
+            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
         ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
       })
 
@@ -173,12 +169,12 @@ describe('swap', function () {
         await expect(
           this.contracts.engineSwap
             .connect(this.signers[1])
-            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false)
+            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
         ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
       })
 
       it('Fail Callee::Swap: Too expensive', async function () {
-        await expect(this.contracts.engine.swap(poolId, true, 1, 0, false)).to.be.revertedWith('Too expensive')
+        await expect(this.contracts.engine.swap(poolId, true, 1, 0, false, empty)).to.be.revertedWith('Too expensive')
       })
       it('Fail Callee::Swap: Invalid invariant', async function () {})
       it('Fail Callee::Swap: Sent too much tokens', async function () {})

@@ -22,12 +22,12 @@ contract EngineCreate {
       stable = _stable;
     }
 
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) public {
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice);
+      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, data);
     }
 
-    function createCallback(uint deltaX, uint deltaY) public {
+    function createCallback(uint deltaX, uint deltaY, bytes calldata data) public {
         IERC20(risky).safeTransferFrom(CALLER, engine, deltaX);
         IERC20(stable).safeTransferFrom(CALLER, engine, deltaY);
     }
