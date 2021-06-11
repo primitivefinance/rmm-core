@@ -38,7 +38,7 @@ export async function allocateFragment(signers: Wallet[], contracts: Contracts):
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike, sigma, time, riskyPrice, empty)
+  await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
   await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
 }

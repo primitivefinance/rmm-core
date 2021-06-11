@@ -16,11 +16,11 @@ describe('create', function () {
 
   describe('when the parameters are valid', function () {
     it('deploys a new pool', async function () {
-      await this.contracts.engineCreate.create(strike, sigma, time, spot, empty)
+      await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
     })
 
     it('emits the Create event', async function () {
-      await expect(this.contracts.engineCreate.create(strike, sigma, time, spot, empty))
+      await expect(this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty))
         .to.emit(this.contracts.engine, 'Create')
         .withArgs(
           this.contracts.engineCreate.address,
@@ -32,10 +32,10 @@ describe('create', function () {
     })
 
     it('reverts when the pool already exists', async function () {
-      await this.contracts.engineCreate.create(strike, sigma, time, spot, empty)
-      await expect(this.contracts.engineCreate.create(strike, sigma, time, spot, empty)).to.be.revertedWith(
-        'Already created'
-      )
+      await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
+      await expect(
+        this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
+      ).to.be.revertedWith('Already created')
     })
   })
 })

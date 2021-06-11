@@ -29,7 +29,7 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
     }
 
     function create(address engine, uint strike, uint sigma, uint time, uint spot, bytes calldata data) external useRef(setCaller()) {
-        IPrimitiveEngine(engine).create(strike, sigma, time, spot, data);
+        IPrimitiveEngine(engine).create(strike, sigma, time, spot, 1e18, data);
     }
 
     /// @notice Swaps on the Engine and asserts the balances after
