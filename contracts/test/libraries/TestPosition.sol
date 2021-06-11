@@ -11,88 +11,106 @@ contract TestPosition {
     using Position for Position.Data;
     using Position for mapping(bytes32 => Position.Data);
 
-    /// @notice Store for testing
-    Position.Data public pos;
+    /// @notice Storage slot for position id for unit tests
+    bytes32 public posId;
 
     /// @notice Stores position data structs using a bytes32 positionId key
     mapping(bytes32 => Position.Data) public positions;
 
-    /// @notice Manpiulates a `pos` storage slot for easy testing
-    function edit(Position.Data memory data, bytes32 posId) public {
-        pos = positions[posId];
-        pos.balanceRisky = data.balanceRisky;
-        pos.balanceStable = data.balanceStable;
-        pos.liquidity = data.liquidity;
-        pos.float = data.float;
+    constructor () {}
+
+    /// @notice Used for testing
+    function pos() public view returns (Position.Data memory) {
+        return positions[posId];
+    }
+
+
+    /// @notice Called before each unit test
+    function beforeEach(bytes32 poolId, uint liquidity) public {
+        posId = Position.getPositionId(msg.sender, poolId);
+        positions[posId] = Position.Data({
+            balanceRisky: 0,
+            balanceStable: 0,
+            float: 0,
+            liquidity: uint128(liquidity), // init with {liquidity} units of liquidity
+            debt: 0
+        });
+
+        Position.Data memory pos = positions.fetch(msg.sender, poolId);
+        assert(pos.liquidity == uint128(liquidity));
     }
 
     /// @return The position storage item
-    function shouldFetch(address where, address owner, bytes32 pid) public view returns (Position.Data memory) {
-        return _shouldFetch(where, owner, pid);
+    function shouldFetch(address owner, bytes32 poolId) public view returns (Position.Data memory) {
+        return _shouldFetch(owner, poolId);
     }
 
-    function _shouldFetch(address where, address owner, bytes32 pid) internal view returns (Position.Data memory) {
-        return positions.fetch(owner, pid);
+    function _shouldFetch(address owner, bytes32 poolId) internal view returns (Position.Data memory) {
+        return positions.fetch(owner, poolId);
     }
 
     /// @notice Increments a position's liquidity
-    /* function shouldAllocate(bytes32 pid, uint amount) public returns (Position.Data memory) {
-        pos = positions[pid];
-        int256 pre = int256(pos.liquidity);
-        positions[pid].allocate(amount);
-        int256 post = int256(pos.liquidity);
-        assert(post - amount >= pre);
+    function shouldAllocate(bytes32 poolId, uint amount) public returns (Position.Data memory) {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = pos.liquidity;
+        positions.fetch(msg.sender, poolId).allocate(amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 post = pos.liquidity;
+        assert(post - uint128(amount) >= pre);
     }
 
     /// @notice Decrements a position's liquidity
-    function shouldRemove(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
-        pos = _shouldFetch(where, msg.sender, pid);
-        int256 pre = int256(pos.liquidity);
-        positions.remove(pid, amount);
-        int256 post = int256(pos.liquidity);
-        assert(post + amount >= pre);
+    function shouldRemove(bytes32 poolId, uint amount) public {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = (pos.liquidity);
+        positions.remove(poolId, amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 post = (pos.liquidity);
+        assert(post + uint128(amount) >= pre);
     }
 
     /// @notice Increments debt and balanceRisky for a position
-    function shouldBorrow(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
-        pos = _shouldFetch(where, msg.sender, pid);
-        int256 pre = int256(pos.liquidity);
-        positions.borrow(where, pid, amount);
-        int256 post = int256(pos.liquidity);
-        assert(post - amount >= pre);
-        assert(pos.balanceRisky >= amount);
+    function shouldBorrow(bytes32 poolId, uint amount) public {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = pos.balanceRisky;
+        positions.borrow(poolId, amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 post = pos.balanceRisky;
+        assert(post >= uint128(amount) + pre);
     }
 
     /// @notice Increments a position's float
-    function shouldLend(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
-        pos = _shouldFetch(where, msg.sender, pid);
-        uint pre = pos.float;
-        positions.lend(where, pid, amount);
-        uint post = pos.float;
-        assert(post - amount >= pre);
+    function shouldLend(bytes32 poolId, uint amount) public {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = pos.float;
+        positions.lend(poolId, amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 post = pos.float;
+        assert(post - uint128(amount) >= pre);
     }
 
     /// @notice Decrements a positions float
-    function shouldClaim(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
-        pos = _shouldFetch(where, msg.sender, pid);
-        uint pre = pos.float;
-        positions.borrow(where, pid, amount);
-        uint post = pos.float;
-        assert(post + amount >= pre);
+    function shouldClaim(bytes32 poolId, uint amount) public {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = pos.float;
+        positions.claim(poolId, amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 post = pos.float;
+        assert(post + uint128(amount) >= pre);
     }
 
     /// @notice Decrements a position's debt by reducing its liquidity
-    function shouldRepay(bytes32 pid, address where, uint amount) public returns(Position.Data memory) {
-        pos = _shouldFetch(where, msg.sender, pid);
-        int256 pre = int256(pos.liquidity);
-        positions.borrow(where, pid, amount);
-        int256 post =int256( pos.liquidity);
-        assert(post + amount >= pre);
-        assert(pos.balanceRisky >= post);
-    } */
+    function shouldRepay(bytes32 poolId, uint amount) public {
+        Position.Data memory pos = _shouldFetch(msg.sender, poolId);
+        uint128 pre = pos.debt;
+        positions.fetch(msg.sender, poolId).repay(amount);
+        pos = _shouldFetch(msg.sender, poolId);
+        uint128 debt = pos.debt;
+        assert(debt + uint128(amount) >= pre);
+    }
 
-    /// @return posId The keccak256 hash of `where` `owner` and `pid` is the position id
-    function shouldGetPositionId(address where, address owner, bytes32 pid) public pure returns (bytes32 posId) {
-        posId = Position.getPositionId(owner, pid);
+    /// @return positionId The keccak256 hash of `where` `owner` and `poolId` is the position id
+    function shouldGetPositionId(address owner, bytes32 poolId) public pure returns (bytes32 positionId) {
+        positionId = Position.getPositionId(owner, poolId);
     }
 }

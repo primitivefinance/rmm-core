@@ -69,6 +69,7 @@ library Position {
     /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
     function repay(Data storage position, uint deltaL) internal returns (Data storage) {
         position.liquidity -= uint128(deltaL);
+        // FIX: Contract too large, position.debt -= uint128(deltaL);
         return position;
     }
 

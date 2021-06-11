@@ -10,6 +10,7 @@ import { HardhatUserConfig } from 'hardhat/config'
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
+      blockGasLimit: 12500000,
     },
   },
   solidity: {
@@ -31,6 +32,6 @@ const config: HardhatUserConfig = {
     cache: './cache',
     artifacts: './artifacts',
   },
-};
+}
 
-export default config;
+export default config
