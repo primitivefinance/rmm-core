@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/IPrimitiveEngine.sol";
+import "../../interfaces/IERC20.sol";
 
 contract EngineAllocate {
-    using SafeERC20 for IERC20;
-
     address public engine;
     address public risky;
     address public stable;
@@ -30,15 +28,15 @@ contract EngineAllocate {
     }
 
     function allocateCallback(uint dRisky, uint dStable, bytes calldata data) public {
-        IERC20(risky).safeTransferFrom(CALLER, msg.sender, dRisky);
-        IERC20(stable).safeTransferFrom(CALLER, msg.sender, dStable);
+        IERC20(risky).transferFrom(CALLER, msg.sender, dRisky);
+        IERC20(stable).transferFrom(CALLER, msg.sender, dStable);
     }
 
     function getPosition(bytes32 pid) public view returns(bytes32 posid) {
         posid = keccak256(abi.encodePacked(address(this), pid));
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
       return "EngineAllocate";
     }
 }

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../interfaces/IPrimitiveEngine.sol";
+import "../../interfaces/IERC20.sol";
 
 contract EngineSwap {
-    using SafeERC20 for IERC20;
-
     address public engine;
     address public risky;
     address public stable;
@@ -25,11 +23,11 @@ contract EngineSwap {
     }
 
     function swapCallback(uint deltaX, uint deltaY, bytes calldata data) public {
-        IERC20(risky).safeTransferFrom(CALLER, engine, deltaX);
-        IERC20(stable).safeTransferFrom(CALLER, engine, deltaY);
+        IERC20(risky).transferFrom(CALLER, engine, deltaX);
+        IERC20(stable).transferFrom(CALLER, engine, deltaY);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
       return "EngineSwap";
     }
 }
