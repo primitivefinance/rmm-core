@@ -2,6 +2,8 @@ import { BigNumberish } from '../shared/Units'
 import { constants, Wallet, Transaction, BytesLike } from 'ethers'
 import { Contracts, Functions, ContractName } from '../../types'
 
+const empty: BytesLike = constants.HashZero
+
 export default function createEngineFunctions(
   contracts: ContractName[],
   loadedContracts: Contracts,
@@ -22,7 +24,7 @@ export default function createEngineFunctions(
         ): Promise<Transaction> => {
           await loadedContracts.risky.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          return loadedContracts.engineSwap.swap(pid, addXRemoveY, deltaOut, deltaInMax, fromMargin)
+          return loadedContracts.engineSwap.swap(pid, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
         }
 
         loadedFunctions.swapXForY = (
@@ -59,7 +61,7 @@ export default function createEngineFunctions(
           }
           await loadedContracts.risky.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
-          return loadedContracts.engineDeposit.deposit(deployer.address, deltaX, deltaY)
+          return loadedContracts.engineDeposit.deposit(deployer.address, deltaX, deltaY, empty)
         }
         break
       default:
