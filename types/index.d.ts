@@ -21,6 +21,7 @@ export interface Contracts {
   engineAllocate: ContractTypes.EngineAllocate
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
+  engineRemove: ContractTypes.EngineRemove
 }
 
 export interface Mocks {
@@ -47,3 +48,4 @@ type ContractName =
   | 'engineAllocate'
   | 'factoryCreate'
   | 'factoryDeploy'
+  | 'engineRemove'
