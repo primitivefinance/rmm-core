@@ -66,15 +66,15 @@ contract PrimitiveHouse is IPrimitiveHouse {
         require(address(uniPool) != address(0), "POOL UNINITIALIZED");
     }
 
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) public override lock useCallerContext {
-      engine.create(strike, sigma, time, riskyPrice);
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) public override lock useCallerContext {
+      engine.create(strike, sigma, time, riskyPrice, 1e18, data);
     }
 
     /**
      * @notice Adds deltaX and deltaY to internal balance of `msg.sender`.
      */
-    function deposit(address owner, uint deltaX, uint deltaY) public override lock useCallerContext {
-        engine.deposit(address(this), deltaX, deltaY);
+    function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) public override lock useCallerContext {
+        engine.deposit(address(this), deltaX, deltaY, data);
 
         // Update Margin state
         Margin.Data storage mar = _margins[owner];
@@ -96,23 +96,23 @@ contract PrimitiveHouse is IPrimitiveHouse {
     /**
      * @notice Adds deltaL to global liquidity factor.
      */
-    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true);
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL, bytes calldata data) public override lock useCallerContext {
+        (uint deltaX, uint deltaY) = engine.allocate(pid, address(this),  deltaL, true, data);
 
         _margins.withdraw(deltaX, deltaY);
         Position.Data storage pos = _positions.fetch(owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
-    function allocateFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        engine.allocate(pid, address(this),  deltaL, false);
+    function allocateFromExternal(bytes32 pid, address owner, uint deltaL, bytes calldata data) public override lock useCallerContext {
+        engine.allocate(pid, address(this),  deltaL, false, data);
 
         Position.Data storage pos = _positions.fetch(owner, pid);
         pos.allocate(deltaL); // Update position liquidity
     }
 
-    function repayFromExternal(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, false);
+    function repayFromExternal(bytes32 pid, address owner, uint deltaL, bytes calldata data) public override lock useCallerContext {
+        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, false, data);
 
         Position.Data storage pos = _positions.fetch(owner, pid);
         pos.repay(deltaL);
@@ -122,8 +122,8 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
     }
 
-    function repayFromMargin(bytes32 pid, address owner,  uint deltaL) public override lock useCallerContext {
-        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, true);
+    function repayFromMargin(bytes32 pid, address owner,  uint deltaL, bytes calldata data) public override lock useCallerContext {
+        (uint deltaRisky,) = engine.repay(pid, address(this), deltaL, true, data);
 
 
         Position.Data storage pos = _positions.fetch(owner, pid);
@@ -134,8 +134,8 @@ contract PrimitiveHouse is IPrimitiveHouse {
 
     }
 
-    function borrow(bytes32 pid, address owner, uint deltaL) public override lock useCallerContext {
-      engine.borrow(pid, address(this), deltaL, type(uint256).max);
+    function borrow(bytes32 pid, address owner, uint deltaL, bytes calldata data) public override lock useCallerContext {
+      engine.borrow(pid, address(this), deltaL, type(uint256).max, data);
       
       _positions.borrow(pid, deltaL);
     }
@@ -149,46 +149,46 @@ contract PrimitiveHouse is IPrimitiveHouse {
         _positions.lend(pid, deltaL);
     }
 
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax) public override lock {
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax, bytes calldata data) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax, true);
+        engine.swap(pid, addXRemoveY, deltaOut, deltaInMax, true, data);
     }
 
     function swapXForY(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, true, deltaOut, type(uint256).max, true);
+        engine.swap(pid, true, deltaOut, type(uint256).max, true, new bytes(0));
     }
 
     function swapYForX(bytes32 pid, uint deltaOut) public override lock {
         CALLER = msg.sender;
-        engine.swap(pid, false, deltaOut, type(uint256).max, true);
+        engine.swap(pid, false, deltaOut, type(uint256).max, true, new bytes(0));
     }
     
     // ===== Callback Implementations =====
-    function createCallback(uint deltaX, uint deltaY) public override executionLock {
+    function createCallback(uint deltaX, uint deltaY, bytes calldata data) public override executionLock {
         if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function depositCallback(uint deltaX, uint deltaY) public override executionLock {
+    function depositCallback(uint deltaX, uint deltaY, bytes calldata data) public override executionLock {
         if (deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if (deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function allocateCallback(uint deltaX, uint deltaY) public override executionLock {
+    function allocateCallback(uint deltaX, uint deltaY, bytes calldata data) public override executionLock {
         if(deltaX > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function removeCallback(uint deltaX, uint deltaY) public override executionLock {
+    function removeCallback(uint deltaX, uint deltaY, bytes calldata data) public override executionLock {
         if(deltaX > 0) IERC20(engine.risky()).safeTransferFrom(CALLER, msg.sender, deltaX);
         if(deltaY > 0) IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaY);
     }
 
-    function swapCallback(uint deltaX, uint deltaY) public override {
+    function swapCallback(uint deltaX, uint deltaY, bytes calldata data) public override {
     }
 
-    function borrowCallback(uint deltaL, uint deltaX, uint deltaY) public override executionLock {
+    function borrowCallback(uint deltaL, uint deltaX, uint deltaY, bytes calldata data) public override executionLock {
       uint preBY2 = stable.balanceOf(address(this));
 
       bytes memory placeholder = "0x";
@@ -218,7 +218,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     */
     }
 
-    function repayFromExternalCallback(uint deltaStable) public override {
+    function repayFromExternalCallback(uint deltaStable, bytes calldata data) public override {
       IERC20(engine.stable()).safeTransferFrom(CALLER, msg.sender, deltaStable);
     }
 
