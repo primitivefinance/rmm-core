@@ -4,6 +4,6 @@ pragma solidity 0.8.0;
 import "../../libraries/Position.sol";
 
 interface IPrimitiveLendingCallback {
-    function borrowCallback(uint deltaL, uint deltaRisky, uint deltaStable) external;
-    function repayFromExternalCallback(uint deltaStable) external;
+    function borrowCallback(uint deltaL, uint deltaRisky, uint deltaStable, bytes calldata data) external;
+    function repayFromExternalCallback(uint deltaStable, bytes calldata data) external;
 }

@@ -100,7 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) external override returns(bytes32 pid) {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) external override returns(bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
         pid = getPoolId(strike, sigma, time);
 
@@ -128,7 +128,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint balanceX = balanceRisky();
         uint balanceY = balanceStable();
-        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2);
+        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2, data);
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
     
@@ -140,10 +140,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Margin =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function deposit(address owner, uint deltaX, uint deltaY) external override returns (bool) {
+    function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) external override returns (bool) {
         uint balanceX = balanceRisky();
         uint balanceY = balanceStable();
-        IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY); // receive tokens
+        IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY, data); // receive tokens
         if(deltaX > 0) require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
         if(deltaY > 0) require(balanceStable() >= balanceY + deltaY, "Not enough stable");
     
@@ -166,7 +166,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Liquidity =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin, bytes calldata data) public lock(pid) override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         (uint liquidity, uint RX1, uint RY2) = (res.liquidity, res.RX1, res.RY2);
         require(liquidity > 0, "Not initialized");
@@ -183,7 +183,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             uint balanceX = balanceRisky();
             uint balanceY = balanceStable();
-            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(deltaX, deltaY);
+            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(deltaX, deltaY, data);
             require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
             require(balanceStable() >= balanceY + deltaY, "Not enough stable");
         }
@@ -198,7 +198,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) public lock(pid) override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
@@ -224,7 +224,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint balanceY = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, deltaX);
             IERC20(stable).safeTransfer(msg.sender, deltaY);
-            IPrimitiveLiquidityCallback(msg.sender).removeCallback(deltaX, deltaY);
+            IPrimitiveLiquidityCallback(msg.sender).removeCallback(deltaX, deltaY, data);
             require(balanceRisky() >= balanceX - deltaX, "Not enough risky");
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
@@ -238,7 +238,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev     If `riskyForStable` is true, we request Y out, and must add X to the pool's reserves.
     ///         Else, we request X out, and must add Y to the pool's reserves.
-    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin) public override returns (uint deltaIn) {
+    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin, bytes calldata data) public override returns (uint deltaIn) {
         bytes32 poolId = pid; // avoids stack too deep errors
         int128 invariant = invariantOf(poolId); // gas savings
         Reserve.Data storage res = reserves[poolId]; // gas savings
@@ -282,7 +282,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             if(swapYOut) {
                 uint balanceX = balanceRisky();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(amountIn, 0);
+                IPrimitiveSwapCallback(msg.sender).swapCallback(amountIn, 0, data);
                 require(balanceRisky() >= balanceX + amountIn, "Not enough risky");
 
                 uint balanceY = balanceStable();
@@ -290,7 +290,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 require(balanceStable() >= balanceY - amountOut, "Sent too much tokens");
             } else {
                 uint balanceY = balanceStable();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(0 ,amountIn);
+                IPrimitiveSwapCallback(msg.sender).swapCallback(0 ,amountIn, data);
                 require(balanceStable() >= balanceY + amountIn, "Not enough risky");
 
 
@@ -333,7 +333,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium) public lock(pid) override returns (bool) {
+    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium, bytes calldata data) public lock(pid) override returns (bool) {
         Reserve.Data storage res = reserves[pid];
         require(res.float >= deltaL && deltaL > 0, "Insufficient float"); // fail early if not enough float to borrow
 
@@ -346,7 +346,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         
         // trigger callback before position debt is increased, so liquidity can be removed
         IERC20(stable).safeTransfer(msg.sender, deltaY);
-        IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY); // trigger the callback so we can remove liquidity
+        IPrimitiveLendingCallback(msg.sender).borrowCallback(deltaL, deltaX, deltaY, data); // trigger the callback so we can remove liquidity
         positions.borrow(pid, deltaL); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `deltaL`
         res.remove(deltaX, deltaY, deltaL);
@@ -365,7 +365,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(owner, pid);
         Margin.Data storage margin = margins[owner];
@@ -387,7 +387,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
           pos.repay(deltaL);
         } else {
           uint preStable = IERC20(stable).balanceOf(address(this));
-          IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable);
+          IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable, data);
 
           require(
             IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable,
