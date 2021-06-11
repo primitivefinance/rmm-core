@@ -1,7 +1,7 @@
 import { parseWei, fromInt, fromMantissa } from './Units'
 import { constants, Transaction, BytesLike, BigNumberish, BigNumber, Wallet } from 'ethers'
 import { getTradingFunction } from './ReplicationMath'
-import { IERC20, TestCallee, PrimitiveEngine, TestBlackScholes, TestEngineSwap, Token } from '../../typechain'
+import { IERC20, PrimitiveEngine, TestBlackScholes, TestEngineSwap, Token } from '../../typechain'
 import {
   Calibration,
   Reserve,

@@ -20,12 +20,12 @@ contract EngineDeposit {
       stable = _stable;
     }
 
-    function deposit(address owner, uint256 dRisky, uint256 dStable) public { 
+    function deposit(address owner, uint256 dRisky, uint256 dStable, bytes calldata data) public { 
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).deposit(owner, dRisky, dStable);
+      IPrimitiveEngine(engine).deposit(owner, dRisky, dStable, data);
     }
 
-    function depositCallback(uint256 dRisky, uint256 dStable) public {
+    function depositCallback(uint256 dRisky, uint256 dStable, bytes calldata data) public {
         IERC20(risky).safeTransferFrom(CALLER, engine, dRisky);
         IERC20(stable).safeTransferFrom(CALLER, engine, dStable);
     }

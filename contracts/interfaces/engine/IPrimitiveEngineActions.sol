@@ -12,7 +12,7 @@ interface IPrimitiveEngineActions {
     /// @param  time   The time until expiry of the option to calibrate to
     /// @param  riskyPrice  The amount of stable tokens required to purchase 1 unit of the risky token, spot price
     /// @return pid The keccak256 hash of the parameters strike, sigma, and time, use to identify this option
-    function create(uint strike, uint sigma, uint time, uint riskyPrice) external returns (bytes32 pid);
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) external returns (bytes32 pid);
     
     // Liquidity
     /// @notice Allocates risky and stable tokens to a specific curve with `pid`
@@ -22,12 +22,12 @@ interface IPrimitiveEngineActions {
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @return deltaX  The amount of risky tokens that were allocated
     /// deltaY  The amount of stable tokens that were allocated
-    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin) external returns (uint, uint);
+    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin, bytes calldata data) external returns (uint, uint);
 
     /// @notice Unallocates risky and stable tokens from a specific curve with `pid`
     /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @return Documents the return variables of a contract’s function state variable
-    function remove(bytes32 pid, uint deltaL, bool fromMargin) external returns (uint, uint);
+    function remove(bytes32 pid, uint deltaL, bool fromMargin, bytes calldata data) external returns (uint, uint);
 
     // Swaps
     /// @notice Swaps risky or stable tokens
@@ -37,7 +37,7 @@ interface IPrimitiveEngineActions {
     /// @param  deltaInMax  The max amount of tokens paid for the swap
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @return deltaIn The amount of either stable or risky tokens that were sent into this contract as payment
-    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax, bool fromMargin) external returns (uint deltaIn);
+    function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint deltaInMax, bool fromMargin, bytes calldata data) external returns (uint deltaIn);
 
     // Margin
     /// @notice Adds risky and/or stable tokens to a `msg.sender`'s internal balance account
@@ -45,7 +45,7 @@ interface IPrimitiveEngineActions {
     /// @param  deltaX  The amount of risky tokens to deposit
     /// @param  deltaY  The amount of stable tokens to deposit
     /// @return Whether the deposit call was successful or not
-    function deposit(address owner, uint deltaX, uint deltaY) external returns (bool);
+    function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) external returns (bool);
 
     /// @notice Removes risky and/or stable tokens from a `msg.sender`'s internal balance account
     /// @param  deltaX  The amount of risky tokens to withdraw
@@ -72,7 +72,7 @@ interface IPrimitiveEngineActions {
     /// @param  deltaL  The amount of liquidity to borrow and add as debt
     /// @param  maxPremium  The max amount of `premium` that can be collected from the `msg.sender` to collateralize the position
     /// @return Whether the call was successful or not
-    function borrow(bytes32 pid, address owner, uint deltaL, uint maxPremium) external returns (bool);
+    function borrow(bytes32 pid, address owner, uint deltaL, uint maxPremium, bytes calldata data) external returns (bool);
 
     /// @notice Reduces the `msg.sender`'s position's liquidity value and also reduces the same to the debt value.
     /// @param  pid     The keccak hash of the option parameters of a curve to interact with
@@ -80,5 +80,5 @@ interface IPrimitiveEngineActions {
     /// @param  deltaL  The amount of liquidity to borrow and add as debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @return Whether the call was successful or not
-    function repay(bytes32 pid, address owner, uint deltaL, bool fromMargin) external returns (uint, uint);
+    function repay(bytes32 pid, address owner, uint deltaL, bool fromMargin, bytes calldata data) external returns (uint, uint);
 }
