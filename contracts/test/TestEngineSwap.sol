@@ -28,15 +28,15 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
         stableBalance = IERC20(IPrimitiveEngine(engine).stable()).balanceOf(CALLER);
     }
 
-    function create(address engine, uint strike, uint sigma, uint time, uint spot) external useRef(setCaller()) {
-        IPrimitiveEngine(engine).create(strike, sigma, time, spot);
+    function create(address engine, uint strike, uint sigma, uint time, uint spot, bytes calldata data) external useRef(setCaller()) {
+        IPrimitiveEngine(engine).create(strike, sigma, time, spot, data);
     }
 
     /// @notice Swaps on the Engine and asserts the balances after
-    function shouldSwap(address engine, bytes32 pid, bool addXRemoveY, uint amount, uint maxAmount) external useRef(setCaller()) returns(uint deltaIn) {
+    function shouldSwap(address engine, bytes32 pid, bool addXRemoveY, uint amount, uint maxAmount, bytes calldata data) external useRef(setCaller()) returns(uint deltaIn) {
         uint preX = getRiskyBalance(engine);
         uint preY = getStableBalance(engine);
-        (deltaIn) = IPrimitiveEngine(engine).swap(pid, addXRemoveY, amount, maxAmount, false);
+        (deltaIn) = IPrimitiveEngine(engine).swap(pid, addXRemoveY, amount, maxAmount, false, data);
         uint postX = getRiskyBalance(engine);
         uint postY = getStableBalance(engine);
 
@@ -45,7 +45,7 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
     }
 
     /// @notice Triggered during an Engine swap, pays for the swap with tokens from `CALLER`
-    function swapCallback(uint deltaX, uint deltaY) external override inRef {
+    function swapCallback(uint deltaX, uint deltaY, bytes calldata data) external override inRef {
         if(deltaX > 0) {
             IERC20(IPrimitiveEngine(msg.sender).risky()).transferFrom(CALLER, msg.sender, deltaX);
         }
@@ -54,7 +54,7 @@ contract TestEngineSwap is IPrimitiveSwapCallback, useRef {
         }
     } 
 
-    function createCallback(uint deltaX, uint deltaY) external inRef {
+    function createCallback(uint deltaX, uint deltaY, bytes calldata data) external inRef {
         if(deltaX > 0) {
             IERC20(IPrimitiveEngine(msg.sender).risky()).transferFrom(CALLER, msg.sender, deltaX);
         }

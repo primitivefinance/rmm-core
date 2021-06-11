@@ -19,12 +19,12 @@ contract EngineSwap {
       stable = _stable;
     }
 
-    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin) public { 
+    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin, bytes calldata data) public { 
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, deltaInMax, fromMargin);
+      IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, deltaInMax, fromMargin, data);
     }
 
-    function swapCallback(uint deltaX, uint deltaY) public {
+    function swapCallback(uint deltaX, uint deltaY, bytes calldata data) public {
         IERC20(risky).safeTransferFrom(CALLER, engine, deltaX);
         IERC20(stable).safeTransferFrom(CALLER, engine, deltaY);
     }
