@@ -20,8 +20,8 @@ contract EngineAllocate {
       stable = _stable;
     }
 
-    function allocateFromMargin(bytes32 pid, address owner, uint dLiquidity) public  {
-        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, true);
+    function allocateFromMargin(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {
+        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, true, data);
     }
 
     function allocateFromExternal(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {

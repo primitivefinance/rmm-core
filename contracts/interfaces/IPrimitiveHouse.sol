@@ -23,10 +23,10 @@ interface IPrimitiveHouse is
     function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) external;
     function withdraw(uint deltaX, uint deltaY) external;
     function borrow(bytes32 pid, address owner, uint deltaL, bytes calldata data) external;
-    function allocateFromMargin(bytes32 pid, address owner, uint deltaL) external;
+    function allocateFromMargin(bytes32 pid, address owner, uint deltaL, bytes calldata data) external;
     function allocateFromExternal(bytes32 pid, address owner, uint deltaL, bytes calldata data) external;
     function repayFromExternal(bytes32 pid, address owner, uint deltaL, bytes calldata data) external;
-    function repayFromMargin(bytes32 pid, address owner, uint deltaL) external;
+    function repayFromMargin(bytes32 pid, address owner, uint deltaL, bytes calldata data) external;
     // Swap
     function swap(bytes32 pid, bool addXRemoveY, uint deltaOut, uint maxDeltaIn, bytes calldata data) external;
     function swapXForY(bytes32 pid, uint deltaOut) external;
