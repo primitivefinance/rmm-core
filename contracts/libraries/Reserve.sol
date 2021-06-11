@@ -6,8 +6,6 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     This library holds the data structure for an Engine's Reserves.
 
-import "hardhat/console.sol";
-
 library Reserve {
     // An Engine has two reserves of RISKY and RISK-FREE assets, X and Y, and total liquidity shares.
     struct Data {
