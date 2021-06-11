@@ -1,16 +1,13 @@
 import { expect } from 'chai'
-import { loadFixture } from 'ethereum-waffle'
+import { BigNumber } from '../../../shared/Units'
+import { waffle } from 'hardhat'
+import loadContext from '../../context'
 
-import { primitiveEngineFixture, PrimitiveEngineFixture } from '../../fixtures'
-
-describe('owner', () => {
-  let context: PrimitiveEngineFixture
-
-  beforeEach(async () => {
-    context = await loadFixture(primitiveEngineFixture)
+describe('owner', function () {
+  beforeEach(async function () {
+    await loadContext(waffle.provider, [], async function () {})
   })
-
-  it('returns the deployer of the contract as the owner', async () => {
-    expect(await context.primitiveEngine.risky()).to.equal(context.risky.address)
+  it('returns the deployer of the contract as the owner', async function () {
+    expect(await this.contracts.engine.risky()).to.equal(this.contracts.risky.address)
   })
 })

@@ -11,7 +11,6 @@ export interface Functions {
 
 export interface Contracts {
   engine: ContractTypes.PrimitiveEngine
-  house: ContractTypes.PrimitiveHouse
   factory: ContractTypes.PrimitiveFactory
   risky: ContractTypes.Token
   stable: ContractTypes.Token
@@ -28,7 +27,6 @@ export interface Mocks {
   risky: MockContract
   stable: MockContract
   engine: MockContract
-  house: MockContract
   factory: MockContract
 }
 

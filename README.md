@@ -10,17 +10,13 @@ This repository has a bug bounty through Immunefi. Details are on their website 
 
 The contract documentation is hosted here: [Primitive Docs](https://docs.primitive.finance)
 
-## Overview
+# Contracts
 
-This repository has three main contracts: Factory, Engine, and House.
+This repository has two contracts: PrimitiveFactory and PrimitiveEngine
 
 ### Factory
 
 The Factory contract is responsible for deploying new Engine contracts.
-
-### House
-
-The House contract is a higher-level contract that is designed to interact with the Engine on behalf of users.
 
 ### Engine
 
