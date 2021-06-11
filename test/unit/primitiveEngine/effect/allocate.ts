@@ -42,5 +42,19 @@ describe('allocate', function () {
         BigNumber.from('0'),
       ])
     })
+
+    it('fails to allocate liquidity when margin is insufficient', async function () {
+      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(
+        this.contracts.engineAllocate.allocateFromMargin(pid, this.contracts.engineAllocate.address, parseWei('10000').raw)
+      ).to.be.reverted
+    })
+
+    it('fails to allocate liquidity when external balances are insufficient', async function () {
+      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(
+        this.contracts.engineAllocate.allocateFromExternal(pid, this.contracts.engineAllocate.address, parseWei('10000').raw)
+      ).to.be.reverted
+    })
   })
 })
