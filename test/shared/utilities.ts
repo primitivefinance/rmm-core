@@ -5,32 +5,10 @@ import { Contract } from '@ethersproject/contracts'
 
 import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
 
-import { IUniswapV3Factory, IERC20 } from '../../typechain'
-
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 })
-
-export function encodePriceSqrt(reserve1: BigNumberish, reserve0: BigNumberish): BigNumber {
-  return BigNumber.from(
-    new bn(reserve1.toString()).div(reserve0.toString()).sqrt().multipliedBy(new bn(2).pow(96)).integerValue(3).toString()
-  )
-}
 
 export function expandTo18Decimals(n: number): BigNumber {
   return BigNumber.from(n).mul(BigNumber.from(10).pow(18))
-}
-
-export const getMinTick = (tickSpacing: number) => Math.ceil(-887272 / tickSpacing) * tickSpacing
-export const getMaxTick = (tickSpacing: number) => Math.floor(887272 / tickSpacing) * tickSpacing
-
-export const deriveUniPoolAddress = async (factory: IUniswapV3Factory, fee: BigNumberish, tokens: Array<IERC20>) => {
-  const [t0, t1] = tokens
-
-  const poolAddr =
-    t0.address.toLowerCase() < t1.address.toLowerCase()
-      ? await factory.getPool(t0.address, t1.address, fee)
-      : await factory.getPool(t1.address, t0.address, fee)
-
-  return poolAddr
 }
 
 export function allocate(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
