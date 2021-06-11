@@ -1,5 +1,5 @@
 import { std_n_cdf } from './CumulativeNormalDistribution'
-import { Calibration } from './Engine'
+import { Calibration } from './utilities'
 import { YEAR, PERCENTAGE, Wei, formatEther } from './Units'
 
 export function calculateD1(cal: Calibration, assetPrice: Wei): number {
