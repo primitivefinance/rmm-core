@@ -67,7 +67,7 @@ contract PrimitiveHouse is IPrimitiveHouse {
     }
 
     function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) public override lock useCallerContext {
-      engine.create(strike, sigma, time, riskyPrice, data);
+      engine.create(strike, sigma, time, riskyPrice, 1e18, data);
     }
 
     /**

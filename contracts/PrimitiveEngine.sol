@@ -100,7 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) external override returns(bytes32 pid) {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) external override returns(bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
         pid = getPoolId(strike, sigma, time);
 
@@ -115,9 +115,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint RX1 = uint(1).fromUInt().sub(delta).parseUnits();
         uint RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
-            RX1: RX1, // risky token balance
-            RY2: RY2, // stable token balance
-            liquidity: 1e18, // 1 unit
+            RX1: RX1 * dLiquidity / 1e18, // risky token balance
+            RY2: RY2 * dLiquidity / 1e18, // stable token balance
+            liquidity: dLiquidity, // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
             debt: 0, // the LP shares borrowed from the float
             cumulativeRisky: 0,
@@ -131,7 +131,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2, data);
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
-    
+        positions.fetch(msg.sender, pid).allocate(dLiquidity); // give liquidity to `msg.sender`
         allPools.push(pid);
         emit Updated(pid, RX1, RY2, block.number);
         emit Create(msg.sender, pid, strike, sigma, time);

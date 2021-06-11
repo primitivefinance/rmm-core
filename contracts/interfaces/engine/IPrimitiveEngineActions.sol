@@ -11,8 +11,9 @@ interface IPrimitiveEngineActions {
     /// @param  sigma  The volatility of the option to calibrate to
     /// @param  time   The time until expiry of the option to calibrate to
     /// @param  riskyPrice  The amount of stable tokens required to purchase 1 unit of the risky token, spot price
+    /// @param  dLiquidity Amount of liquidity to initialize the pool with
     /// @return pid The keccak256 hash of the parameters strike, sigma, and time, use to identify this option
-    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) external returns (bytes32 pid);
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) external returns (bytes32 pid);
     
     // Liquidity
     /// @notice Allocates risky and stable tokens to a specific curve with `pid`
