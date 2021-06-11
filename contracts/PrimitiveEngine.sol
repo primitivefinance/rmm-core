@@ -217,6 +217,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Updated state
         if(isInternal) {
             Margin.Data storage margin = margins[msg.sender];
+            console.log('here!!!!!');
             margin.deposit(deltaX, deltaY);
         } else {
             uint balanceX = balanceRisky();
