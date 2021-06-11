@@ -22,9 +22,9 @@ contract EngineCreate {
       stable = _stable;
     }
 
-    function create(uint strike, uint sigma, uint time, uint riskyPrice, bytes calldata data) public {
+    function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) public {
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, data);
+      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, dLiquidity, data);
     }
 
     function createCallback(uint deltaX, uint deltaY, bytes calldata data) public {
