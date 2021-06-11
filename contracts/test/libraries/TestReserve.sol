@@ -10,7 +10,11 @@ import "../../libraries/Reserve.sol";
 contract TestReserve {
     using Reserve for Reserve.Data;
     using Reserve for mapping(bytes32 => Reserve.Data);
-
+    
+    /// @notice Used for testing time
+    uint256 public timestamp;
+    /// @notice Storage slot for the reserveId used for testing
+    bytes32 public reserveId;
     /// @notice Storage slot for reserve data to use for testing
     Reserve.Data public res;
     /// @notice All the reserve data structs to use for testing
@@ -21,12 +25,38 @@ contract TestReserve {
         res = reserves[resId];
         _;
     }
+    
+    constructor() {}
 
-    /// @return blockTimestamp The uint32 block.timestamp
-    function shouldBlockTimestamp() public view returns (uint32 blockTimestamp) {
-        blockTimestamp = Reserve._blockTimestamp();
-        assert(uint(blockTimestamp) == block.timestamp);
+    /// @notice Called before each unit test to initialize a reserve to test
+    function beforeEach(string memory name, uint timestamp_, uint reserveRisky, uint reserveStable) public {
+       timestamp = timestamp_; // set the starting time for this reserve
+       bytes32 resId = keccak256(abi.encodePacked(name)); // get bytes32 id for name
+       reserveId = resId; // set this resId in global state to easily fetch in test
+       // create a new reserve data struct
+       reserves[resId] = Reserve.Data({
+            RX1: reserveRisky, // risky token balance
+            RY2: reserveStable, // stable token balance
+            liquidity: 1e18, // 1 unit
+            float: 0, // the LP shares available to be borrowed on a given pid
+            debt: 0, // the LP shares borrowed from the float
+            cumulativeRisky: 0,
+            cumulativeStable: 0,
+            cumulativeLiquidity: 0,
+            blockTimestamp: uint32(timestamp_)
+       });
+       res = reserves[resId]; // store the data struct to easily access
     }
+
+   /// @notice Used for time dependent tests
+   function _blockTimestamp() public view returns (uint32 blockTimestamp) {
+      blockTimestamp = uint32(timestamp);
+   }
+
+   /// @notice Increments the timestamp used for testing
+   function step(uint timestep) public {
+      timestamp += uint32(timestep);
+   }
 
     /// @notice Adds amounts to cumulative reserves
     function shouldUpdate(bytes32 resId) public useRef(resId) returns (Reserve.Data memory) {

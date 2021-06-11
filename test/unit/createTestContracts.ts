@@ -73,6 +73,24 @@ export default async function createTestContracts(contracts: ContractName[], dep
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
         break
+      case 'testReserve':
+        loadedContracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
+        break
+      case 'testMargin':
+        loadedContracts.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
+        break
+      case 'testPosition':
+        loadedContracts.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
+        break
+      case 'testReplicationMath':
+        loadedContracts.testReplicationMath = (await deploy(
+          'TestReplicationMath',
+          deployer
+        )) as ContractTypes.TestReplicationMath
+        break
+      case 'testBlackScholes':
+        loadedContracts.testBlackScholes = (await deploy('TestBlackScholes', deployer)) as ContractTypes.TestBlackScholes
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }

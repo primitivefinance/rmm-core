@@ -6,6 +6,8 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     This library holds the data structure for an Engine's Reserves.
 
+import "hardhat/console.sol";
+
 library Reserve {
     // An Engine has two reserves of RISKY and RISK-FREE assets, X and Y, and total liquidity shares.
     struct Data {
@@ -33,7 +35,8 @@ library Reserve {
 
     /// @notice Adds to the cumulative reserves
     function update(Data storage res) internal returns (Data storage) {
-        uint32 deltaTime = _blockTimestamp() - res.blockTimestamp; 
+        console.log(_blockTimestamp());
+        uint32 deltaTime = _blockTimestamp() - res.blockTimestamp;
         res.cumulativeRisky += res.RX1 * deltaTime;
         res.cumulativeStable += res.RY2 * deltaTime;
         res.cumulativeLiquidity += res.liquidity * deltaTime;

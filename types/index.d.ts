@@ -21,6 +21,11 @@ export interface Contracts {
   engineAllocate: ContractTypes.EngineAllocate
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
+  testReserve: ContractTypes.TestReserve
+  testMargin: ContractTypes.TestMargin
+  testPosition: ContractTypes.TestPosition
+  testReplicationMath: ContractTypes.TestReplicationMath
+  testBlackScholes: ContractTypes.TestBlackScholes
 }
 
 export interface Mocks {
@@ -47,3 +52,8 @@ type ContractName =
   | 'engineAllocate'
   | 'factoryCreate'
   | 'factoryDeploy'
+  | 'testReserve'
+  | 'testMargin'
+  | 'testPosition'
+  | 'testReplicationMath'
+  | 'testBlackScholes'
