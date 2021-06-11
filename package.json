@@ -22,7 +22,8 @@
     "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
-    "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts"
+    "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
+    "test:factory": "hardhat test ./test/unit/primitiveFactory/effect/create.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",

@@ -5,12 +5,12 @@ pragma solidity 0.8.0;
 /// @author  Primitive
 /// @dev     ONLY FOR TESTING PURPOSES.
 
-import "../interfaces/IPrimitiveEngine.sol";
-import "../libraries/ABDKMath64x64.sol";
-import "../libraries/BlackScholes.sol";
-import "../libraries/ReplicationMath.sol";
-import "../libraries/Reserve.sol";
-import "../libraries/Units.sol";
+import "../../interfaces/IPrimitiveEngine.sol";
+import "../../libraries/ABDKMath64x64.sol";
+import "../../libraries/BlackScholes.sol";
+import "../../libraries/ReplicationMath.sol";
+import "../../libraries/Reserve.sol";
+import "../../libraries/Units.sol";
 
 
 contract TestBlackScholes {
