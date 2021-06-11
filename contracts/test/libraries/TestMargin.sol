@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import "../libraries/Margin.sol";
+import "../../libraries/Margin.sol";
 
 /// @title   Margin Lib API Test
 /// @author  Primitive

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-import "../../PrimitiveFactory";
+import "../../PrimitiveFactory.sol";
 
-contract FactoryCreate is PrimitiveFactory {
-    using SafeERC20 for IERC20;
+contract FactoryDeploy is PrimitiveFactory {
 
     constructor() {}
 
