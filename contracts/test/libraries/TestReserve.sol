@@ -24,6 +24,7 @@ contract TestReserve {
     modifier useRef(bytes32 resId) {
         res = reserves[resId];
         _;
+        res = reserves[resId];
     }
     
     constructor() {}
@@ -37,8 +38,8 @@ contract TestReserve {
        reserves[resId] = Reserve.Data({
             RX1: reserveRisky, // risky token balance
             RY2: reserveStable, // stable token balance
-            liquidity: 1e18, // 1 unit
-            float: 0, // the LP shares available to be borrowed on a given pid
+            liquidity: 2e18,
+            float: 1e18, // the LP shares available to be borrowed on a given pid
             debt: 0, // the LP shares borrowed from the float
             cumulativeRisky: 0,
             cumulativeStable: 0,
@@ -60,41 +61,41 @@ contract TestReserve {
 
     /// @notice Adds amounts to cumulative reserves
     function shouldUpdate(bytes32 resId) public useRef(resId) returns (Reserve.Data memory) {
-        return res.update(_blockTimestamp());
+        return reserves[resId].update(_blockTimestamp());
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
     function shouldSwap(bytes32 resId, bool addXRemoveY, uint deltaIn, uint deltaOut) public useRef(resId) returns (Reserve.Data memory) {
-        return res.swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
+        return reserves[resId].swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
     }
 
     /// @notice Add to both reserves and total supply of liquidity
     function shouldAllocate(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.allocate(deltaX, deltaY, deltaL, _blockTimestamp());
+       return reserves[resId].allocate(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
     function shouldRemove(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.remove(deltaX, deltaY, deltaL, _blockTimestamp());
+       return reserves[resId].remove(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Increases available float to borrow, called when lending
     function shouldAddFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.addFloat(deltaL);
+       return reserves[resId].addFloat(deltaL);
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
     function shouldRemoveFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.removeFloat(deltaL);
+       return reserves[resId].removeFloat(deltaL);
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
     function shouldBorrowFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.borrowFloat(deltaL);
+       return reserves[resId].borrowFloat(deltaL);
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow 
     function shouldRepayFloat(bytes32 resId, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.repayFloat(deltaL);
+       return reserves[resId].repayFloat(deltaL);
     }
 }

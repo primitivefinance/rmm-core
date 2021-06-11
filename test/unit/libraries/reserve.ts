@@ -1,6 +1,6 @@
-import hre, { waffle } from 'hardhat'
+import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, BytesLike, parseWei, BigNumberish, Wei } from '../../shared/Units'
+import { BigNumber, BytesLike, parseWei } from '../../shared/Units'
 import { TestReserve } from '../../../typechain'
 import loadContext from '../context'
 
@@ -15,29 +15,14 @@ describe('testReserve', function () {
     let before: any, timestep: number
 
     beforeEach(async function () {
-      const name = 'reserve'
-      reserve = this.contracts.testReserve
-      timestamp = 1645473600
-      reserveRisky = parseWei('0.5').raw
-      reserveStable = parseWei('500').raw
-      await reserve.beforeEach(name, timestamp, reserveRisky, reserveStable) // init a reserve data struct w/ arbitrary reserves
-      resId = await reserve.reserveId()
-      before = await reserve.res()
-      timestep = 60 * 60 * 24 // 1 day
-    })
-
-    it('returns 0 for all fields when the margin account is uninitialized', async function () {
-      expect(await this.contracts.engine.reserves('0x882efb9e67eda9bf74766e8686259cb3a1fc8b8a')).to.deep.equal([
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-        BigNumber.from(0),
-      ])
+      reserve = this.contracts.testReserve // the test reserve contract
+      timestamp = 1645473600 // the timestamp for the tests
+      reserveRisky = parseWei('0.5').raw // initialized risky reserve amount
+      reserveStable = parseWei('500').raw // initialized stable reserve amount
+      await reserve.beforeEach('reserve', timestamp, reserveRisky, reserveStable) // init a reserve data struct w/ arbitrary reserves
+      resId = await reserve.reserveId() // reserve Id we will manipulate for tests
+      before = await reserve.res() // actual reserve data we are manipulating for tests
+      timestep = 60 * 60 * 24 // 1 day timestep
     })
 
     it('should have same timestamp', async function () {
@@ -46,6 +31,8 @@ describe('testReserve', function () {
 
     it('shouldUpdate', async function () {
       await reserve.step(timestep) // step forward a day
+      timestamp += timestep
+      expect(await reserve.timestamp()).to.be.eq(timestamp)
       await reserve.shouldUpdate(resId)
       let deltaTime = timestep
       let cumulativeRisky = before.RX1.mul(deltaTime)
@@ -60,14 +47,14 @@ describe('testReserve', function () {
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,
-        timestamp + timestep,
+        before.blockTimestamp,
       ])
     })
+
     it('shouldSwap risky to stable', async function () {
       let deltaIn = parseWei('0.1').raw // risky in
       let deltaOut = parseWei('100').raw // stable out
       await reserve.shouldSwap(resId, true, deltaIn, deltaOut)
-      await hre
       expect(await reserve.res()).to.be.deep.eq([
         before.RX1.add(deltaIn),
         before.RY2.sub(deltaOut),
@@ -80,12 +67,63 @@ describe('testReserve', function () {
         before.blockTimestamp,
       ])
     })
-    it('shouldAllocate', async function () {})
-    it('shouldRemove', async function () {})
-    it('shouldAddFloat', async function () {})
-    it('shouldRemoveFloat', async function () {})
-    it('shouldBorrowFloat', async function () {})
-    it('shouldRepayFloat', async function () {})
-    it('shouldUpdate', async function () {})
+
+    it('shouldAllocate', async function () {
+      let deltaX = parseWei('0.1').raw
+      let deltaY = parseWei('100').raw
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldAllocate(resId, deltaX, deltaY, deltaL)
+      expect(await reserve.res()).to.be.deep.eq([
+        before.RX1.add(deltaX),
+        before.RY2.add(deltaY),
+        before.liquidity.add(deltaL),
+        before.float,
+        before.debt,
+        before.cumulativeRisky,
+        before.cumulativeStable,
+        before.cumulativeLiquidity,
+        before.blockTimestamp,
+      ])
+    })
+    it('shouldRemove', async function () {
+      let deltaX = parseWei('0.1').raw
+      let deltaY = parseWei('100').raw
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldRemove(resId, deltaX, deltaY, deltaL)
+      expect(await reserve.res()).to.be.deep.eq([
+        before.RX1.sub(deltaX),
+        before.RY2.sub(deltaY),
+        before.liquidity.sub(deltaL),
+        before.float,
+        before.debt,
+        before.cumulativeRisky,
+        before.cumulativeStable,
+        before.cumulativeLiquidity,
+        before.blockTimestamp,
+      ])
+    })
+    it('shouldAddFloat', async function () {
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldAddFloat(resId, deltaL)
+      expect((await reserve.res()).float).to.be.deep.eq(before.float.add(deltaL))
+    })
+    it('shouldRemoveFloat', async function () {
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldRemoveFloat(resId, deltaL)
+      expect((await reserve.res()).float).to.be.deep.eq(before.float.sub(deltaL)) // remain unchanged
+    })
+    it('shouldBorrowFloat', async function () {
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldBorrowFloat(resId, deltaL)
+      expect((await reserve.res()).float).to.be.deep.eq(before.float.sub(deltaL))
+      expect((await reserve.res()).debt).to.be.deep.eq(before.debt.add(deltaL))
+    })
+    it('shouldRepayFloat', async function () {
+      let deltaL = parseWei('0.1').raw
+      await reserve.shouldBorrowFloat(resId, deltaL) // borrow so we can repay
+      await reserve.shouldRepayFloat(resId, deltaL) // repay the borrowed float
+      expect((await reserve.res()).float).to.be.deep.eq(before.float) // no changes because we add then sub
+      expect((await reserve.res()).debt).to.be.deep.eq(before.debt) // no changes because...
+    })
   })
 })
