@@ -44,6 +44,8 @@ export default function createEngineFunctions(
         break
       case 'engineCreate':
         break
+      case 'engineWithdraw':
+        break
       case 'engineDeposit':
         loadedFunctions.depositFunction = async (
           deltaX: BigNumberish,

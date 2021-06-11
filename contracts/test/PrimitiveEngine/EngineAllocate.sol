@@ -25,12 +25,17 @@ contract EngineAllocate {
     }
 
     function allocateFromExternal(bytes32 pid, address owner, uint dLiquidity) public  {
+        CALLER = msg.sender;
         IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, false);
     }
 
     function allocateCallback(uint dRisky, uint dStable) public {
-        if(dRisky > 0) IERC20(risky).safeTransferFrom(CALLER, msg.sender, dRisky);
-        if(dStable > 0) IERC20(stable).safeTransferFrom(CALLER, msg.sender, dStable);
+        IERC20(risky).safeTransferFrom(CALLER, msg.sender, dRisky);
+        IERC20(stable).safeTransferFrom(CALLER, msg.sender, dStable);
+    }
+
+    function getPosition(bytes32 pid) public view returns(bytes32 posid) {
+        posid = keccak256(abi.encodePacked(address(this), pid));
     }
 
     function name() public view returns (string memory) {
