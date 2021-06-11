@@ -99,6 +99,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return IERC20(stable).balanceOf(address(this));
     }
 
+    /// @notice Block timestamp but as a uint32
+    function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
+        blockTimestamp = uint32(block.timestamp);
+    }
+
     /// @inheritdoc IPrimitiveEngineActions
     function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) external override returns(bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
@@ -124,7 +129,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             cumulativeRisky: 0,
             cumulativeStable: 0,
             cumulativeLiquidity: 0,
-            blockTimestamp: Reserve._blockTimestamp()
+            blockTimestamp: _blockTimestamp()
         });
 
         uint balanceX = balanceRisky();
@@ -190,7 +195,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 pid_ = pid;
         Position.Data storage pos = positions.fetch(owner, pid_);
         pos.allocate(deltaL);
-        res.allocate(deltaX, deltaY, deltaL);
+        res.allocate(deltaX, deltaY, deltaL, _blockTimestamp());
         emit Updated(pid, RX1 + deltaX, RY2 + deltaY, block.number);
         emit Allocated(msg.sender, deltaX, deltaY);
     }
@@ -229,7 +234,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
         
         positions.remove(pid, deltaL); // Updated position liqudiity
-        res.remove(deltaX, deltaY, deltaL);
+        res.remove(deltaX, deltaY, deltaL, _blockTimestamp());
         emit Updated(pid, reserveX, reserveY, block.number);
         emit Removed(msg.sender, deltaX, deltaY);
     }
@@ -311,7 +316,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
         }
 
-        res.swap(details.riskyForStable, amountIn, details.amountOut);
+        res.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
         emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
 
@@ -365,7 +370,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveLendingCallback(msg.sender).borrowCallback(dLiquidity, deltaX, deltaY, data); // trigger the callback so we can remove liquidity
         positions.borrow(pid, dLiquidity); // increase liquidity + debt
         // fails if risky asset balance is less than borrowed `dLiquidity`
-        res.remove(deltaX, deltaY, dLiquidity);
+        res.remove(deltaX, deltaY, dLiquidity, _blockTimestamp());
         res.borrowFloat(dLiquidity);
 
         uint postRisky = IERC20(risky).balanceOf(address(this));
@@ -401,7 +406,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (isInternal) {
           margins.withdraw(deltaL - deltaRisky, deltaStable);
 
-          res.allocate(deltaRisky, deltaStable, deltaL);
+          res.allocate(deltaRisky, deltaStable, deltaL, _blockTimestamp());
           pos.repay(deltaL);
         } else {
           uint preStable = IERC20(stable).balanceOf(address(this));
@@ -412,7 +417,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             "IS"
           );
           
-          res.allocate(deltaRisky, deltaStable, deltaL);
+          res.allocate(deltaRisky, deltaStable, deltaL, _blockTimestamp());
           res.repayFloat(deltaL);
           pos.repay(deltaL);
           margin.deposit(deltaL - deltaRisky, uint(0));

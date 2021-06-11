@@ -28,15 +28,9 @@ library Reserve {
         uint32 blockTimestamp;
     }
 
-    /// @notice Block timestamp but as a uint32
-    function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
-        blockTimestamp = uint32(block.timestamp);
-    }
-
     /// @notice Adds to the cumulative reserves
-    function update(Data storage res) internal returns (Data storage) {
-        console.log(_blockTimestamp());
-        uint32 deltaTime = _blockTimestamp() - res.blockTimestamp;
+    function update(Data storage res, uint32 blockTimestamp) internal returns (Data storage) {
+        uint32 deltaTime = blockTimestamp - res.blockTimestamp;
         res.cumulativeRisky += res.RX1 * deltaTime;
         res.cumulativeStable += res.RY2 * deltaTime;
         res.cumulativeLiquidity += res.liquidity * deltaTime;
@@ -44,7 +38,7 @@ library Reserve {
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
-    function swap(Data storage reserve, bool addXRemoveY, uint deltaIn, uint deltaOut) internal returns (Data storage) {
+    function swap(Data storage reserve, bool addXRemoveY, uint deltaIn, uint deltaOut, uint32 blockTimestamp) internal returns (Data storage) {
         if(addXRemoveY) {
             reserve.RX1 += deltaIn;
             reserve.RY2 -= deltaOut;
@@ -52,23 +46,23 @@ library Reserve {
             reserve.RX1 -= deltaOut;
             reserve.RY2 += deltaIn;
         }
-        return update(reserve);
+        return update(reserve, blockTimestamp);
     }
 
     /// @notice Add to both reserves and total supply of liquidity
-    function allocate(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+    function allocate(Data storage reserve, uint deltaX, uint deltaY, uint deltaL, uint32 blockTimestamp) internal returns (Data storage) {
         reserve.RX1 += deltaX;
         reserve.RY2 += deltaY;
         reserve.liquidity += deltaL;
-        return update(reserve);
+        return update(reserve, blockTimestamp);
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
-    function remove(Data storage reserve, uint deltaX, uint deltaY, uint deltaL) internal returns (Data storage) {
+    function remove(Data storage reserve, uint deltaX, uint deltaY, uint deltaL, uint32 blockTimestamp) internal returns (Data storage) {
         reserve.RX1 -= deltaX;
         reserve.RY2 -= deltaY;
         reserve.liquidity -= deltaL;
-        return update(reserve);
+        return update(reserve, blockTimestamp);
     }
 
     /// @notice Increases available float to borrow, called when lending
