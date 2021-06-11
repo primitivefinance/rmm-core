@@ -28,8 +28,8 @@ export async function withdrawFragment(signers: Wallet[], contracts: Contracts):
 }
 
 export async function allocateFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
-  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('10000').raw)
 
   await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
