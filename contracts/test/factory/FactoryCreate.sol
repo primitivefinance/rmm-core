@@ -4,8 +4,6 @@ pragma solidity 0.8.0;
 import "../../interfaces/IPrimitiveFactory.sol";
 
 contract FactoryCreate {
-    using SafeERC20 for IERC20;
-
     address public factory;
 
     constructor() {}

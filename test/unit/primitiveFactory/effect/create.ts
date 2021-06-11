@@ -15,7 +15,7 @@ describe('create', function () {
         constants.AddressZero
       )
 
-      await this.contracts.factory.create(this.contracts.risky.address, this.contracts.stable.address)
+      await this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address)
     })
 
     it('saves the new engine', async function () {
@@ -28,7 +28,7 @@ describe('create', function () {
         this.contracts.stable.address
       )
 
-      await this.contracts.factory.create(this.contracts.risky.address, this.contracts.stable.address)
+      await this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address)
 
       expect(await this.contracts.factory.getEngine(this.contracts.risky.address, this.contracts.stable.address)).to.equal(
         engineAddress
@@ -58,7 +58,7 @@ describe('create', function () {
         this.contracts.stable.address
       )
 
-      await expect(this.contracts.factory.create(this.contracts.risky.address, this.contracts.stable.address))
+      await expect(this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address))
         .to.emit(this.contracts.factory, 'EngineCreated')
         .withArgs(deployer.address, this.contracts.risky.address, this.contracts.stable.address, engineAddress)
     })
@@ -67,18 +67,18 @@ describe('create', function () {
   describe('when the parameters are invalid', function () {
     it('reverts when tokens are the same', async function () {
       await expect(
-        this.contracts.factory.create(this.contracts.risky.address, this.contracts.risky.address)
+        this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.risky.address)
       ).to.revertedWith('Cannot be same token')
     })
 
     it('reverts when the risky asset is address 0', async function () {
-      await expect(this.contracts.factory.create(constants.AddressZero, this.contracts.stable.address)).to.revertedWith(
-        'Cannot be zero address'
-      )
+      await expect(
+        this.contracts.factoryCreate.create(constants.AddressZero, this.contracts.stable.address)
+      ).to.revertedWith('Cannot be zero address')
     })
 
     it('reverts when the stable asset is address 0', async function () {
-      await expect(this.contracts.factory.create(this.contracts.risky.address, constants.AddressZero)).to.revertedWith(
+      await expect(this.contracts.factoryCreate.create(this.contracts.risky.address, constants.AddressZero)).to.revertedWith(
         'Cannot be zero address'
       )
     })
