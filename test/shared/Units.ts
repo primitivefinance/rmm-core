@@ -1,9 +1,9 @@
 import { ethers, waffle } from 'hardhat'
-import { Wallet, Contract, BigNumber, BigNumberish, BytesLike, constants } from 'ethers'
+import { Wallet, Contract, BigNumber, BigNumberish, BytesLike, constants, Transaction } from 'ethers'
 import { formatEther, parseEther } from '@ethersproject/units'
 import bn from 'bignumber.js'
 
-export { formatEther, parseEther, BigNumber, BigNumberish, bn, BytesLike, constants }
+export { formatEther, parseEther, BigNumber, BigNumberish, bn, BytesLike, constants, Transaction }
 export const DENOMINATOR = 2 ** 64
 export const MANTISSA = 10 ** 9
 export const PERCENTAGE = 10 ** 4

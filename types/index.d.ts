@@ -1,9 +1,7 @@
 import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
-
 import * as ContractTypes from '../typechain'
-import { DepositFunction } from '../test/unit/primitiveEngine/fixtures/depositFixture'
-import { SwapFunction } from '../test/unit/primitiveEngine/fixtures/swapFixture'
+import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
 
 export interface Functions {
   depositFunction: DepositFunction
