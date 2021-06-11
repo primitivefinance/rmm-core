@@ -60,22 +60,22 @@ contract TestReserve {
 
     /// @notice Adds amounts to cumulative reserves
     function shouldUpdate(bytes32 resId) public useRef(resId) returns (Reserve.Data memory) {
-        return res.update();
+        return res.update(_blockTimestamp());
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
     function shouldSwap(bytes32 resId, bool addXRemoveY, uint deltaIn, uint deltaOut) public useRef(resId) returns (Reserve.Data memory) {
-        return res.swap(addXRemoveY, deltaIn, deltaOut);
+        return res.swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
     }
 
     /// @notice Add to both reserves and total supply of liquidity
     function shouldAllocate(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.allocate(deltaX, deltaY, deltaL);
+       return res.allocate(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
     function shouldRemove(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public useRef(resId) returns (Reserve.Data memory) {
-       return res.remove(deltaX, deltaY, deltaL);
+       return res.remove(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Increases available float to borrow, called when lending
