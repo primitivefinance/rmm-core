@@ -23,6 +23,12 @@ export interface Contracts {
   engineLend: ContractTypes.EngineLend
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
+  testReserve: ContractTypes.TestReserve
+  testMargin: ContractTypes.TestMargin
+  testPosition: ContractTypes.TestPosition
+  testReplicationMath: ContractTypes.TestReplicationMath
+  testBlackScholes: ContractTypes.TestBlackScholes
+  testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
 }
 
 export interface Mocks {
@@ -49,5 +55,11 @@ type ContractName =
   | 'engineAllocate'
   | 'factoryCreate'
   | 'factoryDeploy'
+  | 'testReserve'
+  | 'testMargin'
+  | 'testPosition'
+  | 'testReplicationMath'
+  | 'testBlackScholes'
+  | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineLend'
