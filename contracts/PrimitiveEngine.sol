@@ -71,8 +71,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         _;
     }
 
-    bytes32[] public allPools; // each `pid` is pushed to this array on `create()` calls
-
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override settings;
     /// @inheritdoc IPrimitiveEngineView
@@ -138,7 +136,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
         positions.fetch(msg.sender, pid).allocate(dLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        allPools.push(pid);
         emit Updated(pid, RX1, RY2, block.number);
         emit Create(msg.sender, pid, strike, sigma, time);
 }
@@ -466,12 +463,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 strike
             )
         );
-    }
-
-
-    /// @inheritdoc IPrimitiveEngineView
-    function getAllPoolsLength() public view override returns (uint len) {
-        len = allPools.length;
     }
 
     // ===== Flashes =====
