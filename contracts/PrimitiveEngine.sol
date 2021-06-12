@@ -45,8 +45,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint64 time;    // the time in seconds until the option expires
     }
 
-    uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
-
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
