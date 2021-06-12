@@ -46,7 +46,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     uint256 public constant FEE = 30; // 30 / 10,000 = 0.30% 
-    bytes32 public constant _NO_POOL = bytes32(0);
 
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
@@ -54,21 +53,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public immutable override fee;
 
-    bytes32 public _POOL_ID = _NO_POOL;
-
-    modifier lock(bytes32 pid) {
-        require(_POOL_ID == _NO_POOL, "Pid set");
-        _POOL_ID = pid;
+    uint8 private unlocked = 1;
+    modifier lock() {
+        require(unlocked == 1, "Locked");
+        unlocked = 0;
         _;
-        _POOL_ID = _NO_POOL;
-    }
-
-    modifier onlyFactoryOwner() {
-        require(msg.sender == IPrimitiveFactory(factory).owner(), "Not owner");
-        _;
+        unlocked = 1;
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -84,7 +75,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
         (factory, risky, stable) = IPrimitiveFactory(msg.sender).args();
-        fee = FEE;
     }
 
     /// @notice Returns the risky token balance of this contract
@@ -97,7 +87,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return IERC20(stable).balanceOf(address(this));
     }
 
-    /// @notice Block timestamp but as a uint32
+    /// @notice Block timestamp... but casted as a uint32
     function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
         blockTimestamp = uint32(block.timestamp);
     }
@@ -195,7 +185,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) external lock(pid) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) external lock override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
@@ -263,12 +253,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
             int128 nextRX1 = compute(details.poolId, risky, RY2 - details.amountOut); // remove Y from reserves, and use calculate the new X reserve value.
             reserveX = nextRX1.sub(invariant).parseUnits();
             reserveY = RY2 - details.amountOut;
-            deltaIn =  (reserveX - RX1) * 1e4 /  (1e4 - fee); // nextRX1 = RX1 + detlaIn * (1 - fee)
+            deltaIn =  (reserveX - RX1) * 10000 /  9985; // nextRX1 = RX1 + detlaIn * (1 - fee)
         } else {
             int128 nextRY2 = compute(details.poolId, stable, RX1 - details.amountOut); // subtract X from reserves, and use to calculate the new Y reserve value.
             reserveX = RX1 - details.amountOut;
             reserveY = invariant.add(nextRY2).parseUnits();
-            deltaIn =  (reserveY - RY2) * 1e4 /  (1e4 - fee);
+            deltaIn =  (reserveY - RY2) * 10000 /  9985;
         }
 
         require(details.amountInMax >= deltaIn, "Too expensive");
@@ -319,7 +309,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint deltaL) external lock(pid) override {
+    function lend(bytes32 pid, uint deltaL) external lock override {
         require(deltaL > 0, "Cannot be zero");
         positions.lend(pid, deltaL); // increment position float factor by `deltaL`
 
@@ -329,7 +319,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint deltaL) external lock(pid) override {
+    function claim(bytes32 pid, uint deltaL) external lock override {
         require(deltaL > 0, "Cannot be zero");
         positions.claim(pid, deltaL); // increment position float factor by `deltaL`
 
@@ -339,7 +329,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium, bytes calldata data) external lock(pid) override {
+    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium, bytes calldata data) external lock override {
         Reserve.Data storage res = reserves[pid];
         {
         uint dLiquidity = deltaL;
@@ -377,7 +367,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) external lock(pid) override returns (uint deltaRisky, uint deltaStable) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) external lock override returns (uint deltaRisky, uint deltaStable) {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(owner, pid);
         Margin.Data storage margin = margins[owner];
@@ -481,7 +471,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IERC3156FlashLender
     function flashFee(address token, uint amount) public view override returns (uint) {
         require(token == stable || token == risky, "Not supported");
-        return amount * fee / 1000;
+        return amount * 15 / 10000;
     }
 
     /// @inheritdoc IERC3156FlashLender
