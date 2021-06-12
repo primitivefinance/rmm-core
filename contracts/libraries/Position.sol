@@ -2,65 +2,84 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-/**
- * @notice  Position Library
- * @author  Primitive
- * @dev     This library is a generalized position data structure for any engine.
- */
+import "hardhat/console.sol";
+
+/// @notice  Position Library
+/// @author  Primitive
+/// @dev     This library is a generalized position data structure for any engine.
 
 library Position {
-    // every position in an Engine is this data structure.
     struct Data {
-        // the address which can withdraw balances
-        address owner;
-        // the nonce of the position, which is iterated for each engine
-        uint BX1;
-        uint BY2;
-        uint nonce;
-        // The pool ID of the liquidity shares
-        bytes32 pid;
-        // Balance of X, the RISKY, or underlying asset.
-        uint liquidity;
-        // The amount of liquidity shares lent out.
-        uint float;
-        // The amount of liquidity shares borrowed.
-        uint debt;
-        // Transiently set as true when a position is being edited.
-        bool unlocked;
+        uint128 balanceRisky;  // Balance of risky asset
+        uint128 balanceStable; // Balance of stable asset
+        uint128 float;         // Balance of loaned liquidity
+        uint128 liquidity;     // Balance of liquidity, which is negative if a debt exists
+        uint128 debt;          // Balance of liquidity debt that must be paid back
     }
 
-    /**
-     * @notice  An Engine's mapping of position Ids to Data structs can be used to fetch any position.
-     * @dev     Used across all Engines.
-     */
+    /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
+    /// @dev    Used across all Engines.
+    /// @param  positions    Mapping of position Ids to Positions
+    /// @param  owner       Controlling address of the position
+    /// @param  pid         Keccak256 hash of the pool parameters: strike, volatility, and time until expiry
     function fetch(
-        mapping(bytes32 => Data) storage position,
+        mapping(bytes32 => Data) storage positions,
         address owner,
-        uint nonce,
         bytes32 pid
-    ) internal returns (Data storage) {
-         return position[getPositionId(owner, nonce, pid)];
+    ) internal view returns (Data storage) {
+         return positions[getPositionId(owner, pid)];
     }
 
-    /**
-     * @notice  Transitions a `pos` to the `nextPos` by setting pos = nextPos.
-     * @return  The new position.
-     */
-    function edit(Data storage pos, uint BX1, uint BY2, uint liquidity, uint float, uint debt) internal returns (Data storage) {
-        pos.BX1 = BX1;
-        pos.BY2 = BY2;
-        pos.float = float;
-        pos.liquidity = liquidity;
-        pos.debt = debt;
-        pos.unlocked = false;
-        return pos;
+    /// @notice Add to the balance of liquidity
+    function allocate(Data storage position, uint deltaL) internal returns (Data storage) {
+        position.liquidity += uint128(deltaL);
+        return position;
     }
 
-    /**
-     * @notice  Fetches the position Id, which is an encoded `owner`, `nonce`, and  `pid`.
-     * @return  The position Id as a bytes32.
-     */
-    function getPositionId(address owner, uint nonce, bytes32 pid) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(owner, nonce, pid));
+    /// @notice Decrease the balance of liquidity
+    function remove(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, pid);
+        position.liquidity -= uint128(deltaL);
+        return position;
+    }
+
+    /// @notice Adds a debt balance of `deltaL` to `position`
+    function borrow(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, pid);
+        uint128 liquidity = position.liquidity;
+        require(liquidity == 0, "Must borrow from 0");
+        position.debt += uint128(deltaL); // add the debt post position manipulation
+        position.balanceRisky += uint128(deltaL);
+        return position;
+    }
+
+    /// @notice Locks `deltaL` of liquidity as a float which can be borrowed from.
+    function lend(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, pid);
+        position.float += uint128(deltaL);
+        require(uint(position.liquidity) >= uint256(position.float), "Not enough liquidity");
+        return position;
+    }
+
+    /// @notice Unlocks `deltaL` of liquidity by reducing float
+    function claim(mapping(bytes32 => Data) storage positions, bytes32 pid, uint deltaL) internal returns (Data storage) {
+        Data storage position = fetch(positions, msg.sender, pid);
+        position.float -= uint128(deltaL);
+        return position;
+    }
+
+    /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
+    function repay(Data storage position, uint deltaL) internal returns (Data storage) {
+        position.liquidity -= uint128(deltaL);
+        // FIX: Contract too large, position.debt -= uint128(deltaL);
+        return position;
+    }
+
+    /// @notice  Fetches the position Id, which is an encoded `owner` and `pid`.
+    /// @param   owner  Controlling address of the position
+    /// @param   pid    Keccak hash of the pool parameters: strike, volatility, and time until expiry
+    /// @return  posId  Keccak hash of the owner and pid
+    function getPositionId(address owner, bytes32 pid) internal pure returns (bytes32 posId) {
+        posId = keccak256(abi.encodePacked(owner, pid));
     }
 }

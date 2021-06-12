@@ -1,6 +1,12 @@
 import { std_n_cdf } from './CumulativeNormalDistribution'
-import { Calibration } from './Engine'
+import { Calibration } from './utilities'
 import { YEAR, PERCENTAGE, Wei, formatEther } from './Units'
+
+export function moneyness(cal: Calibration, assetPrice: Wei): number {
+  const spot = assetPrice.float
+  const strike = +formatEther(cal.strike)
+  return Math.log(spot / strike)
+}
 
 export function calculateD1(cal: Calibration, assetPrice: Wei): number {
   const timeToExpiry = cal.time / YEAR

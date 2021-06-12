@@ -1,32 +1,49 @@
-# Primitive-v2-core
+# Primitive V2
 
-Primitive is an options market protocol. The contracts are used permissionlessly to create and maintain markets for options on any token on Ethereum.
+This repository is for the core contracts of the Primitive V2 protocol. These are low-level contracts which are designed to be interacted primarily through other smart contracts.
 
-## Engine
+# Bug Bounty
 
-The Engine is an AMM implemented to replicate a portfolio value equal to Black-scholes priced covered calls.
+This repository has a bug bounty through Immunefi. Details are on their website [https://immunefi.com/bounty/primitive](https://immunefi.com/bounty/primitive/).
 
-Each Engine contract is created with two token addresses: `TX1` and `TY2`.
-To initialize the contract, there are three variables which must be passed to it: `strike`, `sigma`, and `time`.
+# Documentation
 
-`strike`: The strike price of the option.
-`sigma`: The implied volatility of the option.
-`time`: The time until expiry of the option.
+The contract documentation is hosted here: [Primitive Docs](https://docs.primitive.finance)
 
-There are functions to add liquidity, remove liquidity, swap between X and Y (corresponding to RISKY and RISK FREE tokens), and directly increase or decrease position balances denominated in X and Y through a periphery contract called `House`.
+# Contracts
 
-## House
+This repository has two contracts: PrimitiveFactory and PrimitiveEngine
 
-The House contract wraps the Engine contract and calls into it directly. The higher level House contract can handle periphery business logic, like how to handle token payments, deposits, and swaps. When the House is called, the state variable `CALLER` is transiently set so the Engine can reference the original `msg.sender` of the House's fn call. A House contract is needed because there are virtual callback functions in Engine which must be implemented by the `msg.sender` of the Engine's functions. This make it so EOAs can only call one function directly, which is when liquidity is being removed with `removeBoth`.
+### Factory
 
-## Testing
+The Factory contract is responsible for deploying new Engine contracts.
 
-`yarn test:<network>`
+### Engine
 
-## Deploying
+The Engine contract contains two tokens in immutable state called risky and stable. Pools can be created for these tokens within the Engine contract.
 
-`yarn deploy:<network>`
+# Testing
 
-## Verifying
+### Compile contracts
 
-`yarn verify:<network>`
+`yarn compile`
+
+### Run the tests
+
+`yarn test`
+
+### Run coverage
+
+`yarn coverage`
+
+# Security
+
+All audits are located in the audits/ folder.
+
+# Deployed Addresses
+
+The deployed contract addresses for all of Primitive are located here: [Contract Database](https://www.notion.so/primitivefi/dc3b883ff9d94044b6738701b2826f7a?v=9e56507d430d4f4fb1939242cfb23736)
+
+# Access Control
+
+The Engine contract which holds funds has no access control. The Factory contract has an owner variable, but there are no functions on the factory which only the owner can call. All the factory's public functions can be called by anyone.

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-
-/**
- * @title   Black-Scholes Math
- * @author  Primitive
- */
+/// @title   Black-Scholes Math
+/// @author  Primitive
 
 import "./ABDKMath64x64.sol";
 import "./CumulativeNormalDistribution.sol";
@@ -16,22 +13,21 @@ library BlackScholes {
     using CumulativeNormalDistribution for int128;
     using Units for int128;
     using Units for uint256;
+
      // Black-Scholes functions.
 
-    /**
-     * @dev     Calculate the d1 auxiliary variable.
-     * @notice  ( ln(s/k) + (o^2/2)*(T-t) ) / o * sqrt(T-t).
-     * @param   s Spot price of underlying token in USD/DAI/USDC. In wei.
-     * @param   k Strike price in USD/DAI/USDC. In wei.
-     * @param   o "volatility" scaled by 1000.
-     * @param   t Time until expiration in seconds.
-     */
-    function calculateD1(
+    /// @dev     Calculate the d1 auxiliary variable.
+    /// @notice  ( ln(s/k) + (o^2/2)*(T-t) ) / o * sqrt(T-t).
+    /// @param   s Spot price of underlying token in USD/DAI/USDC. In wei.
+    /// @param   k Strike price in USD/DAI/USDC. In wei.
+    /// @param   o "volatility" scaled by 1000.
+    /// @param   t Time until expiration in seconds.
+    function d1(
         uint256 s,
         uint256 k,
         uint256 o,
         uint256 t
-    ) internal pure returns (int128 d1) {
+    ) internal pure returns (int128 auxiliary) {
         // ln( F / K )
         int128 moneyness = logSimpleMoneyness(s, k);
         // (r + volatility^2 / 2), r = 0 for simplicity. This should be fixed.
@@ -42,35 +38,33 @@ library BlackScholes {
         int128 numerator = moneyness.add(vol.mul(time));
         // volatility * sqrt(T - t)
         int128 denominator = o.percentage().mul(time.sqrt());
-        d1 = numerator.div(denominator);
+        auxiliary = numerator.div(denominator);
     }
 
-    function calculateCallDelta(
+    /// @notice Returns the `delta` greek of a call option
+    function deltaCall(
         uint256 s,
         uint256 k,
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = calculateD1(s,k,o,t);
-        delta = d1.getCDF();
+        delta = d1(s,k,o,t).getCDF();
     }
 
-    function calculatePutDelta(
+    /// @notice Returns the `delta` greek of a put option
+    function deltaPut(
         uint256 s,
         uint256 k,
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        int128 d1 = calculateD1(s,k,o,t);
-        delta = d1.getCDF().sub(uint(1).fromUInt());
+        delta = d1(s,k,o,t).getCDF().sub(uint(1).fromUInt());
     }
 
-    /**
-     * @dev     Calculates the log simple moneyness.
-     * @notice  ln(F / K).
-     * @param   s Spot price of underlying token in USD/DAI/USDC. In wei.
-     * @param   k Strike price in USD/DAI/USDC. In wei.
-     */
+    /// @dev     Calculates the log simple moneyness.
+    /// @notice  ln(F / K).
+    /// @param   s Spot price of underlying token in USD/DAI/USDC. In wei.
+    /// @param   k Strike price in USD/DAI/USDC. In wei.
     function logSimpleMoneyness(uint256 s, uint256 k) internal pure returns (int128 moneyness) {
         int128 spot = s.parseUnits();
         int128 strike = k.parseUnits();
