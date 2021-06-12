@@ -37,9 +37,6 @@ interface IPrimitiveEngineView {
     /// The stable token address
     function stable() external view returns (address);
 
-    /// The fee charged on the way in, for swaps and flashes
-    function fee() external view returns (uint);
-
     // ===== Pool States =====
     /// @notice             Fetches the global reserve state for a pool with `pid`
     /// @param              pid The pool id hash
