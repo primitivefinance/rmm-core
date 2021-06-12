@@ -14,7 +14,7 @@ type BaseContracts = {
 
 async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
   const artifact = await hre.artifacts.readArtifact(contractName)
-  const contract = await deployContract(deployer, artifact)
+  const contract = await deployContract(deployer, artifact, [], { gasLimit: 9500000 })
   return contract
 }
 
@@ -80,6 +80,30 @@ export default async function createTestContracts(contracts: ContractName[], dep
         break
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
+        break
+      case 'testReserve':
+        loadedContracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
+        break
+      case 'testMargin':
+        loadedContracts.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
+        break
+      case 'testPosition':
+        loadedContracts.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
+        break
+      case 'testReplicationMath':
+        loadedContracts.testReplicationMath = (await deploy(
+          'TestReplicationMath',
+          deployer
+        )) as ContractTypes.TestReplicationMath
+        break
+      case 'testBlackScholes':
+        loadedContracts.testBlackScholes = (await deploy('TestBlackScholes', deployer)) as ContractTypes.TestBlackScholes
+        break
+      case 'testCumulativeNormalDistribution':
+        loadedContracts.testCumulativeNormalDistribution = (await deploy(
+          'TestCumulativeNormalDistribution',
+          deployer
+        )) as ContractTypes.TestCumulativeNormalDistribution
         break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
