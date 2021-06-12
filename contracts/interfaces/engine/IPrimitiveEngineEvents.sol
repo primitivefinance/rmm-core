@@ -20,6 +20,11 @@ interface IPrimitiveEngineEvents {
     /// @param  deltaX  The amount of risky tokens deposited
     /// @param  deltaY  The amount of stable tokens deposited
     event Deposited(address indexed from, address indexed owner, uint deltaX, uint deltaY);
+
+    /// @notice Removes stable and/or risky from a margin account
+    /// @param  from    The calling `msg.sender`
+    /// @param  deltaX  The amount of risky tokens withdrawn
+    /// @param  deltaY  The amount of stable tokens withdrawn
     event Withdrawn(address indexed from, uint deltaX, uint deltaY);
     
     // ===== Liquidity =====
