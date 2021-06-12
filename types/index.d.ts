@@ -19,9 +19,10 @@ export interface Contracts {
   engineWithdraw: ContractTypes.EngineWithdraw
   engineSwap: ContractTypes.EngineSwap
   engineAllocate: ContractTypes.EngineAllocate
+  engineRemove: ContractTypes.EngineRemove
+  engineLend: ContractTypes.EngineLend
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
-  engineRemove: ContractTypes.EngineRemove
 }
 
 export interface Mocks {
@@ -49,3 +50,4 @@ type ContractName =
   | 'factoryCreate'
   | 'factoryDeploy'
   | 'engineRemove'
+  | 'engineLend'
