@@ -142,7 +142,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Margin =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) external override returns (bool) {
+    function deposit(address owner, uint deltaX, uint deltaY, bytes calldata data) external override {
         uint balanceX = balanceRisky();
         uint balanceY = balanceStable();
         IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY, data); // receive tokens
@@ -152,23 +152,21 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Margin.Data storage margin = margins[owner];
         margin.deposit(deltaX, deltaY); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, owner, deltaX, deltaY);
-        return true;
     }
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function withdraw(uint deltaX, uint deltaY) public override returns (bool) {
+    function withdraw(uint deltaX, uint deltaY) external override {
         margins.withdraw(deltaX, deltaY); // removes risky and/or stable token balances from `msg.sender`
         if(deltaX > 0) IERC20(risky).safeTransfer(msg.sender, deltaX);
         if(deltaY > 0) IERC20(stable).safeTransfer(msg.sender, deltaY);
         emit Withdrawn(msg.sender, deltaX, deltaY);
-        return true;
     }
 
     // ===== Liquidity =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin, bytes calldata data) public override returns (uint deltaX, uint deltaY) {
+    function allocate(bytes32 pid, address owner, uint deltaL, bool fromMargin, bytes calldata data) external override returns (uint deltaX, uint deltaY) {
         Reserve.Data storage res = reserves[pid];
         (uint liquidity, uint RX1, uint RY2) = (res.liquidity, res.RX1, res.RY2);
         require(liquidity > 0, "Not initialized");
@@ -197,7 +195,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     
     /// @inheritdoc IPrimitiveEngineActions
-    function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) public lock(pid) override returns (uint deltaX, uint deltaY) {
+    function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) external lock(pid) override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
@@ -245,7 +243,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev     If `riskyForStable` is true, we request Y out, and must add X to the pool's reserves.
     ///         Else, we request X out, and must add Y to the pool's reserves.
-    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin, bytes calldata data) public override returns (uint deltaIn) {
+    function swap(bytes32 pid, bool riskyForStable, uint deltaOut, uint deltaInMax, bool fromMargin, bytes calldata data) external override returns (uint deltaIn) {
         SwapDetails memory details = SwapDetails({
             poolId: pid,
             amountOut: deltaOut,
@@ -321,29 +319,27 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
+    function lend(bytes32 pid, uint deltaL) external lock(pid) override {
         require(deltaL > 0, "Cannot be zero");
         positions.lend(pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.addFloat(deltaL); // update global float
         emit Loaned(msg.sender, pid, deltaL);
-        return true;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint deltaL) public lock(pid) override returns (bool) {
+    function claim(bytes32 pid, uint deltaL) external lock(pid) override {
         require(deltaL > 0, "Cannot be zero");
         positions.claim(pid, deltaL); // increment position float factor by `deltaL`
 
         Reserve.Data storage res = reserves[pid];
         res.removeFloat(deltaL); // update global float
         emit Claimed(msg.sender, pid, deltaL);
-        return true;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium, bytes calldata data) public lock(pid) override returns (bool) {
+    function borrow(bytes32 pid, address recipient, uint deltaL, uint maxPremium, bytes calldata data) external lock(pid) override {
         Reserve.Data storage res = reserves[pid];
         {
         uint dLiquidity = deltaL;
@@ -376,13 +372,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         emit Borrowed(recipient, pid, dLiquidity, maxPremium);
         }
-        return true;
     }
 
     
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
-    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) public lock(pid) override returns (uint deltaRisky, uint deltaStable) {
+    function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) external lock(pid) override returns (uint deltaRisky, uint deltaStable) {
         Reserve.Data storage res = reserves[pid];
         Position.Data storage pos = positions.fetch(owner, pid);
         Margin.Data storage margin = margins[owner];
@@ -490,7 +485,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IERC3156FlashLender
-    function maxFlashLoan(address token) public view override returns (uint) {
+    function maxFlashLoan(address token) external view override returns (uint) {
         if(token != stable || token != risky) return 0; // not supported
         return token == stable ? balanceStable() : balanceRisky();
     }
