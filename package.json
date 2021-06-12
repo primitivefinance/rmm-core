@@ -22,7 +22,8 @@
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
     "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
-    "test:factory": "hardhat test ./test/unit/primitiveFactory/effect/create.ts"
+    "test:factory": "hardhat test ./test/unit/primitiveFactory/effect/create.ts",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -39,6 +40,7 @@
     "hardhat": "^2.3.0",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-tracer": "^1.0.0-alpha.3",
+    "husky": "^6.0.0",
     "numeric": "^1.2.6",
     "prettier": "^2.2.1",
     "prettier-plugin-solidity": "^1.0.0-beta.6",
@@ -49,8 +51,9 @@
     "ts-generator": "^0.1.1",
     "ts-node": "^9.1.1",
     "typechain": "^4.0.3",
-    "typescript": "^4.2.3"
+    "typescript": "^4.2.3",
+    "@commitlint/cli": "^12.1.4",
+    "@commitlint/config-conventional": "^12.1.4"
   },
-  "dependencies": {},
   "postinstall": "typechain"
 }
