@@ -20,12 +20,16 @@ contract EngineRemove {
       stable = _stable;
     }
 
-    function removeToMargin(bytes32 pid, uint dLiquidity) public  {
-        IPrimitiveEngine(engine).remove(pid, dLiquidity, true);
+    function removeToMargin(bytes32 pid, uint dLiquidity, bytes memory data) public  {
+        IPrimitiveEngine(engine).remove(pid, dLiquidity, true, data);
     }
 
-    function removeToExternal(bytes32 pid, uint dLiquidity) public  {
-        IPrimitiveEngine(engine).remove(pid, dLiquidity, false);
+    function removeToExternal(bytes32 pid, uint dLiquidity, bytes memory data) public  {
+        IPrimitiveEngine(engine).remove(pid, dLiquidity, false, data);
+    }
+
+    function removeCallback(uint dRisky, uint dStable, bytes memory data) public  {
+      return;
     }
 
     function getPosition(bytes32 pid) public view returns(bytes32 posid) {
@@ -33,7 +37,7 @@ contract EngineRemove {
     }
 
     function name() public view returns (string memory) {
-      return "EngineAllocate";
+      return "EngineRemove";
     }
 }
 
