@@ -217,7 +217,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Updated state
         if(isInternal) {
             Margin.Data storage margin = margins[msg.sender];
-            console.log('here!!!!!');
             margin.deposit(deltaX, deltaY);
         } else {
             uint balanceX = balanceRisky();
@@ -228,6 +227,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(balanceRisky() >= balanceX - deltaX, "Not enough risky");
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
+
         
         positions.remove(pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL);

@@ -19,12 +19,12 @@ contract EngineAllocate {
     }
 
     function allocateFromMargin(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {
-        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, true, data);
+        IPrimitiveEngine(engine).allocate(pid, owner,  dLiquidity, true, data);
     }
 
     function allocateFromExternal(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public  {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).allocate(pid, address(this),  dLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(pid, owner,  dLiquidity, false, data);
     }
 
     function allocateCallback(uint dRisky, uint dStable, bytes calldata data) public {
