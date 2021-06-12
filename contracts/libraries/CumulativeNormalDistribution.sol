@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.0;
 
-/**
- * @title   Cumulative Normal Distribution Math Library
- * @author  Primitive
- * @notice  Uses the ABDK64x64 math library and error function to approximate CDFs.
- */
+/// @title   Cumulative Normal Distribution Math Library
+/// @author  Primitive
+/// @notice  Uses the ABDK64x64 math library and error function to approximate CDFs.
 
 import "./ABDKMath64x64.sol";
 
 library CumulativeNormalDistribution {
     using ABDKMath64x64 for *;
 
+    /// @notice Returns the Normal Standard Cumulative Distribution Function for `x`
     function getCDF(int128 x) internal pure returns (int128) {
         // where p = 0.3275911,
         // a1 = 0.254829592, a2 = −0.284496736, a3 = 1.421413741, a4 = −1.453152027, a5 = 1.061405429
@@ -33,9 +32,7 @@ library CumulativeNormalDistribution {
         return result;
     }
 
-    /**
-     * @return  The inverse CDF, or quantile function of `p`.
-     */
+    /// @notice  Returns the inverse CDF, or quantile function of `p`.
     function getInverseCDF(int128 p) internal pure returns (int128) {
         int128 half = 0x8000000000001060; // 0.5
         int128 q = p.sub(half);
@@ -56,6 +53,7 @@ library CumulativeNormalDistribution {
         return result;
     }
 
+    /// @notice Returns the Error Function for approximating the Standard Normal CDF
     function getErrorFunction(int128 z, int128 t) internal pure returns (int128) {
         // where a1 = 0.254829592, a2 = −0.284496736, a3 = 1.421413741, a4 = −1.453152027, a5 = 1.061405429
         int128 step1; // t * (1.4214 + (t * (-1.4531 + (t * 1.0614))))
