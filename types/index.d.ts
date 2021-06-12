@@ -26,6 +26,7 @@ export interface Contracts {
   testPosition: ContractTypes.TestPosition
   testReplicationMath: ContractTypes.TestReplicationMath
   testBlackScholes: ContractTypes.TestBlackScholes
+  testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
 }
 
 export interface Mocks {
@@ -57,3 +58,4 @@ type ContractName =
   | 'testPosition'
   | 'testReplicationMath'
   | 'testBlackScholes'
+  | 'testCumulativeNormalDistribution'

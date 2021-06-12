@@ -91,6 +91,12 @@ export default async function createTestContracts(contracts: ContractName[], dep
       case 'testBlackScholes':
         loadedContracts.testBlackScholes = (await deploy('TestBlackScholes', deployer)) as ContractTypes.TestBlackScholes
         break
+      case 'testCumulativeNormalDistribution':
+        loadedContracts.testCumulativeNormalDistribution = (await deploy(
+          'TestCumulativeNormalDistribution',
+          deployer
+        )) as ContractTypes.TestCumulativeNormalDistribution
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }
