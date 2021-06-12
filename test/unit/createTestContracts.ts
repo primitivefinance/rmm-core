@@ -73,6 +73,10 @@ export default async function createTestContracts(contracts: ContractName[], dep
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
         break
+      case 'engineRemove':
+        loadedContracts.engineRemove = (await deploy('EngineRemove', deployer)) as ContractTypes.EngineRemove
+        await initializeTestContract(loadedContracts.engineRemove, loadedContracts)
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }
