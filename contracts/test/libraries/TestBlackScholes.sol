@@ -5,17 +5,13 @@ pragma solidity 0.8.0;
 /// @author  Primitive
 /// @dev     ONLY FOR TESTING PURPOSES.
 
-import "../../interfaces/IPrimitiveEngine.sol";
 import "../../libraries/ABDKMath64x64.sol";
 import "../../libraries/BlackScholes.sol";
-import "../../libraries/ReplicationMath.sol";
-import "../../libraries/Reserve.sol";
 import "../../libraries/Units.sol";
 
 
 contract TestBlackScholes {
     using Units for *;
-    using ReplicationMath for *;
     using BlackScholes for *;
     using CumulativeNormalDistribution for *;
 
@@ -25,12 +21,7 @@ contract TestBlackScholes {
         uint64 time;    // the time in seconds until the option expires
     }
 
-    /// @notice The Engin contract which uses this black-scholes math
-    IPrimitiveEngine public engine;
-
-    constructor(address engine_)  {
-        engine = IPrimitiveEngine(engine_);
-    }
+    constructor()  {}
 
     // ==== Cumulative Normal Distribution Function Library Entry ====
 
@@ -43,23 +34,6 @@ contract TestBlackScholes {
         //int128 p = 0x4000000000000830; // 0.25
         int128 p = x.parseUnits();
         y = p.getInverseCDF();
-    }
-
-    // ===== Replication Library Entry =====
-
-    function proportionalVol(bytes32 pid) public view returns (int128) {
-        (, uint64 sigma, uint64 time) = engine.settings(pid);
-        return ReplicationMath.getProportionalVolatility(uint(sigma), uint(time));
-    }
-
-    function tradingFunction(bytes32 pid) public view returns (int128) {
-        (uint128 strike, uint64 sigma, uint64 time) = engine.settings(pid);
-        (uint RX1, , uint liquidity, , , , , ,) = engine.reserves(pid);
-        return ReplicationMath.getTradingFunction(RX1, liquidity, uint(strike), uint(sigma), uint(time));
-    }
-
-    function invariant(bytes32 pid) public view returns (int128) {
-        return engine.invariantOf(pid);
     }
 
     // ===== BS Library Entry ====
