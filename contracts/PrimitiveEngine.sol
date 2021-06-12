@@ -227,6 +227,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(balanceRisky() >= balanceX - deltaX, "Not enough risky");
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
+
         
         positions.remove(pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL);
