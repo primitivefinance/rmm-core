@@ -1,21 +1,37 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { TestPosition } from '../../../typechain'
+import { TestMargin } from '../../../typechain'
 import { parseWei, PERCENTAGE, Wei, fromMantissa, fromInt } from '../../shared/Units'
 import loadContext from '../context'
 
-describe('testPosition', function () {
+describe('testMargin', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testPosition'], async () => {})
+    await loadContext(waffle.provider, ['testMargin'], async () => {})
   })
 
-  describe('position', function () {
-    let position: TestPosition
+  describe('margin', function () {
+    let margin: TestMargin, before: any
 
     beforeEach(async function () {
-      position = this.contracts.testPosition
+      margin = this.contracts.testMargin
+      before = await margin.margin()
     })
 
-    it('getProportionalVolatility', async function () {})
+    it('shouldDeposit', async function () {
+      let delta = parseWei('1').raw
+      await margin.shouldDeposit(delta, delta)
+      let after = await margin.margin()
+      expect(after.balanceRisky).to.be.deep.eq(before.balanceRisky.add(delta))
+      expect(after.balanceStable).to.be.deep.eq(before.balanceStable.add(delta))
+    })
+
+    it('shouldWithdraw', async function () {
+      let delta = parseWei('1').raw
+      await margin.shouldDeposit(delta, delta)
+      await margin.shouldWithdraw(delta, delta)
+      let after = await margin.margin()
+      expect(after.balanceRisky).to.be.deep.eq(before.balanceRisky)
+      expect(after.balanceStable).to.be.deep.eq(before.balanceStable)
+    })
   })
 })
