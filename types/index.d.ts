@@ -19,6 +19,8 @@ export interface Contracts {
   engineWithdraw: ContractTypes.EngineWithdraw
   engineSwap: ContractTypes.EngineSwap
   engineAllocate: ContractTypes.EngineAllocate
+  engineRemove: ContractTypes.EngineRemove
+  engineLend: ContractTypes.EngineLend
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
@@ -59,3 +61,5 @@ type ContractName =
   | 'testReplicationMath'
   | 'testBlackScholes'
   | 'testCumulativeNormalDistribution'
+  | 'engineRemove'
+  | 'engineLend'

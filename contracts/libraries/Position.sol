@@ -2,6 +2,8 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 /// @notice  Position Library
 /// @author  Primitive
 /// @dev     This library is a generalized position data structure for any engine.
