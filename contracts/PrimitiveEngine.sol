@@ -136,7 +136,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
         positions.fetch(msg.sender, pid).allocate(dLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        emit Updated(pid, RX1, RY2, block.number);
         emit Create(msg.sender, pid, strike, sigma, time);
 }
 
@@ -193,7 +192,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Position.Data storage pos = positions.fetch(owner, pid_);
         pos.allocate(deltaL);
         res.allocate(deltaX, deltaY, deltaL, _blockTimestamp());
-        emit Updated(pid, RX1 + deltaX, RY2 + deltaY, block.number);
         emit Allocated(msg.sender, deltaX, deltaY);
     }
 
@@ -233,7 +231,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         
         positions.remove(pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL, _blockTimestamp());
-        emit Updated(pid, reserveX, reserveY, block.number);
         emit Removed(msg.sender, deltaX, deltaY);
     }
 
@@ -318,7 +315,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
 
-        emit Updated(details.poolId, reserveX, reserveY, block.number);
     }
 
 
