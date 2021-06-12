@@ -10,7 +10,7 @@ import { HardhatUserConfig } from 'hardhat/config'
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
-      blockGasLimit: 12500000,
+      allowUnlimitedContractSize: true,
     },
   },
   solidity: {
