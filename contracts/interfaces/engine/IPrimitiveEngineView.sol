@@ -88,7 +88,4 @@ interface IPrimitiveEngineView {
     /// @param  time    The time until expiry of the pool
     /// @return The keccak256 hash of the `calibration` parameters
     function getPoolId(uint strike, uint sigma, uint time) external view returns(bytes32);
-
-    /// @return len The length of the all pool ids array
-    function getAllPoolsLength() external view returns (uint len);
 }
