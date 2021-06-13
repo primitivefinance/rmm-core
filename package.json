@@ -58,6 +58,6 @@
   },
   "postinstall": "typechain",
   "lint-staged": {
-    "*.{js,sol,md}": "prettier --write"
+    "*.{js,ts,sol,md}": "prettier --write"
   }
 }
