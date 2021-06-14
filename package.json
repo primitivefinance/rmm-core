@@ -22,9 +22,12 @@
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
     "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
-    "test:factory": "hardhat test ./test/unit/primitiveFactory/effect/create.ts"
+    "test:factory": "hardhat test ./test/unit/primitiveFactory/effect/create.ts",
+    "prepare": "husky install"
   },
   "devDependencies": {
+    "@commitlint/cli": "^12.1.4",
+    "@commitlint/config-conventional": "^12.1.4",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@typechain/ethers-v5": "^6.0.5",
@@ -39,6 +42,8 @@
     "hardhat": "^2.3.0",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-tracer": "^1.0.0-alpha.3",
+    "husky": "^6.0.0",
+    "lint-staged": "^11.0.0",
     "numeric": "^1.2.6",
     "prettier": "^2.2.1",
     "prettier-plugin-solidity": "^1.0.0-beta.6",
@@ -51,6 +56,8 @@
     "typechain": "^4.0.3",
     "typescript": "^4.2.3"
   },
-  "dependencies": {},
-  "postinstall": "typechain"
+  "postinstall": "typechain",
+  "lint-staged": {
+    "*.{js,ts,sol,md}": "prettier --write"
+  }
 }
