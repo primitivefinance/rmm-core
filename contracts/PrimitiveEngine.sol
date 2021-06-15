@@ -99,6 +99,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 dLiquidity,
         bytes calldata data
     ) external override returns (bytes32 pid) {
+        // NOTE: Splitting the requires might save some gas
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
         require(dLiquidity > 0, "Liquidity cannot be 0");
         pid = getPoolId(strike, sigma, time);
@@ -127,7 +128,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(balanceRisky() >= RX1 + balanceX, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balanceY, "Not enough stable tokens");
         positions.fetch(msg.sender, pid).allocate(dLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        emit Create(msg.sender, pid, strike, sigma, time);
+        emit Created(msg.sender, pid, strike, sigma, time);
     }
 
     // ===== Margin =====
@@ -325,7 +326,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             res.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
-            emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
+            emit Swapped(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
     }
 
