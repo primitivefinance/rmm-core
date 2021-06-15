@@ -12,13 +12,6 @@ interface IPrimitiveEngineEvents {
     /// @param  sigma   The volatility of the option of the curve to calibrate to
     /// @param  time    The time until expiry of the option of the curve to calibrate to
     event Create(address indexed from, bytes32 indexed pid, uint strike, uint sigma, uint time);
-
-    /// @notice Sets new global reserve values of the risky and stable token of a pool/curve with `pid`
-    /// @param  pid             The pool that is being updated
-    /// @param  reserveRisky    The new global reserve value of the risky token
-    /// @param  reserveStable   The new global reserve value of the stable token
-    /// @param  blockNumber     The block.number of the call
-    event Updated(bytes32 pid, uint reserveRisky, uint reserveStable, uint blockNumber);
     
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
@@ -27,6 +20,11 @@ interface IPrimitiveEngineEvents {
     /// @param  deltaX  The amount of risky tokens deposited
     /// @param  deltaY  The amount of stable tokens deposited
     event Deposited(address indexed from, address indexed owner, uint deltaX, uint deltaY);
+
+    /// @notice Removes stable and/or risky from a margin account
+    /// @param  from    The calling `msg.sender`
+    /// @param  deltaX  The amount of risky tokens withdrawn
+    /// @param  deltaY  The amount of stable tokens withdrawn
     event Withdrawn(address indexed from, uint deltaX, uint deltaY);
     
     // ===== Liquidity =====

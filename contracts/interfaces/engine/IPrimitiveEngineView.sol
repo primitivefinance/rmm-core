@@ -37,9 +37,6 @@ interface IPrimitiveEngineView {
     /// The stable token address
     function stable() external view returns (address);
 
-    /// The fee charged on the way in, for swaps and flashes
-    function fee() external view returns (uint);
-
     // ===== Pool States =====
     /// @notice             Fetches the global reserve state for a pool with `pid`
     /// @param              pid The pool id hash
@@ -88,7 +85,4 @@ interface IPrimitiveEngineView {
     /// @param  time    The time until expiry of the pool
     /// @return The keccak256 hash of the `calibration` parameters
     function getPoolId(uint strike, uint sigma, uint time) external view returns(bytes32);
-
-    /// @return len The length of the all pool ids array
-    function getAllPoolsLength() external view returns (uint len);
 }
