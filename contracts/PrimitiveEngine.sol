@@ -129,7 +129,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(balanceRisky() >= RX1 + balRisky, "Not enough risky tokens");
         require(balanceStable() >= RY2 + balStable, "Not enough stable tokens");
         positions.fetch(msg.sender, pid).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        emit Create(msg.sender, pid, strike, sigma, time);
+        emit Created(msg.sender, pid, strike, sigma, time);
     }
 
     // ===== Margin =====
