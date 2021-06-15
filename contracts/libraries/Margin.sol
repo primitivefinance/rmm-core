@@ -20,9 +20,13 @@ library Margin {
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function deposit(Data storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
-        if(deltaX > 0) mar.balanceRisky += uint128(deltaX);
-        if(deltaY > 0) mar.balanceStable += uint128(deltaY);
+    function deposit(
+        Data storage mar,
+        uint256 deltaX,
+        uint256 deltaY
+    ) internal returns (Data storage) {
+        if (deltaX > 0) mar.balanceRisky += uint128(deltaX);
+        if (deltaY > 0) mar.balanceStable += uint128(deltaY);
         return mar;
     }
 
@@ -31,10 +35,14 @@ library Margin {
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function withdraw(mapping(address => Data) storage mar, uint deltaX, uint deltaY) internal returns (Data storage) {
+    function withdraw(
+        mapping(address => Data) storage mar,
+        uint256 deltaX,
+        uint256 deltaY
+    ) internal returns (Data storage) {
         Data storage margin = mar[msg.sender];
-        if(deltaX > 0) margin.balanceRisky -= uint128(deltaX);
-        if(deltaY > 0) margin.balanceStable -= uint128(deltaY);
+        if (deltaX > 0) margin.balanceRisky -= uint128(deltaX);
+        if (deltaY > 0) margin.balanceStable -= uint128(deltaY);
         return margin;
     }
 }

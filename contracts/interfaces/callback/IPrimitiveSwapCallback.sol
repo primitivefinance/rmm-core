@@ -2,5 +2,9 @@
 pragma solidity 0.8.0;
 
 interface IPrimitiveSwapCallback {
-    function swapCallback(uint deltaX, uint deltaY, bytes calldata data) external;
+    function swapCallback(
+        uint256 deltaX,
+        uint256 deltaY,
+        bytes calldata data
+    ) external;
 }

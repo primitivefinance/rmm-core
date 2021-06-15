@@ -14,24 +14,38 @@ contract EngineCreate {
 
     constructor() {}
 
-    function initialize(address _engine, address _risky, address _stable) public {
-      engine = _engine;
-      risky = _risky;
-      stable = _stable;
+    function initialize(
+        address _engine,
+        address _risky,
+        address _stable
+    ) public {
+        engine = _engine;
+        risky = _risky;
+        stable = _stable;
     }
 
-    function create(uint strike, uint sigma, uint time, uint riskyPrice, uint dLiquidity, bytes calldata data) public {
-      CALLER = msg.sender;
-      IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, dLiquidity, data);
+    function create(
+        uint256 strike,
+        uint256 sigma,
+        uint256 time,
+        uint256 riskyPrice,
+        uint256 dLiquidity,
+        bytes calldata data
+    ) public {
+        CALLER = msg.sender;
+        IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, dLiquidity, data);
     }
 
-    function createCallback(uint deltaX, uint deltaY, bytes calldata data) public {
+    function createCallback(
+        uint256 deltaX,
+        uint256 deltaY,
+        bytes calldata data
+    ) public {
         IERC20(risky).transferFrom(CALLER, engine, deltaX);
         IERC20(stable).transferFrom(CALLER, engine, deltaY);
     }
 
     function name() public pure returns (string memory) {
-      return "EngineCreate";
+        return "EngineCreate";
     }
 }
-

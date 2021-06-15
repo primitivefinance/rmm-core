@@ -10,28 +10,33 @@ import "../../libraries/Reserve.sol";
 contract TestReserve {
     using Reserve for Reserve.Data;
     using Reserve for mapping(bytes32 => Reserve.Data);
-    
+
     /// @notice Used for testing time
     uint256 public timestamp;
     /// @notice Storage slot for the reserveId used for testing
     bytes32 public reserveId;
     /// @notice All the reserve data structs to use for testing
     mapping(bytes32 => Reserve.Data) public reserves;
-    
+
     constructor() {}
 
-   /// @notice Used for testing
+    /// @notice Used for testing
     function res() public view returns (Reserve.Data memory) {
-       return reserves[reserveId];
+        return reserves[reserveId];
     }
 
     /// @notice Called before each unit test to initialize a reserve to test
-    function beforeEach(string memory name, uint timestamp_, uint reserveRisky, uint reserveStable) public {
-       timestamp = timestamp_; // set the starting time for this reserve
-       bytes32 resId = keccak256(abi.encodePacked(name)); // get bytes32 id for name
-       reserveId = resId; // set this resId in global state to easily fetch in test
-       // create a new reserve data struct
-       reserves[resId] = Reserve.Data({
+    function beforeEach(
+        string memory name,
+        uint256 timestamp_,
+        uint256 reserveRisky,
+        uint256 reserveStable
+    ) public {
+        timestamp = timestamp_; // set the starting time for this reserve
+        bytes32 resId = keccak256(abi.encodePacked(name)); // get bytes32 id for name
+        reserveId = resId; // set this resId in global state to easily fetch in test
+        // create a new reserve data struct
+        reserves[resId] = Reserve.Data({
             RX1: reserveRisky, // risky token balance
             RY2: reserveStable, // stable token balance
             liquidity: 2e18,
@@ -41,18 +46,18 @@ contract TestReserve {
             cumulativeStable: 0,
             cumulativeLiquidity: 0,
             blockTimestamp: uint32(timestamp_)
-       });
+        });
     }
 
-   /// @notice Used for time dependent tests
-   function _blockTimestamp() public view returns (uint32 blockTimestamp) {
-      blockTimestamp = uint32(timestamp);
-   }
+    /// @notice Used for time dependent tests
+    function _blockTimestamp() public view returns (uint32 blockTimestamp) {
+        blockTimestamp = uint32(timestamp);
+    }
 
-   /// @notice Increments the timestamp used for testing
-   function step(uint timestep) public {
-      timestamp += uint32(timestep);
-   }
+    /// @notice Increments the timestamp used for testing
+    function step(uint256 timestep) public {
+        timestamp += uint32(timestep);
+    }
 
     /// @notice Adds amounts to cumulative reserves
     function shouldUpdate(bytes32 resId) public returns (Reserve.Data memory) {
@@ -60,37 +65,52 @@ contract TestReserve {
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
-    function shouldSwap(bytes32 resId, bool addXRemoveY, uint deltaIn, uint deltaOut) public returns (Reserve.Data memory) {
+    function shouldSwap(
+        bytes32 resId,
+        bool addXRemoveY,
+        uint256 deltaIn,
+        uint256 deltaOut
+    ) public returns (Reserve.Data memory) {
         return reserves[resId].swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
     }
 
     /// @notice Add to both reserves and total supply of liquidity
-    function shouldAllocate(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].allocate(deltaX, deltaY, deltaL, _blockTimestamp());
+    function shouldAllocate(
+        bytes32 resId,
+        uint256 deltaX,
+        uint256 deltaY,
+        uint256 deltaL
+    ) public returns (Reserve.Data memory) {
+        return reserves[resId].allocate(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
-    function shouldRemove(bytes32 resId, uint deltaX, uint deltaY, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].remove(deltaX, deltaY, deltaL, _blockTimestamp());
+    function shouldRemove(
+        bytes32 resId,
+        uint256 deltaX,
+        uint256 deltaY,
+        uint256 deltaL
+    ) public returns (Reserve.Data memory) {
+        return reserves[resId].remove(deltaX, deltaY, deltaL, _blockTimestamp());
     }
 
     /// @notice Increases available float to borrow, called when lending
-    function shouldAddFloat(bytes32 resId, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].addFloat(deltaL);
+    function shouldAddFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
+        return reserves[resId].addFloat(deltaL);
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function shouldRemoveFloat(bytes32 resId, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].removeFloat(deltaL);
+    function shouldRemoveFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
+        return reserves[resId].removeFloat(deltaL);
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function shouldBorrowFloat(bytes32 resId, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].borrowFloat(deltaL);
+    function shouldBorrowFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
+        return reserves[resId].borrowFloat(deltaL);
     }
 
-    /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow 
-    function shouldRepayFloat(bytes32 resId, uint deltaL) public returns (Reserve.Data memory) {
-       return reserves[resId].repayFloat(deltaL);
+    /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
+    function shouldRepayFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
+        return reserves[resId].repayFloat(deltaL);
     }
 }

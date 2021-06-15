@@ -9,7 +9,6 @@ import "./BlackScholes.sol";
 import "./CumulativeNormalDistribution.sol";
 import "./Units.sol";
 
-
 import "hardhat/console.sol";
 
 library ReplicationMath {
@@ -22,7 +21,7 @@ library ReplicationMath {
     // ===== Math ======
 
     /// @return  vol Implied Vol * Sqrt(T-t)
-    function getProportionalVolatility(uint sigma, uint time) internal pure returns (int128 vol) {
+    function getProportionalVolatility(uint256 sigma, uint256 time) internal pure returns (int128 vol) {
         // sigma * sqrt(t)
         int128 sqrtTime = time.toYears().sqrt();
         int128 SX1 = sigma.fromUInt();
@@ -31,30 +30,42 @@ library ReplicationMath {
 
     /// @notice  Fetches RY2 using RX1.
     /// @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-    function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RY2) {
+    function getTradingFunction(
+        uint256 RX1,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 time
+    ) internal pure returns (int128 RY2) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
-        int128 one = uint(1).fromUInt();
+        int128 one = uint256(1).fromUInt();
         // CDF
-        int128 reserve = ((RX1 * 10 ** 18) / liquidity).parseUnits();
+        int128 reserve = ((RX1 * 10**18) / liquidity).parseUnits();
         int128 phi = one.sub(reserve).getInverseCDF();
         // CDF^-1(1-x) - sigma*sqrt(t)
         int128 input = phi.mul(Units.PERCENTAGE_INT).sub(vol).div(Units.PERCENTAGE_INT);
         // K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-        RY2 = k.mul(input.getCDF()).mul(liquidity.parseUnits()); 
+        RY2 = k.mul(input.getCDF()).mul(liquidity.parseUnits());
     }
 
     /// @notice  Fetches RX1 using RY2.
     /// @return  RX1 = 1 - K*CDF(CDF^-1(RY2/K) + sigma*sqrt(t))
-    function getInverseTradingFunction(uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128 RX1) {
+    function getInverseTradingFunction(
+        uint256 RY2,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 time
+    ) internal pure returns (int128 RX1) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
         // 1
-        int128 one = uint(1).fromUInt();
+        int128 one = uint256(1).fromUInt();
         // Y
-        int128 reserve = ((RY2 * 10 ** 18) / liquidity).parseUnits();
+        int128 reserve = ((RY2 * 10**18) / liquidity).parseUnits();
         // CDF^-1(Y/K)
         int128 phi = reserve.div(k).getInverseCDF();
         // CDF^-1(Y/K) + sigma*sqrt(t)
@@ -62,9 +73,16 @@ library ReplicationMath {
         // 1 - K*CDF(CDF^-1(Y/K) + sigma*sqrt(t))
         RX1 = one.sub(input.getCDF()).mul(liquidity.parseUnits());
     }
- 
+
     /// @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-    function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) internal pure returns (int128) {
+    function calcInvariant(
+        uint256 RX1,
+        uint256 RY2,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 time
+    ) internal pure returns (int128) {
         int128 reserve2 = getTradingFunction(RX1, liquidity, strike, sigma, time);
         int128 invariant = RY2.parseUnits().sub(reserve2);
         return invariant;

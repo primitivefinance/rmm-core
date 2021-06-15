@@ -9,21 +9,20 @@ import "../../libraries/ABDKMath64x64.sol";
 import "../../libraries/CumulativeNormalDistribution.sol";
 import "../../libraries/Units.sol";
 
-
 contract TestCumulativeNormalDistribution {
     using Units for *;
     using CumulativeNormalDistribution for *;
 
-    constructor()  {}
+    constructor() {}
 
     // ==== Cumulative Normal Distribution Function Library Entry ====
 
-    function cdf(uint x) public pure returns (int128) {
+    function cdf(uint256 x) public pure returns (int128) {
         int128 z = ABDKMath64x64.fromUInt(x);
         return z.getCDF();
     }
 
-    function icdf(uint x) public pure returns (int128 y) {
+    function icdf(uint256 x) public pure returns (int128 y) {
         //int128 p = 0x4000000000000830; // 0.25
         int128 p = x.parseUnits();
         y = p.getInverseCDF();

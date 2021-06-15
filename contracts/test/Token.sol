@@ -38,11 +38,11 @@ contract Token is IERC20 {
         return _balances[account];
     }
 
-    function mint(address to, uint wad) public {
+    function mint(address to, uint256 wad) public {
         _mint(to, wad);
     }
 
-    function burn(address to, uint wad) public {
+    function burn(address to, uint256 wad) public {
         _burn(to, wad);
     }
 

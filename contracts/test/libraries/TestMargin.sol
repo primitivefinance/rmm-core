@@ -18,12 +18,11 @@ contract TestMargin {
         return margins[msg.sender];
     }
 
-
     /// @notice Adds to risky and riskless token balances
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function shouldDeposit(uint deltaX, uint deltaY) public returns (Margin.Data memory) {
+    function shouldDeposit(uint256 deltaX, uint256 deltaY) public returns (Margin.Data memory) {
         uint128 preX = margins[msg.sender].balanceRisky;
         uint128 preY = margins[msg.sender].balanceStable;
         margins[msg.sender].deposit(deltaX, deltaY);
@@ -36,7 +35,7 @@ contract TestMargin {
     /// @param  deltaX  The amount of risky tokens to add to margin
     /// @param  deltaY  The amount of stable tokens to add to margin
     /// @return The margin data storage item
-    function shouldWithdraw(uint deltaX, uint deltaY) public returns (Margin.Data memory) {
+    function shouldWithdraw(uint256 deltaX, uint256 deltaY) public returns (Margin.Data memory) {
         uint128 preX = margins[msg.sender].balanceRisky;
         uint128 preY = margins[msg.sender].balanceStable;
         margins[msg.sender] = margins.withdraw(deltaX, deltaY);

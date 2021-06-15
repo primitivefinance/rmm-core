@@ -2,5 +2,9 @@
 pragma solidity 0.8.0;
 
 interface IPrimitiveMarginCallback {
-    function depositCallback(uint deltaX, uint deltaY, bytes calldata data) external;
+    function depositCallback(
+        uint256 deltaX,
+        uint256 deltaY,
+        bytes calldata data
+    ) external;
 }

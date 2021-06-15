@@ -9,16 +9,14 @@ contract FactoryCreate {
     constructor() {}
 
     function initialize(address factory_) public {
-      factory = factory_;
+        factory = factory_;
     }
 
-    function create(address risky, address riskless) public { 
-      IPrimitiveFactory(factory).create(risky, riskless);
-
+    function create(address risky, address riskless) public {
+        IPrimitiveFactory(factory).create(risky, riskless);
     }
 
     function name() public view returns (string memory) {
-      return "FactoryCreate";
+        return "FactoryCreate";
     }
 }
-

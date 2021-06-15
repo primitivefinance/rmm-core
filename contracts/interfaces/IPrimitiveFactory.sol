@@ -5,7 +5,6 @@ pragma solidity 0.8.0;
 /// @author  Primitive
 
 interface IPrimitiveFactory {
-
     /// @notice Created a new engine contract!
     /// @param  from    The calling `msg.sender`
     /// @param  risky   The risky token
@@ -24,11 +23,14 @@ interface IPrimitiveFactory {
     /// @return factory The smart contract deploying the Engine contract
     /// risky   The risky token
     /// stable  The stable token
-    function args() external view returns (
-        address factory,
-        address risky,
-        address stable
-    );
+    function args()
+        external
+        view
+        returns (
+            address factory,
+            address risky,
+            address stable
+        );
 
     /// @return engine The engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);

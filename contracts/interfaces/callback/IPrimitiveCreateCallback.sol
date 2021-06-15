@@ -2,5 +2,9 @@
 pragma solidity 0.8.0;
 
 interface IPrimitiveCreateCallback {
-    function createCallback(uint deltaX, uint deltaY, bytes calldata data) external;
+    function createCallback(
+        uint256 deltaX,
+        uint256 deltaY,
+        bytes calldata data
+    ) external;
 }
