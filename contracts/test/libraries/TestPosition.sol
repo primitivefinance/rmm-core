@@ -17,16 +17,15 @@ contract TestPosition {
     /// @notice Stores position data structs using a bytes32 positionId key
     mapping(bytes32 => Position.Data) public positions;
 
-    constructor () {}
+    constructor() {}
 
     /// @notice Used for testing
     function pos() public view returns (Position.Data memory) {
         return positions[posId];
     }
 
-
     /// @notice Called before each unit test
-    function beforeEach(bytes32 poolId, uint liquidity) public {
+    function beforeEach(bytes32 poolId, uint256 liquidity) public {
         posId = Position.getPositionId(msg.sender, poolId);
         positions[posId] = Position.Data({
             balanceRisky: 0,
@@ -50,7 +49,7 @@ contract TestPosition {
     }
 
     /// @notice Increments a position's liquidity
-    function shouldAllocate(bytes32 poolId, uint amount) public returns (Position.Data memory) {
+    function shouldAllocate(bytes32 poolId, uint256 amount) public returns (Position.Data memory) {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = pos.liquidity;
         positions.fetch(msg.sender, poolId).allocate(amount);
@@ -60,7 +59,7 @@ contract TestPosition {
     }
 
     /// @notice Decrements a position's liquidity
-    function shouldRemove(bytes32 poolId, uint amount) public {
+    function shouldRemove(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = (pos.liquidity);
         positions.remove(poolId, amount);
@@ -70,7 +69,7 @@ contract TestPosition {
     }
 
     /// @notice Increments debt and balanceRisky for a position
-    function shouldBorrow(bytes32 poolId, uint amount) public {
+    function shouldBorrow(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = pos.balanceRisky;
         positions.borrow(poolId, amount);
@@ -80,7 +79,7 @@ contract TestPosition {
     }
 
     /// @notice Increments a position's float
-    function shouldLend(bytes32 poolId, uint amount) public {
+    function shouldLend(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = pos.float;
         positions.lend(poolId, amount);
@@ -90,7 +89,7 @@ contract TestPosition {
     }
 
     /// @notice Decrements a positions float
-    function shouldClaim(bytes32 poolId, uint amount) public {
+    function shouldClaim(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = pos.float;
         positions.claim(poolId, amount);
@@ -100,7 +99,7 @@ contract TestPosition {
     }
 
     /// @notice Decrements a position's debt by reducing its liquidity
-    function shouldRepay(bytes32 poolId, uint amount) public {
+    function shouldRepay(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
         uint128 pre = pos.debt;
         positions.fetch(msg.sender, poolId).repay(amount);

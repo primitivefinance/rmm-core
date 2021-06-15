@@ -14,7 +14,7 @@ library BlackScholes {
     using Units for int128;
     using Units for uint256;
 
-     // Black-Scholes functions.
+    // Black-Scholes functions.
 
     /// @dev     Calculate the d1 auxiliary variable.
     /// @notice  ( ln(s/k) + (o^2/2)*(T-t) ) / o * sqrt(T-t).
@@ -31,7 +31,7 @@ library BlackScholes {
         // ln( F / K )
         int128 moneyness = logSimpleMoneyness(s, k);
         // (r + volatility^2 / 2), r = 0 for simplicity. This should be fixed.
-        int128 vol = (o.percentage().pow(2)).div(uint(2).fromUInt());
+        int128 vol = (o.percentage().pow(2)).div(uint256(2).fromUInt());
         // ( T - t ) time until expiry. seconds / seconds in a year = years
         int128 time = t.toYears();
         // ln( F / K ) + (r + volatility^2 / 2) * (T - t)
@@ -48,7 +48,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        delta = d1(s,k,o,t).getCDF();
+        delta = d1(s, k, o, t).getCDF();
     }
 
     /// @notice Returns the `delta` greek of a put option
@@ -58,7 +58,7 @@ library BlackScholes {
         uint256 o,
         uint256 t
     ) internal pure returns (int128 delta) {
-        delta = d1(s,k,o,t).getCDF().sub(uint(1).fromUInt());
+        delta = d1(s, k, o, t).getCDF().sub(uint256(1).fromUInt());
     }
 
     /// @dev     Calculates the log simple moneyness.
