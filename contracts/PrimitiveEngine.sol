@@ -87,7 +87,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @notice Block timestamp... but casted as a uint32
     function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
-        // solhint-disable-next-line 
+        // solhint-disable-next-line
         blockTimestamp = uint32(block.timestamp);
     }
 
@@ -100,6 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delLiquidity,
         bytes calldata data
     ) external override returns (bytes32 pid) {
+        // NOTE: Splitting the requires might save some gas
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
         require(delLiquidity > 0, "Liquidity cannot be 0");
         pid = getPoolId(strike, sigma, time);
@@ -326,7 +327,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             res.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
-            emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
+            emit Swapped(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
     }
 
