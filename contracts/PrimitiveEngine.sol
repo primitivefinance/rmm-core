@@ -24,6 +24,9 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+
+
+
 import "hardhat/console.sol";
 
 contract PrimitiveEngine is IPrimitiveEngine {
@@ -38,7 +41,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for mapping(bytes32 => Position.Data);
     using Position for Position.Data;
     using Transfers for IERC20;
-    
+
     struct Calibration {// Parameters of each pool
         uint128 strike; // strike price of the option
         uint64 sigma;   // implied volatility of the option
@@ -136,13 +139,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveMarginCallback(msg.sender).depositCallback(deltaX, deltaY, data); // receive tokens
         if(deltaX > 0) require(balanceRisky() >= balanceX + deltaX, "Not enough risky");
         if(deltaY > 0) require(balanceStable() >= balanceY + deltaY, "Not enough stable");
-    
+
         Margin.Data storage margin = margins[owner];
         margin.deposit(deltaX, deltaY); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, owner, deltaX, deltaY);
     }
 
-    
+
     /// @inheritdoc IPrimitiveEngineActions
     function withdraw(uint deltaX, uint deltaY) external override {
         margins.withdraw(deltaX, deltaY); // removes risky and/or stable token balances from `msg.sender`
@@ -181,7 +184,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         emit Allocated(msg.sender, deltaX, deltaY);
     }
 
-    
+
     /// @inheritdoc IPrimitiveEngineActions
     function remove(bytes32 pid, uint deltaL, bool isInternal, bytes calldata data) external lock override returns (uint deltaX, uint deltaY) {
         require(deltaL > 0, "Cannot be 0");
@@ -214,7 +217,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(balanceStable() >= balanceY - deltaY, "Not enough stable");
         }
 
-        
+
         positions.remove(pid, deltaL); // Updated position liqudiity
         res.remove(deltaX, deltaY, deltaL, _blockTimestamp());
         emit Removed(msg.sender, deltaX, deltaY);
@@ -239,7 +242,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             riskyForStable: riskyForStable,
             fromMargin: fromMargin
         });
-        
+
         int128 invariant = invariantOf(details.poolId); // gas savings
         Reserve.Data storage res = reserves[details.poolId]; // gas savings
         (uint RX1, uint RY2) = (res.RX1, res.RY2);
@@ -332,17 +335,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
         {
         uint dLiquidity = deltaL;
         require(res.float >= dLiquidity && dLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
-        
+
 
         uint liquidity = res.liquidity; // global liquidity balance
         uint deltaX = dLiquidity * res.RX1 / liquidity; // amount of risky asset
         uint deltaY = dLiquidity * res.RY2 / liquidity; // amount of stable asset
-        
+
         {
 
         uint preRisky = IERC20(risky).balanceOf(address(this));
         uint preRiskless = IERC20(stable).balanceOf(address(this));
-        
+
         // trigger callback before position debt is increased, so liquidity can be removed
         IERC20(stable).safeTransfer(msg.sender, deltaY);
         IPrimitiveLendingCallback(msg.sender).borrowCallback(dLiquidity, deltaX, deltaY, data); // trigger the callback so we can remove liquidity
@@ -353,7 +356,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint postRisky = IERC20(risky).balanceOf(address(this));
         uint postRiskless = IERC20(stable).balanceOf(address(this));
-        
+
         require(postRisky >= preRisky + (dLiquidity - deltaX), "IRY");
         require(postRiskless >= preRiskless - deltaY, "IRL");
         }
@@ -362,7 +365,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
     }
 
-    
+
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or deltaL >= pos.liquidity (not enough of a balance to pay debt)
     function repay(bytes32 pid, address owner, uint deltaL, bool isInternal, bytes calldata data) external lock override returns (uint deltaRisky, uint deltaStable) {
@@ -374,7 +377,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
           res.debt >= deltaL &&
           (int256(pos.liquidity)) >= int256(deltaL),
           "ID"
-        ); 
+        );
 
 
         deltaRisky = deltaL * res.RX1 / res.liquidity;
@@ -393,7 +396,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable,
             "IS"
           );
-          
+
           res.allocate(deltaRisky, deltaStable, deltaL, _blockTimestamp());
           res.repayFloat(deltaL);
           pos.repay(deltaL);
@@ -418,7 +421,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
     }
 
-    // ===== View ===== 
+    // ===== View =====
 
     /// @inheritdoc IPrimitiveEngineView
     function calcInvariant(bytes32 pid, uint reserveX, uint reserveY, uint postLiquidity) public view override returns (int128 invariant) {
@@ -451,9 +454,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint fee_ = flashFee(token, amount); // reverts if unsupported token
         uint balance = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);
-        
+
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee_, data) 
+            receiver.onFlashLoan(msg.sender, token, amount, fee_, data)
             == keccak256("ERC3156FlashBorrower.onFlashLoan"),
             "IERC3156: Callback failed"
         );
