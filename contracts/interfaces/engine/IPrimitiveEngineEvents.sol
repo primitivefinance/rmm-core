@@ -11,7 +11,7 @@ interface IPrimitiveEngineEvents {
     /// @param  strike  The strike price of the option of the curve to calibrate to
     /// @param  sigma   The volatility of the option of the curve to calibrate to
     /// @param  time    The time until expiry of the option of the curve to calibrate to
-    event Create(address indexed from, bytes32 indexed pid, uint256 strike, uint256 sigma, uint256 time);
+    event Created(address indexed from, bytes32 indexed pid, uint256 strike, uint256 sigma, uint256 time);
 
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
@@ -47,7 +47,13 @@ interface IPrimitiveEngineEvents {
     /// @param  addXRemoveY  If true, a swap from the risky token to the stable token
     /// @param  deltaIn  The amount of tokens paid
     /// @param  deltaOut The amount of tokens received
-    event Swap(address indexed from, bytes32 indexed pid, bool indexed addXRemoveY, uint256 deltaIn, uint256 deltaOut);
+    event Swapped(
+        address indexed from,
+        bytes32 indexed pid,
+        bool indexed addXRemoveY,
+        uint256 deltaIn,
+        uint256 deltaOut
+    );
 
     // ===== Lending =====
     /// @notice Liquidity shares added to the float to be borrowed
