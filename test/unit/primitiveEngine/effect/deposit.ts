@@ -38,6 +38,16 @@ describe('deposit', function () {
       ])
     })
 
+    it('increases the previous margin when called another time', async function () {
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('999').raw, parseWei('1001').raw, empty)
+
+      const margin = await this.contracts.engine.margins(this.signers[0].address)
+
+      expect(margin.balanceRisky).to.equal(parseWei('2000').raw)
+      expect(margin.balanceStable).to.equal(parseWei('2000').raw)
+    })
+
     it('emits the Deposited event', async function () {
       await expect(
         this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw, empty)
