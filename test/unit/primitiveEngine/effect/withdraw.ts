@@ -40,6 +40,16 @@ describe('withdraw', function () {
         .withArgs(this.contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw)
     })
 
+    it('emits the Withdrawn event', async function () {
+      await expect(
+        this.contracts.engineWithdraw.withdraw(parseWei('1000').raw, parseWei('1000').raw),
+      ).to.emit(this.contracts.engine, 'Withdrawn').withArgs(
+        this.contracts.engineWithdraw.address,
+        parseWei('1000').raw,
+        parseWei('1000').raw,
+      )
+    })
+
     it('reverts when attempting to withdraw more than is in margin', async function () {
       await expect(this.contracts.engineWithdraw.withdraw(constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be
         .reverted
