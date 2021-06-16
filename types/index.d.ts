@@ -22,6 +22,7 @@ export interface Contracts {
   engineRemove: ContractTypes.EngineRemove
   engineLend: ContractTypes.EngineLend
   engineBorrow: ContractTypes.EngineBorrow
+  badEngineDeposit: ContractTypes.BadEngineDeposit
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
@@ -64,4 +65,8 @@ type ContractName =
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineLend'
+<<<<<<< HEAD
   | 'engineBorrow'
+=======
+  | 'badEngineDeposit'
+>>>>>>> 65f44c9 (test: add new deposit tests)
