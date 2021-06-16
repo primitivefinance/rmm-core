@@ -17,6 +17,9 @@ export async function depositFragment(signers: Wallet[], contracts: Contracts): 
   await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
   await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
+
+  await contracts.stable.approve(contracts.badEngineDeposit.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.badEngineDeposit.address, constants.MaxUint256)
 }
 
 export async function withdrawFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
