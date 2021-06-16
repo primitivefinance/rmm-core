@@ -105,6 +105,10 @@ export default async function createTestContracts(contracts: ContractName[], dep
           deployer
         )) as ContractTypes.TestCumulativeNormalDistribution
         break
+      case 'badEngineDeposit':
+        loadedContracts.badEngineDeposit = (await deploy('BadEngineDeposit', deployer)) as ContractTypes.BadEngineDeposit
+        await initializeTestContract(loadedContracts.badEngineDeposit, loadedContracts)
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }
