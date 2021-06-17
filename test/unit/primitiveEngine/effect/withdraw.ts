@@ -41,13 +41,9 @@ describe('withdraw', function () {
     })
 
     it('emits the Withdrawn event', async function () {
-      await expect(
-        this.contracts.engineWithdraw.withdraw(parseWei('1000').raw, parseWei('1000').raw),
-      ).to.emit(this.contracts.engine, 'Withdrawn').withArgs(
-        this.contracts.engineWithdraw.address,
-        parseWei('1000').raw,
-        parseWei('1000').raw,
-      )
+      await expect(this.contracts.engineWithdraw.withdraw(parseWei('1000').raw, parseWei('1000').raw))
+        .to.emit(this.contracts.engine, 'Withdrawn')
+        .withArgs(this.contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw)
     })
 
     it('reverts when attempting to withdraw more than is in margin', async function () {
