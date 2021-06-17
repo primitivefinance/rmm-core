@@ -49,28 +49,28 @@ interface IPrimitiveEngineView {
     // ===== Pool States =====
     /// @notice             Fetches the global reserve state for a pool with `pid`
     /// @param              pid The pool id hash
-    /// @return             RX1 risky balance
-    /// RY2                 risk free balance
+    /// @return             reserveRisky risky balance
+    /// reserveStable       risk free balance
     /// liquidity           total liquidity shares
     /// float               liquidity shares available to be borrowed
     /// debt                total borrow liquidity shares
+    /// blockTimestamp      unix timestamp when the cumulative reserve values were last updated
     /// cumulativeRisky     tracks cumulative risky reserves overtime
     /// cumulativeStable    tracks cumulative stable reserves overtime
     /// cumulativeLiquidity tracks cumulative liquidity factor overtime
-    /// blockTimestamp      unix timestamp when the cumulative reserve values were last updated
     function reserves(bytes32 pid)
         external
         view
         returns (
-            uint256 RX1,
-            uint256 RY2,
-            uint256 liquidity,
-            uint256 float,
-            uint256 debt,
+            uint128 reserveRisky,
+            uint128 reserveStable,
+            uint128 liquidity,
+            uint128 float,
+            uint128 debt,
+            uint32 blockTimestamp,
             uint256 cumulativeRisky,
             uint256 cumulativeStable,
-            uint256 cumulativeLiquidity,
-            uint32 blockTimestamp
+            uint256 cumulativeLiquidity
         );
 
     /// @notice Fetches The calibrated and initialized pool's parameters

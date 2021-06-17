@@ -35,19 +35,19 @@ describe('testReserve', function () {
       expect(await reserve.timestamp()).to.be.eq(timestamp)
       await reserve.shouldUpdate(resId)
       let deltaTime = timestep
-      let cumulativeRisky = before.RX1.mul(deltaTime)
-      let cumulativeStable = before.RY2.mul(deltaTime)
+      let cumulativeRisky = before.reserveRisky.mul(deltaTime)
+      let cumulativeStable = before.reserveStable.mul(deltaTime)
       let cumulativeLiquidity = before.liquidity.mul(deltaTime)
       expect(await reserve.res()).to.be.deep.eq([
-        before.RX1,
-        before.RY2,
+        before.reserveRisky,
+        before.reserveStable,
         before.liquidity,
         before.float,
         before.debt,
+        (before.blockTimestamp += timestep),
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,
-        before.blockTimestamp,
       ])
     })
 
@@ -56,15 +56,15 @@ describe('testReserve', function () {
       let deltaOut = parseWei('100').raw // stable out
       await reserve.shouldSwap(resId, true, deltaIn, deltaOut)
       expect(await reserve.res()).to.be.deep.eq([
-        before.RX1.add(deltaIn),
-        before.RY2.sub(deltaOut),
+        before.reserveRisky.add(deltaIn),
+        before.reserveStable.sub(deltaOut),
         before.liquidity,
         before.float,
         before.debt,
+        before.blockTimestamp,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
-        before.blockTimestamp,
       ])
     })
 
@@ -74,15 +74,15 @@ describe('testReserve', function () {
       let deltaL = parseWei('0.1').raw
       await reserve.shouldAllocate(resId, deltaX, deltaY, deltaL)
       expect(await reserve.res()).to.be.deep.eq([
-        before.RX1.add(deltaX),
-        before.RY2.add(deltaY),
+        before.reserveRisky.add(deltaX),
+        before.reserveStable.add(deltaY),
         before.liquidity.add(deltaL),
         before.float,
         before.debt,
+        before.blockTimestamp,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
-        before.blockTimestamp,
       ])
     })
     it('shouldRemove', async function () {
@@ -91,15 +91,15 @@ describe('testReserve', function () {
       let deltaL = parseWei('0.1').raw
       await reserve.shouldRemove(resId, deltaX, deltaY, deltaL)
       expect(await reserve.res()).to.be.deep.eq([
-        before.RX1.sub(deltaX),
-        before.RY2.sub(deltaY),
+        before.reserveRisky.sub(deltaX),
+        before.reserveStable.sub(deltaY),
         before.liquidity.sub(deltaL),
         before.float,
         before.debt,
+        before.blockTimestamp,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
-        before.blockTimestamp,
       ])
     })
     it('shouldAddFloat', async function () {

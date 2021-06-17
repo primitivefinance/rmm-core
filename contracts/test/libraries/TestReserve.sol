@@ -37,15 +37,15 @@ contract TestReserve {
         reserveId = resId; // set this resId in global state to easily fetch in test
         // create a new reserve data struct
         reserves[resId] = Reserve.Data({
-            RX1: reserveRisky, // risky token balance
-            RY2: reserveStable, // stable token balance
-            liquidity: 2e18,
-            float: 1e18, // the LP shares available to be borrowed on a given pid
+            reserveRisky: uint128(reserveRisky), // risky token balance
+            reserveStable: uint128(reserveStable), // stable token balance
+            liquidity: uint128(2e18),
+            float: uint128(1e18), // the LP shares available to be borrowed on a given pid
             debt: 0, // the LP shares borrowed from the float
+            blockTimestamp: uint32(timestamp_),
             cumulativeRisky: 0,
             cumulativeStable: 0,
-            cumulativeLiquidity: 0,
-            blockTimestamp: uint32(timestamp_)
+            cumulativeLiquidity: 0
         });
     }
 

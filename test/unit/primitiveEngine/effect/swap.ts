@@ -75,8 +75,8 @@ describe('swap', function () {
 
         const postReserve = await this.contracts.engine.reserves(poolId)
         expect(Math.abs(postInvariant)).to.be.gte(Math.abs(new Wei(invariant).float))
-        expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq(postReserve.RX1) // FIX
-        expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
+        expect(postParams.reserve.reserveRisky.raw, 'check FXR1').to.be.eq(postReserve.reserveRisky) // FIX
+        expect(postParams.reserve.reserveStable.raw, 'check FYR2').to.be.eq(postReserve.reserveStable) // FIX
       })
 
       it('Engine::Swap: Swap X to Y from Callee', async function () {
@@ -99,8 +99,8 @@ describe('swap', function () {
 
         const postReserve = await this.contracts.engine.reserves(poolId)
         //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.RX1.raw, 'check FXR1').to.be.eq(postReserve.RX1) // FIX
-        expect(postParams.reserve.RY2.raw, 'check FYR2').to.be.eq(postReserve.RY2) // FIX
+        expect(postParams.reserve.reserveRisky.raw, 'check FXR1').to.be.eq(postReserve.reserveRisky) // FIX
+        expect(postParams.reserve.reserveStable.raw, 'check FYR2').to.be.eq(postReserve.reserveStable) // FIX
       })
 
       it('Engine::Swap: Swap Y to X from EOA from margin', async function () {
@@ -124,8 +124,8 @@ describe('swap', function () {
 
         const postReserve = await this.contracts.engine.reserves(poolId)
         //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.RX1.raw.toString(), 'check FXR1').to.be.eq(postReserve.RX1)
-        expect(postParams.reserve.RY2.raw.toString(), 'check FYR2').to.be.eq(postReserve.RY2)
+        expect(postParams.reserve.reserveRisky.raw.toString(), 'check FXR1').to.be.eq(postReserve.reserveRisky)
+        expect(postParams.reserve.reserveStable.raw.toString(), 'check FYR2').to.be.eq(postReserve.reserveStable)
       })
 
       it('Engine::Swap: Swap Y to X from Callee', async function () {
@@ -148,8 +148,8 @@ describe('swap', function () {
 
         const postReserve = await this.contracts.engine.reserves(poolId)
         //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.RX1.raw.toString(), 'check FXR1').to.be.eq(postReserve.RX1)
-        expect(postParams.reserve.RY2.raw.toString(), 'check FYR2').to.be.eq(postReserve.RY2)
+        expect(postParams.reserve.reserveRisky.raw.toString(), 'check FXR1').to.be.eq(postReserve.reserveRisky)
+        expect(postParams.reserve.reserveStable.raw.toString(), 'check FYR2').to.be.eq(postReserve.reserveStable)
       })
     })
 
