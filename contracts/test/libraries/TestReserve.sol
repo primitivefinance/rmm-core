@@ -77,40 +77,40 @@ contract TestReserve {
     /// @notice Add to both reserves and total supply of liquidity
     function shouldAllocate(
         bytes32 resId,
-        uint256 deltaX,
-        uint256 deltaY,
-        uint256 deltaL
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity
     ) public returns (Reserve.Data memory) {
-        return reserves[resId].allocate(deltaX, deltaY, deltaL, _blockTimestamp());
+        return reserves[resId].allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
     function shouldRemove(
         bytes32 resId,
-        uint256 deltaX,
-        uint256 deltaY,
-        uint256 deltaL
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity
     ) public returns (Reserve.Data memory) {
-        return reserves[resId].remove(deltaX, deltaY, deltaL, _blockTimestamp());
+        return reserves[resId].remove(delRisky, delStable, delLiquidity, _blockTimestamp());
     }
 
     /// @notice Increases available float to borrow, called when lending
-    function shouldAddFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
-        return reserves[resId].addFloat(deltaL);
+    function shouldAddFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
+        return reserves[resId].addFloat(delLiquidity);
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function shouldRemoveFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
-        return reserves[resId].removeFloat(deltaL);
+    function shouldRemoveFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
+        return reserves[resId].removeFloat(delLiquidity);
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function shouldBorrowFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
-        return reserves[resId].borrowFloat(deltaL);
+    function shouldBorrowFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
+        return reserves[resId].borrowFloat(delLiquidity);
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
-    function shouldRepayFloat(bytes32 resId, uint256 deltaL) public returns (Reserve.Data memory) {
-        return reserves[resId].repayFloat(deltaL);
+    function shouldRepayFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
+        return reserves[resId].repayFloat(delLiquidity);
     }
 }

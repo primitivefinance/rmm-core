@@ -11,7 +11,7 @@ interface IPrimitiveLiquidityCallback {
     /// @param  data         Calldata passed on allocate function call
     function allocateCallback(
         uint256 delRisky,
-        uint256 deltaY,
+        uint256 delStable,
         bytes calldata data
     ) external;
 
@@ -21,7 +21,7 @@ interface IPrimitiveLiquidityCallback {
     /// @param  data         Calldata passed on remove function call
     function removeCallback(
         uint256 delRisky,
-        uint256 deltaY,
+        uint256 delStable,
         bytes calldata data
     ) external;
 }

@@ -2,13 +2,16 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-import "hardhat/console.sol";
 
 /// @notice  Engine Reserves
 /// @author  Primitive
 /// @dev     This library holds the data structure for an Engine's Reserves.
 
+import "./SafeCast.sol";
+import "hardhat/console.sol";
 library Reserve {
+    using SafeCast for uint256;
+
     // An Engine has two reserves of RISKY and STABLE assets, and total liquidity.
     struct Data {
         uint128 reserveRisky; // reserve for the risky asset
@@ -42,13 +45,12 @@ library Reserve {
         uint256 deltaOut,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        require(deltaIn <= type(uint128).max && deltaOut <= type(uint128).max, "Over");
         if (addXRemoveY) {
-            reserve.reserveRisky += uint128(deltaIn);
-            reserve.reserveStable -= uint128(deltaOut);
+            reserve.reserveRisky += deltaIn.toUint128();
+            reserve.reserveStable -= deltaOut.toUint128();
         } else {
-            reserve.reserveRisky -= uint128(deltaOut);
-            reserve.reserveStable += uint128(deltaIn);
+            reserve.reserveRisky -= deltaOut.toUint128();
+            reserve.reserveStable += deltaIn.toUint128();
         }
         return update(reserve, blockTimestamp);
     }
@@ -56,60 +58,54 @@ library Reserve {
     /// @notice Add to both reserves and total supply of liquidity
     function allocate(
         Data storage reserve,
-        uint256 dRisky,
-        uint256 dStable,
-        uint256 dLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        require(dRisky <= type(uint128).max && dStable <= type(uint128).max && dLiquidity <= type(uint128).max, "Over");
-        reserve.reserveRisky += uint128(dRisky);
-        reserve.reserveStable += uint128(dStable);
-        reserve.liquidity += uint128(dLiquidity);
+        reserve.reserveRisky += delRisky.toUint128();
+        reserve.reserveStable += delStable.toUint128();
+        reserve.liquidity += delLiquidity.toUint128();
         return update(reserve, blockTimestamp);
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
     function remove(
         Data storage reserve,
-        uint256 dRisky,
-        uint256 dStable,
-        uint256 dLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        require(dRisky <= type(uint128).max && dStable <= type(uint128).max && dLiquidity <= type(uint128).max, "Over");
-        reserve.reserveRisky -= uint128(dRisky);
-        reserve.reserveStable -= uint128(dStable);
-        reserve.liquidity -= uint128(dLiquidity);
+        reserve.reserveRisky -= delRisky.toUint128();
+        reserve.reserveStable -= delStable.toUint128();
+        reserve.liquidity -= delLiquidity.toUint128();
         return update(reserve, blockTimestamp);
     }
 
     /// @notice Increases available float to borrow, called when lending
-    function addFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
-        require(dLiquidity <= type(uint128).max, "Over");
-        reserve.float += uint128(dLiquidity);
+    function addFloat(Data storage reserve, uint256 delLiquidity) internal returns (Data storage) {
+        reserve.float += delLiquidity.toUint128();
         return reserve;
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function removeFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
-        require(dLiquidity <= type(uint128).max, "Over");
-        reserve.float -= uint128(dLiquidity);
+    function removeFloat(Data storage reserve, uint256 delLiquidity) internal returns (Data storage) {
+        reserve.float -= delLiquidity.toUint128();
         return reserve;
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function borrowFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
-        require(dLiquidity <= type(uint128).max, "Over");
-        reserve.float -= uint128(dLiquidity);
-        reserve.debt += uint128(dLiquidity);
+    function borrowFloat(Data storage reserve, uint256 delLiquidity) internal returns (Data storage) {
+        reserve.float -= delLiquidity.toUint128();
+        reserve.debt += delLiquidity.toUint128();
         return reserve;
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
-    function repayFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
-        require(dLiquidity <= type(uint128).max, "Over");
-        reserve.float += uint128(dLiquidity);
-        reserve.debt -= uint128(dLiquidity);
+    function repayFloat(Data storage reserve, uint256 delLiquidity) internal returns (Data storage) {
+        reserve.float += delLiquidity.toUint128();
+        reserve.debt -= delLiquidity.toUint128();
         return reserve;
     }
 }
