@@ -13,7 +13,7 @@ library Position {
         uint128 balanceRisky; // Balance of risky asset
         uint128 balanceStable; // Balance of stable asset
         uint128 float; // Balance of loaned liquidity
-        uint128 liquidity; // Balance of liquidity, which is negative if a debt exists
+        uint128 liquidity; // Balance of liquidity
         uint128 debt; // Balance of liquidity debt that must be paid back
     }
 
