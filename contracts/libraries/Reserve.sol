@@ -31,9 +31,12 @@ library Reserve {
     /// @notice Adds to the cumulative reserves
     function update(Data storage res, uint32 blockTimestamp) internal returns (Data storage) {
         uint32 deltaTime = blockTimestamp - res.blockTimestamp;
-        res.cumulativeRisky += res.RX1 * deltaTime;
-        res.cumulativeStable += res.RY2 * deltaTime;
-        res.cumulativeLiquidity += res.liquidity * deltaTime;
+        if(deltaTime > 0) {
+            res.cumulativeRisky += res.RX1 * deltaTime;
+            res.cumulativeStable += res.RY2 * deltaTime;
+            res.cumulativeLiquidity += res.liquidity * deltaTime;
+        }
+        res.blockTimestamp = blockTimestamp;
         return res;
     }
 
