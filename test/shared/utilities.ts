@@ -11,13 +11,13 @@ export function expandTo18Decimals(n: number): BigNumber {
   return BigNumber.from(n).mul(BigNumber.from(10).pow(18))
 }
 
-export function allocate(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+export function allocate(delLiquidity: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
   const { reserveRisky, reserveStable, liquidity, float, debt } = params.reserve
-  const deltaX = deltaL.mul(reserveRisky).div(liquidity)
-  const deltaY = deltaL.mul(reserveStable).div(liquidity)
-  const postRX1 = deltaX.add(reserveRisky)
-  const postRY2 = deltaY.add(reserveStable)
-  const postLiquidity = deltaL.add(liquidity)
+  const delRisky = delLiquidity.mul(reserveRisky).div(liquidity)
+  const delStable = delLiquidity.mul(reserveStable).div(liquidity)
+  const postRX1 = delRisky.add(reserveRisky)
+  const postRY2 = delStable.add(reserveStable)
+  const postLiquidity = delLiquidity.add(liquidity)
   const post: PoolParams = {
     reserve: {
       reserveRisky: postRX1,
@@ -29,16 +29,16 @@ export function allocate(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams
     calibration: params.calibration,
   }
   const postInvariant: number = calculateInvariant(post)
-  return [deltaX, deltaY, post, postInvariant]
+  return [delRisky, delStable, post, postInvariant]
 }
 
-export function remove(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
+export function remove(delLiquidity: Wei, params: PoolParams): [Wei, Wei, PoolParams, number] {
   const { reserveRisky, reserveStable, liquidity, float, debt } = params.reserve
-  const deltaX = deltaL.mul(reserveRisky).div(liquidity)
-  const deltaY = deltaL.mul(reserveStable).div(liquidity)
-  const postRX1 = reserveRisky.sub(deltaX)
-  const postRY2 = reserveStable.sub(deltaY)
-  const postLiquidity = liquidity.sub(deltaL)
+  const delRisky = delLiquidity.mul(reserveRisky).div(liquidity)
+  const delStable = delLiquidity.mul(reserveStable).div(liquidity)
+  const postRX1 = reserveRisky.sub(delRisky)
+  const postRY2 = reserveStable.sub(delStable)
+  const postLiquidity = liquidity.sub(delLiquidity)
   const post: PoolParams = {
     reserve: {
       reserveRisky: postRX1,
@@ -50,7 +50,7 @@ export function remove(deltaL: Wei, params: PoolParams): [Wei, Wei, PoolParams, 
     calibration: params.calibration,
   }
   const postInvariant: number = calculateInvariant(post)
-  return [deltaX, deltaY, post, postInvariant]
+  return [delRisky, delStable, post, postInvariant]
 }
 
 // ===== Swaps =====
@@ -147,27 +147,27 @@ export function getDeltaOut(deltaIn: Wei, addXRemoveY: boolean, invariantInt128:
   return { deltaIn, deltaOut, postParams, postInvariant }
 }
 
-export function calcRX1WithYOut(deltaY: Wei, params: PoolParams): Wei {
+export function calcRX1WithYOut(delStable: Wei, params: PoolParams): Wei {
   const reserveStable: Wei = params.reserve.reserveStable
-  const nextRY2 = reserveStable.sub(deltaY)
+  const nextRY2 = reserveStable.sub(delStable)
   return parseWei(calcRX1WithRY2(nextRY2, params))
 }
 
-export function calcRY2WithXOut(deltaX: Wei, params: PoolParams): Wei {
+export function calcRY2WithXOut(delRisky: Wei, params: PoolParams): Wei {
   const reserveRisky = params.reserve.reserveRisky
-  const nextRX1 = reserveRisky.sub(deltaX)
+  const nextRX1 = reserveRisky.sub(delRisky)
   return parseWei(calcRY2WithRX1(nextRX1, params))
 }
 
-export function calcRX1WithYIn(deltaY: Wei, params: PoolParams): Wei {
+export function calcRX1WithYIn(delStable: Wei, params: PoolParams): Wei {
   const reserveStable: Wei = params.reserve.reserveStable
-  const nextRY2 = reserveStable.add(deltaY)
+  const nextRY2 = reserveStable.add(delStable)
   return parseWei(calcRX1WithRY2(nextRY2, params))
 }
 
-export function calcRY2WithXIn(deltaX: Wei, params: PoolParams): Wei {
+export function calcRY2WithXIn(delRisky: Wei, params: PoolParams): Wei {
   const reserveRisky = params.reserve.reserveRisky
-  const nextRX1 = reserveRisky.add(deltaX)
+  const nextRX1 = reserveRisky.add(delRisky)
   return parseWei(calcRY2WithRX1(nextRX1, params))
 }
 

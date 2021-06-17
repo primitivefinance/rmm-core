@@ -6,7 +6,11 @@ pragma abicoder v2;
 /// @author  Primitive
 /// @dev     Uses a data struct with two uint128s to optimize for one storage slot.
 
+import "./SafeCast.sol";
+
 library Margin {
+    using SafeCast for uint256;
+
     // Every margin position in an Engine has this data structure, optimized for 1 storage slot.
     struct Data {
         uint128 balanceRisky; // Balance of the RISKY, aka underlying asset.
@@ -23,8 +27,8 @@ library Margin {
         uint256 delRisky,
         uint256 delStable
     ) internal returns (Data storage) {
-        if (delRisky > 0) mar.balanceRisky += uint128(delRisky);
-        if (delStable > 0) mar.balanceStable += uint128(delStable);
+        if (delRisky > 0) mar.balanceRisky += delRisky.toUint128();
+        if (delStable > 0) mar.balanceStable += delStable.toUint128();
         return mar;
     }
 
@@ -39,8 +43,8 @@ library Margin {
         uint256 delStable
     ) internal returns (Data storage) {
         Data storage margin = mar[msg.sender];
-        if (delRisky > 0) margin.balanceRisky -= uint128(delRisky);
-        if (delStable > 0) margin.balanceStable -= uint128(delStable);
+        if (delRisky > 0) margin.balanceRisky -= delRisky.toUint128();
+        if (delStable > 0) margin.balanceStable -= delStable.toUint128();
         return margin;
     }
 }
