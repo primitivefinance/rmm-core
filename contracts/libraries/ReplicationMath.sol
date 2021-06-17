@@ -28,63 +28,63 @@ library ReplicationMath {
         vol = SX1.mul(sqrtTime);
     }
 
-    /// @notice  Fetches RY2 using RX1.
-    /// @return  RY2 = K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
+    /// @notice  Fetches reserveStable using reserveRisky.
+    /// @return  reserveStable = K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
     function getTradingFunction(
-        uint256 RX1,
+        uint256 reserveRisky,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 time
-    ) internal pure returns (int128 RY2) {
+    ) internal pure returns (int128 reserveStable) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
         int128 one = uint256(1).fromUInt();
         // CDF
-        int128 reserve = ((RX1 * 10**18) / liquidity).parseUnits();
+        int128 reserve = ((reserveRisky * 10**18) / liquidity).parseUnits();
         int128 phi = one.sub(reserve).getInverseCDF();
         // CDF^-1(1-x) - sigma*sqrt(t)
         int128 input = phi.mul(Units.PERCENTAGE_INT).sub(vol).div(Units.PERCENTAGE_INT);
-        // K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
-        RY2 = k.mul(input.getCDF()).mul(liquidity.parseUnits());
+        // K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
+        reserveStable = k.mul(input.getCDF()).mul(liquidity.parseUnits());
     }
 
-    /// @notice  Fetches RX1 using RY2.
-    /// @return  RX1 = 1 - K*CDF(CDF^-1(RY2/K) + sigma*sqrt(t))
+    /// @notice  Fetches reserveRisky using reserveStable.
+    /// @return  reserveRisky = 1 - K*CDF(CDF^-1(reserveStable/K) + sigma*sqrt(t))
     function getInverseTradingFunction(
-        uint256 RY2,
+        uint256 reserveStable,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 time
-    ) internal pure returns (int128 RX1) {
+    ) internal pure returns (int128 reserveRisky) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
         int128 vol = getProportionalVolatility(sigma, time);
         // 1
         int128 one = uint256(1).fromUInt();
         // Y
-        int128 reserve = ((RY2 * 10**18) / liquidity).parseUnits();
+        int128 reserve = ((reserveStable * 10**18) / liquidity).parseUnits();
         // CDF^-1(Y/K)
         int128 phi = reserve.div(k).getInverseCDF();
         // CDF^-1(Y/K) + sigma*sqrt(t)
         int128 input = phi.mul(Units.PERCENTAGE_INT).add(vol).div(Units.PERCENTAGE_INT);
         // 1 - K*CDF(CDF^-1(Y/K) + sigma*sqrt(t))
-        RX1 = one.sub(input.getCDF()).mul(liquidity.parseUnits());
+        reserveRisky = one.sub(input.getCDF()).mul(liquidity.parseUnits());
     }
 
-    /// @return  RY2 - K * CDF(CDF^-1(1 - RX1) - sigma * sqrt(T - t))
+    /// @return  reserveStable - K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
     function calcInvariant(
-        uint256 RX1,
-        uint256 RY2,
+        uint256 reserveRisky,
+        uint256 reserveStable,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 time
     ) internal pure returns (int128) {
-        int128 reserve2 = getTradingFunction(RX1, liquidity, strike, sigma, time);
-        int128 invariant = RY2.parseUnits().sub(reserve2);
+        int128 reserve2 = getTradingFunction(reserveRisky, liquidity, strike, sigma, time);
+        int128 invariant = reserveStable.parseUnits().sub(reserve2);
         return invariant;
     }
 }
