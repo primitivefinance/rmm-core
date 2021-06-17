@@ -9,31 +9,25 @@ import "hardhat/console.sol";
 /// @dev     This library holds the data structure for an Engine's Reserves.
 
 library Reserve {
-    // An Engine has two reserves of RISKY and RISK-FREE assets, X and Y, and total liquidity shares.
+    // An Engine has two reserves of RISKY and STABLE assets, and total liquidity.
     struct Data {
-        // the reserve for the risky asset
-        uint256 RX1;
-        // the reserve for the stable asset
-        uint256 RY2;
-        // the total supply of liquidity shares
-        uint256 liquidity;
-        // the liquidity available for lending
-        uint256 float;
-        // the liquidity unavailable because it was borrowed
-        uint256 debt;
-        // oracle items
+        uint128 reserveRisky; // reserve for the risky asset
+        uint128 reserveStable; // reserve for the stable asset
+        uint128 liquidity; // total supply of liquidity
+        uint128 float; // liquidity available for lending
+        uint128 debt; // liquidity unavailable because it was borrowed
+        uint32 blockTimestamp; // last timestamp for updated cumulative reserves
         uint256 cumulativeRisky;
         uint256 cumulativeStable;
         uint256 cumulativeLiquidity;
-        uint32 blockTimestamp;
     }
 
     /// @notice Adds to the cumulative reserves
     function update(Data storage res, uint32 blockTimestamp) internal returns (Data storage) {
         uint32 deltaTime = blockTimestamp - res.blockTimestamp;
         if(deltaTime > 0) {
-            res.cumulativeRisky += res.RX1 * deltaTime;
-            res.cumulativeStable += res.RY2 * deltaTime;
+            res.cumulativeRisky += res.reserveRisky * deltaTime;
+            res.cumulativeStable += res.reserveStable * deltaTime;
             res.cumulativeLiquidity += res.liquidity * deltaTime;
         }
         res.blockTimestamp = blockTimestamp;
@@ -48,12 +42,13 @@ library Reserve {
         uint256 deltaOut,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
+        require(deltaIn <= type(uint128).max && deltaOut <= type(uint128).max, "Over");
         if (addXRemoveY) {
-            reserve.RX1 += deltaIn;
-            reserve.RY2 -= deltaOut;
+            reserve.reserveRisky += uint128(deltaIn);
+            reserve.reserveStable -= uint128(deltaOut);
         } else {
-            reserve.RX1 -= deltaOut;
-            reserve.RY2 += deltaIn;
+            reserve.reserveRisky -= uint128(deltaOut);
+            reserve.reserveStable += uint128(deltaIn);
         }
         return update(reserve, blockTimestamp);
     }
@@ -61,54 +56,60 @@ library Reserve {
     /// @notice Add to both reserves and total supply of liquidity
     function allocate(
         Data storage reserve,
-        uint256 deltaX,
-        uint256 deltaY,
-        uint256 deltaL,
+        uint256 dRisky,
+        uint256 dStable,
+        uint256 dLiquidity,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        reserve.RX1 += deltaX;
-        reserve.RY2 += deltaY;
-        reserve.liquidity += deltaL;
+        require(dRisky <= type(uint128).max && dStable <= type(uint128).max && dLiquidity <= type(uint128).max, "Over");
+        reserve.reserveRisky += uint128(dRisky);
+        reserve.reserveStable += uint128(dStable);
+        reserve.liquidity += uint128(dLiquidity);
         return update(reserve, blockTimestamp);
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
     function remove(
         Data storage reserve,
-        uint256 deltaX,
-        uint256 deltaY,
-        uint256 deltaL,
+        uint256 dRisky,
+        uint256 dStable,
+        uint256 dLiquidity,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        reserve.RX1 -= deltaX;
-        reserve.RY2 -= deltaY;
-        reserve.liquidity -= deltaL;
+        require(dRisky <= type(uint128).max && dStable <= type(uint128).max && dLiquidity <= type(uint128).max, "Over");
+        reserve.reserveRisky -= uint128(dRisky);
+        reserve.reserveStable -= uint128(dStable);
+        reserve.liquidity -= uint128(dLiquidity);
         return update(reserve, blockTimestamp);
     }
 
     /// @notice Increases available float to borrow, called when lending
-    function addFloat(Data storage reserve, uint256 deltaL) internal returns (Data storage) {
-        reserve.float += deltaL;
+    function addFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
+        require(dLiquidity <= type(uint128).max, "Over");
+        reserve.float += uint128(dLiquidity);
         return reserve;
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function removeFloat(Data storage reserve, uint256 deltaL) internal returns (Data storage) {
-        reserve.float -= deltaL;
+    function removeFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
+        require(dLiquidity <= type(uint128).max, "Over");
+        reserve.float -= uint128(dLiquidity);
         return reserve;
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function borrowFloat(Data storage reserve, uint256 deltaL) internal returns (Data storage) {
-        reserve.float -= deltaL;
-        reserve.debt += deltaL;
+    function borrowFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
+        require(dLiquidity <= type(uint128).max, "Over");
+        reserve.float -= uint128(dLiquidity);
+        reserve.debt += uint128(dLiquidity);
         return reserve;
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
-    function repayFloat(Data storage reserve, uint256 deltaL) internal returns (Data storage) {
-        reserve.float += deltaL;
-        reserve.debt -= deltaL;
+    function repayFloat(Data storage reserve, uint256 dLiquidity) internal returns (Data storage) {
+        require(dLiquidity <= type(uint128).max, "Over");
+        reserve.float += uint128(dLiquidity);
+        reserve.debt -= uint128(dLiquidity);
         return reserve;
     }
 }

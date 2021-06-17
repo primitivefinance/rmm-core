@@ -13,7 +13,7 @@ describe('testReplicationMath', function () {
 
   describe('replicationMath', function () {
     let math: TestReplicationMath
-    let [strike, sigma, time, RX1, RY2, liquidity] = [
+    let [strike, sigma, time, reserveRisky, reserveStable, liquidity] = [
       parseWei('1000').raw,
       0.8 * PERCENTAGE,
       31449600,
@@ -31,20 +31,24 @@ describe('testReplicationMath', function () {
       )
     })
     it('getTradingFunction', async function () {
-      expect(fromMantissa(fromInt(await math.getTradingFunction(RX1.raw, liquidity.raw, strike, sigma, time)))).to.be.eq(
-        getTradingFunction(RX1, liquidity, { strike, sigma, time })
-      )
+      expect(
+        fromMantissa(fromInt(await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike, sigma, time)))
+      ).to.be.eq(getTradingFunction(reserveRisky, liquidity, { strike, sigma, time }))
     })
     it('getInverseTradingFunction', async function () {
       expect(
-        fromMantissa(fromInt(await math.getInverseTradingFunction(RY2.raw, liquidity.raw, strike, sigma, time)))
-      ).to.be.eq(getInverseTradingFunction(RY2, liquidity, { strike, sigma, time }))
+        fromMantissa(fromInt(await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike, sigma, time)))
+      ).to.be.eq(getInverseTradingFunction(reserveStable, liquidity, { strike, sigma, time }))
     })
 
     it('calcInvariant', async function () {
-      expect(fromMantissa(fromInt(await math.calcInvariant(RX1.raw, RY2.raw, liquidity.raw, strike, sigma, time)))).to.be.eq(
+      expect(
+        fromMantissa(
+          fromInt(await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike, sigma, time))
+        )
+      ).to.be.eq(
         calculateInvariant({
-          reserve: { RX1, RY2, liquidity, float: new Wei('0'), debt: new Wei('0') },
+          reserve: { reserveRisky, reserveStable, liquidity, float: new Wei('0'), debt: new Wei('0') },
           calibration: { strike, sigma, time },
         })
       )

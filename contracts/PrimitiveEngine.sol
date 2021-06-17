@@ -110,15 +110,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 RX1 = uint256(1).fromUInt().sub(delta).parseUnits();
         uint256 RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
-            RX1: (RX1 * dLiquidity) / 1e18, // risky token balance
-            RY2: (RY2 * dLiquidity) / 1e18, // stable token balance
-            liquidity: dLiquidity, // 1 unit
+            reserveRisky: uint128((RX1 * dLiquidity) / 1e18), // risky token balance
+            reserveStable: uint128((RY2 * dLiquidity) / 1e18), // stable token balance
+            liquidity: uint128(dLiquidity), // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
             debt: 0, // the LP shares borrowed from the float
+            blockTimestamp: _blockTimestamp(),
             cumulativeRisky: 0,
             cumulativeStable: 0,
-            cumulativeLiquidity: 0,
-            blockTimestamp: _blockTimestamp()
+            cumulativeLiquidity: 0
         });
 
         uint256 balanceX = balanceRisky();
@@ -169,7 +169,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override returns (uint256 deltaX, uint256 deltaY) {
         Reserve.Data storage res = reserves[pid];
-        (uint256 liquidity, uint256 RX1, uint256 RY2) = (res.liquidity, res.RX1, res.RY2);
+        (uint256 liquidity, uint256 RX1, uint256 RY2) = (res.liquidity, res.reserveRisky, res.reserveStable);
         require(liquidity > 0, "Not initialized");
 
         deltaX = (deltaL * RX1) / liquidity;
@@ -208,7 +208,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         {
             // scope for calculting invariants
-            (uint256 RX1, uint256 RY2, uint256 liquidity) = (res.RX1, res.RY2, res.liquidity);
+            (uint256 RX1, uint256 RY2, uint256 liquidity) = (res.reserveRisky, res.reserveStable, res.liquidity);
             require(liquidity >= deltaL, "Above max burn");
             deltaX = (deltaL * RX1) / liquidity;
             deltaY = (deltaL * RY2) / liquidity;
@@ -266,7 +266,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         int128 invariant = invariantOf(details.poolId); // gas savings
         Reserve.Data storage res = reserves[details.poolId]; // gas savings
-        (uint256 RX1, uint256 RY2) = (res.RX1, res.RY2);
+        (uint256 RX1, uint256 RY2) = (res.reserveRisky, res.reserveStable);
 
         uint256 reserveX;
         uint256 reserveY;
@@ -365,8 +365,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             require(res.float >= dLiquidity && dLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
 
             uint256 liquidity = res.liquidity; // global liquidity balance
-            uint256 deltaX = (dLiquidity * res.RX1) / liquidity; // amount of risky asset
-            uint256 deltaY = (dLiquidity * res.RY2) / liquidity; // amount of stable asset
+            uint256 deltaX = (dLiquidity * res.reserveRisky) / liquidity; // amount of risky asset
+            uint256 deltaY = (dLiquidity * res.reserveStable) / liquidity; // amount of stable asset
 
             {
                 uint256 preRisky = IERC20(risky).balanceOf(address(this));
@@ -406,8 +406,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         require(res.debt >= deltaL && (int256(pos.liquidity)) >= int256(deltaL), "ID");
 
-        deltaRisky = (deltaL * res.RX1) / res.liquidity;
-        deltaStable = (deltaL * res.RY2) / res.liquidity;
+        deltaRisky = (deltaL * res.reserveRisky) / res.liquidity;
+        deltaStable = (deltaL * res.reserveStable) / res.liquidity;
 
         if (isInternal) {
             margins.withdraw(deltaL - deltaRisky, deltaStable);
@@ -482,7 +482,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     function invariantOf(bytes32 pid) public view override returns (int128 invariant) {
         Reserve.Data memory res = reserves[pid];
-        invariant = calcInvariant(pid, res.RX1, res.RY2, res.liquidity);
+        invariant = calcInvariant(pid, res.reserveRisky, res.reserveStable, res.liquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineView
