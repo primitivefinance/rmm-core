@@ -4,8 +4,6 @@ pragma solidity 0.8.0;
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
 
-import "hardhat/console.sol";
-
 contract BadEngineDeposit {
     address public engine;
     address public risky;
@@ -45,12 +43,8 @@ contract BadEngineDeposit {
     ) public {
         if (currentScenario == 0) {
             IERC20(risky).transferFrom(CALLER, engine, dRisky);
-            console.log("Transferring only the risky");
         } else if (currentScenario == 1) {
             IERC20(stable).transferFrom(CALLER, engine, dStable);
-            console.log("Transferring only the stable");
-        } else {
-            console.log("Transferring nothing");
         }
     }
 
