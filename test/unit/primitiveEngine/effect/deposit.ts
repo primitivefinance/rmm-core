@@ -38,6 +38,21 @@ describe('deposit', function () {
       ])
     })
 
+    it('increases the balances of the engine contract', async function () {
+      const riskyBalance = await this.contracts.risky.balanceOf(this.contracts.engine.address)
+      const stableBalance = await this.contracts.stable.balanceOf(this.contracts.engine.address)
+
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('500').raw, parseWei('250').raw, empty)
+
+      expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.equal(
+        riskyBalance.add(parseWei('500').raw)
+      )
+
+      expect(await this.contracts.stable.balanceOf(this.contracts.engine.address)).to.equal(
+        stableBalance.add(parseWei('250').raw)
+      )
+    })
+
     it('increases the previous margin when called another time', async function () {
       await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
       await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('999').raw, parseWei('1001').raw, empty)
@@ -100,20 +115,6 @@ describe('deposit', function () {
           empty,
           2
         )
-      ).to.revertedWith('Not enough risky')
-    })
-  })
-
-  describe.skip('when the parameters are not valid', function () {
-    it('reverts if deltaX is 0', async function () {
-      await expect(
-        this.contracts.engineDeposit.deposit(this.signers[0].address, 0, parseWei('1000').raw, empty)
-      ).to.revertedWith('Not enough risky')
-    })
-
-    it('reverts if deltaX is 0', async function () {
-      await expect(
-        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1000').raw, 0, empty)
       ).to.revertedWith('Not enough risky')
     })
   })
