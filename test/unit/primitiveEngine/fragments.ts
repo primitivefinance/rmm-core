@@ -54,6 +54,7 @@ export async function removeFragment(signers: Wallet[], contracts: Contracts): P
   await contracts.risky.approve(contracts.engineAllocate.address, constants.MaxUint256)
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
+
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
   const pid = await contracts.engine.getPoolId(strike, sigma, time)
@@ -71,9 +72,31 @@ export async function lendFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.risky.approve(contracts.engineAllocate.address, constants.MaxUint256)
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
+
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
   const pid = await contracts.engine.getPoolId(strike, sigma, time)
 
   await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineLend.address, parseWei('10').raw, empty)
+}
+
+export async function borrowFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('100000000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('100000000').raw)
+
+  await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineAllocate.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineAllocate.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineBorrow.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineBorrow.address, constants.MaxUint256)
+
+  await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
+
+  const pid = await contracts.engine.getPoolId(strike, sigma, time)
+
+  await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineLend.address, parseWei('100').raw, empty)
+  await contracts.engineLend.lend(pid, parseWei('100').raw)
 }

@@ -21,6 +21,7 @@ export interface Contracts {
   engineAllocate: ContractTypes.EngineAllocate
   engineRemove: ContractTypes.EngineRemove
   engineLend: ContractTypes.EngineLend
+  engineBorrow: ContractTypes.EngineBorrow
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
@@ -63,3 +64,4 @@ type ContractName =
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineLend'
+  | 'engineBorrow'
