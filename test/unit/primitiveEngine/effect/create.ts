@@ -60,6 +60,7 @@ describe('create', function () {
     it('increases the engine contract balances', async function () {
       await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
 
+      // TODO: Improve this test
       expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.not.equal(0)
       expect(await this.contracts.stable.balanceOf(this.contracts.engine.address)).to.not.equal(0)
     })
