@@ -65,8 +65,5 @@ type ContractName =
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineLend'
-<<<<<<< HEAD
   | 'engineBorrow'
-=======
   | 'badEngineDeposit'
->>>>>>> 65f44c9 (test: add new deposit tests)
