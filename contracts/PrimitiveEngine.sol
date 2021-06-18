@@ -94,25 +94,25 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function create(
         uint256 strike,
-        uint256 sigma,
-        uint256 time,
+        uint64 sigma,
+        uint64 time,
         uint256 riskyPrice,
         uint256 delLiquidity,
         bytes calldata data
     ) external override lock returns (bytes32 pid) {
-        require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
-        require(delLiquidity > 0, "Liquidity cannot be 0");
-        pid = getPoolId(strike, sigma, time);
+        require(time > 0 && sigma > 0 && strike > 0, "Zero");
+        require(delLiquidity > 0, "Zero liquidity");
 
-        require(settings[pid].time == 0, "Already created");
+        pid = getPoolId(strike, sigma, time);
+        require(settings[pid].time == 0, "Initialized");
         settings[pid] = Calibration({strike: uint128(strike), sigma: uint64(sigma), time: uint64(time)});
 
-        int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
-        uint256 RX1 = uint256(1).fromUInt().sub(delta).parseUnits();
-        uint256 RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
+        int128 optionDelta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
+        uint256 reserveRisky = uint256(1).fromUInt().sub(optionDelta).parseUnits();
+        uint256 reserveStable = ReplicationMath.getTradingFunction(reserveRisky, 1e18, strike, sigma, time).parseUnits();
         reserves[pid] = Reserve.Data({
-            reserveRisky: uint128((RX1 * delLiquidity) / 1e18), // risky token balance
-            reserveStable: uint128((RY2 * delLiquidity) / 1e18), // stable token balance
+            reserveRisky: uint128((reserveRisky * delLiquidity) / 1e18), // risky token balance
+            reserveStable: uint128((reserveStable * delLiquidity) / 1e18), // stable token balance
             liquidity: uint128(delLiquidity), // 1 unit
             float: 0, // the LP shares available to be borrowed on a given pid
             debt: 0, // the LP shares borrowed from the float
@@ -124,9 +124,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint256 balRisky = balanceRisky();
         uint256 balStable = balanceStable();
-        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2, data);
-        require(balanceRisky() >= RX1 + balRisky, "Not enough risky tokens");
-        require(balanceStable() >= RY2 + balStable, "Not enough stable tokens");
+        IPrimitiveCreateCallback(msg.sender).createCallback(reserveRisky, reserveStable, data);
+        require(balanceRisky() >= reserveRisky + balRisky, "Not enough risky tokens");
+        require(balanceStable() >= reserveStable + balStable, "Not enough stable tokens");
+    
         positions.fetch(msg.sender, pid).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
         emit Create(msg.sender, pid, strike, sigma, time);
     }
@@ -170,11 +171,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
         Reserve.Data storage res = reserves[pid];
-        (uint256 liquidity, uint256 RX1, uint256 RY2) = (res.liquidity, res.reserveRisky, res.reserveStable);
+        (uint256 liquidity, uint256 reserveRisky, uint256 reserveStable) = (res.liquidity, res.reserveRisky, res.reserveStable);
         require(liquidity > 0, "Not initialized");
 
-        delRisky = (delLiquidity * RX1) / liquidity;
-        delStable = (delLiquidity * RY2) / liquidity;
+        delRisky = (delLiquidity * reserveRisky) / liquidity;
+        delStable = (delLiquidity * reserveStable) / liquidity;
         require(delRisky * delStable > 0, "Deltas are 0");
 
         if (fromMargin) {
@@ -204,18 +205,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(delLiquidity > 0, "Cannot be 0");
         Reserve.Data storage res = reserves[pid];
 
-        uint256 reserveX;
-        uint256 reserveY;
+        uint256 nextRisky;
+        uint256 nextStable;
 
         {
             // scope for calculting invariants
-            (uint256 RX1, uint256 RY2, uint256 liquidity) = (res.reserveRisky, res.reserveStable, res.liquidity);
+            (uint256 reserveRisky, uint256 reserveStable, uint256 liquidity) = (res.reserveRisky, res.reserveStable, res.liquidity);
             require(liquidity >= delLiquidity, "Above max burn");
-            delRisky = (delLiquidity * RX1) / liquidity;
-            delStable = (delLiquidity * RY2) / liquidity;
+            delRisky = (delLiquidity * reserveRisky) / liquidity;
+            delStable = (delLiquidity * reserveStable) / liquidity;
             require(delRisky * delStable > 0, "Deltas are 0");
-            reserveX = RX1 - delRisky;
-            reserveY = RY2 - delStable;
+            nextRisky = reserveRisky - delRisky;
+            nextStable = reserveStable - delStable;
         }
 
         // Updated state
@@ -265,26 +266,26 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         int128 invariant = invariantOf(details.poolId); // gas savings
         Reserve.Data storage res = reserves[details.poolId]; // gas savings
-        (uint256 RX1, uint256 RY2) = (res.reserveRisky, res.reserveStable);
+        (uint256 reserveRisky, uint256 reserveStable) = (res.reserveRisky, res.reserveStable);
 
-        uint256 reserveX;
-        uint256 reserveY;
+        uint256 nextRisky;
+        uint256 nextStable;
 
         if (details.riskyForStable) {
-            int128 nextRX1 = compute(details.poolId, risky, RY2 - details.amountOut); // remove Y from reserves, and use calculate the new X reserve value.
-            reserveX = nextRX1.sub(invariant).parseUnits();
-            reserveY = RY2 - details.amountOut;
-            deltaIn = ((reserveX - RX1) * 10000) / 9985; // nextRX1 = RX1 + detlaIn * (1 - fee)
+            int128 nextRX1 = compute(details.poolId, risky, reserveStable - details.amountOut); // remove Y from reserves, and use calculate the new X reserve value.
+            nextRisky = nextRX1.sub(invariant).parseUnits();
+            nextStable = reserveStable - details.amountOut;
+            deltaIn = ((nextRisky - reserveRisky) * 10000) / 9985; // nextRX1 = reserveRisky + detlaIn * (1 - fee)
         } else {
-            int128 nextRY2 = compute(details.poolId, stable, RX1 - details.amountOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-            reserveX = RX1 - details.amountOut;
-            reserveY = invariant.add(nextRY2).parseUnits();
-            deltaIn = ((reserveY - RY2) * 10000) / 9985;
+            int128 nextRY2 = compute(details.poolId, stable, reserveRisky - details.amountOut); // subtract X from reserves, and use to calculate the new Y reserve value.
+            nextRisky = reserveRisky - details.amountOut;
+            nextStable = invariant.add(nextRY2).parseUnits();
+            deltaIn = ((nextStable - reserveStable) * 10000) / 9985;
         }
 
         require(details.amountInMax >= deltaIn, "Too expensive");
         require(
-            calcInvariant(details.poolId, reserveX, reserveY, res.liquidity).parseUnits() >= invariant.parseUnits(),
+            calcInvariant(details.poolId, nextRisky, nextStable, res.liquidity).parseUnits() >= invariant.parseUnits(),
             "Invalid invariant"
         );
 
@@ -463,14 +464,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     function calcInvariant(
         bytes32 pid,
-        uint256 reserveX,
-        uint256 reserveY,
+        uint256 nextRisky,
+        uint256 nextStable,
         uint256 postLiquidity
     ) public view override returns (int128 invariant) {
         Calibration memory cal = settings[pid];
         invariant = ReplicationMath.calcInvariant(
-            reserveX,
-            reserveY,
+            nextRisky,
+            nextStable,
             postLiquidity,
             uint256(cal.strike),
             uint256(cal.sigma),
