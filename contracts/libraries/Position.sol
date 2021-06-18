@@ -2,19 +2,22 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-import "hardhat/console.sol";
 
 /// @notice  Position Library
 /// @author  Primitive
 /// @dev     This library is a generalized position data structure for any engine.
 
+import "./SafeCast.sol";
+import "hardhat/console.sol";
 library Position {
+    using SafeCast for uint256;
+
     struct Data {
-        uint128 balanceRisky; // Balance of risky asset
-        uint128 balanceStable; // Balance of stable asset
-        uint128 float; // Balance of loaned liquidity
-        uint128 liquidity; // Balance of liquidity, which is negative if a debt exists
-        uint128 debt; // Balance of liquidity debt that must be paid back
+        uint128 balanceRisky;   // Balance of risky asset
+        uint128 balanceStable;  // Balance of stable asset
+        uint128 float;          // Balance of loaned liquidity
+        uint128 liquidity;      // Balance of liquidity, which is negative if a debt exists
+        uint128 debt;           // Balance of liquidity debt that must be paid back
     }
 
     /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
@@ -31,8 +34,8 @@ library Position {
     }
 
     /// @notice Add to the balance of liquidity
-    function allocate(Data storage position, uint256 deltaL) internal returns (Data storage) {
-        position.liquidity += uint128(deltaL);
+    function allocate(Data storage position, uint256 delLiquidity) internal returns (Data storage) {
+        position.liquidity += delLiquidity.toUint128();
         return position;
     }
 
@@ -40,54 +43,54 @@ library Position {
     function remove(
         mapping(bytes32 => Data) storage positions,
         bytes32 pid,
-        uint256 deltaL
+        uint256 delLiquidity
     ) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        position.liquidity -= uint128(deltaL);
+        position.liquidity -= delLiquidity.toUint128();
         return position;
     }
 
-    /// @notice Adds a debt balance of `deltaL` to `position`
+    /// @notice Adds a debt balance of `delLiquidity` to `position`
     function borrow(
         mapping(bytes32 => Data) storage positions,
         bytes32 pid,
-        uint256 deltaL
+        uint256 delLiquidity
     ) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
         uint128 liquidity = position.liquidity;
         require(liquidity == 0, "Must borrow from 0");
-        position.debt += uint128(deltaL); // add the debt post position manipulation
-        position.balanceRisky += uint128(deltaL);
+        position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
+        position.balanceRisky += delLiquidity.toUint128();
         return position;
     }
 
-    /// @notice Locks `deltaL` of liquidity as a float which can be borrowed from.
+    /// @notice Locks `delLiquidity` of liquidity as a float which can be borrowed from.
     function lend(
         mapping(bytes32 => Data) storage positions,
         bytes32 pid,
-        uint256 deltaL
+        uint256 delLiquidity
     ) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        position.float += uint128(deltaL);
-        require(uint256(position.liquidity) >= uint256(position.float), "Not enough liquidity");
+        position.float += delLiquidity.toUint128();
+        require(position.liquidity >= position.float, "Not enough liquidity");
         return position;
     }
 
-    /// @notice Unlocks `deltaL` of liquidity by reducing float
+    /// @notice Unlocks `delLiquidity` of liquidity by reducing float
     function claim(
         mapping(bytes32 => Data) storage positions,
         bytes32 pid,
-        uint256 deltaL
+        uint256 delLiquidity
     ) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, pid);
-        position.float -= uint128(deltaL);
+        position.float -= delLiquidity.toUint128();
         return position;
     }
 
-    /// @notice Reduces `deltaL` of position.debt by reducing `deltaL` of position.liquidity
-    function repay(Data storage position, uint256 deltaL) internal returns (Data storage) {
-        position.liquidity -= uint128(deltaL);
-        // FIX: Contract too large, position.debt -= uint128(deltaL);
+    /// @notice Reduces `delLiquidity` of position.debt by reducing `delLiquidity` of position.liquidity
+    function repay(Data storage position, uint256 delLiquidity) internal returns (Data storage) {
+        position.liquidity -= delLiquidity.toUint128();
+        // FIX: Contract too large, position.debt -= delLiquidity.toUint128();
         return position;
     }
 

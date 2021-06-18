@@ -22,11 +22,11 @@ contract EngineWithdraw {
         stable = _stable;
     }
 
-    function withdraw(uint256 dRisky, uint256 dStable) public {
+    function withdraw(uint256 delRisky, uint256 delStable) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).withdraw(dRisky, dStable);
-        IERC20(risky).transfer(CALLER, dRisky);
-        IERC20(stable).transfer(CALLER, dStable);
+        IPrimitiveEngine(engine).withdraw(delRisky, delStable);
+        IERC20(risky).transfer(CALLER, delRisky);
+        IERC20(stable).transfer(CALLER, delStable);
     }
 
     function name() public pure returns (string memory) {

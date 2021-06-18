@@ -29,20 +29,20 @@ contract EngineCreate {
         uint256 sigma,
         uint256 time,
         uint256 riskyPrice,
-        uint256 dLiquidity,
+        uint256 delLiquidity,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, dLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, delLiquidity, data);
     }
 
     function createCallback(
-        uint256 deltaX,
-        uint256 deltaY,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IERC20(risky).transferFrom(CALLER, engine, deltaX);
-        IERC20(stable).transferFrom(CALLER, engine, deltaY);
+        IERC20(risky).transferFrom(CALLER, engine, delRisky);
+        IERC20(stable).transferFrom(CALLER, engine, delStable);
     }
 
     function name() public pure returns (string memory) {

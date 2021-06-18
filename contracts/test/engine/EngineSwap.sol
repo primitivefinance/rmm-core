@@ -35,12 +35,12 @@ contract EngineSwap {
     }
 
     function swapCallback(
-        uint256 deltaX,
-        uint256 deltaY,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IERC20(risky).transferFrom(CALLER, engine, deltaX);
-        IERC20(stable).transferFrom(CALLER, engine, deltaY);
+        IERC20(risky).transferFrom(CALLER, engine, delRisky);
+        IERC20(stable).transferFrom(CALLER, engine, delStable);
     }
 
     function name() public pure returns (string memory) {
