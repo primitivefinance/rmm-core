@@ -113,8 +113,8 @@ describe('allocate', function () {
     it('transfers the tokens', async function () {
       const reserve = await this.contracts.engine.reserves(pid)
 
-      const deltaX = parseWei('1').mul(reserve.RX1).div(reserve.liquidity)
-      const deltaY = parseWei('1').mul(reserve.RY2).div(reserve.liquidity)
+      const deltaX = parseWei('1').mul(reserve.reserveRisky).div(reserve.liquidity)
+      const deltaY = parseWei('1').mul(reserve.reserveStable).div(reserve.liquidity)
 
       const riskyBalance = await this.contracts.risky.balanceOf(this.signers[0].address)
       const stableBalance = await this.contracts.stable.balanceOf(this.signers[0].address)
