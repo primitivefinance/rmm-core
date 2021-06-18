@@ -99,7 +99,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 riskyPrice,
         uint256 delLiquidity,
         bytes calldata data
-    ) external override returns (bytes32 pid) {
+    ) external override lock returns (bytes32 pid) {
         require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
         require(delLiquidity > 0, "Liquidity cannot be 0");
         pid = getPoolId(strike, sigma, time);
@@ -168,7 +168,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external override returns (uint256 delRisky, uint256 delStable) {
+    ) external override lock returns (uint256 delRisky, uint256 delStable) {
         Reserve.Data storage res = reserves[pid];
         (uint256 liquidity, uint256 RX1, uint256 RY2) = (res.liquidity, res.reserveRisky, res.reserveStable);
         require(liquidity > 0, "Not initialized");
@@ -246,8 +246,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    /// @dev     If `riskyForStable` is true, we request Y out, and must add X to the pool's reserves.
-    ///         Else, we request X out, and must add Y to the pool's reserves.
     function swap(
         bytes32 pid,
         bool riskyForStable,
@@ -255,7 +253,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 deltaInMax,
         bool fromMargin,
         bytes calldata data
-    ) external override returns (uint256 deltaIn) {
+    ) external override lock returns (uint256 deltaIn) {
         SwapDetails memory details =
             SwapDetails({
                 poolId: pid,
