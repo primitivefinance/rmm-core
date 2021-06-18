@@ -19,16 +19,16 @@ contract EngineBorrow {
       stable = _stable;
     }
 
-    function borrow(bytes32 pid, address owner, uint dLiquidity, bytes calldata data) public {
+    function borrow(bytes32 pid, address owner, uint delLiquidity, bytes calldata data) public {
       CALLER = msg.sender;
-      IPrimitiveEngine(engine).borrow(pid, owner, dLiquidity, type(uint256).max, data);
+      IPrimitiveEngine(engine).borrow(pid, owner, delLiquidity, type(uint256).max, data);
     }
 
-    function borrowCallback(uint dLiquidity, uint dRisky, uint dStable, bytes calldata data) public {
-      uint riskyNeeded = dLiquidity - dRisky;
+    function borrowCallback(uint delLiquidity, uint delRisky, uint delStable, bytes calldata data) public {
+      uint riskyNeeded = delLiquidity - delRisky;
 
       IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
-      IERC20(stable).transfer(CALLER, dStable);
+      IERC20(stable).transfer(CALLER, delStable);
     }
 
     function getPosition(bytes32 pid) public view returns(bytes32 posid) {

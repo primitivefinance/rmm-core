@@ -25,29 +25,29 @@ contract EngineAllocate {
     function allocateFromMargin(
         bytes32 pid,
         address owner,
-        uint256 dLiquidity,
+        uint256 delLiquidity,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(pid, owner, dLiquidity, true, data);
+        IPrimitiveEngine(engine).allocate(pid, owner, delLiquidity, true, data);
     }
 
     function allocateFromExternal(
         bytes32 pid,
         address owner,
-        uint256 dLiquidity,
+        uint256 delLiquidity,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).allocate(pid, owner, dLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(pid, owner, delLiquidity, false, data);
     }
 
     function allocateCallback(
-        uint256 dRisky,
-        uint256 dStable,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IERC20(risky).transferFrom(CALLER, msg.sender, dRisky);
-        IERC20(stable).transferFrom(CALLER, msg.sender, dStable);
+        IERC20(risky).transferFrom(CALLER, msg.sender, delRisky);
+        IERC20(stable).transferFrom(CALLER, msg.sender, delStable);
     }
 
     function getPosition(bytes32 pid) public view returns (bytes32 posid) {

@@ -24,23 +24,23 @@ contract EngineRemove {
 
     function removeToMargin(
         bytes32 pid,
-        uint256 dLiquidity,
+        uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(pid, dLiquidity, true, data);
+        IPrimitiveEngine(engine).remove(pid, delLiquidity, true, data);
     }
 
     function removeToExternal(
         bytes32 pid,
-        uint256 dLiquidity,
+        uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(pid, dLiquidity, false, data);
+        IPrimitiveEngine(engine).remove(pid, delLiquidity, false, data);
     }
 
     function removeCallback(
-        uint256 dRisky,
-        uint256 dStable,
+        uint256 delRisky,
+        uint256 delStable,
         bytes memory data
     ) public {
         return;

@@ -3,7 +3,7 @@ import { constants, Wallet, Transaction, BytesLike } from 'ethers'
 import { Contracts, Functions, ContractName } from '../../types'
 
 const empty: BytesLike = constants.HashZero
-export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish, from?: Wallet) => Promise<Transaction>
+export type DepositFunction = (delRisky: BigNumberish, delStable: BigNumberish, from?: Wallet) => Promise<Transaction>
 export type SwapFunction = (
   pid: BytesLike | string,
   addXRemoveY: boolean,
@@ -60,8 +60,8 @@ export default function createEngineFunctions(
         break
       case 'engineDeposit':
         loadedFunctions.depositFunction = async (
-          deltaX: BigNumberish,
-          deltaY: BigNumberish,
+          delRisky: BigNumberish,
+          delStable: BigNumberish,
           from?: Wallet
         ): Promise<Transaction> => {
           if (from) {
@@ -71,7 +71,7 @@ export default function createEngineFunctions(
           }
           await loadedContracts.risky.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
-          return loadedContracts.engineDeposit.deposit(deployer.address, deltaX, deltaY, empty)
+          return loadedContracts.engineDeposit.deposit(deployer.address, delRisky, delStable, empty)
         }
         break
       default:
