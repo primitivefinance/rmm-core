@@ -18,10 +18,10 @@ describe('allocate', function () {
 
   describe('when the parameters are valid', function () {
     it('allocates enough stable and risky for 1 LP share from margin', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      const posid = await this.contracts.engineAllocate.getPosition(pid)
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const posid = await this.contracts.engineAllocate.getPosition(poolId)
       await this.contracts.engineAllocate.allocateFromMargin(
-        pid,
+        poolId,
         this.contracts.engineAllocate.address,
         parseWei('1').raw,
         empty
@@ -37,10 +37,10 @@ describe('allocate', function () {
     })
 
     it('allocates enough stable and risky for 1 LP share from external', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      const posid = await this.contracts.engineAllocate.getPosition(pid)
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const posid = await this.contracts.engineAllocate.getPosition(poolId)
       await this.contracts.engineAllocate.allocateFromExternal(
-        pid,
+        poolId,
         this.contracts.engineAllocate.address,
         parseWei('1').raw,
         empty
@@ -55,10 +55,10 @@ describe('allocate', function () {
     })
 
     it('fails to allocate liquidity when margin is insufficient', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
       await expect(
         this.contracts.engineAllocate.allocateFromMargin(
-          pid,
+          poolId,
           this.contracts.engineAllocate.address,
           parseWei('10000').raw,
           empty
@@ -67,10 +67,10 @@ describe('allocate', function () {
     })
 
     it('fails to allocate liquidity when external balances are insufficient', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
       await expect(
         this.contracts.engineAllocate.allocateFromExternal(
-          pid,
+          poolId,
           this.contracts.engineAllocate.address,
           parseWei('10000').raw,
           empty

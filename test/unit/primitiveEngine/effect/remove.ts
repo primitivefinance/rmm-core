@@ -19,11 +19,11 @@ describe('remove', function () {
 
   describe('when the parameters are valid', function () {
     it('removes 1 liquidity share and deposits the resultant risky and stable to margin', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      const posid = await this.contracts.engineRemove.getPosition(pid)
-      console.log('removing from pid', pid.slice(0, 5))
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const posid = await this.contracts.engineRemove.getPosition(poolId)
+      console.log('removing from poolId', poolId.slice(0, 5))
       console.log('engine', this.contracts.engine.address.slice(0, 5))
-      await this.contracts.engineRemove.removeToMargin(pid, parseWei('1').raw, empty)
+      await this.contracts.engineRemove.removeToMargin(poolId, parseWei('1').raw, empty)
 
       expect(await this.contracts.engine.positions(posid)).to.be.deep.eq([
         BigNumber.from('0'),
@@ -35,9 +35,9 @@ describe('remove', function () {
     })
 
     it('removes 1 liquidity share and sends the resultant risky and stable to engineDeposit.address', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      const posid = await this.contracts.engineRemove.getPosition(pid)
-      await this.contracts.engineRemove.removeToExternal(pid, parseWei('1').raw, empty)
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      const posid = await this.contracts.engineRemove.getPosition(poolId)
+      await this.contracts.engineRemove.removeToExternal(poolId, parseWei('1').raw, empty)
       expect(await this.contracts.engine.positions(posid)).to.be.deep.eq([
         BigNumber.from('0'),
         BigNumber.from('0'),
@@ -48,13 +48,13 @@ describe('remove', function () {
     })
 
     it('fails to remove more liquidity to margin than is allocated by the address', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      await expect(this.contracts.engineRemove.removeToMargin(pid, parseWei('20').raw, empty)).to.be.reverted
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(this.contracts.engineRemove.removeToMargin(poolId, parseWei('20').raw, empty)).to.be.reverted
     })
 
     it('fails to remove more liquity to engineRemove.address than is allocated by the address', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      await expect(this.contracts.engineRemove.removeToExternal(pid, parseWei('20').raw, empty)).to.be.reverted
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(this.contracts.engineRemove.removeToExternal(poolId, parseWei('20').raw, empty)).to.be.reverted
     })
   })
 })

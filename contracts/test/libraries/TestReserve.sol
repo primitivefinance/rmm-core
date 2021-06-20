@@ -40,7 +40,7 @@ contract TestReserve {
             reserveRisky: uint128(reserveRisky), // risky token balance
             reserveStable: uint128(reserveStable), // stable token balance
             liquidity: uint128(2e18),
-            float: uint128(1e18), // the LP shares available to be borrowed on a given pid
+            float: uint128(1e18), // the LP shares available to be borrowed on a given poolId
             debt: 0, // the LP shares borrowed from the float
             blockTimestamp: uint32(timestamp_),
             cumulativeRisky: 0,

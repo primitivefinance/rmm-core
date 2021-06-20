@@ -217,8 +217,8 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(contract: Contract, owner: string, pid: BytesLike, log?: boolean): Promise<Position> {
-  const pos = await contract.getPosition(owner, pid)
+export async function getPosition(contract: Contract, owner: string, poolId: BytesLike, log?: boolean): Promise<Position> {
+  const pos = await contract.getPosition(owner, poolId)
   const position: Position = {
     owner: pos.owner,
     BX1: new Wei(pos.balanceRisky),

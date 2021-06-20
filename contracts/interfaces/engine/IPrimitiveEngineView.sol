@@ -8,33 +8,33 @@ interface IPrimitiveEngineView {
     // ===== View =====
 
     /// @notice         Computes the reserve value of `token` using the known `reserve` value of the other token
-    /// @param  pid     The hashed pool Id
-    /// @param  token   The reserve of the token to compute
-    /// @param  reserve The reserve of the other token, which is known
-    /// @return reserveOfToken  The reserve of the `token`
+    /// @param  poolId  Keccak256 hash of strike price, volatility, and maturity timestamp
+    /// @param  token   Reserve of the token to compute
+    /// @param  reserve Reserve of the other token, which is known
+    /// @return reserveOfToken  Reserve of the `token`
     function compute(
-        bytes32 pid,
+        bytes32 poolId,
         address token,
         uint256 reserve
     ) external view returns (int128 reserveOfToken);
 
     /// @notice                 Uses the trading function to calc the invariant using token reserve values
-    /// @param  pid             The hashed pool Id
-    /// @param  postR1          The amount of risky tokens in the pool's reserves
-    /// @param  postR2          The amount of stable tokens in the pool's reserves
-    /// @param  postLiquidity   The total supply of liquidity shares for the pool
-    /// @return                 The invariant calculated (which should be near 0)
+    /// @param  poolId             The hashed pool Id
+    /// @param  postR1          Amount of risky tokens in the pool's reserves
+    /// @param  postR2          Amount of stable tokens in the pool's reserves
+    /// @param  postLiquidity   Total supply of liquidity shares for the pool
+    /// @return                 Invariant calculated (which should be near 0)
     function calcInvariant(
-        bytes32 pid,
+        bytes32 poolId,
         uint256 postR1,
         uint256 postR2,
         uint256 postLiquidity
     ) external view returns (int128);
 
-    /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `pid`
-    /// @param  pid The pool id to get the invariant of
+    /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
+    /// @param  poolId The pool id to get the invariant of
     /// invariant
-    function invariantOf(bytes32 pid) external view returns (int128);
+    function invariantOf(bytes32 poolId) external view returns (int128);
 
     // ===== Immutables =====
     //// The factory address which deployed this engine contract
@@ -47,8 +47,8 @@ interface IPrimitiveEngineView {
     function stable() external view returns (address);
 
     // ===== Pool States =====
-    /// @notice             Fetches the global reserve state for a pool with `pid`
-    /// @param              pid The pool id hash
+    /// @notice             Fetches the global reserve state for a pool with `poolId`
+    /// @param poolId       Pool id keccak256 hash of strike price, volatility, and maturity timestamp
     /// @return             reserveRisky risky balance
     /// reserveStable       risk free balance
     /// liquidity           total liquidity shares
@@ -58,7 +58,7 @@ interface IPrimitiveEngineView {
     /// cumulativeRisky     tracks cumulative risky reserves overtime
     /// cumulativeStable    tracks cumulative stable reserves overtime
     /// cumulativeLiquidity tracks cumulative liquidity factor overtime
-    function reserves(bytes32 pid)
+    function reserves(bytes32 poolId)
         external
         view
         returns (
@@ -74,12 +74,12 @@ interface IPrimitiveEngineView {
         );
 
     /// @notice Fetches Calibrated and initialized pool's parameters
-    /// @param  pid     Pool id to fetch the parameters of
+    /// @param  poolId  Pool id to fetch the parameters of
     /// @return strike  Strike price of the pool
     /// sigma           Volatility of the pool
     /// time            Time until expiry of the pool
     /// blockTimestamp  Timestamp on pool creation
-    function settings(bytes32 pid)
+    function settings(bytes32 poolId)
         external
         view
         returns (
@@ -108,15 +108,15 @@ interface IPrimitiveEngineView {
         );
 
     /// @notice                 Fetchs the margin position of `owner`
-    /// @param  owner           The margin account's owner
-    /// @return balanceRisky    The balance of the risky token
-    /// balanceStable           The balance of the stable token
+    /// @param  owner           Margin account's owner
+    /// @return balanceRisky    Balance of the risky token
+    /// balanceStable           Balance of the stable token
     function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
 
-    /// @param  strike  The strike price of the pool
-    /// @param  sigma   The volatility of the pool
-    /// @param  time    The time until expiry of the pool
-    /// @return The keccak256 hash of the `calibration` parameters
+    /// @param  strike  Strike price of the pool
+    /// @param  sigma   Volatility of the pool
+    /// @param  time    Time until expiry of the pool
+    /// @return         Keccak256 hash of the `calibration` parameters and Engine contract address
     function getPoolId(
         uint256 strike,
         uint64 sigma,
