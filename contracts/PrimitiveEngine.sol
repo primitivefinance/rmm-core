@@ -189,22 +189,21 @@ contract PrimitiveEngine is IPrimitiveEngine {
             (reserve.liquidity, reserve.reserveRisky, reserve.reserveStable);
 
         require(resLiquidity > 0, "Not initialized");
-        delRisky = (resRisky * delLiquidity) / resLiquidity;
-        delStable = (resStable * delLiquidity) / resLiquidity;
+        delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky tokens to provide
+        delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable tokens to provide
         require(delRisky * delStable > 0, "Deltas are 0");
 
         if (fromMargin) {
-            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
+            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account, notice the mapping
         } else {
             uint256 balRisky = balanceRisky();
             uint256 balStable = balanceStable();
-            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data);
+            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data); // agnostic payment
             require(balanceRisky() >= balRisky + delRisky, "Not enough risky");
             require(balanceStable() >= balStable + delStable, "Not enough stable");
         }
 
-        bytes32 pid_ = pid;
-        Position.Data storage position = positions.fetch(owner, pid_);
+        Position.Data storage position = positions.fetch(owner, pid);
         position.allocate(delLiquidity); // increase position liquidity
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, delRisky, delStable);
@@ -214,42 +213,35 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function remove(
         bytes32 pid,
         uint256 delLiquidity,
-        bool isInternal,
+        bool toMargin,
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
-        require(delLiquidity > 0, "Cannot be 0");
+        require(delLiquidity > 0, "Cannot be 0"); // fail early
+
         Reserve.Data storage reserve = reserves[pid];
+        (uint256 resRisky, uint256 resStable, uint256 resLiquidity) =
+            (reserve.reserveRisky, reserve.reserveStable, reserve.liquidity);
 
-        uint256 nextRisky;
-        uint256 nextStable;
+        require(resLiquidity >= delLiquidity, "Above max burn");
+        delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky to remove
+        delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable to remove
+        require(delRisky * delStable > 0, "Deltas are 0");
 
-        {
-            (uint256 resRisky, uint256 resStable, uint256 resLiquidity) =
-                (reserve.reserveRisky, reserve.reserveStable, reserve.liquidity);
-            require(resLiquidity >= delLiquidity, "Above max burn");
-            delRisky = (resRisky * delLiquidity) / resLiquidity;
-            delStable = (resStable * delLiquidity) / resLiquidity;
-            require(delRisky * delStable > 0, "Deltas are 0");
-            nextRisky = resRisky - delRisky;
-            nextStable = resStable - delStable;
-        }
+        positions.remove(pid, delLiquidity); // update position liquidity, notice the fn call on the mapping
+        reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
 
-        // Updated state
-        if (isInternal) {
+        if (toMargin) {
             Margin.Data storage margin = margins[msg.sender];
-            margin.deposit(delRisky, delStable);
+            margin.deposit(delRisky, delStable); // increase margin balance
         } else {
             uint256 balRisky = balanceRisky();
             uint256 balStable = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, delRisky);
             IERC20(stable).safeTransfer(msg.sender, delStable);
-            IPrimitiveLiquidityCallback(msg.sender).removeCallback(delRisky, delStable, data);
+            IPrimitiveLiquidityCallback(msg.sender).removeCallback(delRisky, delStable, data); // agnostic withdrawals
             require(balanceRisky() >= balRisky - delRisky, "Not enough risky");
             require(balanceStable() >= balStable - delStable, "Not enough stable");
         }
-
-        positions.remove(pid, delLiquidity); // Update position liquidity
-        reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
         emit Removed(msg.sender, delRisky, delStable);
     }
 
@@ -412,7 +404,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 pid,
         address owner,
         uint256 delLiquidity,
-        bool isInternal,
+        bool fromMargin,
         bytes calldata data
     ) external override lock returns (uint256 deltaRisky, uint256 deltaStable) {
         Reserve.Data storage res = reserves[pid];
@@ -424,7 +416,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         deltaRisky = (delLiquidity * res.reserveRisky) / res.liquidity;
         deltaStable = (delLiquidity * res.reserveStable) / res.liquidity;
 
-        if (isInternal) {
+        if (fromMargin) {
             margins.withdraw(delLiquidity - deltaRisky, deltaStable);
 
             res.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp());
