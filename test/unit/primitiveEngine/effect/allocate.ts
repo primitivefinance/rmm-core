@@ -8,12 +8,12 @@ import { allocateFragment } from '../fragments'
 
 import loadContext from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
 
 describe('allocate', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
+    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
   })
 
   describe('when the parameters are valid', function () {

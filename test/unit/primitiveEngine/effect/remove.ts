@@ -8,18 +8,21 @@ import { removeFragment } from '../fragments'
 
 import loadContext from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+
 const empty: BytesLike = constants.HashZero
 
 describe('remove', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
+    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
   })
 
   describe('when the parameters are valid', function () {
     it('removes 1 liquidity share and deposits the resultant risky and stable to margin', async function () {
       const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
       const posid = await this.contracts.engineRemove.getPosition(pid)
+      console.log('removing from pid', pid.slice(0, 5))
+      console.log('engine', this.contracts.engine.address.slice(0, 5))
       await this.contracts.engineRemove.removeToMargin(pid, parseWei('1').raw, empty)
 
       expect(await this.contracts.engine.positions(posid)).to.be.deep.eq([
