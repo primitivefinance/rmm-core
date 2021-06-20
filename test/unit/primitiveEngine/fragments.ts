@@ -57,9 +57,9 @@ export async function removeFragment(signers: Wallet[], contracts: Contracts): P
 
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
-  const pid = await contracts.engine.getPoolId(strike, sigma, time)
+  const poolId = await contracts.engine.getPoolId(strike, sigma, time)
 
-  await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineRemove.address, parseWei('10').raw, empty)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineRemove.address, parseWei('10').raw, empty)
 }
 
 export async function lendFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -75,9 +75,9 @@ export async function lendFragment(signers: Wallet[], contracts: Contracts): Pro
 
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
-  const pid = await contracts.engine.getPoolId(strike, sigma, time)
+  const poolId = await contracts.engine.getPoolId(strike, sigma, time)
 
-  await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineLend.address, parseWei('10').raw, empty)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('10').raw, empty)
 }
 
 export async function borrowFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -95,8 +95,8 @@ export async function borrowFragment(signers: Wallet[], contracts: Contracts): P
 
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
 
-  const pid = await contracts.engine.getPoolId(strike, sigma, time)
+  const poolId = await contracts.engine.getPoolId(strike, sigma, time)
 
-  await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineLend.address, parseWei('100').raw, empty)
-  await contracts.engineLend.lend(pid, parseWei('100').raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
+  await contracts.engineLend.lend(poolId, parseWei('100').raw)
 }

@@ -22,12 +22,12 @@ contract EngineLend {
         stable = _stable;
     }
 
-    function lend(bytes32 pid, uint256 dLiquidty) public {
-        IPrimitiveEngine(engine).lend(pid, dLiquidty);
+    function lend(bytes32 poolId, uint256 dLiquidty) public {
+        IPrimitiveEngine(engine).lend(poolId, dLiquidty);
     }
 
-    function getPosition(bytes32 pid) public view returns (bytes32 posid) {
-        posid = keccak256(abi.encodePacked(address(this), pid));
+    function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
+        posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
     function name() public view returns (string memory) {

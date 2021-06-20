@@ -23,19 +23,19 @@ contract EngineRemove {
     }
 
     function removeToMargin(
-        bytes32 pid,
+        bytes32 poolId,
         uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(pid, delLiquidity, true, data);
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity, true, data);
     }
 
     function removeToExternal(
-        bytes32 pid,
+        bytes32 poolId,
         uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(pid, delLiquidity, false, data);
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity, false, data);
     }
 
     function removeCallback(
@@ -46,8 +46,8 @@ contract EngineRemove {
         return;
     }
 
-    function getPosition(bytes32 pid) public view returns (bytes32 posid) {
-        posid = keccak256(abi.encodePacked(address(this), pid));
+    function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
+        posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
     function name() public view returns (string memory) {

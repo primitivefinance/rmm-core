@@ -49,8 +49,8 @@ describe('swap', function () {
     })
 
     it('swaps risky for stable', async function () {
-      let [pid, riskyForStable, deltaOut, deltaInMax] = [poolId, true, parseWei('0.01').raw, constants.MaxUint256]
-      await this.contracts.engineSwap.swap(pid, riskyForStable, deltaOut, deltaInMax, false, empty)
+      let [riskyForStable, deltaOut, deltaInMax] = [true, parseWei('0.01').raw, constants.MaxUint256]
+      await this.contracts.engineSwap.swap(poolId, riskyForStable, deltaOut, deltaInMax, false, empty)
     })
 
     describe('sucess cases', function () {
