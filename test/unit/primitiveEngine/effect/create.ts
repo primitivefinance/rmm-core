@@ -6,7 +6,12 @@ import loadContext from '../../context'
 
 import { createFragment } from '../fragments'
 
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, spot] = [
+  parseWei('1000').raw,
+  0.85 * PERCENTAGE,
+  Math.floor(Date.now() / 1000) + 31449600,
+  parseWei('1100').raw,
+]
 const empty: BytesLike = constants.HashZero
 
 describe('create', function () {
@@ -22,20 +27,14 @@ describe('create', function () {
     it('emits the Create event', async function () {
       await expect(this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty))
         .to.emit(this.contracts.engine, 'Create')
-        .withArgs(
-          this.contracts.engineCreate.address,
-          '0xbd2b5718c3094a357b195e108feebdacded45272d1086596e5c59b43d017083b',
-          strike,
-          sigma,
-          time
-        )
+        .withArgs(this.contracts.engineCreate.address, strike, sigma, time)
     })
 
     it('reverts when the pool already exists', async function () {
       await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
       await expect(
         this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Already created')
+      ).to.be.revertedWith('Initialized')
     })
   })
 })

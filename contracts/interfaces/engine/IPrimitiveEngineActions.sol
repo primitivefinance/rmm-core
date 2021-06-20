@@ -7,22 +7,30 @@ pragma solidity 0.8.0;
 interface IPrimitiveEngineActions {
     // Curve
 
-    /// @notice Initializes a curve with parameters in the `settings` storage mapping in the Engine
-    /// @param  strike The strike price of the option to calibrate to
-    /// @param  sigma  The volatility of the option to calibrate to
-    /// @param  time   The time until expiry of the option to calibrate to
-    /// @param  riskyPrice  The amount of stable tokens required to purchase 1 unit of the risky token, spot price
+    /// @notice         Initializes a curve with parameters in the `settings` storage mapping in the Engine
+    /// @param  strike  Strike price of the option to calibrate to
+    /// @param  sigma   Volatility of the option to calibrate to
+    /// @param  time    Maturity timestamp of the option
+    /// @param  riskyPrice  Amount of stable tokens required to purchase 1 unit of the risky token, spot price
     /// @param  delLiquidity Amount of liquidity to initialize the pool with
     /// @param  data    Arbitrary data that is passed to the createCallback function
-    /// @return pid The keccak256 hash of the parameters strike, sigma, and time, use to identify this option
+    /// @return pid     Keccak256 hash of the parameters strike, sigma, and time, use to identify this option
+    /// delRisky        Amount of risky tokens provided to reserves
+    /// delStable       Amount of stable tokens provided to reserves
     function create(
         uint256 strike,
-        uint256 sigma,
-        uint256 time,
+        uint64 sigma,
+        uint32 time,
         uint256 riskyPrice,
         uint256 delLiquidity,
         bytes calldata data
-    ) external returns (bytes32 pid);
+    )
+        external
+        returns (
+            bytes32 pid,
+            uint256 delRisky,
+            uint256 delStable
+        );
 
     // Margin
 
