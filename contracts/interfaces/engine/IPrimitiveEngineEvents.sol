@@ -7,11 +7,10 @@ pragma solidity 0.8.0;
 interface IPrimitiveEngineEvents {
     /// @notice Creates a new calibrated curve and initialized its liquidity
     /// @param  from    The calling `msg.sender` of the create function
-    /// @param  pid     The keccak hash of the option parameters of a curve to interact with
     /// @param  strike  The strike price of the option of the curve to calibrate to
     /// @param  sigma   The volatility of the option of the curve to calibrate to
     /// @param  time    The time until expiry of the option of the curve to calibrate to
-    event Create(address indexed from, bytes32 indexed pid, uint256 strike, uint256 sigma, uint256 time);
+    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed time);
 
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt

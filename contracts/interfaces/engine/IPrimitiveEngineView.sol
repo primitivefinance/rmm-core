@@ -73,27 +73,29 @@ interface IPrimitiveEngineView {
             uint256 cumulativeLiquidity
         );
 
-    /// @notice Fetches The calibrated and initialized pool's parameters
-    /// @param  pid     The pool id to fetch the parameters of
-    /// @return strike  The strike price of the pool
-    /// sigma           The volatility of the pool
-    /// time            The time until expiry of the pool
+    /// @notice Fetches Calibrated and initialized pool's parameters
+    /// @param  pid     Pool id to fetch the parameters of
+    /// @return strike  Strike price of the pool
+    /// sigma           Volatility of the pool
+    /// time            Time until expiry of the pool
+    /// blockTimestamp  Timestamp on pool creation
     function settings(bytes32 pid)
         external
         view
         returns (
             uint128 strike,
             uint64 sigma,
-            uint64 time
+            uint32 time,
+            uint32 blockTimestamp
         );
 
-    /// @notice Fetches The position data struct using a position id
-    /// @param  posId   The position id
-    /// @return balanceRisky    The risky balance of the position debt
-    /// balanceStable   The stable balance of the position debt
-    /// float           The liquidity shares that are marked for loans
-    /// liquidity       The liquidity shares in the position
-    /// debt            The liquidity shares in debt, must be repaid
+    /// @notice Fetches Position data struct using a position id
+    /// @param  posId   Position id
+    /// @return balanceRisky    Risky balance of the position debt
+    /// balanceStable   Stable balance of the position debt
+    /// float           Liquidity shares that are marked for loans
+    /// liquidity       Liquidity shares in the position
+    /// debt            Liquidity shares in debt, must be repaid
     function positions(bytes32 posId)
         external
         view
@@ -117,7 +119,7 @@ interface IPrimitiveEngineView {
     /// @return The keccak256 hash of the `calibration` parameters
     function getPoolId(
         uint256 strike,
-        uint256 sigma,
-        uint256 time
+        uint64 sigma,
+        uint32 time
     ) external view returns (bytes32);
 }
