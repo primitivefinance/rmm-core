@@ -23,7 +23,7 @@ contract EngineSwap {
     }
 
     function swap(
-        bytes32 poolId,
+        bytes32 pid,
         bool riskyForStable,
         uint256 deltaOut,
         uint256 deltaInMax,
@@ -31,7 +31,7 @@ contract EngineSwap {
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).swap(poolId, riskyForStable, deltaOut, deltaInMax, fromMargin, data);
+        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, deltaInMax, fromMargin, data);
     }
 
     function swapCallback(

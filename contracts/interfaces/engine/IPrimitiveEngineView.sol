@@ -10,12 +10,12 @@ interface IPrimitiveEngineView {
     /// @notice         Computes the reserve value of `token` using the known `reserve` value of the other token
     /// @param  poolId  Keccak256 hash of strike price, volatility, and maturity timestamp
     /// @param  token   Reserve of the token to compute
-    /// @param  reserve Reserve of the other token, which is known
+    /// @param  balance Balance of reserve of the other token, which is known
     /// @return reserveOfToken  Reserve of the `token`
     function compute(
         bytes32 poolId,
         address token,
-        uint256 reserve
+        uint256 balance
     ) external view returns (int128 reserveOfToken);
 
     /// @notice                 Uses the trading function to calc the invariant using token reserve values

@@ -71,7 +71,7 @@ export default function createEngineFunctions(
           }
           await loadedContracts.risky.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
-          return loadedContracts.engineDeposit.deposit(deployer.address, delRisky, delStable, empty)
+          return loadedContracts.engineDeposit.deposit(from ? from.address : deployer.address, delRisky, delStable, empty)
         }
         break
       default:
