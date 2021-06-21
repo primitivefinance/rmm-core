@@ -31,6 +31,7 @@ export interface Contracts {
   testReplicationMath: ContractTypes.TestReplicationMath
   testBlackScholes: ContractTypes.TestBlackScholes
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
+  flashBorrower: ContractTypes.FlashBorrower
 }
 
 export interface Mocks {
@@ -66,5 +67,4 @@ type ContractName =
   | 'engineRemove'
   | 'engineLend'
   | 'engineBorrow'
-  | 'badEngineDeposit'
   | 'badEngineDeposit'
