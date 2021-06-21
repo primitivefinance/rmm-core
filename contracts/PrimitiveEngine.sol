@@ -55,15 +55,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
-
-    uint8 private unlocked = 1;
-    modifier lock() {
-        require(unlocked == 1, "Locked");
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
-
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override settings;
     /// @inheritdoc IPrimitiveEngineView
@@ -72,6 +63,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Position.Data) public override positions;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Reserve.Data) public override reserves;
+
+    uint8 private unlocked = 1;
+    modifier lock() {
+        require(unlocked == 1, "Locked");
+        unlocked = 0;
+        _;
+        unlocked = 1;
+    }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
@@ -119,7 +118,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         {
             // avoids stack too deep errors
             (uint256 strikePrice, uint256 vol, uint32 maturity) = (strike, sigma, time);
-            uint32 timeDelta = (maturity - _blockTimestamp()) / 1000;
+            uint32 timeDelta = maturity - _blockTimestamp();
             int128 callDelta = BlackScholes.deltaCall(riskyPrice, strikePrice, vol, timeDelta);
             uint256 resRisky = uint256(1).fromUInt().sub(callDelta).parseUnits(); // risky = 1 - delta
             uint256 resStable =
@@ -262,6 +261,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bool fromMargin,
         bytes calldata data
     ) external override lock returns (uint256 deltaIn) {
+        require(deltaOut > 0, "Zero");
         SwapDetails memory details =
             SwapDetails({
                 poolId: poolId,
@@ -272,29 +272,27 @@ contract PrimitiveEngine is IPrimitiveEngine {
             });
 
         int128 invariant = invariantOf(details.poolId); // gas savings
-        Reserve.Data storage res = reserves[details.poolId]; // gas savings
-        (uint256 reserveRisky, uint256 reserveStable) = (res.reserveRisky, res.reserveStable);
+        Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
+        (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
 
-        uint256 nextRisky;
-        uint256 nextStable;
+        console.log("got invariant of");
 
         if (details.riskyForStable) {
-            int128 nextRX1 = compute(details.poolId, risky, reserveStable - details.amountOut); // remove Y from reserves, and use calculate the new X reserve value.
-            nextRisky = nextRX1.sub(invariant).parseUnits();
-            nextStable = reserveStable - details.amountOut;
-            deltaIn = ((nextRisky - reserveRisky) * 10000) / 9985; // nextRX1 = reserveRisky + detlaIn * (1 - fee)
+            uint256 nextRisky = compute(details.poolId, risky, resStable - details.amountOut).parseUnits();
+            console.log(nextRisky, resRisky);
+            deltaIn = ((nextRisky - resRisky) * 10000) / 9985; // nextRisky = resRisky + detlaIn * (1 - fee)
         } else {
-            int128 nextRY2 = compute(details.poolId, stable, reserveRisky - details.amountOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-            nextRisky = reserveRisky - details.amountOut;
-            nextStable = invariant.add(nextRY2).parseUnits();
-            deltaIn = ((nextStable - reserveStable) * 10000) / 9985;
+            uint256 nextStable = compute(details.poolId, stable, resRisky - details.amountOut).parseUnits();
+            deltaIn = ((nextStable - resStable) * 10000) / 9985; // nextStable = resStable + detlaIn * (1 - fee)
         }
 
+        console.log("too expensive?");
         require(details.amountInMax >= deltaIn, "Too expensive");
-        require(
-            calcInvariant(details.poolId, nextRisky, nextStable, res.liquidity).parseUnits() >= invariant.parseUnits(),
+        /* require(
+            calcInvariant(details.poolId, nextRisky, nextStable, reserve.liquidity).parseUnits() >=
+                invariant.parseUnits(),
             "Invalid invariant"
-        );
+        ); */
 
         {
             // avoids stack too deep errors
@@ -331,7 +329,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 }
             }
 
-            res.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
+            console.log("transferred out");
+
+            reserve.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
+            console.log(invariantOf(details.poolId).parseUnits(), invariant.parseUnits());
+            require(invariantOf(details.poolId) >= invariant, "Invariant");
             emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
     }
@@ -441,26 +443,24 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function compute(
         bytes32 poolId,
         address token,
-        uint256 reserve
+        uint256 balance
     ) public view override returns (int128 reserveOfToken) {
         require(token == risky || token == stable, "Not an engine token");
         Calibration memory cal = settings[poolId];
         Reserve.Data memory res = reserves[poolId];
-        if (token == stable) {
-            reserveOfToken = ReplicationMath.getTradingFunction(
-                reserve,
-                res.liquidity,
-                uint256(cal.strike),
-                uint256(cal.sigma),
-                uint256(cal.time)
-            );
+        (uint256 liquidity, uint256 strike, uint256 sigma, uint256 time) =
+            (uint256(res.liquidity), uint256(cal.strike), uint256(cal.sigma), cal.time);
+        int128 invariant = invariantOf(poolId);
+        console.log(time, _blockTimestamp());
+        uint256 timeDelta = time - _blockTimestamp();
+
+        console.log(timeDelta);
+        if (token == risky) {
+            reserveOfToken = (ReplicationMath.getInverseTradingFunction(balance, liquidity, strike, sigma, timeDelta))
+                .sub(invariant);
         } else {
-            reserveOfToken = ReplicationMath.getInverseTradingFunction(
-                reserve,
-                res.liquidity,
-                uint256(cal.strike),
-                uint256(cal.sigma),
-                uint256(cal.time)
+            reserveOfToken = ReplicationMath.getTradingFunction(balance, liquidity, strike, sigma, timeDelta).add(
+                invariant
             );
         }
     }
