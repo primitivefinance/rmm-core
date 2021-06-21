@@ -101,3 +101,7 @@ export async function borrowFragment(signers: Wallet[], contracts: Contracts): P
   await contracts.engineAllocate.allocateFromExternal(pid, contracts.engineLend.address, parseWei('100').raw, empty)
   await contracts.engineLend.lend(pid, parseWei('100').raw)
 }
+
+export async function flashLoanFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+
+}
