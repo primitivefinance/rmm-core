@@ -142,7 +142,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             time: time,
             blockTimestamp: _blockTimestamp()
         });
-        emit Create(msg.sender, strike, sigma, time);
+        emit Created(msg.sender, strike, sigma, time);
     }
 
     // ===== Margin =====

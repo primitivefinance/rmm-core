@@ -10,7 +10,7 @@ interface IPrimitiveEngineEvents {
     /// @param  strike  Strike price of the option of the curve to calibrate to
     /// @param  sigma   Volatility of the option of the curve to calibrate to
     /// @param  time    Time until expiry of the option of the curve to calibrate to
-    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed time);
+    event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed time);
 
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
