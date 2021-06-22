@@ -275,24 +275,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
         (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
 
-        console.log("got invariant of");
-
         if (details.riskyForStable) {
             uint256 nextRisky = compute(details.poolId, risky, resStable - details.amountOut).parseUnits();
-            console.log(nextRisky, resRisky);
             deltaIn = ((nextRisky - resRisky) * 10000) / 9985; // nextRisky = resRisky + detlaIn * (1 - fee)
         } else {
             uint256 nextStable = compute(details.poolId, stable, resRisky - details.amountOut).parseUnits();
             deltaIn = ((nextStable - resStable) * 10000) / 9985; // nextStable = resStable + detlaIn * (1 - fee)
         }
 
-        console.log("too expensive?");
         require(details.amountInMax >= deltaIn, "Too expensive");
-        /* require(
-            calcInvariant(details.poolId, nextRisky, nextStable, reserve.liquidity).parseUnits() >=
-                invariant.parseUnits(),
-            "Invalid invariant"
-        ); */
 
         {
             // avoids stack too deep errors
@@ -329,10 +320,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 }
             }
 
-            console.log("transferred out");
-
             reserve.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
-            console.log(invariantOf(details.poolId).parseUnits(), invariant.parseUnits());
             require(invariantOf(details.poolId) >= invariant, "Invariant");
             emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
