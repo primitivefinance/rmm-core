@@ -5,15 +5,18 @@ import "../interfaces/IERC3156FlashBorrower.sol";
 import "../interfaces/IERC3156FlashLender.sol";
 import "../interfaces/IERC20.sol";
 
-import "hardhat/console.sol";
-
 contract FlashBorrower is IERC3156FlashBorrower {
-    function flashLoan(
+    enum Action {NORMAL, NOFEE, NOTING}
+    Action private _action;
+
+    function flashBorrow(
         IERC3156FlashLender lender,
         address token,
         uint256 amount,
+        Action action,
         bytes calldata data
     ) external {
+        _action = action;
         lender.flashLoan(this, token, amount, data);
     }
 
@@ -24,8 +27,12 @@ contract FlashBorrower is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
-        console.log("Flash loan of %s, fee %s", amount, fee);
-        IERC20(token).transfer(msg.sender, amount + fee);
+        if (_action == Action.NORMAL) {
+            IERC20(token).transfer(msg.sender, amount + fee);
+        } else if (_action == Action.NOFEE) {
+            IERC20(token).transfer(msg.sender, amount);
+        }
+
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
 }
