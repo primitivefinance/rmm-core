@@ -7,6 +7,7 @@ import './effect/reentrancy'
 import './effect/remove'
 import './effect/swap'
 import './effect/withdraw'
+import './effect/flashLoan'
 
 import './view/calcInvariant'
 import './view/compute'
