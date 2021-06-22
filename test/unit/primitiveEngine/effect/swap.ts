@@ -1,41 +1,24 @@
-import hre, { waffle } from 'hardhat'
+import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { EngineEvents, ERC20Events } from '../events'
 import { BytesLike, constants, Wallet } from 'ethers'
 import { Wei, parseWei, PERCENTAGE } from '../../../shared/Units'
 import loadContext from '../../context'
-import * as ContractTypes from '../../../../typechain'
-import { Contracts } from '../../../../types'
-import { getPoolParams, PoolParams, getDeltaIn } from '../../../shared/utilities'
+import { getPoolParams, PoolParams, getDeltaIn, getReserve } from '../../../shared/utilities'
+import { swapFragment } from '../fragments'
+import * as swapUtils from '../../../shared/swapUtils'
 
 const INITIAL_MARGIN = parseWei('1000')
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
-export async function createFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
-  await contracts.factory.create(contracts.risky.address, contracts.stable.address)
-  const engineAdd = await contracts.factory.getEngine(contracts.risky.address, contracts.stable.address)
-  contracts.engine = (await hre.ethers.getContractAt('PrimitiveEngine', engineAdd)) as ContractTypes.PrimitiveEngine
 
-  await contracts.stable.mint(signers[0].address, constants.MaxUint256)
-  await contracts.risky.mint(signers[0].address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
-}
-
-export async function swapFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
-  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.stable.approve(contracts.engineSwap.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.engineSwap.address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
-}
-
-describe('swap', function () {
+describe('Engine:swap', function () {
   before('Generate fixture loader', async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'engineSwap', 'engineDeposit'], swapFragment)
+    await loadContext(
+      waffle.provider,
+      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate'],
+      swapFragment
+    )
   })
 
   describe('--swap--', function () {
@@ -43,113 +26,122 @@ describe('swap', function () {
     let deployer: Wallet
 
     beforeEach(async function () {
-      deployer = this.signers[0]
-      await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('0.01').raw, empty)
       poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      deployer = this.signers[0]
+      await this.contracts.engineAllocate.allocateFromExternal(
+        poolId,
+        this.contracts.engineAllocate.address,
+        parseWei('1000').raw,
+        empty
+      )
     })
 
     it('swaps risky for stable', async function () {
-      let [pid, riskyForStable, deltaOut, deltaInMax] = [poolId, true, parseWei('0.01').raw, constants.MaxUint256]
-      await this.contracts.engineSwap.swap(pid, riskyForStable, deltaOut, deltaInMax, false, empty)
+      let [riskyForStable, deltaOut, deltaInMax] = [true, parseWei('0.01').raw, constants.MaxUint256]
+      await this.contracts.engineSwap.swap(poolId, riskyForStable, deltaOut, deltaInMax, false, empty)
     })
 
     describe('sucess cases', function () {
       it('Engine::Swap: Swap X to Y from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
-        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
-        const invariant = await this.contracts.engine.invariantOf(poolId) // store inariant current
-        const amount = parseWei('100') // amount to swap
-        const params: PoolParams = await getPoolParams(this.contracts.engine, poolId) // gets calibrationm
-        const addXRemoveY: boolean = true // are we swapping risky tokens to stable tokens?
-        const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
-          amount,
-          addXRemoveY,
-          invariant.toString(),
-          params
+        //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
+        const deltaOut = parseWei('100') // deltaOut to swap
+        const riskyForStable: boolean = true // are we swapping risky tokens to stable tokens?
+
+        const invariantLast = await this.contracts.engine.invariantOf(poolId) // store inariant current
+        const reserveLast = await getReserve(this.contracts.engine, poolId)
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
+          this.contracts.engine,
+          poolId,
+          riskyForStable,
+          deltaOut
         )
+
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(
-          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true, empty),
+          this.contracts.engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty),
           'Engine:Swap'
-        ).to.emit(this.contracts.engine, EngineEvents.SWAP)
+        )
+          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+          .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        const postReserve = await this.contracts.engine.reserves(poolId)
-        expect(Math.abs(postInvariant)).to.be.gte(Math.abs(new Wei(invariant).float))
-        expect(postParams.reserve.reserveRisky.raw, 'check FXR1').to.be.eq(postReserve.reserveRisky) // FIX
-        expect(postParams.reserve.reserveStable.raw, 'check FYR2').to.be.eq(postReserve.reserveStable) // FIX
+        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
+        expect(reserveStable.raw, 'check FYR2').to.be.eq(reserveLast.reserveStable) // FIX
       })
 
       it('Engine::Swap: Swap X to Y from Callee', async function () {
         // before: add tokens to margin to do swaps with
-        const invariant = await this.contracts.engine.invariantOf(poolId)
-        const amount = parseWei('100')
-        const params: PoolParams = await getPoolParams(this.contracts.engine, poolId)
-        const addXRemoveY: boolean = true
-        const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
-          amount,
-          addXRemoveY,
-          invariant.toString(),
-          params
-        )
-        // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-        await expect(this.functions.swapXForY(poolId, true, amount.raw, constants.MaxUint256, false), 'Engine:Swap').to.emit(
+        const deltaOut = parseWei('100')
+        const riskyForStable: boolean = true
+        const invariantLast = await this.contracts.engine.invariantOf(poolId)
+        const reserveLast = await getReserve(this.contracts.engine, poolId)
+
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
           this.contracts.engine,
-          EngineEvents.SWAP
+          poolId,
+          riskyForStable,
+          deltaOut
         )
 
-        const postReserve = await this.contracts.engine.reserves(poolId)
-        //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.reserveRisky.raw, 'check FXR1').to.be.eq(postReserve.reserveRisky) // FIX
-        expect(postParams.reserve.reserveStable.raw, 'check FYR2').to.be.eq(postReserve.reserveStable) // FIX
+        // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
+        await expect(this.functions.swapXForY(poolId, true, deltaOut.raw, constants.MaxUint256, false), 'Engine:Swap')
+          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+          .withArgs(this.contracts.engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
+
+        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
+        expect(reserveStable.raw, 'check FYR2').to.be.eq(reserveLast.reserveStable) // FIX
       })
 
       it('Engine::Swap: Swap Y to X from EOA from margin', async function () {
-        await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
-        const invariant = await this.contracts.engine.invariantOf(poolId)
-        const amount = parseWei('0.2')
-        const params: PoolParams = await getPoolParams(this.contracts.engine, poolId)
-        const addXRemoveY: boolean = false
-        const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
-          amount,
-          addXRemoveY,
-          invariant.toString(),
-          params
+        //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
+        const deltaOut = parseWei('0.2')
+        const riskyForStable: boolean = false
+        const invariantLast = await this.contracts.engine.invariantOf(poolId)
+        const reserveLast = await getReserve(this.contracts.engine, poolId)
+
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
+          this.contracts.engine,
+          poolId,
+          riskyForStable,
+          deltaOut
         )
 
-        // TODO: Swap deltaIn amount is different from esimated deltaIn
+        // TODO: Swap deltaIn deltaOut is different from esimated deltaIn
         await expect(
-          this.contracts.engine.swap(poolId, addXRemoveY, amount.raw, constants.MaxUint256, true, empty),
+          this.contracts.engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty),
           'Engine:Swap'
-        ).to.emit(this.contracts.engine, EngineEvents.SWAP)
+        )
+          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+          .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        const postReserve = await this.contracts.engine.reserves(poolId)
-        //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.reserveRisky.raw.toString(), 'check FXR1').to.be.eq(postReserve.reserveRisky)
-        expect(postParams.reserve.reserveStable.raw.toString(), 'check FYR2').to.be.eq(postReserve.reserveStable)
+        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(reserveRisky.raw.toString(), 'check FXR1').to.be.eq(reserveLast.reserveRisky)
+        expect(reserveStable.raw.toString(), 'check FYR2').to.be.eq(reserveLast.reserveStable)
       })
 
       it('Engine::Swap: Swap Y to X from Callee', async function () {
-        const invariant = await this.contracts.engine.invariantOf(poolId)
-        const amount = parseWei('0.2')
-        const params: PoolParams = await getPoolParams(this.contracts.engine, poolId)
-        const addXRemoveY: boolean = false
-        const { deltaIn, deltaOut, postParams, postInvariant } = getDeltaIn(
-          amount,
-          addXRemoveY,
-          invariant.toString(),
-          params
+        const deltaOut = parseWei('0.2')
+        const riskyForStable: boolean = false
+        const invariantLast = await this.contracts.engine.invariantOf(poolId)
+        const reserveLast = await getReserve(this.contracts.engine, poolId)
+
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
+          this.contracts.engine,
+          poolId,
+          riskyForStable,
+          deltaOut
         )
 
-        // TODO: Swap deltaIn amount is different from esimated deltaIn
-        await expect(
-          this.functions.swapYForX(poolId, false, amount.raw, constants.MaxUint256, false),
-          'Engine:Swap'
-        ).to.emit(this.contracts.engine, EngineEvents.SWAP)
+        // TODO: Swap deltaIn deltaOut is different from esimated deltaIn
+        await expect(this.functions.swapYForX(poolId, false, deltaOut.raw, constants.MaxUint256, false), 'Engine:Swap')
+          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+          .withArgs(this.contracts.engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        const postReserve = await this.contracts.engine.reserves(poolId)
-        //expect(postInvariant).to.be.gte(new Wei(invariant).float)
-        expect(postParams.reserve.reserveRisky.raw.toString(), 'check FXR1').to.be.eq(postReserve.reserveRisky)
-        expect(postParams.reserve.reserveStable.raw.toString(), 'check FYR2').to.be.eq(postReserve.reserveStable)
+        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(reserveRisky.raw.toString(), 'check FXR1').to.be.eq(reserveLast.reserveRisky)
+        expect(reserveStable.raw.toString(), 'check FYR2').to.be.eq(reserveLast.reserveStable)
       })
     })
 
@@ -176,8 +168,8 @@ describe('swap', function () {
       })
       it('Fail Callee::Swap: Invalid invariant', async function () {})
       it('Fail Callee::Swap: Sent too much tokens', async function () {})
-      it('Fail Callee::Swap: Not enough TX1', async function () {})
-      it('Fail Callee::Swap: Not enough TY2', async function () {})
+      it('Fail Callee::Swap: Not enough risky', async function () {})
+      it('Fail Callee::Swap: Not enough stable', async function () {})
     })
   })
 })
