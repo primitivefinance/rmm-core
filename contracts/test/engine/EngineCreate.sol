@@ -61,20 +61,6 @@ contract EngineCreate {
         return IPrimitiveEngine(engine).positions(keccak256(abi.encodePacked(address(this), pid)));
     }
 
-    function fetch(bytes32 pid)
-        public
-        view
-        returns (
-            uint128 balanceRisky,
-            uint128 balanceStable,
-            uint128 float,
-            uint128 liquidity,
-            uint128 debt
-        )
-    {
-        return IPrimitiveEngine(engine).positions(keccak256(abi.encodePacked(address(this), pid)));
-    }
-
     function name() public pure returns (string memory) {
         return "EngineCreate";
     }

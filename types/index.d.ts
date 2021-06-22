@@ -68,3 +68,4 @@ type ContractName =
   | 'engineLend'
   | 'engineBorrow'
   | 'badEngineDeposit'
+  | 'flashBorrower'
