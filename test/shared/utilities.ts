@@ -306,6 +306,12 @@ export function calculateInvariant(params: PoolParams): number {
   return invariant.float
 }
 
+export function calcInvariant(reserveRisky: Wei, reserveStable: Wei, liquidity: Wei, calibration: Calibration): number {
+  const input: number = getTradingFunction(reserveRisky, liquidity, calibration)
+  const invariant: Wei = reserveStable.sub(parseEther(input > 0.0001 ? input.toString() : '0'))
+  return invariant.float
+}
+
 export function getCreate2Address(factoryAddress: string, [stable, risky]: [string, string], bytecode: string): string {
   const encodedArguments = utils.defaultAbiCoder.encode(['address', 'address'], [stable, risky])
 
