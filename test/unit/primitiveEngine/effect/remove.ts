@@ -8,14 +8,15 @@ import { removeFragment } from '../fragments'
 
 import loadContext from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+
 const empty: BytesLike = constants.HashZero
 let pid: string
 let posId: string
 
 describe('remove', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
+    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
   })
 
   describe('when removing to internal', function () {
@@ -139,7 +140,7 @@ describe('remove', function () {
     it('removes 1 liquidity share and deposits the resultant risky and stable to margin', async function () {
       const posId = await this.contracts.engineRemove.getPosition(pid)
       await this.contracts.engineRemove.removeToMargin(pid, parseWei('1').raw, empty)
-
+      
       expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
         BigNumber.from('0'),
         BigNumber.from('0'),
@@ -163,13 +164,13 @@ describe('remove', function () {
     })
 
     it('fails to remove more liquidity to margin than is allocated by the address', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      await expect(this.contracts.engineRemove.removeToMargin(pid, parseWei('20').raw, empty)).to.be.reverted
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(this.contracts.engineRemove.removeToMargin(poolId, parseWei('20').raw, empty)).to.be.reverted
     })
 
     it('fails to remove more liquity to engineRemove.address than is allocated by the address', async function () {
-      const pid = await this.contracts.engine.getPoolId(strike, sigma, time)
-      await expect(this.contracts.engineRemove.removeToExternal(pid, parseWei('20').raw, empty)).to.be.reverted
+      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      await expect(this.contracts.engineRemove.removeToExternal(poolId, parseWei('20').raw, empty)).to.be.reverted
     })
   })
 })

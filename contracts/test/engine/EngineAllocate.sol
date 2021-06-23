@@ -23,22 +23,22 @@ contract EngineAllocate {
     }
 
     function allocateFromMargin(
-        bytes32 pid,
+        bytes32 poolId,
         address owner,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(pid, owner, delLiquidity, true, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, true, data);
     }
 
     function allocateFromExternal(
-        bytes32 pid,
+        bytes32 poolId,
         address owner,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).allocate(pid, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
     }
 
     function allocateCallback(
@@ -50,8 +50,8 @@ contract EngineAllocate {
         IERC20(stable).transferFrom(CALLER, msg.sender, delStable);
     }
 
-    function getPosition(bytes32 pid) public view returns (bytes32 posid) {
-        posid = keccak256(abi.encodePacked(address(this), pid));
+    function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
+        posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
     function name() public pure returns (string memory) {

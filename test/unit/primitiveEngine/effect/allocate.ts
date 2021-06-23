@@ -8,7 +8,7 @@ import { allocateFragment } from '../fragments'
 
 import loadContext from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
 let pid: string
 
@@ -31,8 +31,9 @@ describe('allocate', function () {
 
     it('updates the position if enough risky and stable were deposited', async function () {
       const posId = await this.contracts.engineAllocate.getPosition(pid)
+
       await this.contracts.engineAllocate.allocateFromMargin(
-        pid,
+        poolId,
         this.contracts.engineAllocate.address,
         parseWei('1').raw,
         empty
@@ -94,8 +95,9 @@ describe('allocate', function () {
 
     it('updates the position if enough risky and stable are provided', async function () {
       const posId = await this.contracts.engineAllocate.getPosition(pid)
+      
       await this.contracts.engineAllocate.allocateFromExternal(
-        pid,
+        poolId,
         this.contracts.engineAllocate.address,
         parseWei('1').raw,
         empty
@@ -134,7 +136,7 @@ describe('allocate', function () {
     it('reverts if risky or stable are insufficient', async function () {
       await expect(
         this.contracts.engineAllocate.allocateFromExternal(
-          pid,
+          poolId,
           this.contracts.engineAllocate.address,
           parseWei('10000').raw,
           empty

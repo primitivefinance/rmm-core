@@ -5,7 +5,7 @@ import { Contracts, Functions, ContractName } from '../../types'
 const empty: BytesLike = constants.HashZero
 export type DepositFunction = (delRisky: BigNumberish, delStable: BigNumberish, from?: Wallet) => Promise<Transaction>
 export type SwapFunction = (
-  pid: BytesLike | string,
+  poolId: BytesLike | string,
   addXRemoveY: boolean,
   deltaOut: BigNumberish,
   deltaInMax: BigNumberish,
@@ -24,7 +24,7 @@ export default function createEngineFunctions(
     switch (contractName) {
       case 'engineSwap':
         const swapFunction: SwapFunction = async (
-          pid: BytesLike | string,
+          poolId: BytesLike | string,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
@@ -32,26 +32,26 @@ export default function createEngineFunctions(
         ): Promise<Transaction> => {
           await loadedContracts.risky.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          return loadedContracts.engineSwap.swap(pid, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
+          return loadedContracts.engineSwap.swap(poolId, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
         }
 
         loadedFunctions.swapXForY = (
-          pid: BytesLike,
+          poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(pid, true, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(poolId, true, deltaOut, deltaInMax, fromMargin)
         }
         loadedFunctions.swapYForX = (
-          pid: BytesLike,
+          poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(pid, false, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(poolId, false, deltaOut, deltaInMax, fromMargin)
         }
         break
       case 'engineCreate':
@@ -71,7 +71,7 @@ export default function createEngineFunctions(
           }
           await loadedContracts.risky.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
-          return loadedContracts.engineDeposit.deposit(deployer.address, delRisky, delStable, empty)
+          return loadedContracts.engineDeposit.deposit(from ? from.address : deployer.address, delRisky, delStable, empty)
         }
         break
       default:
