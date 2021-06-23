@@ -22,6 +22,7 @@ export interface Contracts {
   engineRemove: ContractTypes.EngineRemove
   engineLend: ContractTypes.EngineLend
   engineBorrow: ContractTypes.EngineBorrow
+  badEngineDeposit: ContractTypes.BadEngineDeposit
   factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
@@ -30,6 +31,7 @@ export interface Contracts {
   testReplicationMath: ContractTypes.TestReplicationMath
   testBlackScholes: ContractTypes.TestBlackScholes
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
+  flashBorrower: ContractTypes.FlashBorrower
 }
 
 export interface Mocks {
@@ -65,3 +67,5 @@ type ContractName =
   | 'engineRemove'
   | 'engineLend'
   | 'engineBorrow'
+  | 'badEngineDeposit'
+  | 'flashBorrower'

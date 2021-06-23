@@ -6,6 +6,8 @@ import "../../interfaces/IERC20.sol";
 
 import "hardhat/console.sol";
 
+import "../../libraries/Position.sol";
+
 contract EngineCreate {
     address public engine;
     address public risky;
@@ -43,6 +45,20 @@ contract EngineCreate {
     ) public {
         IERC20(risky).transferFrom(CALLER, engine, delRisky);
         IERC20(stable).transferFrom(CALLER, engine, delStable);
+    }
+
+    function fetch(bytes32 pid)
+        public
+        view
+        returns (
+            uint128 balanceRisky,
+            uint128 balanceStable,
+            uint128 float,
+            uint128 liquidity,
+            uint128 debt
+        )
+    {
+        return IPrimitiveEngine(engine).positions(keccak256(abi.encodePacked(address(this), pid)));
     }
 
     function name() public pure returns (string memory) {

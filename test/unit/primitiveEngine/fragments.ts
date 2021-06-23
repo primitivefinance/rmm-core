@@ -17,6 +17,9 @@ export async function depositFragment(signers: Wallet[], contracts: Contracts): 
   await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
   await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
+
+  await contracts.stable.approve(contracts.badEngineDeposit.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.badEngineDeposit.address, constants.MaxUint256)
 }
 
 export async function withdrawFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -40,8 +43,6 @@ export async function allocateFragment(signers: Wallet[], contracts: Contracts):
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
 
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
-
-  await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
 }
 
 export async function removeFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -118,4 +119,8 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('0.01').raw, empty)
   const poolId = await contracts.engine.getPoolId(strike, sigma, time)
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('1000').raw, empty)
+}
+
+export async function flashLoanFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+
 }
