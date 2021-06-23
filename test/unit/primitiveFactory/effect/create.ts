@@ -3,40 +3,24 @@ import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import loadContext from '../../context'
+import { deployMockContract } from 'ethereum-waffle'
+import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
 
 describe('create', function () {
   before(async function () {
-    await loadContext(waffle.provider, [], async () => {})
+    await loadContext(waffle.provider, ['factoryCreate'], async () => {})
   })
 
   describe('when the parameters are valid', function () {
-    it('deploys a new PrimitiveEngine', async function () {
-      expect(await this.contracts.factory.getEngine(this.contracts.risky.address, this.contracts.stable.address)).to.equal(
-        constants.AddressZero
-      )
-
-      await this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address)
+    let deployer
+    beforeEach(async function () {
+      deployer = this.signers[0]
     })
-
-    it('saves the new engine', async function () {
-      expect(await this.contracts.factory.getEngine(this.contracts.risky.address, this.contracts.stable.address)).to.equal(
-        constants.AddressZero
-      )
-
-      const engineAddress = await this.contracts.factory.callStatic.create(
-        this.contracts.risky.address,
-        this.contracts.stable.address
-      )
-
-      await this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address)
-
-      expect(await this.contracts.factory.getEngine(this.contracts.risky.address, this.contracts.stable.address)).to.equal(
-        engineAddress
-      )
-
-      expect(await this.contracts.factory.getEngine(this.contracts.stable.address, this.contracts.risky.address)).to.equal(
-        engineAddress
-      )
+    it('deploys a new PrimitiveEngine', async function () {
+      let mockRisky = await deployMockContract(deployer, Token)
+      let mockStable = await deployMockContract(deployer, Token)
+      expect(await this.contracts.factory.getEngine(mockRisky.address, mockStable.address)).to.equal(constants.AddressZero)
+      await this.contracts.factoryCreate.create(mockRisky.address, mockStable.address)
     })
 
     it('emits the EngineCreated event', async function () {
@@ -53,14 +37,13 @@ describe('create', function () {
       );
       */
 
-      const engineAddress = await this.contracts.factory.callStatic.create(
-        this.contracts.risky.address,
-        this.contracts.stable.address
-      )
+      let mockRisky = await deployMockContract(deployer, Token)
+      let mockStable = await deployMockContract(deployer, Token)
+      const engineAddress = await this.contracts.factory.callStatic.create(mockRisky.address, mockStable.address)
 
-      await expect(this.contracts.factoryCreate.create(this.contracts.risky.address, this.contracts.stable.address))
+      await expect(this.contracts.factoryCreate.create(mockRisky.address, mockStable.address))
         .to.emit(this.contracts.factory, 'EngineCreated')
-        .withArgs(deployer.address, this.contracts.risky.address, this.contracts.stable.address, engineAddress)
+        .withArgs(this.contracts.factoryCreate.address, mockRisky.address, mockStable.address, engineAddress)
     })
   })
 
