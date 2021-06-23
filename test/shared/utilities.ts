@@ -217,8 +217,8 @@ export interface Position {
   unlocked: boolean
 }
 
-export async function getPosition(contract: Contract, owner: string, pid: BytesLike, log?: boolean): Promise<Position> {
-  const pos = await contract.getPosition(owner, pid)
+export async function getPosition(contract: Contract, owner: string, poolId: BytesLike, log?: boolean): Promise<Position> {
+  const pos = await contract.getPosition(owner, poolId)
   const position: Position = {
     owner: pos.owner,
     BX1: new Wei(pos.balanceRisky),
@@ -303,6 +303,12 @@ export async function getPoolParams(engine: Contract, poolId: BytesLike, log?: b
 export function calculateInvariant(params: PoolParams): number {
   const input: number = getTradingFunction(params.reserve.reserveRisky, params.reserve.liquidity, params.calibration)
   const invariant: Wei = params.reserve.reserveStable.sub(parseEther(input > 0.0001 ? input.toString() : '0'))
+  return invariant.float
+}
+
+export function calcInvariant(reserveRisky: Wei, reserveStable: Wei, liquidity: Wei, calibration: Calibration): number {
+  const input: number = getTradingFunction(reserveRisky, liquidity, calibration)
+  const invariant: Wei = reserveStable.sub(parseEther(input > 0.0001 ? input.toString() : '0'))
   return invariant.float
 }
 

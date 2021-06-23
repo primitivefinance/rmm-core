@@ -2,13 +2,13 @@
 pragma solidity 0.8.0;
 pragma abicoder v2;
 
-
 /// @notice  Engine Reserves
 /// @author  Primitive
 /// @dev     This library holds the data structure for an Engine's Reserves.
 
 import "./SafeCast.sol";
 import "hardhat/console.sol";
+
 library Reserve {
     using SafeCast for uint256;
 
@@ -28,7 +28,7 @@ library Reserve {
     /// @notice Adds to the cumulative reserves
     function update(Data storage res, uint32 blockTimestamp) internal returns (Data storage) {
         uint32 deltaTime = blockTimestamp - res.blockTimestamp;
-        if(deltaTime > 0) {
+        if (deltaTime > 0) {
             res.cumulativeRisky += res.reserveRisky * deltaTime;
             res.cumulativeStable += res.reserveStable * deltaTime;
             res.cumulativeLiquidity += res.liquidity * deltaTime;
@@ -40,12 +40,12 @@ library Reserve {
     /// @notice Increases one reserve value and decreases the other by different amounts
     function swap(
         Data storage reserve,
-        bool addXRemoveY,
+        bool riskyForStable,
         uint256 deltaIn,
         uint256 deltaOut,
         uint32 blockTimestamp
     ) internal returns (Data storage) {
-        if (addXRemoveY) {
+        if (riskyForStable) {
             reserve.reserveRisky += deltaIn.toUint128();
             reserve.reserveStable -= deltaOut.toUint128();
         } else {

@@ -35,7 +35,7 @@ contract EngineCreate {
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).create(strike, sigma, time, riskyPrice, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(time), riskyPrice, delLiquidity, data);
     }
 
     function createCallback(

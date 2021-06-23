@@ -12,8 +12,9 @@ import "./libraries/Margin.sol";
 import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
-import "./libraries/Units.sol";
+import "./libraries/SafeCast.sol";
 import "./libraries/Transfers.sol";
+import "./libraries/Units.sol";
 
 import "./interfaces/callback/IPrimitiveLendingCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
@@ -31,6 +32,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using BlackScholes for int128;
     using ReplicationMath for int128;
     using Units for *;
+    using SafeCast for *;
     using Reserve for mapping(bytes32 => Reserve.Data);
     using Reserve for Reserve.Data;
     using Margin for mapping(address => Margin.Data);
@@ -42,8 +44,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @dev Parameters of each pool
     struct Calibration {
         uint128 strike; // strike price of the option
-        uint64 sigma; // implied volatility of the option
-        uint64 time; // the time in seconds until the option expires
+        uint64 sigma; // volatility of the option
+        uint32 time; // time in seconds until the option expires
+        uint32 blockTimestamp; // time stamp of initialization
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -52,15 +55,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
-
-    uint8 private unlocked = 1;
-    modifier lock() {
-        require(unlocked == 1, "Locked");
-        unlocked = 0;
-        _;
-        unlocked = 1;
-    }
-
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override settings;
     /// @inheritdoc IPrimitiveEngineView
@@ -69,6 +63,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Position.Data) public override positions;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Reserve.Data) public override reserves;
+
+    uint8 private unlocked = 1;
+    modifier lock() {
+        require(unlocked == 1, "Locked");
+        unlocked = 0;
+        _;
+        unlocked = 1;
+    }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
@@ -94,42 +96,53 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function create(
         uint256 strike,
-        uint256 sigma,
-        uint256 time,
+        uint64 sigma,
+        uint32 time,
         uint256 riskyPrice,
         uint256 delLiquidity,
         bytes calldata data
-    ) external override returns (bytes32 pid) {
-        // NOTE: Splitting the requires might save some gas
-        require(time > 0 && sigma > 0 && strike > 0, "Calibration cannot be 0");
-        require(delLiquidity > 0, "Liquidity cannot be 0");
-        pid = getPoolId(strike, sigma, time);
+    )
+        external
+        override
+        lock
+        returns (
+            bytes32 poolId,
+            uint256 delRisky,
+            uint256 delStable
+        )
+    {
+        require((time * sigma * strike * delLiquidity) > 0, "Zero");
+        poolId = getPoolId(strike, sigma, time);
+        require(settings[poolId].time == 0, "Initialized");
 
-        require(settings[pid].time == 0, "Already created");
-        settings[pid] = Calibration({strike: uint128(strike), sigma: uint64(sigma), time: uint64(time)});
-
-        int128 delta = BlackScholes.deltaCall(riskyPrice, strike, sigma, time);
-        uint256 RX1 = uint256(1).fromUInt().sub(delta).parseUnits();
-        uint256 RY2 = ReplicationMath.getTradingFunction(RX1, 1e18, strike, sigma, time).parseUnits();
-        reserves[pid] = Reserve.Data({
-            reserveRisky: uint128((RX1 * delLiquidity) / 1e18), // risky token balance
-            reserveStable: uint128((RY2 * delLiquidity) / 1e18), // stable token balance
-            liquidity: uint128(delLiquidity), // 1 unit
-            float: 0, // the LP shares available to be borrowed on a given pid
-            debt: 0, // the LP shares borrowed from the float
-            blockTimestamp: _blockTimestamp(),
-            cumulativeRisky: 0,
-            cumulativeStable: 0,
-            cumulativeLiquidity: 0
-        });
+        {
+            // avoids stack too deep errors
+            (uint256 strikePrice, uint256 vol, uint32 maturity) = (strike, sigma, time);
+            uint32 timeDelta = maturity - _blockTimestamp();
+            int128 callDelta = BlackScholes.deltaCall(riskyPrice, strikePrice, vol, timeDelta);
+            uint256 resRisky = uint256(1).fromUInt().sub(callDelta).parseUnits(); // risky = 1 - delta
+            uint256 resStable =
+                ReplicationMath.getTradingFunction(resRisky, 1e18, strikePrice, vol, timeDelta).parseUnits();
+            delRisky = (resRisky * delLiquidity) / 1e18;
+            delStable = (resStable * delLiquidity) / 1e18;
+        }
 
         uint256 balRisky = balanceRisky();
         uint256 balStable = balanceStable();
-        IPrimitiveCreateCallback(msg.sender).createCallback(RX1, RY2, data);
-        require(balanceRisky() >= RX1 + balRisky, "Not enough risky tokens");
-        require(balanceStable() >= RY2 + balStable, "Not enough stable tokens");
-        positions.fetch(msg.sender, pid).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        emit Created(msg.sender, pid, strike, sigma, time);
+        IPrimitiveCreateCallback(msg.sender).createCallback(delRisky, delStable, data);
+        require(balanceRisky() >= delRisky + balRisky, "Risky");
+        require(balanceStable() >= delStable + balStable, "Stable");
+
+        Reserve.Data storage reserve = reserves[poolId];
+        reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
+        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
+        settings[poolId] = Calibration({
+            strike: strike.toUint128(),
+            sigma: sigma,
+            time: time,
+            blockTimestamp: _blockTimestamp()
+        });
+        emit Created(msg.sender, strike, sigma, time);
     }
 
     // ===== Margin =====
@@ -164,77 +177,70 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function allocate(
-        bytes32 pid,
+        bytes32 poolId,
         address owner,
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external override returns (uint256 delRisky, uint256 delStable) {
-        Reserve.Data storage res = reserves[pid];
-        (uint256 liquidity, uint256 RX1, uint256 RY2) = (res.liquidity, res.reserveRisky, res.reserveStable);
-        require(liquidity > 0, "Not initialized");
+    ) external override lock returns (uint256 delRisky, uint256 delStable) {
+        Reserve.Data storage reserve = reserves[poolId];
+        (uint256 resLiquidity, uint256 resRisky, uint256 resStable) =
+            (reserve.liquidity, reserve.reserveRisky, reserve.reserveStable);
 
-        delRisky = (delLiquidity * RX1) / liquidity;
-        delStable = (delLiquidity * RY2) / liquidity;
+        require(resLiquidity > 0, "Not initialized");
+        delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky tokens to provide
+        delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable tokens to provide
         require(delRisky * delStable > 0, "Deltas are 0");
 
         if (fromMargin) {
-            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
+            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account, notice the mapping
         } else {
             uint256 balRisky = balanceRisky();
             uint256 balStable = balanceStable();
-            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data);
+            IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data); // agnostic payment
             require(balanceRisky() >= balRisky + delRisky, "Not enough risky");
             require(balanceStable() >= balStable + delStable, "Not enough stable");
         }
 
-        bytes32 pid_ = pid;
-        Position.Data storage pos = positions.fetch(owner, pid_);
-        pos.allocate(delLiquidity);
-        res.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
+        Position.Data storage position = positions.fetch(owner, poolId);
+        position.allocate(delLiquidity); // increase position liquidity
+        reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, delRisky, delStable);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
     function remove(
-        bytes32 pid,
+        bytes32 poolId,
         uint256 delLiquidity,
-        bool isInternal,
+        bool toMargin,
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
-        require(delLiquidity > 0, "Cannot be 0");
-        Reserve.Data storage res = reserves[pid];
+        require(delLiquidity > 0, "Cannot be 0"); // fail early
 
-        uint256 reserveX;
-        uint256 reserveY;
+        Reserve.Data storage reserve = reserves[poolId];
+        (uint256 resRisky, uint256 resStable, uint256 resLiquidity) =
+            (reserve.reserveRisky, reserve.reserveStable, reserve.liquidity);
 
-        {
-            // scope for calculting invariants
-            (uint256 RX1, uint256 RY2, uint256 liquidity) = (res.reserveRisky, res.reserveStable, res.liquidity);
-            require(liquidity >= delLiquidity, "Above max burn");
-            delRisky = (delLiquidity * RX1) / liquidity;
-            delStable = (delLiquidity * RY2) / liquidity;
-            require(delRisky * delStable > 0, "Deltas are 0");
-            reserveX = RX1 - delRisky;
-            reserveY = RY2 - delStable;
-        }
+        require(resLiquidity >= delLiquidity, "Above max burn");
+        delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky to remove
+        delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable to remove
+        require(delRisky * delStable > 0, "Deltas are 0");
 
-        // Updated state
-        if (isInternal) {
+        positions.remove(poolId, delLiquidity); // update position liquidity, notice the fn call on the mapping
+        reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
+
+        if (toMargin) {
             Margin.Data storage margin = margins[msg.sender];
-            margin.deposit(delRisky, delStable);
+            margin.deposit(delRisky, delStable); // increase margin balance
         } else {
             uint256 balRisky = balanceRisky();
             uint256 balStable = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, delRisky);
             IERC20(stable).safeTransfer(msg.sender, delStable);
-            IPrimitiveLiquidityCallback(msg.sender).removeCallback(delRisky, delStable, data);
+            IPrimitiveLiquidityCallback(msg.sender).removeCallback(delRisky, delStable, data); // agnostic withdrawals
             require(balanceRisky() >= balRisky - delRisky, "Not enough risky");
             require(balanceStable() >= balStable - delStable, "Not enough stable");
         }
-
-        positions.remove(pid, delLiquidity); // Updated position liqudiity
-        res.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
         emit Removed(msg.sender, delRisky, delStable);
     }
 
@@ -247,19 +253,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    /// @dev     If `riskyForStable` is true, we request Y out, and must add X to the pool's reserves.
-    ///         Else, we request X out, and must add Y to the pool's reserves.
     function swap(
-        bytes32 pid,
+        bytes32 poolId,
         bool riskyForStable,
         uint256 deltaOut,
         uint256 deltaInMax,
         bool fromMargin,
         bytes calldata data
-    ) external override returns (uint256 deltaIn) {
+    ) external override lock returns (uint256 deltaIn) {
+        require(deltaOut > 0, "Zero");
         SwapDetails memory details =
             SwapDetails({
-                poolId: pid,
+                poolId: poolId,
                 amountOut: deltaOut,
                 amountInMax: deltaInMax,
                 riskyForStable: riskyForStable,
@@ -267,29 +272,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
             });
 
         int128 invariant = invariantOf(details.poolId); // gas savings
-        Reserve.Data storage res = reserves[details.poolId]; // gas savings
-        (uint256 RX1, uint256 RY2) = (res.reserveRisky, res.reserveStable);
-
-        uint256 reserveX;
-        uint256 reserveY;
+        Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
+        (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
 
         if (details.riskyForStable) {
-            int128 nextRX1 = compute(details.poolId, risky, RY2 - details.amountOut); // remove Y from reserves, and use calculate the new X reserve value.
-            reserveX = nextRX1.sub(invariant).parseUnits();
-            reserveY = RY2 - details.amountOut;
-            deltaIn = ((reserveX - RX1) * 10000) / 9985; // nextRX1 = RX1 + detlaIn * (1 - fee)
+            uint256 nextRisky = compute(details.poolId, risky, resStable - details.amountOut).parseUnits();
+            deltaIn = ((nextRisky - resRisky) * 10000) / 9985; // nextRisky = resRisky + detlaIn * (1 - fee)
         } else {
-            int128 nextRY2 = compute(details.poolId, stable, RX1 - details.amountOut); // subtract X from reserves, and use to calculate the new Y reserve value.
-            reserveX = RX1 - details.amountOut;
-            reserveY = invariant.add(nextRY2).parseUnits();
-            deltaIn = ((reserveY - RY2) * 10000) / 9985;
+            uint256 nextStable = compute(details.poolId, stable, resRisky - details.amountOut).parseUnits();
+            deltaIn = ((nextStable - resStable) * 10000) / 9985; // nextStable = resStable + detlaIn * (1 - fee)
         }
 
         require(details.amountInMax >= deltaIn, "Too expensive");
-        require(
-            calcInvariant(details.poolId, reserveX, reserveY, res.liquidity).parseUnits() >= invariant.parseUnits(),
-            "Invalid invariant"
-        );
 
         {
             // avoids stack too deep errors
@@ -326,137 +320,135 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 }
             }
 
-            res.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
-            emit Swapped(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
+            reserve.swap(details.riskyForStable, amountIn, details.amountOut, _blockTimestamp());
+            require(invariantOf(details.poolId) >= invariant, "Invariant");
+            emit Swap(msg.sender, details.poolId, details.riskyForStable, amountIn, details.amountOut);
         }
     }
 
     // ===== Lending =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 pid, uint256 delLiquidity) external override lock {
+    function lend(bytes32 poolId, uint256 delLiquidity) external override lock {
         require(delLiquidity > 0, "Cannot be zero");
-        positions.lend(pid, delLiquidity); // increment position float factor by `delLiquidity`
+        positions.lend(poolId, delLiquidity); // increase position float by `delLiquidity`
 
-        Reserve.Data storage res = reserves[pid];
-        res.addFloat(delLiquidity); // update global float
-        emit Loaned(msg.sender, pid, delLiquidity);
+        Reserve.Data storage reserve = reserves[poolId];
+        reserve.addFloat(delLiquidity); // increase global float
+        emit Loaned(msg.sender, poolId, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 pid, uint256 delLiquidity) external override lock {
+    function claim(bytes32 poolId, uint256 delLiquidity) external override lock {
         require(delLiquidity > 0, "Cannot be zero");
-        positions.claim(pid, delLiquidity); // increment position float factor by `delLiquidity`
+        positions.claim(poolId, delLiquidity); // reduce float by `delLiquidity`
 
-        Reserve.Data storage res = reserves[pid];
-        res.removeFloat(delLiquidity); // update global float
-        emit Claimed(msg.sender, pid, delLiquidity);
+        Reserve.Data storage reserve = reserves[poolId];
+        reserve.removeFloat(delLiquidity); // reduce global float
+        emit Claimed(msg.sender, poolId, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
     function borrow(
-        bytes32 pid,
+        bytes32 poolId,
         address recipient,
         uint256 delLiquidity,
         uint256 maxPremium,
         bytes calldata data
     ) external override lock {
-        Reserve.Data storage res = reserves[pid];
+        Reserve.Data storage reserve = reserves[poolId];
         {
             uint256 delLiquidity = delLiquidity;
-            require(res.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
+            require(reserve.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
 
-            uint256 liquidity = res.liquidity; // global liquidity balance
-            uint256 delRisky = (delLiquidity * res.reserveRisky) / liquidity; // amount of risky asset
-            uint256 delStable = (delLiquidity * res.reserveStable) / liquidity; // amount of stable asset
+            uint256 resLiquidity = reserve.liquidity; // global liquidity balance
+            uint256 delRisky = (delLiquidity * reserve.reserveRisky) / resLiquidity; // amount of risky asset
+            uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
 
             {
                 uint256 preRisky = IERC20(risky).balanceOf(address(this));
-                uint256 preRiskless = IERC20(stable).balanceOf(address(this));
+                uint256 preStable = IERC20(stable).balanceOf(address(this));
 
                 // trigger callback before position debt is increased, so liquidity can be removed
                 IERC20(stable).safeTransfer(msg.sender, delStable);
                 IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // trigger the callback so we can remove liquidity
-                positions.borrow(pid, delLiquidity); // increase liquidity + debt
+                positions.borrow(poolId, delLiquidity); // increase liquidity + debt
                 // fails if risky asset balance is less than borrowed `delLiquidity`
-                res.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
-                res.borrowFloat(delLiquidity);
+                reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
+                reserve.borrowFloat(delLiquidity);
 
                 uint256 postRisky = IERC20(risky).balanceOf(address(this));
                 uint256 postRiskless = IERC20(stable).balanceOf(address(this));
 
                 require(postRisky >= preRisky + (delLiquidity - delRisky), "IRY");
-                require(postRiskless >= preRiskless - delStable, "IRL");
+                require(postRiskless >= preStable - delStable, "IRL");
             }
 
-            emit Borrowed(recipient, pid, delLiquidity, maxPremium);
+            emit Borrowed(recipient, poolId, delLiquidity, maxPremium);
         }
     }
 
     /// @inheritdoc IPrimitiveEngineActions
     /// @dev    Reverts if pos.debt is 0, or delLiquidity >= pos.liquidity (not enough of a balance to pay debt)
     function repay(
-        bytes32 pid,
+        bytes32 poolId,
         address owner,
         uint256 delLiquidity,
-        bool isInternal,
+        bool fromMargin,
         bytes calldata data
     ) external override lock returns (uint256 deltaRisky, uint256 deltaStable) {
-        Reserve.Data storage res = reserves[pid];
-        Position.Data storage pos = positions.fetch(owner, pid);
+        Reserve.Data storage reserve = reserves[poolId];
+        Position.Data storage position = positions.fetch(owner, poolId);
         Margin.Data storage margin = margins[owner];
 
-        require(res.debt >= delLiquidity && (int256(pos.liquidity)) >= int256(delLiquidity), "ID");
+        require(reserve.debt >= delLiquidity && position.liquidity >= delLiquidity, "ID");
 
-        deltaRisky = (delLiquidity * res.reserveRisky) / res.liquidity;
-        deltaStable = (delLiquidity * res.reserveStable) / res.liquidity;
+        deltaRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
+        deltaStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
 
-        if (isInternal) {
-            margins.withdraw(delLiquidity - deltaRisky, deltaStable);
-
-            res.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp());
-            pos.repay(delLiquidity);
+        if (fromMargin) {
+            margins.withdraw(delLiquidity - deltaRisky, deltaStable); // reduce margin balance
+            reserve.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp()); // increase reserve liquidity
+            position.repay(delLiquidity); // reduce position debt
         } else {
             uint256 preStable = IERC20(stable).balanceOf(address(this));
             IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable, data);
 
             require(IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable, "IS");
 
-            res.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp());
-            res.repayFloat(delLiquidity);
-            pos.repay(delLiquidity);
+            reserve.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp());
+            reserve.repayFloat(delLiquidity);
+            position.repay(delLiquidity);
             margin.deposit(delLiquidity - deltaRisky, uint256(0));
         }
 
-        emit Repaid(owner, pid, delLiquidity);
+        emit Repaid(owner, poolId, delLiquidity);
     }
 
     // ===== Swap and Liquidity Math =====
 
     /// @inheritdoc IPrimitiveEngineView
     function compute(
-        bytes32 pid,
+        bytes32 poolId,
         address token,
-        uint256 reserve
+        uint256 balance
     ) public view override returns (int128 reserveOfToken) {
         require(token == risky || token == stable, "Not an engine token");
-        Calibration memory cal = settings[pid];
-        Reserve.Data memory res = reserves[pid];
-        if (token == stable) {
-            reserveOfToken = ReplicationMath.getTradingFunction(
-                reserve,
-                res.liquidity,
-                uint256(cal.strike),
-                uint256(cal.sigma),
-                uint256(cal.time)
-            );
+        Calibration memory cal = settings[poolId];
+        Reserve.Data memory res = reserves[poolId];
+        (uint256 liquidity, uint256 strike, uint256 sigma, uint256 time) =
+            (uint256(res.liquidity), uint256(cal.strike), uint256(cal.sigma), cal.time);
+        int128 invariant = invariantOf(poolId);
+        console.log(time, _blockTimestamp());
+        uint256 timeDelta = time - _blockTimestamp();
+
+        console.log(timeDelta);
+        if (token == risky) {
+            reserveOfToken = (ReplicationMath.getInverseTradingFunction(balance, liquidity, strike, sigma, timeDelta))
+                .sub(invariant);
         } else {
-            reserveOfToken = ReplicationMath.getInverseTradingFunction(
-                reserve,
-                res.liquidity,
-                uint256(cal.strike),
-                uint256(cal.sigma),
-                uint256(cal.time)
+            reserveOfToken = ReplicationMath.getTradingFunction(balance, liquidity, strike, sigma, timeDelta).add(
+                invariant
             );
         }
     }
@@ -465,15 +457,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineView
     function calcInvariant(
-        bytes32 pid,
-        uint256 reserveX,
-        uint256 reserveY,
+        bytes32 poolId,
+        uint256 nextRisky,
+        uint256 nextStable,
         uint256 postLiquidity
     ) public view override returns (int128 invariant) {
-        Calibration memory cal = settings[pid];
+        Calibration memory cal = settings[poolId];
         invariant = ReplicationMath.calcInvariant(
-            reserveX,
-            reserveY,
+            nextRisky,
+            nextStable,
             postLiquidity,
             uint256(cal.strike),
             uint256(cal.sigma),
@@ -482,18 +474,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineView
-    function invariantOf(bytes32 pid) public view override returns (int128 invariant) {
-        Reserve.Data memory res = reserves[pid];
-        invariant = calcInvariant(pid, res.reserveRisky, res.reserveStable, res.liquidity);
+    function invariantOf(bytes32 poolId) public view override returns (int128 invariant) {
+        Reserve.Data memory res = reserves[poolId];
+        invariant = calcInvariant(poolId, res.reserveRisky, res.reserveStable, res.liquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineView
     function getPoolId(
         uint256 strike,
-        uint256 sigma,
-        uint256 time
-    ) public view override returns (bytes32 pid) {
-        pid = keccak256(abi.encodePacked(factory, time, sigma, strike));
+        uint64 sigma,
+        uint32 time
+    ) public view override returns (bytes32 poolId) {
+        poolId = keccak256(abi.encodePacked(factory, time, sigma, strike));
     }
 
     // ===== Flashes =====
