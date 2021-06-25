@@ -25,13 +25,7 @@ describe('SDK: Engine', function () {
       ;({ factory, engine, stable, risky } = await initializeBaseContracts(deployer))
       poolId = Engine.getPoolId(strike, sigma, time).toString()
       posId = Engine.getPositionId(deployer.address, poolId).toString()
-      entity = await getEngineEntityFromContract(
-        (await deployer.provider.getNetwork()).chainId,
-        engine,
-        [poolId],
-        [posId],
-        [deployer.address]
-      )
+      entity = await getEngineEntityFromContract(engine, [poolId], [posId], [deployer.address])
       initialLiquidity = parseWei('1')
       ;({ initialRisky, initialStable } = await entity.create(deployer.address, strike, sigma, time, spot, initialLiquidity)) // create the curve and initialize liquidity
     })
