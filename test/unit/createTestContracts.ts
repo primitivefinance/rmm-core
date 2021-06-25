@@ -22,7 +22,7 @@ async function initializeTestContract<T extends Contract>(contract: T, loadedCon
   await contract.initialize(loadedContracts.engine.address, loadedContracts.risky.address, loadedContracts.stable.address)
 }
 
-async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
+export async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
   const risky = (await deploy('Token', deployer)) as ContractTypes.Token
   const stable = (await deploy('Token', deployer)) as ContractTypes.Token
   const factory = (await deploy('PrimitiveFactory', deployer)) as ContractTypes.PrimitiveFactory
