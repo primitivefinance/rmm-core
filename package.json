@@ -35,6 +35,7 @@
     "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:borrow": "hardhat test ./test/unit/primitiveEngine/effect/borrow.ts",
     "test:lib": "hardhat test ./test/unit/libraries",
+    "test:sdk": "hardhat test ./test/shared/sdk/test",
     "prepare": "husky install"
   },
   "devDependencies": {

@@ -1,10 +1,10 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
-import { parseWei, PERCENTAGE, Wei, fromMantissa, fromInt, YEAR, MANTISSA } from '../../shared/Units'
+import { parseWei, PERCENTAGE, Wei, fromMantissa, fromInt, YEAR, MANTISSA } from '../../shared/sdk/Units'
 import loadContext from '../context'
 import { Calibration } from '../../shared/utilities'
-import { calculateDelta, calculateD1, moneyness } from '../../shared/BlackScholes'
+import { calculateDelta, calculateD1, moneyness } from '../../shared/sdk/BlackScholes'
 
 describe('testBlackScholes', function () {
   before(async function () {
