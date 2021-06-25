@@ -10,7 +10,7 @@ import loadContext from '../../context'
 
 const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
-let pid: string
+let poolId: string
 
 describe('allocate', function () {
   before(async function () {
@@ -26,11 +26,11 @@ describe('allocate', function () {
         empty
       )
 
-      pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
     })
 
     it('updates the position if enough risky and stable were deposited', async function () {
-      const posId = await this.contracts.engineAllocate.getPosition(pid)
+      const posId = await this.contracts.engineAllocate.getPosition(poolId)
 
       await this.contracts.engineAllocate.allocateFromMargin(
         poolId,
@@ -51,7 +51,7 @@ describe('allocate', function () {
     it('emits the Allocated event', async function () {
       await expect(
         this.contracts.engineAllocate.allocateFromMargin(
-          pid,
+          poolId,
           this.contracts.engineAllocate.address,
           parseWei('1').raw,
           empty
@@ -62,7 +62,7 @@ describe('allocate', function () {
     it('reverts if not risky or stable are insufficient', async function () {
       await expect(
         this.contracts.engineAllocate.allocateFromMargin(
-          pid,
+          poolId,
           this.contracts.engineAllocate.address,
           parseWei('10').raw,
           empty
@@ -83,19 +83,19 @@ describe('allocate', function () {
 
     it('reverts if the deltas are 0', async function () {
       await expect(
-        this.contracts.engineAllocate.allocateFromMargin(pid, this.signers[0].address, '0', empty)
+        this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', empty)
       ).to.revertedWith('Deltas are 0')
     })
   })
 
   describe('when allocating from external', function () {
     beforeEach(async function () {
-      pid = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
     })
 
     it('updates the position if enough risky and stable are provided', async function () {
-      const posId = await this.contracts.engineAllocate.getPosition(pid)
-      
+      const posId = await this.contracts.engineAllocate.getPosition(poolId)
+
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineAllocate.address,
@@ -113,7 +113,7 @@ describe('allocate', function () {
     })
 
     it('transfers the tokens', async function () {
-      const reserve = await this.contracts.engine.reserves(pid)
+      const reserve = await this.contracts.engine.reserves(poolId)
 
       const deltaX = parseWei('1').mul(reserve.reserveRisky).div(reserve.liquidity)
       const deltaY = parseWei('1').mul(reserve.reserveStable).div(reserve.liquidity)
@@ -122,7 +122,7 @@ describe('allocate', function () {
       const stableBalance = await this.contracts.stable.balanceOf(this.signers[0].address)
 
       await this.contracts.engineAllocate.allocateFromExternal(
-        pid,
+        poolId,
         this.contracts.engineAllocate.address,
         parseWei('1').raw,
         empty
