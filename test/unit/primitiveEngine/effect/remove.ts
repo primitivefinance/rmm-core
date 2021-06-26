@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
-import { parseWei, PERCENTAGE, BytesLike } from '../../../shared/Units'
+import { parseWei, PERCENTAGE, BytesLike } from '../../../shared/sdk/Units'
 
 import { removeFragment } from '../fragments'
 

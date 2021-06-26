@@ -2,11 +2,11 @@ import { waffle, ethers } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants, Wallet } from 'ethers'
 
+import { parseWei, PERCENTAGE, BytesLike } from '../../../shared/sdk/Units'
+
 import loadContext from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
-
-import { parseWei, PERCENTAGE, BytesLike, Wei } from '../../../shared/Units'
 
 const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
