@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { BigNumber } from '../../../shared/Units'
+import { BigNumber } from '../../../shared/sdk/Units'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 

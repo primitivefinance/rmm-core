@@ -1,6 +1,6 @@
 import { Wallet, constants } from 'ethers'
 import { Contracts } from '../../../types'
-import { parseWei, PERCENTAGE } from '../../shared/Units'
+import { parseWei, PERCENTAGE } from '../../shared/sdk/Units'
 
 const [strike, sigma, time, riskyPrice] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
 const empty = constants.HashZero
@@ -141,3 +141,4 @@ export async function repayFragment(signers: Wallet[], contracts: Contracts): Pr
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
   await contracts.engineLend.lend(poolId, parseWei('100').raw)
 }
+export async function flashLoanFragment(signers: Wallet[], contracts: Contracts): Promise<void> {}

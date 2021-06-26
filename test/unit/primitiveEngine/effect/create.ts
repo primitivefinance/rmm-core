@@ -1,12 +1,11 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 
-import { PERCENTAGE, parseWei, BytesLike, constants, formatEther, Wei } from '../../../shared/Units'
+import { PERCENTAGE, parseWei, BytesLike, constants, formatEther, Wei } from '../../../shared/sdk/Units'
 import loadContext from '../../context'
-import Engine from '../../../shared/Engine'
+import Engine from '../../../shared/sdk/Engine'
 
 import { createFragment } from '../fragments'
-import { getPoolId, getPositionId } from '../../../shared/utilities'
 
 const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
 const empty: BytesLike = constants.HashZero
@@ -17,24 +16,6 @@ describe('create', function () {
   })
 
   describe('when the parameters are valid', function () {
-    it.only('engine class', async function () {
-      let eng = new Engine(this.contracts.engine)
-      const poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
-      const posId = getPositionId(this.signers[0].address, poolId)
-      await eng.init([poolId], [posId], [this.signers[0].address])
-      await eng.deposit(this.signers[0].address, parseWei('1000'), parseWei('0'))
-      await eng.allocate(poolId, this.signers[0].address, parseWei('10'))
-      expect(eng.margins[this.signers[0].address].balanceRisky).to.be.eq(parseWei('1000').raw)
-      expect(eng.reserves[poolId].liquidity.raw).to.be.eq(parseWei('10').raw)
-      expect(eng.reserves[poolId].reserveRisky.raw).to.be.gte(0)
-      expect(eng.reserves[poolId].reserveStable.raw).to.be.gte(0)
-      expect(eng.positions[posId].liquidity.raw).to.be.eq(parseWei('10').raw)
-      let secondPool = getPoolId(parseWei('1050'), new Wei(sigma), time)
-      await eng.create(this.signers[0].address, parseWei('1050'), new Wei(sigma), time, parseWei('1100'), parseWei('10'))
-      console.log(eng.reserves[secondPool].reserveRisky.parsed)
-      await eng.swap(secondPool, true, parseWei('1'))
-      console.log(eng.reserves[secondPool].reserveRisky.parsed)
-    })
     it('deploys a new pool', async function () {
       await this.contracts.engineCreate.create(strike, sigma, time, spot, parseWei('1').raw, empty)
     })
