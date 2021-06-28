@@ -397,6 +397,25 @@ class Engine {
 
 export default Engine
 
+/// Events of the Engine
+export const EngineEvents = {
+  DEPOSITED: 'Deposited',
+  WITHDRAWN: 'Withdrawn',
+  CREATE: 'Create',
+  UPDATE: 'Update',
+  ADDED_BOTH: 'AddedBoth',
+  REMOVED_BOTH: 'RemovedBoth',
+  SWAP: 'Swap',
+  LOANED: 'Loaned',
+  CLAIMED: 'Claimed',
+  BORROWED: 'Borrowed',
+  REPAID: 'Repaid',
+}
+
+export const ERC20Events = {
+  EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
+}
+
 /// @notice Utility function to return the key of a one item array object
 function keyOf(object: Object) {
   return Object.keys(object)[0]

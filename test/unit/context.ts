@@ -3,6 +3,21 @@ import { Contracts, Functions, Mocks, ContractName } from '../../types'
 import { Wallet } from 'ethers'
 import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
+import { parseWei, Percentage, Time, Wei, YEAR } from '../shared/sdk/Units'
+
+interface Config {
+  strike: Wei
+  sigma: Percentage
+  time: Time
+  spot: Wei
+}
+
+export const config: Config = {
+  strike: parseWei('2500'),
+  sigma: new Percentage(1.1),
+  time: new Time(0.091780822 * YEAR),
+  spot: parseWei('1750'),
+}
 
 export default async function loadContext(
   provider: MockProvider,
