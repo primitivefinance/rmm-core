@@ -1,19 +1,21 @@
-import { waffle } from 'hardhat'
+// Standard Imports
 import { expect } from 'chai'
-import { EngineEvents, ERC20Events } from '../events'
+import { waffle } from 'hardhat'
 import { BytesLike, constants, Wallet } from 'ethers'
-import { Wei, parseWei, PERCENTAGE } from '../../../shared/sdk/Units'
-import loadContext from '../../context'
-import { getPoolParams, PoolParams, getDeltaIn, getReserve } from '../../../shared/utilities'
+// Context Imports
+import loadContext, { config } from '../../context'
 import { swapFragment } from '../fragments'
-import * as swapUtils from '../../../shared/swapUtils'
+// SDK Imports
+import { Wei, Percentage, Time, parseWei } from '../../../shared/sdk/Units'
+import Engine, { getEngineEntityFromContract, EngineEvents, ERC20Events } from '../../../shared/sdk/Engine'
+import { PrimitiveEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 
-const INITIAL_MARGIN = parseWei('1000')
-const [strike, sigma, time, spot] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+// Constants
+const { strike, sigma, time, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('Engine:swap', function () {
-  before('Generate fixture loader', async function () {
+  before('Load context', async function () {
     await loadContext(
       waffle.provider,
       ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate'],
@@ -24,45 +26,40 @@ describe('Engine:swap', function () {
   describe('--swap--', function () {
     let poolId: BytesLike
     let deployer: Wallet
+    let engine: PrimitiveEngine, engineAllocate: EngineAllocate, engineSwap: EngineSwap
+    let entity: Engine
 
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
-      deployer = this.signers[0]
-      await this.contracts.engineAllocate.allocateFromExternal(
-        poolId,
-        this.contracts.engineAllocate.address,
-        parseWei('1000').raw,
-        empty
-      )
+      ;[deployer, engine, engineAllocate, engineSwap] = [
+        this.signers[0],
+        this.contracts.engine,
+        this.contracts.engineAllocate,
+        this.contracts.engineSwap,
+      ]
+      poolId = await engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      entity = await getEngineEntityFromContract(engine, [poolId], [], [deployer.address])
+      await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1000').raw, empty)
     })
 
-    it('swaps risky for stable', async function () {
+    it('Engine::Swap: Swap Risky To Stable', async function () {
       let [riskyForStable, deltaOut, deltaInMax] = [true, parseWei('0.01').raw, constants.MaxUint256]
-      await this.contracts.engineSwap.swap(poolId, riskyForStable, deltaOut, deltaInMax, false, empty)
+      await engineSwap.swap(poolId, riskyForStable, deltaOut, deltaInMax, false, empty)
     })
 
     describe('sucess cases', function () {
-      it('Engine::Swap: Swap X to Y from EOA using Margin', async function () {
+      it('Engine::Swap: Swap Risky to Stable from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
         //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
         const deltaOut = parseWei('100') // deltaOut to swap
-        const riskyForStable: boolean = true // are we swapping risky tokens to stable tokens?
+        const riskyForStable = true // are we swapping risky tokens to stable tokens?
 
-        const invariantLast = await this.contracts.engine.invariantOf(poolId) // store inariant current
-        const reserveLast = await getReserve(this.contracts.engine, poolId)
-        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
-          this.contracts.engine,
-          poolId,
-          riskyForStable,
-          deltaOut
-        )
+        const invariantLast = await engine.invariantOf(poolId) // store inariant current
+        const reserveLast = await engine.reserves(poolId)
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
 
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
-        await expect(
-          this.contracts.engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty),
-          'Engine:Swap'
-        )
-          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+        await expect(engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty), 'Engine:Swap')
+          .to.emit(engine, EngineEvents.SWAP)
           .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
         expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
@@ -74,20 +71,15 @@ describe('Engine:swap', function () {
         // before: add tokens to margin to do swaps with
         const deltaOut = parseWei('100')
         const riskyForStable: boolean = true
-        const invariantLast = await this.contracts.engine.invariantOf(poolId)
-        const reserveLast = await getReserve(this.contracts.engine, poolId)
+        const invariantLast = await engine.invariantOf(poolId)
+        const reserveLast = await engine.reserves(poolId)
 
-        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
-          this.contracts.engine,
-          poolId,
-          riskyForStable,
-          deltaOut
-        )
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
 
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(this.functions.swapXForY(poolId, true, deltaOut.raw, constants.MaxUint256, false), 'Engine:Swap')
-          .to.emit(this.contracts.engine, EngineEvents.SWAP)
-          .withArgs(this.contracts.engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
+          .to.emit(engine, EngineEvents.SWAP)
+          .withArgs(engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
         expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
         expect(reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
@@ -98,22 +90,14 @@ describe('Engine:swap', function () {
         //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw)
         const deltaOut = parseWei('0.2')
         const riskyForStable: boolean = false
-        const invariantLast = await this.contracts.engine.invariantOf(poolId)
-        const reserveLast = await getReserve(this.contracts.engine, poolId)
+        const invariantLast = await engine.invariantOf(poolId)
+        const reserveLast = await engine.reserves(poolId)
 
-        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
-          this.contracts.engine,
-          poolId,
-          riskyForStable,
-          deltaOut
-        )
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
 
         // TODO: Swap deltaIn deltaOut is different from esimated deltaIn
-        await expect(
-          this.contracts.engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty),
-          'Engine:Swap'
-        )
-          .to.emit(this.contracts.engine, EngineEvents.SWAP)
+        await expect(engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty), 'Engine:Swap')
+          .to.emit(engine, EngineEvents.SWAP)
           .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
         expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
@@ -124,20 +108,15 @@ describe('Engine:swap', function () {
       it('Engine::Swap: Swap Y to X from Callee', async function () {
         const deltaOut = parseWei('0.2')
         const riskyForStable: boolean = false
-        const invariantLast = await this.contracts.engine.invariantOf(poolId)
-        const reserveLast = await getReserve(this.contracts.engine, poolId)
+        const invariantLast = await engine.invariantOf(poolId)
+        const reserveLast = await engine.reserves(poolId)
 
-        const { deltaIn, reserveRisky, reserveStable, invariant } = await swapUtils.swap(
-          this.contracts.engine,
-          poolId,
-          riskyForStable,
-          deltaOut
-        )
+        const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
 
         // TODO: Swap deltaIn deltaOut is different from esimated deltaIn
         await expect(this.functions.swapYForX(poolId, false, deltaOut.raw, constants.MaxUint256, false), 'Engine:Swap')
-          .to.emit(this.contracts.engine, EngineEvents.SWAP)
-          .withArgs(this.contracts.engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
+          .to.emit(engine, EngineEvents.SWAP)
+          .withArgs(engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
         expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
         expect(reserveRisky.raw.toString(), 'check FXR1').to.be.eq(reserveLast.reserveRisky)
@@ -148,23 +127,19 @@ describe('Engine:swap', function () {
     describe('fail cases', function () {
       it('Fail Callee::SwapXForY: No X balance', async function () {
         await expect(
-          this.contracts.engineSwap
-            .connect(this.signers[1])
-            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
+          engineSwap.connect(this.signers[1]).swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
         ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
       })
 
       it('Fail Callee::SwapYForX: No Y balance', async function () {
         // before: add initial margin
         await expect(
-          this.contracts.engineSwap
-            .connect(this.signers[1])
-            .swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
+          engineSwap.connect(this.signers[1]).swap(poolId, true, parseWei('0.1').raw, constants.MaxUint256, false, empty)
         ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
       })
 
       it('Fail Callee::Swap: Too expensive', async function () {
-        await expect(this.contracts.engine.swap(poolId, true, 1, 0, false, empty)).to.be.revertedWith('Too expensive')
+        await expect(engine.swap(poolId, true, 1, 0, false, empty)).to.be.revertedWith('Too expensive')
       })
       it('Fail Callee::Swap: Invalid invariant', async function () {})
       it('Fail Callee::Swap: Sent too much tokens', async function () {})
