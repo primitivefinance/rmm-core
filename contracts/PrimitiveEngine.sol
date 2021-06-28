@@ -351,41 +351,42 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function borrow(
         bytes32 poolId,
-        address recipient,
         uint256 delLiquidity,
         uint256 maxPremium,
         bytes calldata data
-    ) external override lock {
+    ) external override lock returns (uint256 premium) {
+        // Source: Convex Payoff Approimation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
         Reserve.Data storage reserve = reserves[poolId];
+        require(reserve.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
+
+        uint256 resLiquidity = reserve.liquidity; // global liquidity balance
+        uint256 delRisky = (delLiquidity * reserve.reserveRisky) / resLiquidity; // amount of risky asset
+        uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
+
         {
-            uint256 delLiquidity = delLiquidity;
-            require(reserve.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
-
-            uint256 resLiquidity = reserve.liquidity; // global liquidity balance
-            uint256 delRisky = (delLiquidity * reserve.reserveRisky) / resLiquidity; // amount of risky asset
-            uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
-
-            {
-                uint256 preRisky = IERC20(risky).balanceOf(address(this));
-                uint256 preStable = IERC20(stable).balanceOf(address(this));
-
-                // trigger callback before position debt is increased, so liquidity can be removed
-                IERC20(stable).safeTransfer(msg.sender, delStable);
-                IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // trigger the callback so we can remove liquidity
-                positions.borrow(poolId, delLiquidity); // increase liquidity + debt
-                // fails if risky asset balance is less than borrowed `delLiquidity`
-                reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
-                reserve.borrowFloat(delLiquidity);
-
-                uint256 postRisky = IERC20(risky).balanceOf(address(this));
-                uint256 postRiskless = IERC20(stable).balanceOf(address(this));
-
-                require(postRisky >= preRisky + (delLiquidity - delRisky), "IRY");
-                require(postRiskless >= preStable - delStable, "IRL");
-            }
-
-            emit Borrowed(recipient, poolId, delLiquidity, maxPremium);
+            // Balances before position creation
+            uint256 preRisky = IERC20(risky).balanceOf(address(this));
+            uint256 preStable = IERC20(stable).balanceOf(address(this));
+            // 0. Update position of `msg.sender` with `delLiquidity` units of debt and `risky` tokens
+            positions.borrow(poolId, delLiquidity);
+            // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
+            reserve.borrowFloat(delLiquidity);
+            // 2. Remove liquidity: Releases `risky` and `stable` tokens
+            reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
+            // 3. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
+            IERC20(stable).safeTransfer(msg.sender, delStable); // transfer the stable tokens of the liquidity out to the `msg.sender`
+            IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
+            // Check price impact tolerance
+            premium = delLiquidity - delRisky;
+            require(maxPremium >= premium, "Max");
+            // Check balances after position creation
+            uint256 postRisky = IERC20(risky).balanceOf(address(this));
+            uint256 postStable = IERC20(stable).balanceOf(address(this));
+            require(postRisky >= preRisky + premium, "IRY");
+            require(postStable >= preStable - delStable, "IRL");
         }
+
+        emit Borrowed(msg.sender, poolId, delLiquidity, maxPremium);
     }
 
     /// @inheritdoc IPrimitiveEngineActions

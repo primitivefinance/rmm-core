@@ -29,7 +29,7 @@ contract EngineBorrow {
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, owner, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
     }
 
     function borrowCallback(

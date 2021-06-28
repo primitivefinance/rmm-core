@@ -116,17 +116,16 @@ interface IPrimitiveEngineActions {
 
     /// @notice Increases the `msg.sender`'s position's liquidity value and also adds the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
-    /// @param  owner           Position owner to grant the borrowed liquidity shares
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
     /// @param  maxPremium      Max amount of `premium` that can be collected from the `msg.sender` to collateralize the position
     /// @param  data            Arbitrary data that is passed to the borrowCallback function
+    /// @return premium         Price paid to open position
     function borrow(
         bytes32 poolId,
-        address owner,
         uint256 delLiquidity,
         uint256 maxPremium,
         bytes calldata data
-    ) external;
+    ) external returns (uint256 premium);
 
     /// @notice Reduces the `msg.sender`'s position's liquidity value and also reduces the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
