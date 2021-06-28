@@ -133,11 +133,20 @@ interface IPrimitiveEngineActions {
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
     /// @param  fromMargin      Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data            Arbitrary data that is passed to the repayCallback function
+    /// @return delRisky        Amount of risky tokens allocated as liquidity to pay debt
+    /// delStable               Amount of stable tokens allocated as liquidity to pay debt
+    /// premium                 Amount of risky tokens paid to the `owner`'s margin account
     function repay(
         bytes32 poolId,
         address owner,
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256, uint256);
+    )
+        external
+        returns (
+            uint256 delRisky,
+            uint256 delStable,
+            uint256 premium
+        );
 }
