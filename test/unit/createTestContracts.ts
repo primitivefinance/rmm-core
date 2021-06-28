@@ -26,7 +26,7 @@ async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts>
   const risky = (await deploy('Token', deployer)) as ContractTypes.Token
   const stable = (await deploy('Token', deployer)) as ContractTypes.Token
   const factory = (await deploy('PrimitiveFactory', deployer)) as ContractTypes.PrimitiveFactory
-  await factory.create(risky.address, stable.address)
+  await factory.deploy(risky.address, stable.address)
   const addr = await factory.getEngine(risky.address, stable.address)
   const engine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as ContractTypes.PrimitiveEngine
   return { factory, engine, stable, risky }
@@ -78,12 +78,9 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.engineBorrow = (await deploy('EngineBorrow', deployer)) as ContractTypes.EngineBorrow
         await initializeTestContract(loadedContracts.engineBorrow, loadedContracts)
         break
-      case 'factoryCreate':
-        loadedContracts.factoryCreate = (await deploy('FactoryCreate', deployer)) as ContractTypes.FactoryCreate
-        await loadedContracts.factoryCreate.initialize(loadedContracts.factory.address)
-        break
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
+        await loadedContracts.factoryDeploy.initialize(loadedContracts.factory.address)
         break
       case 'testReserve':
         loadedContracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
