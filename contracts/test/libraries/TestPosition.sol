@@ -28,8 +28,6 @@ contract TestPosition {
     function beforeEach(bytes32 poolId, uint256 liquidity) public {
         posId = Position.getPositionId(msg.sender, poolId);
         positions[posId] = Position.Data({
-            balanceRisky: 0,
-            balanceStable: 0,
             float: 0,
             liquidity: uint128(liquidity), // init with {liquidity} units of liquidity
             debt: 0
@@ -68,13 +66,13 @@ contract TestPosition {
         assert(post + uint128(amount) >= pre);
     }
 
-    /// @notice Increments debt and balanceRisky for a position
+    /// @notice Increments debt for a position
     function shouldBorrow(bytes32 poolId, uint256 amount) public {
         Position.Data memory pos = _shouldFetch(msg.sender, poolId);
-        uint128 pre = pos.balanceRisky;
+        uint128 pre = pos.debt;
         positions.borrow(poolId, amount);
         pos = _shouldFetch(msg.sender, poolId);
-        uint128 post = pos.balanceRisky;
+        uint128 post = pos.debt;
         assert(post >= uint128(amount) + pre);
     }
 

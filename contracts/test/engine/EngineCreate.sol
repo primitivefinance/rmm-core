@@ -51,8 +51,6 @@ contract EngineCreate {
         public
         view
         returns (
-            uint128 balanceRisky,
-            uint128 balanceStable,
             uint128 float,
             uint128 liquidity,
             uint128 debt
