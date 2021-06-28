@@ -25,8 +25,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-import "hardhat/console.sol";
-
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
@@ -450,10 +448,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (uint256 liquidity, uint256 strike, uint256 sigma, uint256 time) =
             (uint256(res.liquidity), uint256(cal.strike), uint256(cal.sigma), cal.time);
         int128 invariant = invariantOf(poolId);
-        console.log(time, _blockTimestamp());
         uint256 timeDelta = time - _blockTimestamp();
 
-        console.log(timeDelta);
         if (token == risky) {
             reserveOfToken = (ReplicationMath.getInverseTradingFunction(balance, liquidity, strike, sigma, timeDelta))
                 .sub(invariant);
@@ -467,27 +463,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== View =====
 
     /// @inheritdoc IPrimitiveEngineView
-    function calcInvariant(
-        bytes32 poolId,
-        uint256 nextRisky,
-        uint256 nextStable,
-        uint256 postLiquidity
-    ) public view override returns (int128 invariant) {
-        Calibration memory cal = settings[poolId];
-        invariant = ReplicationMath.calcInvariant(
-            nextRisky,
-            nextStable,
-            postLiquidity,
-            uint256(cal.strike),
-            uint256(cal.sigma),
-            uint256(cal.time)
-        );
-    }
-
-    /// @inheritdoc IPrimitiveEngineView
     function invariantOf(bytes32 poolId) public view override returns (int128 invariant) {
         Reserve.Data memory res = reserves[poolId];
-        invariant = calcInvariant(poolId, res.reserveRisky, res.reserveStable, res.liquidity);
+        Calibration memory cal = settings[poolId];
+        invariant = ReplicationMath.calcInvariant(
+            res.reserveRisky,
+            res.reserveStable,
+            res.liquidity,
+            cal.strike,
+            cal.sigma,
+            cal.time
+        );
     }
 
     /// @inheritdoc IPrimitiveEngineView
