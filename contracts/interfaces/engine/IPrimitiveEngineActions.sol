@@ -116,17 +116,16 @@ interface IPrimitiveEngineActions {
 
     /// @notice Increases the `msg.sender`'s position's liquidity value and also adds the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
-    /// @param  owner           Position owner to grant the borrowed liquidity shares
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
     /// @param  maxPremium      Max amount of `premium` that can be collected from the `msg.sender` to collateralize the position
     /// @param  data            Arbitrary data that is passed to the borrowCallback function
+    /// @return premium         Price paid to open position
     function borrow(
         bytes32 poolId,
-        address owner,
         uint256 delLiquidity,
         uint256 maxPremium,
         bytes calldata data
-    ) external;
+    ) external returns (uint256 premium);
 
     /// @notice Reduces the `msg.sender`'s position's liquidity value and also reduces the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
@@ -134,11 +133,20 @@ interface IPrimitiveEngineActions {
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
     /// @param  fromMargin      Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data            Arbitrary data that is passed to the repayCallback function
+    /// @return delRisky        Amount of risky tokens allocated as liquidity to pay debt
+    /// delStable               Amount of stable tokens allocated as liquidity to pay debt
+    /// premium                 Amount of risky tokens paid to the `owner`'s margin account
     function repay(
         bytes32 poolId,
         address owner,
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256, uint256);
+    )
+        external
+        returns (
+            uint256 delRisky,
+            uint256 delStable,
+            uint256 premium
+        );
 }

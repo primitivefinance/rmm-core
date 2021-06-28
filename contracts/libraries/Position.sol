@@ -7,17 +7,14 @@ pragma abicoder v2;
 /// @dev     This library is a generalized position data structure for any engine.
 
 import "./SafeCast.sol";
-import "hardhat/console.sol";
 
 library Position {
     using SafeCast for uint256;
 
     struct Data {
-        uint128 balanceRisky; // Balance of risky asset
-        uint128 balanceStable; // Balance of stable asset
         uint128 float; // Balance of loaned liquidity
         uint128 liquidity; // Balance of liquidity, which is negative if a debt exists
-        uint128 debt; // Balance of liquidity debt that must be paid back
+        uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
     }
 
     /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
@@ -35,6 +32,7 @@ library Position {
 
     /// @notice Add to the balance of liquidity
     function allocate(Data storage position, uint256 delLiquidity) internal returns (Data storage) {
+        require(position.debt == 0, "Debt");
         position.liquidity += delLiquidity.toUint128();
         return position;
     }
@@ -57,10 +55,8 @@ library Position {
         uint256 delLiquidity
     ) internal returns (Data storage) {
         Data storage position = fetch(positions, msg.sender, poolId);
-        uint128 liquidity = position.liquidity;
-        require(liquidity == 0, "Must borrow from 0");
+        require(position.liquidity == 0, "Must borrow from 0");
         position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
-        position.balanceRisky += delLiquidity.toUint128();
         return position;
     }
 
@@ -87,10 +83,9 @@ library Position {
         return position;
     }
 
-    /// @notice Reduces `delLiquidity` of position.debt by reducing `delLiquidity` of position.liquidity
+    /// @notice Reduces `delLiquidity` of position.debt
     function repay(Data storage position, uint256 delLiquidity) internal returns (Data storage) {
-        position.liquidity -= delLiquidity.toUint128();
-        // FIX: Contract too large, position.debt -= delLiquidity.toUint128();
+        position.debt -= delLiquidity.toUint128();
         return position;
     }
 
