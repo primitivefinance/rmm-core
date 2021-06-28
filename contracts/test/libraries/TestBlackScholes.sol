@@ -42,10 +42,6 @@ contract TestBlackScholes {
         y = BlackScholes.deltaCall(assetPrice, uint256(self.strike), uint256(self.sigma), uint256(self.time));
     }
 
-    function putDelta(Calibration memory self, uint256 assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.deltaPut(assetPrice, uint256(self.strike), uint256(self.sigma), uint256(self.time));
-    }
-
     function d1(Calibration memory self, uint256 assetPrice) public pure returns (int128 y) {
         y = BlackScholes.d1(assetPrice, uint256(self.strike), uint256(self.sigma), uint256(self.time));
     }

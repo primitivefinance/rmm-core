@@ -10,12 +10,12 @@ interface IPrimitiveFactory {
     /// @param  risky   Risky token
     /// @param  stable  Stable token
     /// @param  engine  Deployed engine address
-    event EngineCreated(address indexed from, address indexed risky, address indexed stable, address engine);
+    event Deployed(address indexed from, address indexed risky, address indexed stable, address engine);
 
     /// @notice Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
     /// @param  risky   Risky token address, not a stable asset! But what is?
     /// @param  stable  Stable token address, like Dai or Fei or Rai. If your stablecoin isn't 3 letters I'm not using it
-    function create(address risky, address stable) external returns (address engine);
+    function deploy(address risky, address stable) external returns (address engine);
 
     // ===== View =====
 
@@ -32,6 +32,9 @@ interface IPrimitiveFactory {
             address stable
         );
 
+    /// @notice Fetches engine address of a token pair
+    /// @param risky   Risky token, like WETH
+    /// @param stable  Stable token, like RAI
     /// @return engine Engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);
 
