@@ -412,7 +412,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Margin.Data storage margin = margins[owner];
 
         // There is `delLiquidity` units of debt, which must be repaid using `delLiquidity` risky tokens.
-        position.repay(delLiquidity); // must have an open position, releases position.balanceRisky of risky
+        position.repay(delLiquidity); // must have an open position, releases position.debt of risky
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to mint LP
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to mint LP
         require(delRisky * delStable > 0, "Deltas are 0"); // fail early if 0 amounts

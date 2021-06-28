@@ -19,16 +19,16 @@ interface IPrimitiveEngineView {
     ) external view returns (int128 reserveOfToken);
 
     /// @notice                 Uses the trading function to calc the invariant using token reserve values
-    /// @param  poolId             The hashed pool Id
-    /// @param  postR1          Amount of risky tokens in the pool's reserves
-    /// @param  postR2          Amount of stable tokens in the pool's reserves
-    /// @param  postLiquidity   Total supply of liquidity shares for the pool
+    /// @param  poolId          The hashed pool Id
+    /// @param  resRisky        Amount of risky tokens in the pool's reserves
+    /// @param  resStable       Amount of stable tokens in the pool's reserves
+    /// @param  resLiquidity    Total supply of liquidity shares for the pool
     /// @return                 Invariant calculated (which should be near 0)
     function calcInvariant(
         bytes32 poolId,
-        uint256 postR1,
-        uint256 postR2,
-        uint256 postLiquidity
+        uint256 resRisky,
+        uint256 resStable,
+        uint256 resLiquidity
     ) external view returns (int128);
 
     /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
@@ -91,17 +91,13 @@ interface IPrimitiveEngineView {
 
     /// @notice Fetches Position data struct using a position id
     /// @param  posId   Position id
-    /// @return balanceRisky    Risky balance of the position debt
-    /// balanceStable   Stable balance of the position debt
-    /// float           Liquidity shares that are marked for loans
+    /// @return float   Liquidity shares that are marked for loans
     /// liquidity       Liquidity shares in the position
-    /// debt            Liquidity shares in debt, must be repaid
+    /// debt            Liquidity shares in debt, must be repaid, also equal to risky balance of position
     function positions(bytes32 posId)
         external
         view
         returns (
-            uint128 balanceRisky,
-            uint128 balanceStable,
             uint128 float,
             uint128 liquidity,
             uint128 debt
