@@ -351,41 +351,42 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function borrow(
         bytes32 poolId,
-        address recipient,
         uint256 delLiquidity,
         uint256 maxPremium,
         bytes calldata data
-    ) external override lock {
+    ) external override lock returns (uint256 premium) {
+        // Source: Convex Payoff Approimation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
         Reserve.Data storage reserve = reserves[poolId];
+        require(reserve.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
+
+        uint256 resLiquidity = reserve.liquidity; // global liquidity balance
+        uint256 delRisky = (delLiquidity * reserve.reserveRisky) / resLiquidity; // amount of risky asset
+        uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
+
         {
-            uint256 delLiquidity = delLiquidity;
-            require(reserve.float >= delLiquidity && delLiquidity > 0, "Insufficient float"); // fail early if not enough float to borrow
-
-            uint256 resLiquidity = reserve.liquidity; // global liquidity balance
-            uint256 delRisky = (delLiquidity * reserve.reserveRisky) / resLiquidity; // amount of risky asset
-            uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
-
-            {
-                uint256 preRisky = IERC20(risky).balanceOf(address(this));
-                uint256 preStable = IERC20(stable).balanceOf(address(this));
-
-                // trigger callback before position debt is increased, so liquidity can be removed
-                IERC20(stable).safeTransfer(msg.sender, delStable);
-                IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // trigger the callback so we can remove liquidity
-                positions.borrow(poolId, delLiquidity); // increase liquidity + debt
-                // fails if risky asset balance is less than borrowed `delLiquidity`
-                reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
-                reserve.borrowFloat(delLiquidity);
-
-                uint256 postRisky = IERC20(risky).balanceOf(address(this));
-                uint256 postRiskless = IERC20(stable).balanceOf(address(this));
-
-                require(postRisky >= preRisky + (delLiquidity - delRisky), "IRY");
-                require(postRiskless >= preStable - delStable, "IRL");
-            }
-
-            emit Borrowed(recipient, poolId, delLiquidity, maxPremium);
+            // Balances before position creation
+            uint256 preRisky = IERC20(risky).balanceOf(address(this));
+            uint256 preStable = IERC20(stable).balanceOf(address(this));
+            // 0. Update position of `msg.sender` with `delLiquidity` units of debt and `risky` tokens
+            positions.borrow(poolId, delLiquidity);
+            // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
+            reserve.borrowFloat(delLiquidity);
+            // 2. Remove liquidity: Releases `risky` and `stable` tokens
+            reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
+            // 3. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
+            IERC20(stable).safeTransfer(msg.sender, delStable); // transfer the stable tokens of the liquidity out to the `msg.sender`
+            IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
+            // Check price impact tolerance
+            premium = delLiquidity - delRisky;
+            require(maxPremium >= premium, "Max");
+            // Check balances after position creation
+            uint256 postRisky = IERC20(risky).balanceOf(address(this));
+            uint256 postStable = IERC20(stable).balanceOf(address(this));
+            require(postRisky >= preRisky + premium, "IRY");
+            require(postStable >= preStable - delStable, "IRL");
         }
+
+        emit Borrowed(msg.sender, poolId, delLiquidity, maxPremium);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -396,30 +397,41 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external override lock returns (uint256 deltaRisky, uint256 deltaStable) {
+    )
+        external
+        override
+        lock
+        returns (
+            uint256 delRisky,
+            uint256 delStable,
+            uint256 premium
+        )
+    {
         Reserve.Data storage reserve = reserves[poolId];
         Position.Data storage position = positions.fetch(owner, poolId);
         Margin.Data storage margin = margins[owner];
 
-        require(reserve.debt >= delLiquidity && position.liquidity >= delLiquidity, "ID");
+        // There is `delLiquidity` units of debt, which must be repaid using `delLiquidity` risky tokens.
+        position.repay(delLiquidity); // must have an open position, releases position.debt of risky
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to mint LP
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to mint LP
+        require(delRisky * delStable > 0, "Deltas are 0"); // fail early if 0 amounts
 
-        deltaRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
-        deltaStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+        premium = delLiquidity - delRisky; // amount of excess risky, used to pay for stable side
 
+        // Update state
+        reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
+        reserve.repayFloat(delLiquidity);
+        // Balances prior to callback/transfers
+        uint256 preRisky = IERC20(risky).balanceOf(address(this));
+        uint256 preStable = IERC20(stable).balanceOf(address(this));
         if (fromMargin) {
-            margins.withdraw(delLiquidity - deltaRisky, deltaStable); // reduce margin balance
-            reserve.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp()); // increase reserve liquidity
-            position.repay(delLiquidity); // reduce position debt
+            margins.withdraw(0, delStable); // pay stables from margin balance
+            margin.deposit(premium, 0); // receive remainder `premium` of risky to margin
         } else {
-            uint256 preStable = IERC20(stable).balanceOf(address(this));
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(deltaStable, data);
-
-            require(IERC20(stable).balanceOf(address(this)) >= preStable + deltaStable, "IS");
-
-            reserve.allocate(deltaRisky, deltaStable, delLiquidity, _blockTimestamp());
-            reserve.repayFloat(delLiquidity);
-            position.repay(delLiquidity);
-            margin.deposit(delLiquidity - deltaRisky, uint256(0));
+            IERC20(risky).safeTransfer(msg.sender, premium); // This is a concerning line of code!
+            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(delStable, data);
+            require(IERC20(stable).balanceOf(address(this)) >= preStable + delStable, "IS"); // fails if stable is not paid
         }
 
         emit Repaid(owner, poolId, delLiquidity);

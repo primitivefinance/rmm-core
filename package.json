@@ -19,11 +19,12 @@
     "test:logs": "hardhat test --logs",
     "test:engine": "hardhat test ./test/unit/primitiveEngine",
     "test:factory": "hardhat test ./test/unit/primitiveFactory",
-    "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
     "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
     "test:remove": "hardhat test ./test/unit/primitiveEngine/effect/remove.ts",
+    "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
+    "test:borrow": "hardhat test ./test/unit/primitiveEngine/effect/borrow.ts",
     "test:lib": "hardhat test ./test/unit/libraries",
     "prepare": "husky install"
   },
