@@ -30,14 +30,12 @@ contract PrimitiveFactory is IPrimitiveFactory {
     }
 
     /// @inheritdoc IPrimitiveFactory
-    function create(address risky, address stable) external override returns (address engine) {
+    function deploy(address risky, address stable) external override returns (address engine) {
         require(risky != stable, "Cannot be same token");
-        require(risky != address(0), "Cannot be zero address");
-        require(stable != address(0), "Cannot be zero address");
+        require(risky != address(0) && stable != address(0), "Cannot be zero address");
         engine = deploy(address(this), risky, stable);
         getEngine[risky][stable] = engine;
-        getEngine[stable][risky] = engine;
-        emit EngineCreated(msg.sender, risky, stable, engine);
+        emit Deployed(msg.sender, risky, stable, engine);
     }
 
     /// @notice Deploys an engine contract with a `salt`.

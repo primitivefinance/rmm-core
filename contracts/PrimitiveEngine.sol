@@ -4,7 +4,7 @@ pragma abicoder v2;
 
 /// @title   Primitive Engine
 /// @author  Primitive
-/// @dev     Create pools with parameters `Calibration` to replicate Black-scholes covered call payoffs.
+/// @dev     Two-token CFMM with a Black-scholes trading function and virtual curves
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/BlackScholes.sol";
@@ -25,8 +25,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-import "hardhat/console.sol";
-
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
@@ -41,12 +39,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for Position.Data;
     using Transfers for IERC20;
 
-    /// @dev Parameters of each pool
+    /// @dev Parameters of each pool, writes all at the same time to maximize gas efficiency
     struct Calibration {
         uint128 strike; // strike price of the option
         uint64 sigma; // volatility of the option
         uint32 time; // time in seconds until the option expires
-        uint32 blockTimestamp; // time stamp of initialization
+        uint32 blockTimestamp; // timestamp of initialization
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -77,17 +75,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (factory, risky, stable) = IPrimitiveFactory(msg.sender).args();
     }
 
-    /// @notice Returns the risky token balance of this contract
+    /// @return Risky token balance of this contract
     function balanceRisky() private view returns (uint256) {
         return IERC20(risky).balanceOf(address(this));
     }
 
-    /// @notice Returns the stable token balance of this contract
+    /// @return Stable token balance of this contract
     function balanceStable() private view returns (uint256) {
         return IERC20(stable).balanceOf(address(this));
     }
 
-    /// @notice Block timestamp... but casted as a uint32
+    /// @return blockTimestamp casted as a uint32
     function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
         // solhint-disable-next-line
         blockTimestamp = uint32(block.timestamp);
@@ -159,7 +157,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveMarginCallback(msg.sender).depositCallback(delRisky, delStable, data); // receive tokens
         if (delRisky > 0) require(balanceRisky() >= balRisky + delRisky, "Not enough risky");
         if (delStable > 0) require(balanceStable() >= balStable + delStable, "Not enough stable");
-
         Margin.Data storage margin = margins[owner];
         margin.deposit(delRisky, delStable); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, owner, delRisky, delStable);
@@ -193,7 +190,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         require(delRisky * delStable > 0, "Deltas are 0");
 
         if (fromMargin) {
-            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account, notice the mapping
+            margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
         } else {
             uint256 balRisky = balanceRisky();
             uint256 balStable = balanceStable();
@@ -451,10 +448,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (uint256 liquidity, uint256 strike, uint256 sigma, uint256 time) =
             (uint256(res.liquidity), uint256(cal.strike), uint256(cal.sigma), cal.time);
         int128 invariant = invariantOf(poolId);
-        console.log(time, _blockTimestamp());
         uint256 timeDelta = time - _blockTimestamp();
 
-        console.log(timeDelta);
         if (token == risky) {
             reserveOfToken = (ReplicationMath.getInverseTradingFunction(balance, liquidity, strike, sigma, timeDelta))
                 .sub(invariant);
@@ -468,27 +463,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     // ===== View =====
 
     /// @inheritdoc IPrimitiveEngineView
-    function calcInvariant(
-        bytes32 poolId,
-        uint256 nextRisky,
-        uint256 nextStable,
-        uint256 postLiquidity
-    ) public view override returns (int128 invariant) {
-        Calibration memory cal = settings[poolId];
-        invariant = ReplicationMath.calcInvariant(
-            nextRisky,
-            nextStable,
-            postLiquidity,
-            uint256(cal.strike),
-            uint256(cal.sigma),
-            uint256(cal.time)
-        );
-    }
-
-    /// @inheritdoc IPrimitiveEngineView
     function invariantOf(bytes32 poolId) public view override returns (int128 invariant) {
         Reserve.Data memory res = reserves[poolId];
-        invariant = calcInvariant(poolId, res.reserveRisky, res.reserveStable, res.liquidity);
+        Calibration memory cal = settings[poolId];
+        invariant = ReplicationMath.calcInvariant(
+            res.reserveRisky,
+            res.reserveStable,
+            res.liquidity,
+            cal.strike,
+            cal.sigma,
+            cal.time
+        );
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -509,19 +494,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 amount,
         bytes calldata data
     ) external override returns (bool) {
-        uint256 fee_ = flashFee(token, amount); // reverts if unsupported token
-        uint256 balance = token == stable ? balanceStable() : balanceRisky();
+        uint256 fee = flashFee(token, amount); // reverts if unsupported token
+        uint256 balanceBefore = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);
 
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee_, data) ==
-                keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
             "IERC3156: Callback failed"
         );
 
         uint256 balanceAfter = token == stable ? balanceStable() : balanceRisky();
-        require(balance + fee_ <= balanceAfter, "Not enough returned");
-        uint256 payment = balanceAfter - balance;
+        require(balanceAfter >= balanceBefore + fee, "Not enough returned");
+        uint256 payment = balanceAfter - balanceBefore;
 
         emit Flash(msg.sender, address(receiver), token, amount, payment);
         return true;

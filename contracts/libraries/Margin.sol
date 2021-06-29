@@ -18,33 +18,30 @@ library Margin {
     }
 
     /// @notice Adds to risky and stable token balances
-    /// @param  mar     The margin data in storage to manipulate
-    /// @param  delRisky  The amount of risky tokens to add to margin
-    /// @param  delStable  The amount of stable tokens to add to margin
-    /// @return The margin data storage item
+    /// @param  margin      Margin data in storage to manipulate
+    /// @param  delRisky    Amount of risky tokens to add to margin
+    /// @param  delStable   Amount of stable tokens to add to margin
     function deposit(
-        Data storage mar,
+        Data storage margin,
         uint256 delRisky,
         uint256 delStable
-    ) internal returns (Data storage) {
-        if (delRisky > 0) mar.balanceRisky += delRisky.toUint128();
-        if (delStable > 0) mar.balanceStable += delStable.toUint128();
-        return mar;
+    ) internal {
+        if (delRisky > 0) margin.balanceRisky += delRisky.toUint128();
+        if (delStable > 0) margin.balanceStable += delStable.toUint128();
     }
 
     /// @notice Removes risky and stable token balance from `msg.sender`'s internal margin account
-    /// @param  mar     The margin data mapping which is used with `msg.sender` to get a margin account
-    /// @param  delRisky  The amount of risky tokens to add to margin
-    /// @param  delStable  The amount of stable tokens to add to margin
-    /// @return The margin data storage item
+    /// @param  margins     The margin data mapping which is used with `msg.sender` to get a margin account
+    /// @param  delRisky    The amount of risky tokens to add to margin
+    /// @param  delStable   The amount of stable tokens to add to margin
+    /// @return margin      Data storage of a margin account
     function withdraw(
-        mapping(address => Data) storage mar,
+        mapping(address => Data) storage margins,
         uint256 delRisky,
         uint256 delStable
-    ) internal returns (Data storage) {
-        Data storage margin = mar[msg.sender];
+    ) internal returns (Data storage margin) {
+        margin = margins[msg.sender];
         if (delRisky > 0) margin.balanceRisky -= delRisky.toUint128();
         if (delStable > 0) margin.balanceStable -= delStable.toUint128();
-        return margin;
     }
 }

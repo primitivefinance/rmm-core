@@ -51,16 +51,6 @@ library BlackScholes {
         delta = d1(s, k, o, t).getCDF();
     }
 
-    /// @notice Returns the `delta` greek of a put option
-    function deltaPut(
-        uint256 s,
-        uint256 k,
-        uint256 o,
-        uint256 t
-    ) internal pure returns (int128 delta) {
-        delta = d1(s, k, o, t).getCDF().sub(uint256(1).fromUInt());
-    }
-
     /// @dev     Calculates the log simple moneyness.
     /// @notice  ln(F / K).
     /// @param   s Spot price of underlying token in USD/DAI/USDC. In wei.

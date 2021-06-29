@@ -61,7 +61,8 @@ contract TestReserve {
 
     /// @notice Adds amounts to cumulative reserves
     function shouldUpdate(bytes32 resId) public returns (Reserve.Data memory) {
-        return reserves[resId].update(_blockTimestamp());
+        reserves[resId].update(_blockTimestamp());
+        return reserves[resId];
     }
 
     /// @notice Increases one reserve value and decreases the other by different amounts
@@ -71,7 +72,8 @@ contract TestReserve {
         uint256 deltaIn,
         uint256 deltaOut
     ) public returns (Reserve.Data memory) {
-        return reserves[resId].swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
+        reserves[resId].swap(addXRemoveY, deltaIn, deltaOut, _blockTimestamp());
+        return reserves[resId];
     }
 
     /// @notice Add to both reserves and total supply of liquidity
@@ -81,7 +83,8 @@ contract TestReserve {
         uint256 delStable,
         uint256 delLiquidity
     ) public returns (Reserve.Data memory) {
-        return reserves[resId].allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
+        reserves[resId].allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
+        return reserves[resId];
     }
 
     /// @notice Remove from both reserves and total supply of liquidity
@@ -91,26 +94,31 @@ contract TestReserve {
         uint256 delStable,
         uint256 delLiquidity
     ) public returns (Reserve.Data memory) {
-        return reserves[resId].remove(delRisky, delStable, delLiquidity, _blockTimestamp());
+        reserves[resId].remove(delRisky, delStable, delLiquidity, _blockTimestamp());
+        return reserves[resId];
     }
 
     /// @notice Increases available float to borrow, called when lending
     function shouldAddFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        return reserves[resId].addFloat(delLiquidity);
+        reserves[resId].addFloat(delLiquidity);
+        return reserves[resId];
     }
 
     /// @notice Reduces available float, taking liquidity off the market, called when claiming
     function shouldRemoveFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        return reserves[resId].removeFloat(delLiquidity);
+        reserves[resId].removeFloat(delLiquidity);
+        return reserves[resId];
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
     function shouldBorrowFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        return reserves[resId].borrowFloat(delLiquidity);
+        reserves[resId].borrowFloat(delLiquidity);
+        return reserves[resId];
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
     function shouldRepayFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        return reserves[resId].repayFloat(delLiquidity);
+        reserves[resId].repayFloat(delLiquidity);
+        return reserves[resId];
     }
 }
