@@ -18,19 +18,6 @@ interface IPrimitiveEngineView {
         uint256 balance
     ) external view returns (int128 reserveOfToken);
 
-    /// @notice                 Uses the trading function to calc the invariant using token reserve values
-    /// @param  poolId          The hashed pool Id
-    /// @param  resRisky        Amount of risky tokens in the pool's reserves
-    /// @param  resStable       Amount of stable tokens in the pool's reserves
-    /// @param  resLiquidity    Total supply of liquidity shares for the pool
-    /// @return                 Invariant calculated (which should be near 0)
-    function calcInvariant(
-        bytes32 poolId,
-        uint256 resRisky,
-        uint256 resStable,
-        uint256 resLiquidity
-    ) external view returns (int128);
-
     /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
     /// @param  poolId The pool id to get the invariant of
     /// invariant
