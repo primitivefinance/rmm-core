@@ -41,8 +41,6 @@ describe('allocate', function () {
 
       expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
         BigNumber.from('0'),
-        BigNumber.from('0'),
-        BigNumber.from('0'),
         parseWei('1').raw,
         BigNumber.from('0'),
       ])
@@ -104,8 +102,6 @@ describe('allocate', function () {
       )
 
       expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
-        BigNumber.from('0'),
-        BigNumber.from('0'),
         BigNumber.from('0'),
         parseWei('1').raw,
         BigNumber.from('0'),
