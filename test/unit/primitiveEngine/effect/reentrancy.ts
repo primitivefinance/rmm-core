@@ -1,14 +1,12 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, BytesLike } from 'ethers'
-
-import { parseWei, PERCENTAGE } from '../../../shared/sdk/Units'
+import { constants, BytesLike } from 'ethers'
 
 import { allocateFragment } from '../fragments'
 
-import loadContext from '../../context'
+import loadContext, { config } from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 31449600, parseWei('1100').raw]
+const { strike, sigma, time, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('reentrancy', function () {

@@ -1,14 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, BytesLike } from 'ethers'
 
-import { parseWei, PERCENTAGE } from '../../../shared/sdk/Units'
+import { parseWei, BigNumber, constants, BytesLike } from '../../../shared/sdk/Units'
 
 import { allocateFragment } from '../fragments'
 
-import loadContext from '../../context'
+import loadContext, { config } from '../../context'
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+const { strike, sigma, time, spot } = config
 const empty: BytesLike = constants.HashZero
 let poolId: string
 
@@ -26,7 +25,7 @@ describe('allocate', function () {
         empty
       )
 
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
     })
 
     it('updates the position if enough risky and stable were deposited', async function () {
@@ -88,7 +87,7 @@ describe('allocate', function () {
 
   describe('when allocating from external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
     })
 
     it('updates the position if enough risky and stable are provided', async function () {

@@ -1,6 +1,6 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, BytesLike, parseWei } from '../../shared/Units'
+import { BigNumber, BytesLike, parseWei } from '../../shared/sdk/Units'
 import { TestReserve } from '../../../typechain'
 import loadContext from '../context'
 

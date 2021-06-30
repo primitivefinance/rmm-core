@@ -26,8 +26,8 @@ interface SettingRaw {
   [x: string]: [BigNumber, BigNumber, number, number] & {
     strike: BigNumber
     sigma: BigNumber
-    time: number
-    blockTimestamp: number
+    maturity: number
+    lastTimestamp: number
   }
 }
 
@@ -36,9 +36,7 @@ interface MarginRaw {
 }
 
 interface PositionRaw {
-  [x: string]: [BigNumber, BigNumber, BigNumber, BigNumber, BigNumber] & {
-    balanceRisky: BigNumber
-    balanceStable: BigNumber
+  [x: string]: [BigNumber, BigNumber, BigNumber] & {
     liquidity: BigNumber
     float: BigNumber
     debt: BigNumber
@@ -162,8 +160,8 @@ class Engine {
     this.settings[key] = {
       strike: new Wei(setting[key].strike),
       sigma: new Percentage(setting[key].sigma),
-      time: new Time(setting[key].time),
-      blockTimestamp: new Time(setting[key].blockTimestamp),
+      maturity: new Time(setting[key].maturity),
+      lastTimestamp: new Time(setting[key].lastTimestamp),
     }
   }
 
@@ -181,18 +179,16 @@ class Engine {
   setPositions(position: any) {
     let key = keyOf(position)
     this.positions[key] = {
-      balanceRisky: new Wei(position[key].balanceRisky),
-      balanceStable: new Wei(position[key].balanceStable),
       float: new Wei(position[key].float),
       liquidity: new Wei(position[key].liquidity),
       debt: new Wei(position[key].debt),
     }
   }
 
-  create(owner: string, strike: Wei, sigma: Percentage, time: Time, riskyPrice: Wei, delLiquidity: Wei) {
-    const poolId = Engine.getPoolId(strike, sigma, time)
-    const timeDelta = time
-    const calibration = { strike: strike, sigma: sigma, time: timeDelta, blockTimestamp: new Time(0) }
+  create(owner: string, strike: Wei, sigma: Percentage, maturity: Time, riskyPrice: Wei, delLiquidity: Wei) {
+    const poolId = Engine.getPoolId(strike, sigma, maturity)
+    const timeDelta = maturity
+    const calibration = { strike: strike, sigma: sigma, maturity: timeDelta, lastTimestamp: new Time(0) }
     const delta = new Mantissa(callDelta(calibration, riskyPrice)).float
     const resRisky = parseWei(1 - delta)
     const resStable = parseWei(getTradingFunction(resRisky, delLiquidity, calibration))
