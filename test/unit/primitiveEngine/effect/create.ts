@@ -17,23 +17,23 @@ describe('create', function () {
 
   describe('when the parameters are valid', function () {
     it('deploys a new pool', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
     })
 
     it('emits the Create event', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
 
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+        this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
       )
         .to.emit(this.contracts.engine, 'Created')
-        .withArgs(this.contracts.engineCreate.address, poolId, strike.raw, sigma.float, time.seconds)
+        .withArgs(this.contracts.engineCreate.address, poolId, strike.raw, sigma.raw, time.seconds)
     })
 
     it('gives liquidity to the sender', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
 
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       const pos = await this.contracts.engineCreate.fetch(poolId)
 
       expect(pos.liquidity).to.equal(parseWei('1').sub('1000').raw)
@@ -42,7 +42,7 @@ describe('create', function () {
     it('updates the reserves of the engine', async function () {
       const tx = await this.contracts.engineCreate.create(
         strike.raw,
-        sigma.float,
+        sigma.raw,
         time.seconds,
         spot.raw,
         parseWei('1').raw,
@@ -51,7 +51,7 @@ describe('create', function () {
       const receipt = await tx.wait()
       const { timestamp } = await waffle.provider.getBlock(receipt.blockNumber)
 
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
 
       const reserve = await this.contracts.engine.reserves(poolId)
       console.log(reserve)
@@ -68,7 +68,7 @@ describe('create', function () {
     })
 
     it('increases the engine contract balances', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
 
       // TODO: Improve this test
       expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.not.equal(0)
@@ -76,9 +76,9 @@ describe('create', function () {
     })
 
     it('reverts when the pool already exists', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
+        this.contracts.engineCreate.create(strike.raw, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
       ).to.be.revertedWith('Initialized')
     })
   })
@@ -86,25 +86,25 @@ describe('create', function () {
   describe('when the parameters are not valid', function () {
     it('reverts if strike is 0', async function () {
       await expect(
-        this.contracts.engine.create(0, sigma.float, time.seconds, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Calibration cannot be 0')
+        this.contracts.engine.create(0, sigma.raw, time.seconds, spot.raw, parseWei('1').raw, empty)
+      ).to.revertedWith('Zero')
     })
 
-    it('reverts if sigma.float is 0', async function () {
+    it('reverts if sigma.raw is 0', async function () {
       await expect(
         this.contracts.engine.create(strike.raw, 0, time.seconds, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Calibration cannot be 0')
+      ).to.revertedWith('Zero')
     })
 
     it('reverts if time.seconds is 0', async function () {
       await expect(
-        this.contracts.engine.create(strike.raw, sigma.float, 0, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Calibration cannot be 0')
+        this.contracts.engine.create(strike.raw, sigma.raw, 0, spot.raw, parseWei('1').raw, empty)
+      ).to.revertedWith('Zero')
     })
 
     it('reverts if liquidity is 0', async function () {
-      await expect(this.contracts.engine.create(strike.raw, sigma.float, time.seconds, spot.raw, 0, empty)).to.revertedWith(
-        'Liquidity cannot be 0'
+      await expect(this.contracts.engine.create(strike.raw, sigma.raw, time.seconds, spot.raw, 0, empty)).to.revertedWith(
+        'Zero'
       )
     })
   })
