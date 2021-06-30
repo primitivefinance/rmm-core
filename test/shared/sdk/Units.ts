@@ -1,8 +1,8 @@
 /// Ethers Imports
-import { BigNumber, BigNumberish, BytesLike, constants, Transaction } from 'ethers'
+import { BigNumber, BigNumberish, BytesLike, constants, Transaction, Wallet } from 'ethers'
 import { formatEther, parseEther } from '@ethersproject/units'
 import bn from 'bignumber.js'
-export { formatEther, parseEther, BigNumber, BigNumberish, bn, BytesLike, constants, Transaction }
+export { formatEther, parseEther, BigNumber, BigNumberish, bn, BytesLike, constants, Transaction, Wallet }
 export const DENOMINATOR = 2 ** 64
 export const MANTISSA = 10 ** 9
 export const PERCENTAGE = 10 ** 4

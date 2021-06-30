@@ -2,13 +2,12 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants } from 'ethers'
 
-import { parseWei, PERCENTAGE, BytesLike } from '../../../shared/sdk/Units'
+import { parseWei, BytesLike } from '../../../shared/sdk/Units'
 
 import { removeFragment } from '../fragments'
 
-import loadContext from '../../context'
-
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+import loadContext, { config } from '../../context'
+const { strike, sigma, time, spot } = config
 
 const delLiquidity = parseWei('1')
 const empty: BytesLike = constants.HashZero
@@ -22,7 +21,7 @@ describe('remove', function () {
 
   describe('when removing to margin', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 
@@ -84,7 +83,7 @@ describe('remove', function () {
 
   describe('when removing to external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 

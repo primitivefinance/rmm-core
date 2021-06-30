@@ -1,7 +1,7 @@
 /// SDK Imports
 import { std_n_cdf } from './CumulativeNormalDistribution'
 import { Calibration } from './Structs'
-import { Wei } from './Units'
+import { Wei, Time } from './Units'
 
 export function moneyness(cal: Calibration, spot: Wei): number {
   const strike = cal.strike.float
@@ -9,7 +9,7 @@ export function moneyness(cal: Calibration, spot: Wei): number {
 }
 
 export function calculateD1(cal: Calibration, spot: Wei): number {
-  const timeToExpiry = cal.time.years
+  const timeToExpiry = new Time(cal.maturity.seconds - cal.lastTimestamp.seconds).years
   const strike = cal.strike.float
   const vol = cal.sigma.float
 

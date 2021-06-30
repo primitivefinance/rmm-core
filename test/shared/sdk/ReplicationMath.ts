@@ -9,7 +9,7 @@ export function getProportionalVol(sigma: number, time: number): number {
 
 export function getTradingFunction(risky: Wei, liquidity: Wei, cal: Calibration): number {
   const K = cal.strike.float
-  const vol = getProportionalVol(cal.sigma.float, cal.time.years)
+  const vol = getProportionalVol(cal.sigma.float, cal.maturity.years)
   if (vol <= 0) return 0
   const reserve: number = risky.mul(parseEther('1')).div(liquidity).float
   const inverseInput: number = 1 - +reserve
@@ -21,7 +21,7 @@ export function getTradingFunction(risky: Wei, liquidity: Wei, cal: Calibration)
 
 export function getInverseTradingFunction(stable: Wei, liquidity: Wei, cal: Calibration): number {
   const K = cal.strike.float
-  const vol = getProportionalVol(cal.sigma.float, cal.time.years)
+  const vol = getProportionalVol(cal.sigma.float, cal.maturity.years)
   if (vol <= 0) return 0
   const reserve: number = stable.mul(parseEther('1')).div(liquidity).float
   const inverseInput: number = reserve / K
