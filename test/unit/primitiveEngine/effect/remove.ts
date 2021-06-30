@@ -21,7 +21,7 @@ describe('remove', function () {
 
   describe('when removing to margin', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 
@@ -83,7 +83,7 @@ describe('remove', function () {
 
   describe('when removing to external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 

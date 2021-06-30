@@ -36,7 +36,7 @@ describe('Engine:swap', function () {
         this.contracts.engineAllocate,
         this.contracts.engineSwap,
       ]
-      poolId = await engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      poolId = await engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       entity = await getEngineEntityFromContract(engine, [poolId], [], [deployer.address])
       await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1000').raw, empty)
     })

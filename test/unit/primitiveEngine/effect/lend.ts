@@ -17,7 +17,7 @@ describe('lend', function () {
 
   describe('when the parameters are valid', function () {
     it('adds 1 liquidity share to float', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       const posid = await this.contracts.engineLend.getPosition(poolId)
       await this.contracts.engineLend.lend(poolId, parseWei('1').raw)
 
@@ -31,7 +31,7 @@ describe('lend', function () {
     })
 
     it('fails to add more to float than is available in the position liquidity', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
       await expect(this.contracts.engineLend.lend(poolId, parseWei('20').raw)).to.be.reverted
     })
   })

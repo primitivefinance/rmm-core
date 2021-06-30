@@ -38,7 +38,7 @@ export class Integer64x64 {
 export class Time {
   readonly raw: number
   constructor(raw: number) {
-    this.raw = raw // seconds
+    this.raw = Math.floor(raw) // seconds
   }
 
   get years(): number {

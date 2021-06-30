@@ -25,7 +25,7 @@ describe('allocate', function () {
         empty
       )
 
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
     })
 
     it('updates the position if enough risky and stable were deposited', async function () {
@@ -87,7 +87,7 @@ describe('allocate', function () {
 
   describe('when allocating from external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.float, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
     })
 
     it('updates the position if enough risky and stable are provided', async function () {
