@@ -23,7 +23,6 @@ export interface Contracts {
   engineLend: ContractTypes.EngineLend
   engineBorrow: ContractTypes.EngineBorrow
   badEngineDeposit: ContractTypes.BadEngineDeposit
-  factoryCreate: ContractTypes.FactoryCreate
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin
