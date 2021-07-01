@@ -6,7 +6,7 @@ import { allocateFragment } from '../fragments'
 
 import loadContext, { config } from '../../context'
 
-const { strike, sigma, time, spot } = config
+const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('reentrancy', function () {

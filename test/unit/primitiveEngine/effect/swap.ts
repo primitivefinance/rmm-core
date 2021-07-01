@@ -11,7 +11,7 @@ import Engine, { getEngineEntityFromContract, EngineEvents, ERC20Events } from '
 import { PrimitiveEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 
 // Constants
-const { strike, sigma, time, spot } = config
+const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('Engine:swap', function () {
@@ -36,7 +36,7 @@ describe('Engine:swap', function () {
         this.contracts.engineAllocate,
         this.contracts.engineSwap,
       ]
-      poolId = await engine.getPoolId(strike.raw, sigma.raw, time.seconds)
+      poolId = await engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       entity = await getEngineEntityFromContract(engine, [poolId], [], [deployer.address])
       await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1000').raw, empty)
     })

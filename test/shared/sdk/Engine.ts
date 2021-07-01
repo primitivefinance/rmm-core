@@ -379,7 +379,7 @@ class Engine {
   static getPoolId(strike: Wei, sigma: Percentage, time: Time) {
     return ethers.utils.solidityKeccak256(
       ['uint256', 'uint64', 'uint32'],
-      [strike.raw, Math.floor(+sigma.float), time.seconds]
+      [strike.raw, Math.floor(+sigma.float), maturity.raw]
     )
   }
 

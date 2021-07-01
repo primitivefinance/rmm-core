@@ -27,21 +27,21 @@ describe('testReplicationMath', function () {
     })
 
     it('getProportionalVolatility', async function () {
-      expect(new Integer64x64(await math.getProportionalVolatility(sigma.float, time.seconds)).parsed).to.be.eq(
-        getProportionalVol(sigma.float, time.seconds)
+      expect(new Integer64x64(await math.getProportionalVolatility(sigma.float, maturity.raw)).parsed).to.be.eq(
+        getProportionalVol(sigma.float, maturity.raw)
       )
     })
     it('getTradingFunction', async function () {
       expect(
         new Integer64x64(
-          await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.float, time.seconds)
+          await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.float, maturity.raw)
         ).parsed
       ).to.be.eq(getTradingFunction(reserveRisky, liquidity, calibration))
     })
     it('getInverseTradingFunction', async function () {
       expect(
         new Integer64x64(
-          await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.float, time.seconds)
+          await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.float, maturity.raw)
         ).parsed
       ).to.be.eq(getInverseTradingFunction(reserveStable, liquidity, calibration))
     })
@@ -49,7 +49,7 @@ describe('testReplicationMath', function () {
     it('calcInvariant', async function () {
       expect(
         new Integer64x64(
-          await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.float, time.seconds)
+          await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.float, maturity.raw)
         ).parsed
       ).to.be.eq(Engine.calcInvariant(reserveRisky, reserveStable, liquidity, calibration))
     })

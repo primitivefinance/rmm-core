@@ -7,7 +7,7 @@ import { parseWei, BytesLike } from '../../../shared/sdk/Units'
 import { removeFragment } from '../fragments'
 
 import loadContext, { config } from '../../context'
-const { strike, sigma, time, spot } = config
+const { strike, sigma, maturity, spot } = config
 
 const delLiquidity = parseWei('1')
 const empty: BytesLike = constants.HashZero
@@ -21,7 +21,7 @@ describe('remove', function () {
 
   describe('when removing to margin', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 
@@ -83,7 +83,7 @@ describe('remove', function () {
 
   describe('when removing to external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 

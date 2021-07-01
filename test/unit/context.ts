@@ -8,14 +8,14 @@ import { parseWei, Percentage, Time, Wei, YEAR } from '../shared/sdk/Units'
 interface Config {
   strike: Wei
   sigma: Percentage
-  time: Time
+  maturity: Time
   spot: Wei
 }
 
 export const config: Config = {
   strike: parseWei('2500'),
   sigma: new Percentage(1.1),
-  time: new Time(0.091780822 * YEAR),
+  maturity: new Time(0.091780822 * YEAR + +Date.now() / 1000),
   spot: parseWei('1750'),
 }
 
