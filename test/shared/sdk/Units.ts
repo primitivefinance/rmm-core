@@ -25,10 +25,14 @@ export class Integer64x64 {
     this.raw = raw
   }
 
+  /// @notice Integer divided by 2^64
   get parsed(): number {
-    const numerator = parseEther('1').mul(this.raw)
-    const denominator = BigNumber.from(2).pow(64)
-    const input = numerator.div(denominator)
+    return parseFloat(this.raw.toString()) / Math.pow(2, 64)
+  }
+
+  /// @return Integer scaled down by mantissa
+  get normalized(): number {
+    const input = BigNumber.from(this.parsed)
     const output = input.div(MANTISSA)
     return parseFloat(output.toString())
   }

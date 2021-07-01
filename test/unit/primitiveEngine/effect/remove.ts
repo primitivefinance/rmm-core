@@ -42,8 +42,6 @@ describe('remove', function () {
 
       expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
         BigNumber.from('0'),
-        BigNumber.from('0'),
-        BigNumber.from('0'),
         parseWei('9').raw,
         BigNumber.from('0'),
       ])
@@ -103,8 +101,6 @@ describe('remove', function () {
       await this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty)
 
       expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
-        BigNumber.from('0'),
-        BigNumber.from('0'),
         BigNumber.from('0'),
         parseWei('9').raw,
         BigNumber.from('0'),

@@ -25,7 +25,7 @@ describe('testCumulativeNormalDistribution', function () {
     it('icdf', async function () {
       let x = 0.25
       let icdf = inverse_std_n_cdf(x)
-      expect(parseFloat((await cumulative.icdf(parseWei(x).raw)).toString()) / Math.pow(2, 64)).to.be.eq(icdf)
+      expect(new Integer64x64(await cumulative.icdf(parseWei(x).raw)).parsed).to.be.eq(icdf)
     })
   })
 })

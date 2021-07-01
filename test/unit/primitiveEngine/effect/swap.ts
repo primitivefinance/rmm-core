@@ -138,8 +138,8 @@ describe('Engine:swap', function () {
         ).to.be.revertedWith(ERC20Events.EXCEEDS_BALANCE)
       })
 
-      it('Fail Callee::Swap: Too expensive', async function () {
-        await expect(engine.swap(poolId, true, 1, 0, false, empty)).to.be.revertedWith('Too expensive')
+      it('Fail Callee::Swap: Expensive', async function () {
+        await expect(engine.swap(poolId, true, 1, 0, false, empty)).to.be.revertedWith('Expensive')
       })
       it('Fail Callee::Swap: Invalid invariant', async function () {})
       it('Fail Callee::Swap: Sent too much tokens', async function () {})
