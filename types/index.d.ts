@@ -22,6 +22,7 @@ export interface Contracts {
   engineRemove: ContractTypes.EngineRemove
   engineLend: ContractTypes.EngineLend
   engineBorrow: ContractTypes.EngineBorrow
+  engineRepay: ContractTypes.EngineRepay
   badEngineDeposit: ContractTypes.BadEngineDeposit
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
@@ -66,5 +67,6 @@ type ContractName =
   | 'engineRemove'
   | 'engineLend'
   | 'engineBorrow'
+  | 'engineRepay'
   | 'badEngineDeposit'
   | 'flashBorrower'

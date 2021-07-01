@@ -121,6 +121,23 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('1000').raw, empty)
 }
 
-export async function flashLoanFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+export async function repayFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('100000000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('100000000').raw)
 
+  await contracts.stable.approve(contracts.engineDeposit.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineDeposit.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineAllocate.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineAllocate.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
+  await contracts.stable.approve(contracts.engineRepay.address, constants.MaxUint256)
+  await contracts.risky.approve(contracts.engineRepay.address, constants.MaxUint256)
+
+  await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
+
+  const poolId = await contracts.engine.getPoolId(strike, sigma, time)
+
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
+  await contracts.engineLend.lend(poolId, parseWei('100').raw)
 }

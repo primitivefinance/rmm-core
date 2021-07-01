@@ -78,6 +78,10 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.engineBorrow = (await deploy('EngineBorrow', deployer)) as ContractTypes.EngineBorrow
         await initializeTestContract(loadedContracts.engineBorrow, loadedContracts)
         break
+      case 'engineRepay':
+        loadedContracts.engineRepay = (await deploy('EngineRepay', deployer)) as ContractTypes.EngineRepay
+        await initializeTestContract(loadedContracts.engineRepay, loadedContracts)
+        break
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
         await loadedContracts.factoryDeploy.initialize(loadedContracts.factory.address)
