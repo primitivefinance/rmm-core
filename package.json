@@ -1,5 +1,5 @@
 {
-  "name": "primitive-v2-core",
+  "name": "@primitivefinance/primitive-v2-core",
   "version": "0.0.1",
   "description": "Primitive V2 protocol contracts.",
   "main": "index.js",
@@ -8,10 +8,20 @@
     "v2",
     "ethereum"
   ],
-  "repository": "https://github.com/primitivefinance/primitive-v2-core.git",
+  "files": [
+    "contracts/interfaces",
+    "contracts/libraries",
+    "artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json",
+    "artifacts/contracts/PrimitiveFactory.sol/PrimitiveFactory.json",
+    "artifacts/contracts/interfaces/**/*.json",
+    "!artifacts/contracts/interfaces/**/*.dbg.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "chttps://github.com/primitivefinance/primitive-v2-core.git"
+  },
   "author": "Primitive",
   "license": "GNU",
-  "private": true,
   "homepage": "https://primitive.finance",
   "scripts": {
     "compile": "hardhat compile",
