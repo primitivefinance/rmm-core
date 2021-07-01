@@ -7,7 +7,7 @@ import loadContext, { config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
 
-const { strike, sigma, time, spot } = config
+const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
@@ -24,7 +24,7 @@ describe('borrow', function () {
     let deployer: Wallet, engine: PrimitiveEngine, engineBorrow: EngineBorrow
 
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, time.seconds)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       posId = await this.contracts.engineBorrow.getPosition(poolId)
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(
