@@ -20,14 +20,14 @@ describe('create', function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
     })
 
-    it('emits the Create event', async function () {
+    it('emits the Created event', async function () {
       const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
 
       await expect(
         this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
       )
         .to.emit(this.contracts.engine, 'Created')
-        .withArgs(this.contracts.engineCreate.address, poolId, strike.raw, sigma.raw, maturity.raw)
+        .withArgs(this.contracts.engineCreate.address, strike.raw, sigma.raw, maturity.raw)
     })
 
     it('gives liquidity to the sender', async function () {

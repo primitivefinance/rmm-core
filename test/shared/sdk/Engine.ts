@@ -376,7 +376,7 @@ class Engine {
   }
 
   /// @return Keccak256 hash of option curve parameters
-  static getPoolId(strike: Wei, sigma: Percentage, time: Time) {
+  static getPoolId(strike: Wei, sigma: Percentage, maturity: Time) {
     return ethers.utils.solidityKeccak256(
       ['uint256', 'uint64', 'uint32'],
       [strike.raw, Math.floor(+sigma.float), maturity.raw]

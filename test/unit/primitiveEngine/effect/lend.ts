@@ -22,8 +22,6 @@ describe('lend', function () {
       await this.contracts.engineLend.lend(poolId, parseWei('1').raw)
 
       expect(await this.contracts.engine.positions(posid)).to.be.deep.eq([
-        BigNumber.from('0'),
-        BigNumber.from('0'),
         parseWei('1').raw,
         parseWei('10').raw,
         BigNumber.from('0'),

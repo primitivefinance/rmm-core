@@ -30,3 +30,9 @@ export function getInverseTradingFunction(stable: Wei, liquidity: Wei, cal: Cali
   const risky = 1 - std_n_cdf(input)
   return parseWei(risky).float
 }
+
+export function calcInvariant(reserveRisky: Wei, reserveStable: Wei, liquidity: Wei, calibration: Calibration): number {
+  const input: number = getTradingFunction(reserveRisky, liquidity, calibration)
+  const invariant: Wei = reserveStable.sub(parseWei(input > 0.0001 ? input.toString() : '0').raw)
+  return invariant.float
+}

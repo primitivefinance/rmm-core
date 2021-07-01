@@ -3,8 +3,10 @@ import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
 import { parseWei, PERCENTAGE, Wei, YEAR, MANTISSA, Integer64x64, Percentage, Time } from '../../shared/sdk/Units'
 import { Calibration } from '../../shared/sdk/Structs'
-import loadContext from '../context'
+import loadContext, { config } from '../context'
 import { callDelta, calculateD1, moneyness } from '../../shared/sdk/BlackScholes'
+
+const { strike, sigma, maturity, spot } = config
 
 describe('testBlackScholes', function () {
   before(async function () {
@@ -12,21 +14,20 @@ describe('testBlackScholes', function () {
   })
 
   describe('blackScholes', function () {
-    let blackScholes: TestBlackScholes, calibration: any, spot: Wei
+    let blackScholes: TestBlackScholes, calibration: any
 
     beforeEach(async function () {
       blackScholes = this.contracts.testBlackScholes
       calibration = {
-        strike: parseWei('1000').raw,
-        sigma: new Percentage(0.85).raw,
-        maturity: new Time(YEAR).seconds,
-        lastTimestamp: new Time(0).seconds,
+        strike: strike.raw,
+        sigma: sigma.raw,
+        maturity: maturity.raw,
+        lastTimestamp: new Time(+Date.now()).seconds,
       }
-      spot = parseWei('1050')
     })
 
     it('callDelta', async function () {
-      let delta = Math.floor(callDelta(calibration, spot) * MANTISSA) / MANTISSA
+      let delta = callDelta(calibration, spot)
       expect(new Integer64x64(await blackScholes.callDelta(calibration, spot.raw)).parsed).to.be.eq(delta)
     })
     it('putDelta', async function () {})

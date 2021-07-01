@@ -30,10 +30,12 @@
     "test:factory": "hardhat test ./test/unit/primitiveFactory",
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
+    "test:withdraw": "hardhat test ./test/unit/primitiveEngine/effect/withdraw.ts",
     "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
     "test:remove": "hardhat test ./test/unit/primitiveEngine/effect/remove.ts",
     "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:borrow": "hardhat test ./test/unit/primitiveEngine/effect/borrow.ts",
+    "test:lend": "hardhat test ./test/unit/primitiveEngine/effect/lend.ts",
     "test:lib": "hardhat test ./test/unit/libraries",
     "test:sdk": "hardhat test ./test/shared/sdk/test",
     "prepare": "husky install"
