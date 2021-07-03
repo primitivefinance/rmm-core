@@ -18,7 +18,8 @@ contract TestBlackScholes {
         // Parameters of each pool
         uint128 strike; // strike price of the option
         uint64 sigma; // implied volatility of the option
-        uint64 time; // the time in seconds until the option expires
+        uint32 maturity; // the time in seconds until the option expires
+        uint32 lastTimestamp;
     }
 
     constructor() {}
@@ -39,14 +40,14 @@ contract TestBlackScholes {
     // ===== BS Library Entry ====
 
     function callDelta(Calibration memory self, uint256 assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.deltaCall(assetPrice, uint256(self.strike), uint256(self.sigma), uint256(self.time));
+        y = BlackScholes.deltaCall(assetPrice, self.strike, self.sigma, self.maturity - self.lastTimestamp);
     }
 
     function d1(Calibration memory self, uint256 assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.d1(assetPrice, uint256(self.strike), uint256(self.sigma), uint256(self.time));
+        y = BlackScholes.d1(assetPrice, self.strike, self.sigma, self.maturity - self.lastTimestamp);
     }
 
     function moneyness(Calibration memory self, uint256 assetPrice) public pure returns (int128 y) {
-        y = BlackScholes.logSimpleMoneyness(assetPrice, uint256(self.strike));
+        y = BlackScholes.logSimpleMoneyness(assetPrice, self.strike);
     }
 }

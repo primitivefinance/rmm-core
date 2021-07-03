@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestMargin } from '../../../typechain'
-import { parseWei, PERCENTAGE, Wei, fromMantissa, fromInt } from '../../shared/Units'
+import { parseWei } from '../../shared/sdk/Units'
 import loadContext from '../context'
 
 describe('testMargin', function () {
