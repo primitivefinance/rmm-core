@@ -1,14 +1,13 @@
-import { waffle, ethers } from 'hardhat'
+import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, Wallet } from 'ethers'
 
-import loadContext from '../../context'
+import { parseWei, BytesLike, Wallet, constants } from '../../../shared/sdk/Units'
+
+import loadContext, { config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
 
-import { parseWei, PERCENTAGE, BytesLike, Wei } from '../../../shared/Units'
-
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
@@ -25,7 +24,7 @@ describe('borrow', function () {
     let deployer: Wallet, engine: PrimitiveEngine, engineBorrow: EngineBorrow
 
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       posId = await this.contracts.engineBorrow.getPosition(poolId)
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(
