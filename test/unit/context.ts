@@ -9,6 +9,7 @@ interface Config {
   strike: Wei
   sigma: Percentage
   maturity: Time
+  lastTimestamp: Time
   spot: Wei
 }
 
@@ -16,6 +17,7 @@ export const config: Config = {
   strike: parseWei('2500'),
   sigma: new Percentage(1.1),
   maturity: new Time(YEAR + +Date.now() / 1000),
+  lastTimestamp: new Time(+Date.now() / 1000),
   spot: parseWei('1750'),
 }
 

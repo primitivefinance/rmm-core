@@ -8,9 +8,9 @@ import "../../libraries/ReplicationMath.sol";
 /// @dev     For testing purposes ONLY
 
 contract TestReplicationMath {
-    /// @return vol The sigma * sqrt(time)
-    function getProportionalVolatility(uint256 sigma, uint256 time) public pure returns (int128 vol) {
-        vol = ReplicationMath.getProportionalVolatility(sigma, time);
+    /// @return vol The sigma * sqrt(tau)
+    function getProportionalVolatility(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
+        vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
     /// @return RY2 The calculated stable reserve, using the risky reserve
@@ -19,9 +19,9 @@ contract TestReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) public pure returns (int128 RY2) {
-        RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
+        RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, tau);
     }
 
     /// @return RX1 The calculated risky reserve, using the stable reserve
@@ -30,9 +30,9 @@ contract TestReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) public pure returns (int128 RX1) {
-        RX1 = ReplicationMath.getInverseTradingFunction(RY2, liquidity, strike, sigma, time);
+        RX1 = ReplicationMath.getInverseTradingFunction(RY2, liquidity, strike, sigma, tau);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
@@ -42,8 +42,8 @@ contract TestReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) public pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, time);
+        invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, tau);
     }
 }

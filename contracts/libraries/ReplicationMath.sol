@@ -21,9 +21,9 @@ library ReplicationMath {
     // ===== Math ======
 
     /// @return  vol Implied Vol * Sqrt(T-t)
-    function getProportionalVolatility(uint256 sigma, uint256 time) internal pure returns (int128 vol) {
+    function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
         // sigma * sqrt(t)
-        int128 sqrtTime = time.toYears().sqrt();
+        int128 sqrtTime = tau.toYears().sqrt();
         int128 SX1 = sigma.fromUInt();
         vol = SX1.mul(sqrtTime);
     }
@@ -35,11 +35,11 @@ library ReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) internal pure returns (int128 reserveStable) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
-        int128 vol = getProportionalVolatility(sigma, time);
+        int128 vol = getProportionalVolatility(sigma, tau);
         int128 one = uint256(1).fromUInt();
         // CDF
         int128 reserve = ((reserveRisky * 10**18) / liquidity).parseUnits();
@@ -57,11 +57,11 @@ library ReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) internal pure returns (int128 reserveRisky) {
         int128 k = strike.parseUnits();
         // sigma*sqrt(t)
-        int128 vol = getProportionalVolatility(sigma, time);
+        int128 vol = getProportionalVolatility(sigma, tau);
         // 1
         int128 one = uint256(1).fromUInt();
         // Y
@@ -81,9 +81,9 @@ library ReplicationMath {
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
-        uint256 time
+        uint256 tau
     ) internal pure returns (int128) {
-        int128 reserve2 = getTradingFunction(reserveRisky, liquidity, strike, sigma, time);
+        int128 reserve2 = getTradingFunction(reserveRisky, liquidity, strike, sigma, tau);
         int128 invariant = reserveStable.parseUnits().sub(reserve2);
         return invariant;
     }
