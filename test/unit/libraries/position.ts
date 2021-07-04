@@ -58,9 +58,10 @@ describe('testPosition', function () {
     })
     it('shouldRepay', async function () {
       let amount = parseWei('0.1').raw
+      await position.shouldRemove(poolId, (await position.pos()).liquidity) // remove all liq so we can borrow
       await position.shouldBorrow(poolId, amount)
       await position.shouldRepay(poolId, amount) // borrow from this account so we can repay
-      expect((await position.pos()).liquidity).to.be.deep.eq(before.liquidity.sub(amount))
+      expect((await position.pos()).liquidity).to.be.deep.eq(0)
       expect((await position.pos()).debt).to.be.deep.eq(before.debt) // no change
     })
     it('shouldGetPositionId', async function () {
