@@ -19,7 +19,7 @@ export function getTradingFunction(
   const reserve: number = reserveRisky / liquidity
   const inverseInput: number = 1 - +reserve
   const phi: number = inverse_std_n_cdf(inverseInput)
-  const input = phi - vol / PERCENTAGE
+  const input = phi - vol
   const reserveStable = K * std_n_cdf(input)
   return reserveStable
 }
@@ -37,7 +37,7 @@ export function getInverseTradingFunction(
   const reserve: number = reserveStable / liquidity
   const inverseInput: number = reserve / K
   const phi: number = inverse_std_n_cdf(inverseInput)
-  const input = phi + vol / PERCENTAGE
+  const input = phi + vol
   const reserveRisky = 1 - std_n_cdf(input)
   return reserveRisky
 }

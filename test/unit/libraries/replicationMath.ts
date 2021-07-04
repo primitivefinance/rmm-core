@@ -20,50 +20,49 @@ describe('testReplicationMath', function () {
   describe('replicationMath', function () {
     let math: TestReplicationMath
     let [reserveRisky, reserveStable, liquidity] = [parseWei('0.5'), parseWei('500'), parseWei('1')]
-    let calibration: any
-    let tau
+    let tau: Time
     beforeEach(async function () {
-      calibration = {
-        strike: strike.raw,
-        sigma: sigma.raw,
-        maturity: maturity,
-        lastTimestamp: new Time(+Date.now() / 1000),
-      }
       math = this.contracts.testReplicationMath
-      tau = maturity.years - lastTimestamp.years
+      tau = new Time(maturity.raw - lastTimestamp.raw)
     })
 
     it('getProportionalVolatility', async function () {
-      let expected: number = new Integer64x64(await math.getProportionalVolatility(sigma.raw, maturity.raw)).normalized
-      let actual: number = getProportionalVol(sigma.raw, maturity.raw)
+      let expected: number = new Integer64x64(await math.getProportionalVolatility(sigma.raw, tau.raw)).percentage
+      let actual: number = getProportionalVol(sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
     it('getTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, maturity.raw)
+        await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
-      let actual: number = getTradingFunction(reserveRisky.float, liquidity.float, strike.float, sigma.raw, tau)
+      let actual: number = getTradingFunction(reserveRisky.float, liquidity.float, strike.float, sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
     it('getInverseTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, maturity.raw)
+        await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
-      let actual: number = getInverseTradingFunction(reserveStable.float, liquidity.float, strike.float, sigma.raw, tau)
+      let actual: number = getInverseTradingFunction(
+        reserveStable.float,
+        liquidity.float,
+        strike.float,
+        sigma.float,
+        tau.years
+      )
       expect(actual).to.be.eq(expected)
     })
 
     it('calcInvariant', async function () {
       let expected: number = new Integer64x64(
-        await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, maturity.raw)
+        await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
       let actual: number = calcInvariant(
         reserveRisky.float,
         reserveStable.float,
         liquidity.float,
         strike.float,
-        sigma.raw,
-        tau
+        sigma.float,
+        tau.years
       )
       expect(actual).to.be.eq(expected)
     })
