@@ -1,12 +1,11 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
-import { parseWei, PERCENTAGE, Wei, YEAR, MANTISSA, Integer64x64, Percentage, Time } from '../../shared/sdk/Units'
-import { Calibration } from '../../shared/sdk/Structs'
+import { MANTISSA, Integer64x64 } from '../../shared/sdk/Units'
 import loadContext, { config } from '../context'
 import { callDelta, calculateD1, moneyness } from '../../shared/sdk/BlackScholes'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity, lastTimestamp, spot } = config
 
 describe('testBlackScholes', function () {
   before(async function () {
@@ -14,35 +13,30 @@ describe('testBlackScholes', function () {
   })
 
   describe('blackScholes', function () {
-    let blackScholes: TestBlackScholes, calibration: any, params: any
+    let blackScholes: TestBlackScholes, params: any, tau: any
 
     beforeEach(async function () {
       blackScholes = this.contracts.testBlackScholes
-      calibration = {
+      params = {
         strike: strike.raw,
         sigma: sigma.raw,
-        maturity: maturity,
-        lastTimestamp: new Time(+Date.now() / 1000),
+        maturity: maturity.raw,
+        lastTimestamp: lastTimestamp.raw,
       }
-      params = {
-        strike: calibration.strike,
-        sigma: calibration.sigma,
-        maturity: calibration.maturity.raw,
-        lastTimestamp: calibration.lastTimestamp.raw,
-      }
+      tau = maturity.years - lastTimestamp.years
     })
 
     it('callDelta', async function () {
-      let delta = callDelta(calibration, spot)
+      let delta = callDelta(strike.float, sigma.float, tau, spot.float)
       expect(new Integer64x64(await blackScholes.callDelta(params, spot.raw)).parsed).to.be.eq(delta)
     })
     it('putDelta', async function () {})
     it('d1', async function () {
-      let d1 = Math.floor(calculateD1(calibration, spot) * MANTISSA) / MANTISSA
+      let d1 = Math.floor(calculateD1(strike.float, sigma.float, tau, spot.float) * MANTISSA) / MANTISSA
       expect(new Integer64x64(await blackScholes.d1(params, spot.raw)).parsed).to.be.eq(d1)
     })
     it('moneyness', async function () {
-      let simple = Math.floor(moneyness(calibration, spot) * MANTISSA) / MANTISSA
+      let simple = Math.floor(moneyness(strike.float, spot.float) * MANTISSA) / MANTISSA
       expect(new Integer64x64(await blackScholes.moneyness(params, spot.raw)).parsed).to.be.eq(simple)
     })
   })
