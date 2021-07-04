@@ -10,7 +10,7 @@ import { PrimitiveEngine, PrimitiveFactory, Token } from '../../../../typechain'
 const [strike, sigma, time, spot] = [parseWei('1000'), new Percentage(0.85), new Time(31449600), parseWei('1100')]
 const empty: BytesLike = constants.HashZero
 
-describe('SDK: Engine', function () {
+describe('SDK: Engine entity', function () {
   let signers: Wallet[], deployer: Wallet
   let factory: PrimitiveFactory, engine: PrimitiveEngine, risky: Token, stable: Token
   let entity: Engine

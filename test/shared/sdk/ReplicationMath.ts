@@ -1,38 +1,56 @@
 /// SDK Imports
-import { Calibration } from './Structs'
-import { Wei, PERCENTAGE, parseEther, parseWei } from './Units'
+import { PERCENTAGE } from './Units'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 
-export function getProportionalVol(sigma: number, time: number): number {
-  return sigma * Math.sqrt(time)
+export function getProportionalVol(sigma: number, tau: number): number {
+  return sigma * Math.sqrt(tau)
 }
 
-export function getTradingFunction(risky: Wei, liquidity: Wei, cal: Calibration): number {
-  const K = cal.strike.float
-  const vol = getProportionalVol(cal.sigma.float, cal.maturity.years)
+export function getTradingFunction(
+  reserveRisky: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const K = strike
+  const vol = getProportionalVol(sigma, tau)
   if (vol <= 0) return 0
-  const reserve: number = risky.mul(parseEther('1')).div(liquidity).float
+  const reserve: number = reserveRisky / liquidity
   const inverseInput: number = 1 - +reserve
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi - vol / PERCENTAGE
-  const stable = K * std_n_cdf(input)
-  return parseWei(stable).float
+  const reserveStable = K * std_n_cdf(input)
+  return reserveStable
 }
 
-export function getInverseTradingFunction(stable: Wei, liquidity: Wei, cal: Calibration): number {
-  const K = cal.strike.float
-  const vol = getProportionalVol(cal.sigma.float, cal.maturity.years)
+export function getInverseTradingFunction(
+  reserveStable: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const K = strike
+  const vol = getProportionalVol(sigma, tau)
   if (vol <= 0) return 0
-  const reserve: number = stable.mul(parseEther('1')).div(liquidity).float
+  const reserve: number = reserveStable / liquidity
   const inverseInput: number = reserve / K
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi + vol / PERCENTAGE
-  const risky = 1 - std_n_cdf(input)
-  return parseWei(risky).float
+  const reserveRisky = 1 - std_n_cdf(input)
+  return reserveRisky
 }
 
-export function calcInvariant(reserveRisky: Wei, reserveStable: Wei, liquidity: Wei, calibration: Calibration): number {
-  const input: number = getTradingFunction(reserveRisky, liquidity, calibration)
-  const invariant: Wei = reserveStable.sub(parseWei(input > 0.0001 ? input.toString() : '0').raw)
-  return invariant.float
+export function calcInvariant(
+  reserveRisky: number,
+  reserveStable: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const input: number = getTradingFunction(reserveRisky, liquidity, strike, sigma, tau)
+  const invariant: number = reserveStable - input
+  return invariant
 }

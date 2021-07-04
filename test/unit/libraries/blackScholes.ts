@@ -14,30 +14,36 @@ describe('testBlackScholes', function () {
   })
 
   describe('blackScholes', function () {
-    let blackScholes: TestBlackScholes, calibration: any
+    let blackScholes: TestBlackScholes, calibration: any, params: any
 
     beforeEach(async function () {
       blackScholes = this.contracts.testBlackScholes
       calibration = {
         strike: strike.raw,
         sigma: sigma.raw,
-        maturity: maturity.raw,
-        lastTimestamp: new Time(+Date.now()).seconds,
+        maturity: maturity,
+        lastTimestamp: new Time(+Date.now() / 1000),
+      }
+      params = {
+        strike: calibration.strike,
+        sigma: calibration.sigma,
+        maturity: calibration.maturity.raw,
+        lastTimestamp: calibration.lastTimestamp.raw,
       }
     })
 
     it('callDelta', async function () {
       let delta = callDelta(calibration, spot)
-      expect(new Integer64x64(await blackScholes.callDelta(calibration, spot.raw)).parsed).to.be.eq(delta)
+      expect(new Integer64x64(await blackScholes.callDelta(params, spot.raw)).parsed).to.be.eq(delta)
     })
     it('putDelta', async function () {})
     it('d1', async function () {
       let d1 = Math.floor(calculateD1(calibration, spot) * MANTISSA) / MANTISSA
-      expect(new Integer64x64(await blackScholes.d1(calibration, spot.raw)).parsed).to.be.eq(d1)
+      expect(new Integer64x64(await blackScholes.d1(params, spot.raw)).parsed).to.be.eq(d1)
     })
     it('moneyness', async function () {
       let simple = Math.floor(moneyness(calibration, spot) * MANTISSA) / MANTISSA
-      expect(new Integer64x64(await blackScholes.moneyness(calibration, spot.raw)).parsed).to.be.eq(simple)
+      expect(new Integer64x64(await blackScholes.moneyness(params, spot.raw)).parsed).to.be.eq(simple)
     })
   })
 })
