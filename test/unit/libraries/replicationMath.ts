@@ -20,8 +20,14 @@ describe('testReplicationMath', function () {
   describe('replicationMath', function () {
     let math: TestReplicationMath
     let [reserveRisky, reserveStable, liquidity] = [parseWei('0.5'), parseWei('500'), parseWei('1')]
-    let calibration = { strike: strike, sigma: sigma, maturity: maturity, lastTimestamp: new Time(0) }
+    let calibration: any
     beforeEach(async function () {
+      calibration = {
+        strike: strike.raw,
+        sigma: sigma.raw,
+        maturity: maturity,
+        lastTimestamp: new Time(+Date.now() / 1000),
+      }
       math = this.contracts.testReplicationMath
     })
 

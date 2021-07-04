@@ -15,7 +15,7 @@ interface Config {
 export const config: Config = {
   strike: parseWei('2500'),
   sigma: new Percentage(1.1),
-  maturity: new Time(0.091780822 * YEAR + +Date.now() / 1000),
+  maturity: new Time(YEAR + +Date.now() / 1000),
   spot: parseWei('1750'),
 }
 

@@ -32,7 +32,7 @@ export class Integer64x64 {
 
   /// @return Integer scaled down by mantissa
   get normalized(): number {
-    const input = BigNumber.from(this.parsed)
+    const input = BigNumber.from(Math.floor(this.parsed))
     const output = input.div(MANTISSA)
     return parseFloat(output.toString())
   }
