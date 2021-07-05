@@ -56,7 +56,6 @@ describe('Engine:swap', function () {
         const invariantLast = new Integer64x64(await engine.invariantOf(poolId)) // store inariant current
         const reserveLast = await engine.reserves(poolId)
         const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
-        console.log(deltaIn.float, reserveRisky.float, reserveStable.float, invariant.raw)
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty), 'Engine:Swap')
           .to.emit(engine, EngineEvents.SWAP)
@@ -81,7 +80,7 @@ describe('Engine:swap', function () {
           .to.emit(engine, EngineEvents.SWAP)
           .withArgs(engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(Math.abs(invariant.float)).to.be.gte(Math.abs(new Wei(invariantLast).float))
         expect(reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
         expect(reserveStable.raw, 'check FYR2').to.be.eq(reserveLast.reserveStable) // FIX
       })
@@ -100,7 +99,7 @@ describe('Engine:swap', function () {
           .to.emit(engine, EngineEvents.SWAP)
           .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(Math.abs(invariant.float)).to.be.gte(Math.abs(new Wei(invariantLast).float))
         expect(reserveRisky.raw.toString(), 'check FXR1').to.be.eq(reserveLast.reserveRisky)
         expect(reserveStable.raw.toString(), 'check FYR2').to.be.eq(reserveLast.reserveStable)
       })
@@ -118,7 +117,7 @@ describe('Engine:swap', function () {
           .to.emit(engine, EngineEvents.SWAP)
           .withArgs(engineSwap.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
-        expect(Math.abs(invariant)).to.be.gte(Math.abs(new Wei(invariantLast).float))
+        expect(Math.abs(invariant.float)).to.be.gte(Math.abs(new Wei(invariantLast).float))
         expect(reserveRisky.raw.toString(), 'check FXR1').to.be.eq(reserveLast.reserveRisky)
         expect(reserveStable.raw.toString(), 'check FYR2').to.be.eq(reserveLast.reserveStable)
       })
