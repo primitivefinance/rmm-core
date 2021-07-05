@@ -7,6 +7,7 @@ export function getProportionalVol(sigma: number, tau: number): number {
 }
 
 export function getTradingFunction(
+  invariantLast: number,
   reserveRisky: number,
   liquidity: number,
   strike: number,
@@ -20,7 +21,7 @@ export function getTradingFunction(
   const inverseInput: number = 1 - +reserve
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi - vol
-  const reserveStable = K * std_n_cdf(input)
+  const reserveStable = K * std_n_cdf(input) + invariantLast
   return reserveStable
 }
 
