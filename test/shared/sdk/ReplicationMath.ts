@@ -25,6 +25,7 @@ export function getTradingFunction(
 }
 
 export function getInverseTradingFunction(
+  invariantLast: number,
   reserveStable: number,
   liquidity: number,
   strike: number,
@@ -35,7 +36,7 @@ export function getInverseTradingFunction(
   const vol = getProportionalVol(sigma, tau)
   if (vol <= 0) return 0
   const reserve: number = reserveStable / liquidity
-  const inverseInput: number = reserve / K
+  const inverseInput: number = (reserve - invariantLast) / K
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi + vol
   const reserveRisky = 1 - std_n_cdf(input)
