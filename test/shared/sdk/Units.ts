@@ -25,22 +25,24 @@ export class Integer64x64 {
     this.raw = raw
   }
 
-  /// @notice Integer divided by 2^64
+  /// @return Raw divided by 2^64
   get parsed(): number {
     return parseFloat(this.raw.toString()) / Math.pow(2, 64)
   }
 
+  /// @return Parsed value with `MANTISSA` decimals as an integer
   get integer(): number {
     return Math.floor(this.parsed * MANTISSA)
   }
 
-  /// @return Integer scaled down by mantissa
-  get normalized(): number {
+  /// @return Parsed value floored and with MANTISSA decimals
+  get float(): number {
     return this.integer / MANTISSA
   }
 
+  /// @return float value in units of percentages
   get percentage(): number {
-    return this.normalized / PERCENTAGE
+    return this.float / PERCENTAGE
   }
 }
 

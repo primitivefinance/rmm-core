@@ -199,7 +199,7 @@ class Engine {
     const calibration = { strike: strike, sigma: sigma, maturity: maturity, lastTimestamp: lastTimestamp }
     const delta = new Mantissa(callDelta(strike.float, sigma.raw, tau, riskyPrice.float)).float
     const resRisky = parseWei(1 - delta)
-    const resStable = parseWei(getTradingFunction(resRisky.float, delLiquidity.float, strike.float, sigma.raw, tau))
+    const resStable = parseWei(getTradingFunction(0, resRisky.float, delLiquidity.float, strike.float, sigma.raw, tau))
     const delRisky = resRisky.mul(delLiquidity).div(parseWei('1'))
     const delStable = resStable.mul(delLiquidity).div(parseWei('1'))
     const zero = new Wei(0)
@@ -282,21 +282,54 @@ class Engine {
     poolId = poolId.toString()
     const reserve: Reserve = this.reserves[poolId]
     const setting: Calibration = this.settings[poolId]
-    const tau = setting.maturity.years - setting.lastTimestamp.years
-    let deltaIn: Wei
 
+    // 1. Calculate the new time until expiry `tau`
+    const tau = setting.maturity.years - setting.lastTimestamp.years
+
+    // 2. Calculate the new invariant with the new tau
+    const invariantLast = new Integer64x64(
+      calcInvariant(
+        reserve.reserveRisky.float,
+        reserve.reserveStable.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.float,
+        tau
+      )
+    )
+
+    let deltaIn: Wei
+    // 3. Calculate the new risky reserve since we know how much risky is being swapped out
     reserve.reserveRisky = reserve.reserveRisky.sub(deltaOut)
+    // 4. Calculate the new stable reserves using the known new risky reserves, and new invariant
     reserve.reserveStable = parseWei(
-      getTradingFunction(reserve.reserveRisky.float, reserve.liquidity.float, setting.strike.float, setting.sigma.raw, tau)
+      getTradingFunction(
+        invariantLast.float,
+        reserve.reserveRisky.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.raw,
+        tau
+      )
     )
-    const nextInvariant = calcInvariant(
-      reserve.reserveRisky.float,
-      reserve.reserveStable.float,
-      reserve.liquidity.float,
-      setting.strike.float,
-      setting.sigma.raw,
-      tau
+
+    // 5. Calculate the new invariant with the new reserves and tau
+    const nextInvariant = new Integer64x64(
+      calcInvariant(
+        reserve.reserveRisky.float,
+        reserve.reserveStable.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.raw,
+        tau
+      )
     )
+
+    // 6. Check the nextInvariant is >= invariantLast
+    if (nextInvariant.float < invariantLast.float)
+      console.error('invariant not passing', `${nextInvariant} < ${invariantLast}`)
+
+    // 7. Calculate the change in risky reserve by comparing new reserve to previous
     deltaIn = reserve.reserveStable.gt(reserve.reserveStable)
       ? reserve.reserveStable.sub(reserve.reserveStable)
       : reserve.reserveStable.sub(reserve.reserveStable)
@@ -304,7 +337,7 @@ class Engine {
       deltaIn,
       reserveRisky: reserve.reserveRisky,
       reserveStable: reserve.reserveStable,
-      invariant: new Integer64x64(nextInvariant),
+      invariant: nextInvariant,
     }
   }
 
@@ -335,6 +368,7 @@ class Engine {
     // 4. Calculate the new risky reserve using the new stable reserve and new invariant
     reserve.reserveRisky = parseWei(
       getInverseTradingFunction(
+        invariantLast.float,
         reserve.reserveStable.float,
         reserve.liquidity.float,
         setting.strike.float,
@@ -342,14 +376,23 @@ class Engine {
         tau
       )
     )
-    const nextInvariant = calcInvariant(
-      reserve.reserveRisky.float,
-      reserve.reserveStable.float,
-      reserve.liquidity.float,
-      setting.strike.float,
-      setting.sigma.raw,
-      tau
+    // 5. Calculate the new invariant with the new reserve values and tau
+    const nextInvariant = new Integer64x64(
+      calcInvariant(
+        reserve.reserveRisky.float,
+        reserve.reserveStable.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.raw,
+        tau
+      )
     )
+
+    // 6. Check the nextInvariant is >= invariantLast
+    if (nextInvariant.float < invariantLast.float)
+      console.error('invariant not passing', `${nextInvariant} < ${invariantLast}`)
+
+    // 7. Calculate the change in risky reserve by comparing new reserve to previous
     deltaIn = reserve.reserveRisky.gt(reserve.reserveRisky)
       ? reserve.reserveRisky.sub(reserve.reserveRisky)
       : reserve.reserveRisky.sub(reserve.reserveRisky)
@@ -357,7 +400,7 @@ class Engine {
       deltaIn,
       reserveRisky: reserve.reserveRisky,
       reserveStable: reserve.reserveStable,
-      invariant: new Integer64x64(nextInvariant),
+      invariant: nextInvariant,
     }
   }
 

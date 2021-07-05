@@ -1,5 +1,4 @@
 /// SDK Imports
-import { PERCENTAGE } from './Units'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 
 export function getProportionalVol(sigma: number, tau: number): number {
@@ -7,7 +6,7 @@ export function getProportionalVol(sigma: number, tau: number): number {
 }
 
 export function getTradingFunction(
-  invariantLast: number,
+  invariantLast: number = 0,
   reserveRisky: number,
   liquidity: number,
   strike: number,
@@ -26,7 +25,7 @@ export function getTradingFunction(
 }
 
 export function getInverseTradingFunction(
-  invariantLast: number,
+  invariantLast: number = 0,
   reserveStable: number,
   liquidity: number,
   strike: number,
@@ -52,7 +51,7 @@ export function calcInvariant(
   sigma: number,
   tau: number
 ): number {
-  const input: number = getTradingFunction(reserveRisky, liquidity, strike, sigma, tau)
+  const input: number = getTradingFunction(0, reserveRisky, liquidity, strike, sigma, tau)
   const invariant: number = reserveStable - input
   return invariant
 }
