@@ -1,25 +1,17 @@
 /// SDK Imports
 import { std_n_cdf } from './CumulativeNormalDistribution'
-import { Calibration } from './Structs'
-import { Wei, Time } from './Units'
 
-export function moneyness(cal: Calibration, spot: Wei): number {
-  const strike = cal.strike.float
-  return Math.log(spot.float / strike)
+export function moneyness(strike: number, spot: number): number {
+  return Math.log(spot / strike)
 }
 
-export function calculateD1(cal: Calibration, spot: Wei): number {
-  const timeToExpiry = new Time(cal.maturity.seconds - cal.lastTimestamp.seconds).years
-  const strike = cal.strike.float
-  const vol = cal.sigma.float
-
-  if (timeToExpiry < 0) return 0
-
-  return (Math.log(spot.float / strike) + (Math.pow(vol, 2) / 2) * timeToExpiry) / (vol * Math.sqrt(timeToExpiry))
+export function calculateD1(strike: number, sigma: number, tau: number, spot: number): number {
+  if (tau < 0) return 0
+  return (Math.log(spot / strike) + (Math.pow(sigma, 2) / 2) * tau) / (sigma * Math.sqrt(tau))
 }
 
-export function callDelta(cal: Calibration, spot: Wei): number {
-  const d1 = calculateD1(cal, spot)
+export function callDelta(strike: number, sigma: number, tau: number, spot: number): number {
+  const d1 = calculateD1(strike, sigma, tau, spot)
   const delta: number = std_n_cdf(d1)
   return delta
 }

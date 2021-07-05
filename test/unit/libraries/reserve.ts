@@ -44,7 +44,7 @@ describe('testReserve', function () {
         before.liquidity,
         before.float,
         before.debt,
-        (before.blockTimestamp += timestep),
+        (before.blockTimestamp + timestep),
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,
