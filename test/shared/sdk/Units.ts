@@ -66,7 +66,7 @@ export class Time {
 export class Percentage {
   readonly raw: number
   constructor(raw: number) {
-    this.raw = raw * PERCENTAGE
+    this.raw = raw
   }
 
   get float(): number {

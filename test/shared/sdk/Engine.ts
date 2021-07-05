@@ -4,7 +4,7 @@ import * as entities from './entities'
 import { callDelta } from './BlackScholes'
 import { Calibration, Position, Reserve, Margin } from './Structs'
 import { getTradingFunction, getInverseTradingFunction, calcInvariant } from './ReplicationMath'
-import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber, Integer64x64 } from './Units'
+import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber, Integer64x64, PERCENTAGE } from './Units'
 
 // Typechain Imports
 import { PrimitiveEngine, Token } from '../../../typechain'
@@ -282,6 +282,8 @@ class Engine {
     poolId = poolId.toString()
     const reserve: Reserve = this.reserves[poolId]
     const setting: Calibration = this.settings[poolId]
+    const reserveStableLast = reserve.reserveStable
+    console.log(reserve, setting, reserveStableLast.float)
 
     // 1. Calculate the new time until expiry `tau`
     const tau = setting.maturity.years - setting.lastTimestamp.years
@@ -298,7 +300,6 @@ class Engine {
       )
     )
 
-    let deltaIn: Wei
     // 3. Calculate the new risky reserve since we know how much risky is being swapped out
     reserve.reserveRisky = reserve.reserveRisky.sub(deltaOut)
     // 4. Calculate the new stable reserves using the known new risky reserves, and new invariant
@@ -308,7 +309,7 @@ class Engine {
         reserve.reserveRisky.float,
         reserve.liquidity.float,
         setting.strike.float,
-        setting.sigma.raw,
+        setting.sigma.float,
         tau
       )
     )
@@ -320,19 +321,20 @@ class Engine {
         reserve.reserveStable.float,
         reserve.liquidity.float,
         setting.strike.float,
-        setting.sigma.raw,
+        setting.sigma.float,
         tau
       )
     )
 
     // 6. Check the nextInvariant is >= invariantLast
     if (nextInvariant.float < invariantLast.float)
-      console.error('invariant not passing', `${nextInvariant} < ${invariantLast}`)
+      console.log('invariant not passing', `${nextInvariant} < ${invariantLast}`)
 
     // 7. Calculate the change in risky reserve by comparing new reserve to previous
-    deltaIn = reserve.reserveStable.gt(reserve.reserveStable)
-      ? reserve.reserveStable.sub(reserve.reserveStable)
-      : reserve.reserveStable.sub(reserve.reserveStable)
+    const reserveStable = reserve.reserveStable
+    const deltaIn = reserveStableLast.gt(reserveStable)
+      ? reserveStableLast.sub(reserveStable)
+      : reserveStable.sub(reserveStableLast)
     return {
       deltaIn,
       reserveRisky: reserve.reserveRisky,
@@ -346,6 +348,7 @@ class Engine {
     poolId = poolId.toString()
     const reserve: Reserve = this.reserves[poolId] // get state of reserve
     const setting: Calibration = this.settings[poolId] // get state of calibration
+    const reserveRiskyLast = reserve.reserveRisky
 
     // 1. Calculate the new time until expiry `tau`
     const tau = setting.maturity.years - setting.lastTimestamp.years
@@ -362,7 +365,6 @@ class Engine {
       )
     )
 
-    let deltaIn: Wei
     // 3. Calculate the new stable reserves (we know the new stable reserves because we are swapping out stables)
     reserve.reserveStable = reserve.reserveStable.sub(deltaOut)
     // 4. Calculate the new risky reserve using the new stable reserve and new invariant
@@ -372,7 +374,7 @@ class Engine {
         reserve.reserveStable.float,
         reserve.liquidity.float,
         setting.strike.float,
-        setting.sigma.raw,
+        setting.sigma.float,
         tau
       )
     )
@@ -393,9 +395,10 @@ class Engine {
       console.error('invariant not passing', `${nextInvariant} < ${invariantLast}`)
 
     // 7. Calculate the change in risky reserve by comparing new reserve to previous
-    deltaIn = reserve.reserveRisky.gt(reserve.reserveRisky)
-      ? reserve.reserveRisky.sub(reserve.reserveRisky)
-      : reserve.reserveRisky.sub(reserve.reserveRisky)
+    const reserveRisky = reserve.reserveRisky
+    const deltaIn = reserveRisky.gt(reserveRiskyLast)
+      ? reserveRisky.sub(reserveRiskyLast)
+      : reserveRiskyLast.sub(reserveRisky)
     return {
       deltaIn,
       reserveRisky: reserve.reserveRisky,
