@@ -9,3 +9,5 @@ typechain/
 .npmrc
 
 dist
+
+.vscode/

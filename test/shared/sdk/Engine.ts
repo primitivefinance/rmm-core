@@ -4,7 +4,7 @@ import * as entities from './entities'
 import { callDelta } from './BlackScholes'
 import { Calibration, Position, Reserve, Margin } from './Structs'
 import { getTradingFunction, getInverseTradingFunction, calcInvariant } from './ReplicationMath'
-import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber } from './Units'
+import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber, Integer64x64 } from './Units'
 
 // Typechain Imports
 import { PrimitiveEngine, Token } from '../../../typechain'
@@ -19,7 +19,7 @@ export interface SwapReturn {
   deltaIn: Wei
   reserveRisky: Wei
   reserveStable: Wei
-  invariant: any
+  invariant: Integer64x64
 }
 
 interface SettingRaw {
@@ -77,8 +77,8 @@ export async function getEngineEntityFromContract(
   posIds: BytesLike[],
   owners: string[]
 ): Promise<Engine> {
-  const risky = ((await ethers.getContractAt(TokenAbi, await engine.risky())) as unknown) as Token
-  const stable = ((await ethers.getContractAt(TokenAbi, await engine.stable())) as unknown) as Token
+  const risky = (await ethers.getContractAt(TokenAbi, await engine.risky())) as unknown as Token
+  const stable = (await ethers.getContractAt(TokenAbi, await engine.stable())) as unknown as Token
   const settings: SettingRaw[] = await Promise.all(
     poolIds.map(async (poolId) => {
       return { [poolId.toString()]: await engine.settings(poolId) }
@@ -300,18 +300,39 @@ class Engine {
     deltaIn = reserve.reserveStable.gt(reserve.reserveStable)
       ? reserve.reserveStable.sub(reserve.reserveStable)
       : reserve.reserveStable.sub(reserve.reserveStable)
-    return { deltaIn, reserveRisky: reserve.reserveRisky, reserveStable: reserve.reserveStable, invariant: nextInvariant }
+    return {
+      deltaIn,
+      reserveRisky: reserve.reserveRisky,
+      reserveStable: reserve.reserveStable,
+      invariant: new Integer64x64(nextInvariant),
+    }
   }
 
   /// @notice A Risky to Stable token swap
   swapRiskyForStable(poolId: BytesLike, deltaOut: Wei): SwapReturn {
     poolId = poolId.toString()
-    const reserve: Reserve = this.reserves[poolId]
-    const setting: Calibration = this.settings[poolId]
-    const tau = setting.maturity.years - setting.lastTimestamp.years
-    let deltaIn: Wei
+    const reserve: Reserve = this.reserves[poolId] // get state of reserve
+    const setting: Calibration = this.settings[poolId] // get state of calibration
 
+    // 1. Calculate the new time until expiry `tau`
+    const tau = setting.maturity.years - setting.lastTimestamp.years
+
+    // 2. Calculate the new invariant with the new `tau` and reserves state
+    const invariantLast: Integer64x64 = new Integer64x64(
+      calcInvariant(
+        reserve.reserveRisky.float,
+        reserve.reserveStable.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.float,
+        tau
+      )
+    )
+
+    let deltaIn: Wei
+    // 3. Calculate the new stable reserves (we know the new stable reserves because we are swapping out stables)
     reserve.reserveStable = reserve.reserveStable.sub(deltaOut)
+    // 4. Calculate the new risky reserve using the new stable reserve and new invariant
     reserve.reserveRisky = parseWei(
       getInverseTradingFunction(
         reserve.reserveStable.float,
@@ -332,7 +353,12 @@ class Engine {
     deltaIn = reserve.reserveRisky.gt(reserve.reserveRisky)
       ? reserve.reserveRisky.sub(reserve.reserveRisky)
       : reserve.reserveRisky.sub(reserve.reserveRisky)
-    return { deltaIn, reserveRisky: reserve.reserveRisky, reserveStable: reserve.reserveStable, invariant: nextInvariant }
+    return {
+      deltaIn,
+      reserveRisky: reserve.reserveRisky,
+      reserveStable: reserve.reserveStable,
+      invariant: new Integer64x64(nextInvariant),
+    }
   }
 
   // ===== Lending =====

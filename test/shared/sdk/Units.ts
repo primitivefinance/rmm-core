@@ -78,7 +78,7 @@ export class Mantissa {
   readonly mantissa: number
   constructor(raw: BigNumberish, mantissa?: number) {
     this.mantissa = mantissa ? mantissa : MANTISSA
-    this.raw = toBN(Math.floor(+raw * this.mantissa))
+    this.raw = toBN(Math.floor(+raw.toString() * this.mantissa))
   }
 
   get float(): number {
