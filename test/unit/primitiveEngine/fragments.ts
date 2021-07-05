@@ -135,9 +135,9 @@ export async function repayFragment(signers: Wallet[], contracts: Contracts): Pr
   await contracts.stable.approve(contracts.engineRepay.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineRepay.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike, sigma, time, riskyPrice, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
 
-  const poolId = await contracts.engine.getPoolId(strike, sigma, time)
+  const poolId = await contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
 
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
   await contracts.engineLend.lend(poolId, parseWei('100').raw)

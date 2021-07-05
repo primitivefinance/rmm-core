@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import * as entities from './entities'
 import { callDelta } from './BlackScholes'
 import { Calibration, Position, Reserve, Margin } from './Structs'
-import { getTradingFunction, getInverseTradingFunction } from './ReplicationMath'
+import { getTradingFunction, getInverseTradingFunction, calcInvariant } from './ReplicationMath'
 import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber } from './Units'
 
 // Typechain Imports
@@ -185,13 +185,21 @@ class Engine {
     }
   }
 
-  create(owner: string, strike: Wei, sigma: Percentage, maturity: Time, riskyPrice: Wei, delLiquidity: Wei) {
+  create(
+    owner: string,
+    strike: Wei,
+    sigma: Percentage,
+    maturity: Time,
+    lastTimestamp: Time,
+    riskyPrice: Wei,
+    delLiquidity: Wei
+  ) {
     const poolId = Engine.getPoolId(strike, sigma, maturity)
-    const timeDelta = maturity
-    const calibration = { strike: strike, sigma: sigma, maturity: timeDelta, lastTimestamp: new Time(0) }
-    const delta = new Mantissa(callDelta(calibration, riskyPrice)).float
+    const tau = maturity.raw - lastTimestamp.raw
+    const calibration = { strike: strike, sigma: sigma, maturity: maturity, lastTimestamp: lastTimestamp }
+    const delta = new Mantissa(callDelta(strike.float, sigma.raw, tau, riskyPrice.float)).float
     const resRisky = parseWei(1 - delta)
-    const resStable = parseWei(getTradingFunction(resRisky, delLiquidity, calibration))
+    const resStable = parseWei(getTradingFunction(resRisky.float, delLiquidity.float, strike.float, sigma.raw, tau))
     const delRisky = resRisky.mul(delLiquidity).div(parseWei('1'))
     const delStable = resStable.mul(delLiquidity).div(parseWei('1'))
     const zero = new Wei(0)
@@ -272,13 +280,23 @@ class Engine {
   /// @notice A Stable to Risky token swap
   swapStableForRisky(poolId: BytesLike, deltaOut: Wei): SwapReturn {
     poolId = poolId.toString()
-    let reserve: Reserve = this.reserves[poolId]
-    let cal: Calibration = this.settings[poolId]
+    const reserve: Reserve = this.reserves[poolId]
+    const setting: Calibration = this.settings[poolId]
+    const tau = setting.maturity.years - setting.lastTimestamp.years
     let deltaIn: Wei
 
     reserve.reserveRisky = reserve.reserveRisky.sub(deltaOut)
-    reserve.reserveStable = parseWei(getTradingFunction(reserve.reserveRisky, reserve.liquidity, cal))
-    let nextInvariant = Engine.calcInvariant(reserve.reserveRisky, reserve.reserveStable, reserve.liquidity, cal)
+    reserve.reserveStable = parseWei(
+      getTradingFunction(reserve.reserveRisky.float, reserve.liquidity.float, setting.strike.float, setting.sigma.raw, tau)
+    )
+    const nextInvariant = calcInvariant(
+      reserve.reserveRisky.float,
+      reserve.reserveStable.float,
+      reserve.liquidity.float,
+      setting.strike.float,
+      setting.sigma.raw,
+      tau
+    )
     deltaIn = reserve.reserveStable.gt(reserve.reserveStable)
       ? reserve.reserveStable.sub(reserve.reserveStable)
       : reserve.reserveStable.sub(reserve.reserveStable)
@@ -288,13 +306,29 @@ class Engine {
   /// @notice A Risky to Stable token swap
   swapRiskyForStable(poolId: BytesLike, deltaOut: Wei): SwapReturn {
     poolId = poolId.toString()
-    let reserve: Reserve = this.reserves[poolId]
-    let setting: Calibration = this.settings[poolId]
+    const reserve: Reserve = this.reserves[poolId]
+    const setting: Calibration = this.settings[poolId]
+    const tau = setting.maturity.years - setting.lastTimestamp.years
     let deltaIn: Wei
 
     reserve.reserveStable = reserve.reserveStable.sub(deltaOut)
-    reserve.reserveRisky = parseWei(getInverseTradingFunction(reserve.reserveStable, reserve.liquidity, setting))
-    let nextInvariant = Engine.calcInvariant(reserve.reserveRisky, reserve.reserveStable, reserve.liquidity, setting)
+    reserve.reserveRisky = parseWei(
+      getInverseTradingFunction(
+        reserve.reserveStable.float,
+        reserve.liquidity.float,
+        setting.strike.float,
+        setting.sigma.raw,
+        tau
+      )
+    )
+    const nextInvariant = calcInvariant(
+      reserve.reserveRisky.float,
+      reserve.reserveStable.float,
+      reserve.liquidity.float,
+      setting.strike.float,
+      setting.sigma.raw,
+      tau
+    )
     deltaIn = reserve.reserveRisky.gt(reserve.reserveRisky)
       ? reserve.reserveRisky.sub(reserve.reserveRisky)
       : reserve.reserveRisky.sub(reserve.reserveRisky)
@@ -381,13 +415,6 @@ class Engine {
       ['uint256', 'uint64', 'uint32'],
       [strike.raw, Math.floor(+sigma.float), maturity.raw]
     )
-  }
-
-  /// @return Trading function result based on reserves
-  static calcInvariant(reserveRisky: Wei, reserveStable: Wei, liquidity: Wei, calibration: Calibration): number {
-    const input: number = getTradingFunction(reserveRisky, liquidity, calibration)
-    const invariant: Wei = reserveStable.sub(ethers.utils.parseEther(input > 0.0001 ? input.toString() : '0'))
-    return invariant.float
   }
 }
 

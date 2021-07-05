@@ -5,7 +5,7 @@ import { constants } from 'ethers'
 import loadContext from '../../context'
 import { repayFragment } from '../fragments'
 
-import { parseWei, BytesLike, PERCENTAGE } from '../../../shared/Units'
+import { parseWei, BytesLike, PERCENTAGE } from '../../../shared/sdk/Units'
 
 let poolId: BytesLike
 let posId: BytesLike

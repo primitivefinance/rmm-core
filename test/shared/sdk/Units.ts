@@ -30,11 +30,17 @@ export class Integer64x64 {
     return parseFloat(this.raw.toString()) / Math.pow(2, 64)
   }
 
+  get integer(): number {
+    return Math.floor(this.parsed * MANTISSA)
+  }
+
   /// @return Integer scaled down by mantissa
   get normalized(): number {
-    const input = BigNumber.from(this.parsed)
-    const output = input.div(MANTISSA)
-    return parseFloat(output.toString())
+    return this.integer / MANTISSA
+  }
+
+  get percentage(): number {
+    return this.normalized / PERCENTAGE
   }
 }
 
