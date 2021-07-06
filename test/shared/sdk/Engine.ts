@@ -80,25 +80,51 @@ export async function getEngineEntityFromContract(
 ): Promise<Engine> {
   const risky = (await ethers.getContractAt(TokenAbi, await engine.risky())) as unknown as Token
   const stable = (await ethers.getContractAt(TokenAbi, await engine.stable())) as unknown as Token
-  const settings: SettingRaw[] = await Promise.all(
+
+  let settings = {}
+  await Promise.all(
     poolIds.map(async (poolId) => {
-      return { [poolId.toString()]: await engine.settings(poolId) }
-    })
-  )
-  const margins: MarginRaw[] = await Promise.all(
-    owners.map(async (owner) => {
-      return { [owner]: await engine.margins(owner) }
-    })
-  )
-  const reserves: ReserveRaw[] = await Promise.all(
-    poolIds.map(async (poolId) => {
-      return { [poolId.toString()]: await engine.reserves(poolId) }
+      let setting = await engine.settings(poolId)
+      settings[poolId.toString()] = {
+        strike: new Wei(setting.strike),
+        sigma: new Percentage(setting.sigma),
+        maturity: new Time(setting.maturity),
+        lastTimestamp: new Time(setting.lastTimestamp),
+      }
     })
   )
 
-  const positions: PositionRaw[] = await Promise.all(
+  let margins = {}
+  await Promise.all(
+    owners.map(async (owner) => {
+      let margin = await engine.margins(owner)
+      margins[owner] = { balanceRisky: new Wei(margin.balanceRisky), balanceStable: new Wei(margin.balanceStable) }
+    })
+  )
+
+  let reserves = {}
+  await Promise.all(
+    poolIds.map(async (poolId) => {
+      let reserve = await engine.reserves(poolId)
+      reserves[poolId.toString()] = {
+        reserveRisky: new Wei(reserve.reserveRisky),
+        reserveStable: new Wei(reserve.reserveStable),
+        liquidity: new Wei(reserve.liquidity),
+        float: new Wei(reserve.float),
+        debt: new Wei(reserve.debt),
+      }
+    })
+  )
+
+  let positions = {}
+  await Promise.all(
     posIds.map(async (posId) => {
-      return { [posId.toString()]: await engine.positions(posId) }
+      let position = await engine.positions(posId)
+      positions[posId.toString()] = {
+        float: new Wei(position.float),
+        liquidity: new Wei(position.liquidity),
+        debt: new Wei(position.debt),
+      }
     })
   )
 
@@ -144,49 +170,11 @@ class Engine {
    * @param positions Array of mappings of positions using posId keys
    * @param margins Array of mappings of margin accounts using addresses as keys
    */
-  async init(settings: SettingRaw[], reserves: ReserveRaw[], positions: PositionRaw[], margins: MarginRaw[]) {
-    settings.map((setting) => this.setSettings(setting))
-    reserves.map((reserve) => this.setReserves(reserve))
-    positions.map((position) => this.setPositions(position))
-    margins.map((margin) => this.setMargin(margin))
-  }
-
-  setMargin(margin: any) {
-    let key = keyOf(margin)
-    this.margins[key] = {
-      balanceRisky: new Wei(margin[key].balanceRisky),
-      balanceStable: new Wei(margin[key].balanceStable),
-    }
-  }
-
-  setSettings(setting: any) {
-    let key = keyOf(setting)
-    this.settings[key] = {
-      strike: new Wei(setting[key].strike),
-      sigma: new Percentage(setting[key].sigma),
-      maturity: new Time(setting[key].maturity),
-      lastTimestamp: new Time(setting[key].lastTimestamp),
-    }
-  }
-
-  setReserves(reserve: any) {
-    let key = keyOf(reserve)
-    this.reserves[key] = {
-      reserveRisky: new Wei(reserve[key].reserveRisky),
-      reserveStable: new Wei(reserve[key].reserveStable),
-      liquidity: new Wei(reserve[key].liquidity),
-      float: new Wei(reserve[key].float),
-      debt: new Wei(reserve[key].debt),
-    }
-  }
-
-  setPositions(position: any) {
-    let key = keyOf(position)
-    this.positions[key] = {
-      float: new Wei(position[key].float),
-      liquidity: new Wei(position[key].liquidity),
-      debt: new Wei(position[key].debt),
-    }
+  async init(settings: {}, reserves: {}, positions: {}, margins: {}) {
+    this.margins = margins
+    this.settings = settings
+    this.reserves = reserves
+    this.positions = positions
   }
 
   // ===== Get =====
@@ -201,8 +189,7 @@ class Engine {
       setting.strike,
       setting.sigma,
       setting.maturity,
-      setting.lastTimestamp,
-      reserve.reserveStable
+      setting.lastTimestamp
     )
   }
 

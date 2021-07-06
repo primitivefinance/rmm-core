@@ -19,6 +19,16 @@ export default class CoveredCallAMM {
   public invariant: Integer64x64
   public tau: Time
 
+  /**
+   *
+   * @param entity Engine typescript representation class which this Pool is in
+   * @param initialRisky Reserve amount to initialize the pool's risky tokens
+   * @param liquidity Total liquidity supply to initialize the pool with
+   * @param strike Strike price of option
+   * @param sigma Implied volatility of option
+   * @param maturity Timestamp of option maturity
+   * @param lastTimestamp Timestamp last used to calculate the time until maturity
+   */
   constructor(
     entity: Engine,
     initialRisky: Wei,
@@ -26,8 +36,7 @@ export default class CoveredCallAMM {
     strike: Wei,
     sigma: Percentage,
     maturity: Time,
-    lastTimestamp: Time,
-    initialStable?: Wei
+    lastTimestamp: Time
   ) {
     this.entity = entity
     this.reserveRisky = initialRisky
@@ -37,9 +46,9 @@ export default class CoveredCallAMM {
     this.maturity = maturity
     this.lastTimestamp = lastTimestamp
     this.tau = maturity.sub(lastTimestamp)
-    this.reserveStable = initialStable
-      ? initialStable
-      : parseWei(getTradingFunction(0, initialRisky.float, liquidity.float, strike.float, sigma.float, this.tau.years))
+    this.reserveStable = parseWei(
+      getTradingFunction(0, initialRisky.float, liquidity.float, strike.float, sigma.float, this.tau.years)
+    )
     this.invariant = parseInt64x64(0)
     this.accruedFees = [parseWei(0), parseWei(0)]
   }
