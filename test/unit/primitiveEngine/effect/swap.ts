@@ -7,6 +7,7 @@ import loadContext, { config } from '../../context'
 import { swapFragment } from '../fragments'
 // SDK Imports
 import { Wei, Percentage, Time, parseWei, Integer64x64 } from '../../../shared/sdk/Units'
+import CoveredCallAMM from '../../../shared/sdk/Cfmm'
 import Engine, { getEngineEntityFromContract, EngineEvents, ERC20Events } from '../../../shared/sdk/Engine'
 import { PrimitiveEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 
@@ -50,20 +51,21 @@ describe('Engine:swap', function () {
       it.only('Engine::Swap: Swap Risky to Stable from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
         //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
-        const deltaOut = parseWei('100') // deltaOut to swap
+        const deltaOut = parseWei('1') // deltaOut to swap
         const riskyForStable = true // are we swapping risky tokens to stable tokens?
 
         const invariantLast = new Integer64x64(await engine.invariantOf(poolId)) // store inariant current
         const reserveLast = await engine.reserves(poolId)
         const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
+        const pool: CoveredCallAMM = entity.getPool(poolId)
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty), 'Engine:Swap')
           .to.emit(engine, EngineEvents.SWAP)
           .withArgs(deployer.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw)
 
         expect(Math.abs(new Wei(invariant.raw).float)).to.be.gte(Math.abs(new Wei(invariantLast.raw).float))
-        expect(reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
-        expect(reserveStable.raw, 'check FYR2').to.be.eq(reserveLast.reserveStable) // FIX
+        expect(pool.reserveRisky.raw, 'check FXR1').to.be.eq(reserveLast.reserveRisky) // FIX
+        expect(pool.reserveStable.raw, 'check FYR2').to.be.eq(reserveLast.reserveStable) // FIX
       })
 
       it('Engine::Swap: Swap X to Y from Callee', async function () {
