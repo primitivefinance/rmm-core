@@ -5,12 +5,15 @@ import { BigNumber } from '@ethersproject/bignumber'
 export class Percentage {
   readonly raw: BigNumber
   /**
-   * @param raw  A scaled percentage value returned from a smart contract call
+   * @param raw  A scaled percentage value used or returned during smart contract calls
    * */
   constructor(raw: BigNumber) {
     this.raw = raw
   }
 
+  /**
+   * @return Float value used in javascript math
+   */
   get float(): number {
     return parseFloat(this.raw.div(Percentage.Mantissa).toString())
   }

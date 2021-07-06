@@ -13,7 +13,7 @@ import {
   Time,
   parseWei,
   Integer64x64,
-  getEngineEntityFromContract,
+  getEngineEntityFromAddress,
   Engine,
   EngineEvents,
   ERC20Events,
@@ -47,7 +47,7 @@ describe('Engine:swap', function () {
         this.contracts.engineSwap,
       ]
       poolId = await engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-      entity = await getEngineEntityFromContract(engine, [poolId], [], [deployer.address])
+      entity = await getEngineEntityFromAddress(engine.address, [poolId], [], [deployer.address], deployer.provider)
       await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1000').raw, empty)
     })
 
