@@ -17,7 +17,7 @@ import {
   Engine,
   EngineEvents,
   ERC20Events,
-  CoveredCallAMM,
+  Pool,
 } from '../../../shared/sdk'
 
 // Constants
@@ -66,7 +66,7 @@ describe('Engine:swap', function () {
         const invariantLast = new Integer64x64(await engine.invariantOf(poolId)) // store inariant current
         const reserveLast = await engine.reserves(poolId)
         const { deltaIn, reserveRisky, reserveStable, invariant } = await entity.swap(poolId, riskyForStable, deltaOut)
-        const pool: CoveredCallAMM = entity.getPool(poolId)
+        const pool: Pool = entity.getPool(poolId)
         // TODO: There is low accuracy for the swap because the callDelta which initializes the pool is inaccurate
         await expect(engine.swap(poolId, riskyForStable, deltaOut.raw, constants.MaxUint256, true, empty), 'Engine:Swap')
           .to.emit(engine, EngineEvents.SWAP)

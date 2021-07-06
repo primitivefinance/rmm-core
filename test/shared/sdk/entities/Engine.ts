@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
-import { CoveredCallAMM, Token } from '../entities'
+import { Pool, Token } from '../entities'
 import { callDelta } from '../BlackScholes'
 import { Calibration, Position, Reserve, Margin } from '../Structs'
 import { parseWei, Wei, Percentage, Time, Integer64x64 } from '../Units'
@@ -66,12 +66,12 @@ export class Engine {
   /**
    * @notice Fetches a Pool instance
    * @param poolId Keccak256 hash of strike, sigma, and maturity
-   * @returns Single typescript representation of a Pool `CoveredCallAMM`
+   * @returns Single typescript representation of a Pool `Pool`
    */
-  getPool(poolId): CoveredCallAMM {
+  getPool(poolId): Pool {
     const reserve = this.reserves[poolId]
     const setting = this.settings[poolId]
-    return new CoveredCallAMM(
+    return new Pool(
       this,
       reserve.reserveRisky,
       reserve.liquidity,
@@ -119,7 +119,7 @@ export class Engine {
     const resRisky = parseWei(1 - delta) // 1 unit of risky reserve
     const delRisky = resRisky.mul(delLiquidity).div(parseWei('1')) // 1 * deLLiquidity units of risky reserve
     const zero = parseWei(0)
-    const pool: CoveredCallAMM = new CoveredCallAMM(this, delRisky, delLiquidity, strike, sigma, maturity, lastTimestamp)
+    const pool: Pool = new Pool(this, delRisky, delLiquidity, strike, sigma, maturity, lastTimestamp)
     // Commit memory pool state to storage
     this.reserves[poolId] = {
       reserveRisky: pool.reserveRisky,
@@ -168,7 +168,7 @@ export class Engine {
    * @notice Increases liquidity balance of `owner`
    */
   allocate(poolId: BytesLike, recipient: string, delLiquidity: Wei, fromMargin?: boolean) {
-    const pool: CoveredCallAMM = this.getPool(poolId) // memory pool
+    const pool: Pool = this.getPool(poolId) // memory pool
     // Calculate liquidity to provide
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
     const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
@@ -188,7 +188,7 @@ export class Engine {
    * @notice Decreases liquidity balance of `owner`
    */
   remove(poolId: BytesLike, owner: string, delLiquidity: Wei, toMargin?: boolean) {
-    const pool: CoveredCallAMM = this.getPool(poolId) // get memory pool
+    const pool: Pool = this.getPool(poolId) // get memory pool
     // Calculate liquidity to provide
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
     const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
@@ -210,7 +210,7 @@ export class Engine {
    */
   swap(poolId: BytesLike, riskyForStable: boolean, deltaOut: Wei, lastTimestamp?: number): SwapReturn {
     if (lastTimestamp) this.lastTimestamp = lastTimestamp
-    const pool: CoveredCallAMM = this.getPool(poolId) // get a pool in memory
+    const pool: Pool = this.getPool(poolId) // get a pool in memory
     const swapReturn: SwapReturn = riskyForStable ? pool.swapAmountOutStable(deltaOut) : pool.swapAmountOutRisky(deltaOut)
     // Commit memory state pool to storage state
     const setting = this.settings[poolId.toString()]
@@ -251,7 +251,7 @@ export class Engine {
    * @notice Increases the debt of an `owner`'s position
    */
   borrow(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
-    const pool: CoveredCallAMM = this.getPool(poolId)
+    const pool: Pool = this.getPool(poolId)
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
     const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
     // position.borrow
@@ -271,7 +271,7 @@ export class Engine {
    * @notice Decreases the debt of an `owner`'s position
    */
   repay(poolId: BytesLike, owner: string, delLiquidity: Wei, fromMargin?: boolean): any {
-    const pool: CoveredCallAMM = this.getPool(poolId)
+    const pool: Pool = this.getPool(poolId)
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
     const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
     // reserve.allocate: Commit pool memory state to storage

@@ -4,9 +4,9 @@ import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '..
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from '../Units'
 
 /**
- * @notice Typescript representation of an individual CoveredCallAMM (a pool) in an Engine
+ * @notice Typescript representation of an individual Pool in an Engine
  */
-export class CoveredCallAMM {
+export class Pool {
   public readonly entity: Engine
   public readonly liquidity: Wei
   public readonly strike: Wei
