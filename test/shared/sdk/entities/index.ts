@@ -1,3 +1,3 @@
 export * from './Engine'
-export * from './CFMM'
+export * from './Pool'
 export * from './Token'
