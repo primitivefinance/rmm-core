@@ -1,10 +1,11 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
+import { Wallet, BytesLike, constants } from 'ethers'
 import { config } from '../../../unit/context'
 
-import Engine, { getEngineEntityFromContract } from '../../../shared/sdk/Engine'
-import { parseWei, BytesLike, constants, Wei, Percentage, Time } from '../../../shared/sdk/Units'
+import * as entities from '../entities'
+import { getEngineEntityFromContract } from '../utilities'
+import { parseWei, Wei, Percentage, Time } from '../../../shared/sdk/Units'
 import { initializeBaseContracts } from '../../../unit/createTestContracts'
 import { PrimitiveEngine, PrimitiveFactory, Token } from '../../../../typechain'
 
@@ -14,7 +15,7 @@ const empty: BytesLike = constants.HashZero
 describe('SDK: Engine entity', function () {
   let signers: Wallet[], deployer: Wallet
   let factory: PrimitiveFactory, engine: PrimitiveEngine, risky: Token, stable: Token
-  let entity: Engine
+  let entity: entities.Engine
   let poolId: string, posId: string, initialLiquidity: Wei, initialRisky: Wei, initialStable: Wei
   before(async function () {
     signers = waffle.provider.getWallets()
@@ -24,8 +25,8 @@ describe('SDK: Engine entity', function () {
   describe('core functions', function () {
     beforeEach(async function () {
       ;({ factory, engine, stable, risky } = await initializeBaseContracts(deployer))
-      poolId = Engine.getPoolId(strike, sigma, maturity).toString()
-      posId = Engine.getPositionId(deployer.address, poolId).toString()
+      poolId = entities.Engine.getPoolId(strike, sigma, maturity).toString()
+      posId = entities.Engine.getPositionId(deployer.address, poolId).toString()
       entity = await getEngineEntityFromContract(engine, [poolId], [posId], [deployer.address])
       initialLiquidity = parseWei('1')
       ;({ initialRisky, initialStable } = await entity.create(

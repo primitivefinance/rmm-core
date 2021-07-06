@@ -1,8 +1,8 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestPosition } from '../../../typechain'
-import { parseWei, BytesLike } from '../../shared/sdk/Units'
-import { utils } from 'ethers'
+import { parseWei } from '../../shared/sdk'
+import { utils, BytesLike } from 'ethers'
 import loadContext from '../context'
 
 describe('testPosition', function () {

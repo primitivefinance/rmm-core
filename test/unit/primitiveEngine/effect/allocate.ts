@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-
-import { parseWei, BigNumber, constants, BytesLike } from '../../../shared/sdk/Units'
+import { BigNumber, constants, BytesLike } from 'ethers'
+import { parseWei } from '../../../shared/sdk'
 
 import { allocateFragment } from '../fragments'
 

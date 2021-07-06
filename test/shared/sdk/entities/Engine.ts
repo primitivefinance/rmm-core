@@ -1,20 +1,12 @@
 import { ethers } from 'hardhat'
+import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
-import * as entities from './entities'
-import CoveredCallAMM from './Cfmm'
-import { callDelta } from './BlackScholes'
-import { Calibration, Position, Reserve, Margin } from './Structs'
-import { BytesLike, parseWei, Wei, Percentage, Time, BigNumber, Integer64x64 } from './Units'
-
-// Typechain Imports
-import { PrimitiveEngine, Token } from '../../../typechain'
-import { abi as TokenAbi } from '../../../artifacts/contracts/test/Token.sol/Token.json'
+import { CoveredCallAMM, Token } from '../entities'
+import { callDelta } from '../BlackScholes'
+import { Calibration, Position, Reserve, Margin } from '../Structs'
+import { parseWei, Wei, Percentage, Time, Integer64x64 } from '../Units'
 
 // ===== Interfaces =====
-interface Margins {
-  [x: string]: Margin
-}
-
 export interface SwapReturn {
   deltaIn: Wei
   reserveRisky: Wei
@@ -23,125 +15,17 @@ export interface SwapReturn {
   effectivePriceOutStable?: Wei
 }
 
-interface SettingRaw {
-  [x: string]: [BigNumber, BigNumber, number, number] & {
-    strike: BigNumber
-    sigma: BigNumber
-    maturity: number
-    lastTimestamp: number
-  }
-}
-
-interface MarginRaw {
-  [x: string]: [BigNumber, BigNumber] & { balanceRisky: BigNumber; balanceStable: BigNumber }
-}
-
-interface PositionRaw {
-  [x: string]: [BigNumber, BigNumber, BigNumber] & {
-    liquidity: BigNumber
-    float: BigNumber
-    debt: BigNumber
-  }
-}
-
-interface ReserveRaw {
-  [x: string]: [BigNumber, BigNumber, BigNumber, BigNumber, BigNumber, number, BigNumber, BigNumber, BigNumber] & {
-    reserveRisky: BigNumber
-    reserveStable: BigNumber
-    liquidity: BigNumber
-    float: BigNumber
-    debt: BigNumber
-    blockTimestamp: number
-    cumulativeRisky: BigNumber
-    cumulativeStable: BigNumber
-    cumulativeLiquidity: BigNumber
-  }
-}
-
-// ===== Functions to Construct Instances =====
-
-/// @return A typescript representation of a token
-const getTokenEntityFromContract = async (token: Token): Promise<entities.Token> => {
-  return new entities.Token(
-    (await token.provider.getNetwork()).chainId,
-    token.address,
-    await token.decimals(),
-    await token.symbol(),
-    await token.name()
-  )
-}
-
-/// @return An Engine typescript class using an engine contract
-export async function getEngineEntityFromContract(
-  engine: PrimitiveEngine,
-  poolIds: BytesLike[],
-  posIds: BytesLike[],
-  owners: string[]
-): Promise<Engine> {
-  const risky = (await ethers.getContractAt(TokenAbi, await engine.risky())) as unknown as Token
-  const stable = (await ethers.getContractAt(TokenAbi, await engine.stable())) as unknown as Token
-
-  let settings = {}
-  await Promise.all(
-    poolIds.map(async (poolId) => {
-      let setting = await engine.settings(poolId)
-      settings[poolId.toString()] = {
-        strike: new Wei(setting.strike),
-        sigma: new Percentage(setting.sigma),
-        maturity: new Time(setting.maturity),
-        lastTimestamp: new Time(setting.lastTimestamp),
-      }
-    })
-  )
-
-  let margins = {}
-  await Promise.all(
-    owners.map(async (owner) => {
-      let margin = await engine.margins(owner)
-      margins[owner] = { balanceRisky: new Wei(margin.balanceRisky), balanceStable: new Wei(margin.balanceStable) }
-    })
-  )
-
-  let reserves = {}
-  await Promise.all(
-    poolIds.map(async (poolId) => {
-      let reserve = await engine.reserves(poolId)
-      reserves[poolId.toString()] = {
-        reserveRisky: new Wei(reserve.reserveRisky),
-        reserveStable: new Wei(reserve.reserveStable),
-        liquidity: new Wei(reserve.liquidity),
-        float: new Wei(reserve.float),
-        debt: new Wei(reserve.debt),
-      }
-    })
-  )
-
-  let positions = {}
-  await Promise.all(
-    posIds.map(async (posId) => {
-      let position = await engine.positions(posId)
-      positions[posId.toString()] = {
-        float: new Wei(position.float),
-        liquidity: new Wei(position.liquidity),
-        debt: new Wei(position.debt),
-      }
-    })
-  )
-
-  const eng = new Engine(await getTokenEntityFromContract(risky), await getTokenEntityFromContract(stable))
-  await eng.init(settings, reserves, positions, margins)
-  return eng
-}
-
 // ===== Engine Class =====
 
-/// @notice Typescript Class representation of PrimitiveEngine.sol
-class Engine {
+/**
+ * @notice Typescript Class representation of PrimitiveEngine.sol
+ */
+export class Engine {
   public readonly fee: number = 0
-  public readonly risky!: entities.Token
-  public readonly stable!: entities.Token
+  public readonly risky!: Token
+  public readonly stable!: Token
   public settings!: Calibration[] | {}
-  public margins!: Margins[] | {}
+  public margins!: Margin[] | {}
   public positions: Position[] | {}
   public reserves: Reserve[] | {}
 
@@ -151,7 +35,7 @@ class Engine {
    * @param stable Stable asset as a typescript class `Token`
    * @param fee   Basis points to expense for swapsIn
    */
-  constructor(risky: entities.Token, stable: entities.Token, fee?: number) {
+  constructor(risky: Token, stable: Token, fee?: number) {
     this.risky = risky
     this.stable = stable
     this.margins = {}
@@ -179,6 +63,11 @@ class Engine {
 
   // ===== Get =====
 
+  /**
+   * @notice Fetches a Pool instance
+   * @param poolId Keccak256 hash of strike, sigma, and maturity
+   * @returns Single typescript representation of a Pool `CoveredCallAMM`
+   */
   getPool(poolId): CoveredCallAMM {
     const reserve = this.reserves[poolId]
     const setting = this.settings[poolId]
@@ -203,6 +92,18 @@ class Engine {
 
   // ===== Create =====
 
+  /**
+   *
+   * @param owner Address to increase position liquidity of
+   * @param strike Strike price of option
+   * @param sigma Implied volatility of option
+   * @param maturity Timestamp of expiry of option
+   * @param lastTimestamp Latest timestamp used to calculate time until expiry
+   * @param riskyPrice Spot reference price of risky asset
+   * @param delLiquidity Amount of liquidity to initialize the pool with
+   * @returns initialRisky Amount of risky tokens in the Pool's reserve
+   * @returns initialStable Amount of stable tokens in the Pool's reserve
+   */
   create(
     owner: string,
     strike: Wei,
@@ -244,14 +145,18 @@ class Engine {
 
   // ===== Margin =====
 
-  /// @notice Increases margin balance of `owner`
+  /**
+   * @notice Increases margin balance of `owner`
+   */
   deposit(owner: string, delRisky: Wei, delStable: Wei) {
     let margin = this.margins[owner]
     margin.balanceRisky = margin.balanceRisky.add(delRisky.raw)
     margin.balanceStable = margin.balanceStable.add(delStable.raw)
   }
 
-  /// @notice Decreases margin balance of `owner`
+  /**
+   * @notice Decreases margin balance of `owner`
+   */
   withdraw(owner: string, delRisky: Wei, delStable: Wei) {
     let margin = this.margins[owner]
     margin.balanceRisky = margin.balanceRisky.sub(delRisky.raw)
@@ -259,7 +164,9 @@ class Engine {
   }
 
   // ===== Liquidity =====
-  /// @notice Increases liquidity balance of `owner`
+  /**
+   * @notice Increases liquidity balance of `owner`
+   */
   allocate(poolId: BytesLike, recipient: string, delLiquidity: Wei, fromMargin?: boolean) {
     const pool: CoveredCallAMM = this.getPool(poolId) // memory pool
     // Calculate liquidity to provide
@@ -277,7 +184,9 @@ class Engine {
     return { delRisky, delStable }
   }
 
-  /// @notice Decreases liquidity balance of `owner`
+  /**
+   * @notice Decreases liquidity balance of `owner`
+   */
   remove(poolId: BytesLike, owner: string, delLiquidity: Wei, toMargin?: boolean) {
     const pool: CoveredCallAMM = this.getPool(poolId) // get memory pool
     // Calculate liquidity to provide
@@ -296,7 +205,9 @@ class Engine {
 
   // ===== Swapping =====
 
-  /// @notice Swaps between tokens in the reserve, returning the cost of the swap as `deltaIn`
+  /**
+   * @notice Swaps between tokens in the reserve, returning the cost of the swap as `deltaIn`
+   */
   swap(poolId: BytesLike, riskyForStable: boolean, deltaOut: Wei, lastTimestamp?: number): SwapReturn {
     if (lastTimestamp) this.lastTimestamp = lastTimestamp
     const pool: CoveredCallAMM = this.getPool(poolId) // get a pool in memory
@@ -312,7 +223,9 @@ class Engine {
 
   // ===== Lending =====
 
-  /// @notice Increases the float of an `owner`'s position
+  /**
+   * @notice Increases the float of an `owner`'s position
+   */
   lend(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
     const position = this.positions[Engine.getPositionId(owner, poolId)]
     // positions.lend
@@ -322,7 +235,9 @@ class Engine {
     reserve.float = reserve.float.add(delLiquidity)
   }
 
-  /// @notice Decreases the float of an `owner`'s position
+  /**
+   * @notice Decreases the float of an `owner`'s position
+   */
   claim(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
     const position = this.positions[Engine.getPositionId(owner, poolId)]
     const reserve = this.reserves[poolId.toString()]
@@ -332,7 +247,9 @@ class Engine {
     reserve.float = reserve.float.sub(delLiquidity)
   }
 
-  /// @notice Increases the debt of an `owner`'s position
+  /**
+   * @notice Increases the debt of an `owner`'s position
+   */
   borrow(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
     const pool: CoveredCallAMM = this.getPool(poolId)
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
@@ -350,7 +267,9 @@ class Engine {
     return { delRisky, delStable }
   }
 
-  /// @notice Decreases the debt of an `owner`'s position
+  /**
+   * @notice Decreases the debt of an `owner`'s position
+   */
   repay(poolId: BytesLike, owner: string, delLiquidity: Wei, fromMargin?: boolean): any {
     const pool: CoveredCallAMM = this.getPool(poolId)
     const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
@@ -378,12 +297,16 @@ class Engine {
 
   // ===== View =====
 
-  /// @return Keccak256 hash of owner address and poolId key
+  /**
+   * @return Keccak256 hash of owner address and poolId key
+   */
   static getPositionId(owner: string, poolId: BytesLike) {
     return ethers.utils.solidityKeccak256(['string', 'bytes32'], [owner, poolId])
   }
 
-  /// @return Keccak256 hash of option curve parameters
+  /**
+   * @return Keccak256 hash of option curve parameters
+   */
   static getPoolId(strike: Wei, sigma: Percentage, maturity: Time) {
     return ethers.utils.solidityKeccak256(
       ['uint256', 'uint64', 'uint32'],
@@ -391,8 +314,6 @@ class Engine {
     )
   }
 }
-
-export default Engine
 
 /// Events of the Engine
 export const EngineEvents = {
@@ -411,9 +332,4 @@ export const EngineEvents = {
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
-}
-
-/// @notice Utility function to return the key of a one item array object
-function keyOf(object: Object) {
-  return Object.keys(object)[0]
 }

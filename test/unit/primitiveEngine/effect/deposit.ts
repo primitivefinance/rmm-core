@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { constants, BytesLike } from 'ethers'
 
-import { parseWei } from '../../../shared/sdk/Units'
+import { parseWei } from '../../../shared/sdk'
 
 import { depositFragment } from '../fragments'
 
