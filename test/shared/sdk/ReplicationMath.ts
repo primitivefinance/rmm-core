@@ -1,10 +1,27 @@
 /// SDK Imports
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 
+/**
+ * @notice Calculates a common expression
+ * @param sigma Volatility as a float
+ * @param tau Time until expiry, in years, as a float
+ * @returns volatilty * sqrt(tau)
+ */
 export function getProportionalVol(sigma: number, tau: number): number {
   return sigma * Math.sqrt(tau)
 }
 
+/**
+ * @notice Core math trading function of the AMM to calculate the stable reserve using risky
+ * @param invariantLast Previous invariant with the same `tau` input as the parameter `tau`
+ * @param reserveRisky Pool's reserve of risky tokens
+ * @param liquidity Pool total supply of liquidity (units of replication)
+ * @param strike Price point that defines complete stable token composition of the pool
+ * @param sigma Implied volatility of the pool
+ * @param tau Time until expiry
+ * @param fee Fee to charge on the way in
+ * @returns Covered Call AMM black-scholes trading function
+ */
 export function getTradingFunction(
   invariantLast: number = 0,
   reserveRisky: number,
@@ -26,6 +43,17 @@ export function getTradingFunction(
   return reserveStable
 }
 
+/**
+ * @notice Core math trading function of the AMM to calculate the risky reserve using stable
+ * @param invariantLast Previous invariant with the same `tau` input as the parameter `tau`
+ * @param reserveStable Pool's reserve of stable tokens
+ * @param liquidity Pool total supply of liquidity (units of replication)
+ * @param strike Price point that defines complete stable token composition of the pool
+ * @param sigma Implied volatility of the pool
+ * @param tau Time until expiry
+ * @param fee Fee to charge on the way in
+ * @returns Covered Call AMM black-scholes inverse trading function
+ */
 export function getInverseTradingFunction(
   invariantLast: number = 0,
   reserveStable: number,
@@ -47,6 +75,9 @@ export function getInverseTradingFunction(
   return reserveRisky
 }
 
+/**
+ * @returns Invariant = Reserve stable - getTradingFunction(...)
+ */
 export function calcInvariant(
   reserveRisky: number,
   reserveStable: number,
