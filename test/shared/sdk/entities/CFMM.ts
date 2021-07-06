@@ -1,12 +1,12 @@
 import numeric from 'numeric'
-import Engine, { SwapReturn } from './Engine'
-import { getInverseTradingFunction, getTradingFunction, calcInvariant } from './ReplicationMath'
-import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from './Units'
+import { Engine, SwapReturn } from './Engine'
+import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../ReplicationMath'
+import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from '../Units'
 
 /**
  * @notice Typescript representation of an individual CoveredCallAMM (a pool) in an Engine
  */
-export default class CoveredCallAMM {
+export class CoveredCallAMM {
   public readonly entity: Engine
   public readonly liquidity: Wei
   public readonly strike: Wei

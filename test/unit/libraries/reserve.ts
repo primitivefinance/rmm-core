@@ -1,6 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, BytesLike, parseWei } from '../../shared/sdk/Units'
+import { BigNumber, BytesLike } from 'ethers'
+import { parseWei } from '../../shared/sdk'
 import { TestReserve } from '../../../typechain'
 import loadContext from '../context'
 
@@ -44,7 +45,7 @@ describe('testReserve', function () {
         before.liquidity,
         before.float,
         before.debt,
-        (before.blockTimestamp + timestep),
+        before.blockTimestamp + timestep,
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,

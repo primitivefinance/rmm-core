@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
-import { parseWei, MANTISSA, Integer64x64 } from '../../shared/sdk/Units'
+import { parseWei, Integer64x64, Wei } from '../../shared/sdk'
 import { std_n_cdf, inverse_std_n_cdf } from '../../shared/sdk/CumulativeNormalDistribution'
 import loadContext from '../context'
 
@@ -19,7 +19,7 @@ describe('testCumulativeNormalDistribution', function () {
 
     it('cdf', async function () {
       let x = 1
-      let cdf = Math.floor(std_n_cdf(x) * MANTISSA) / MANTISSA
+      let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
       expect(new Integer64x64(await cumulative.cdf(x)).parsed).to.be.eq(cdf)
     })
     it('icdf', async function () {

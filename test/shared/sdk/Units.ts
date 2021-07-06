@@ -1,12 +1,6 @@
 /// Ethers Imports
-import { BigNumber, BigNumberish, BytesLike, constants, Transaction, Wallet } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 import { formatEther, parseEther } from '@ethersproject/units'
-import bn from 'bignumber.js'
-export { formatEther, parseEther, BigNumber, BigNumberish, bn, BytesLike, constants, Transaction, Wallet }
-export const DENOMINATOR: BigNumber = toBN(2).pow(64)
-export const MANTISSA = 10 ** 9
-export const PERCENTAGE = 10 ** 4
-export const YEAR = 31449600
 
 /// @notice Multiplies by 10**18 and returns a Wei instance of the value
 export function parseWei(x: BigNumberish): Wei {
@@ -14,7 +8,7 @@ export function parseWei(x: BigNumberish): Wei {
 }
 
 export function parseInt64x64(x: BigNumberish): Integer64x64 {
-  return new Integer64x64(toBN(parseInt(x.toString())).mul(DENOMINATOR))
+  return new Integer64x64(toBN(parseInt(x.toString())).mul(Integer64x64.Denominator))
 }
 
 /// @notice Converts to a BigNumber
@@ -27,6 +21,7 @@ export class Integer64x64 {
   readonly raw: BigNumber
 
   /**
+   * @notice Int128s are stored as numerators that all have a denominator of 2^64
    * @param raw  An int128 returned from a smart contract call
    * */
   constructor(raw: BigNumber) {
@@ -35,22 +30,29 @@ export class Integer64x64 {
 
   /// @return Raw divided by 2^64
   get parsed(): number {
-    return parseFloat(this.raw.div(DENOMINATOR).toString())
+    return parseFloat(this.raw.div(Integer64x64.Denominator).toString())
   }
 
   /// @return Parsed value with `MANTISSA` decimals as an integer
   get integer(): number {
-    return Math.floor(this.parsed * MANTISSA)
+    return Math.floor(this.parsed * Wei.Mantissa)
   }
 
   /// @return Parsed value floored and with MANTISSA decimals
   get float(): number {
-    return this.integer / MANTISSA
+    return this.integer / Wei.Mantissa
   }
 
   /// @return float value in units of percentages
   get percentage(): number {
-    return this.float / PERCENTAGE
+    return this.float / Percentage.Mantissa
+  }
+
+  /**
+   * @returns All int128 values in the smart contracts are numerators with a 2^64 denominator
+   */
+  static get Denominator(): BigNumber {
+    return toBN(2).pow(64)
   }
 }
 
@@ -65,7 +67,7 @@ export class Time {
   }
 
   get years(): number {
-    return this.raw / YEAR
+    return this.raw / Time.YearInSeconds
   }
 
   get seconds(): number {
@@ -75,6 +77,13 @@ export class Time {
   sub(x: BigNumberish | Time): Time {
     if (x instanceof Time) x = x.raw
     return new Time(this.raw - +x.toString())
+  }
+
+  /**
+   * @returns A year in seconds
+   */
+  static get YearInSeconds(): number {
+    return 31449600
   }
 }
 
@@ -89,21 +98,14 @@ export class Percentage {
   }
 
   get float(): number {
-    return parseFloat(this.raw.div(PERCENTAGE).toString())
-  }
-}
-
-/// @notice Used for integer values
-export class Mantissa {
-  readonly raw: BigNumber
-  readonly mantissa: number
-  constructor(raw: BigNumberish, mantissa?: number) {
-    this.mantissa = mantissa ? mantissa : MANTISSA
-    this.raw = toBN(Math.floor(+raw.toString() * this.mantissa))
+    return parseFloat(this.raw.div(Percentage.Mantissa).toString())
   }
 
-  get float(): number {
-    return parseFloat(this.raw.div(this.mantissa).toString())
+  /**
+   * @returns Mantissa used to scale percentages in the smart contracts
+   */
+  static get Mantissa(): number {
+    return Math.pow(10, 4)
   }
 }
 
@@ -162,5 +164,12 @@ export class Wei {
 
   log() {
     console.log(this.parsed)
+  }
+
+  /**
+   * @returns Mantissa used to scale uint values in the smart contracts
+   */
+  static get Mantissa(): number {
+    return Math.pow(10, 9)
   }
 }

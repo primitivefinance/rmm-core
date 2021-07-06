@@ -1,6 +1,7 @@
 import { Wallet, constants } from 'ethers'
 import { Contracts } from '../../../types'
-import { parseWei, PERCENTAGE } from '../../shared/sdk/Units'
+import { parseWei } from '../../shared/sdk'
+
 import { config } from '../context'
 
 const { strike, sigma, maturity, spot } = config
