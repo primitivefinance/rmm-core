@@ -1,12 +1,13 @@
-import { ethers } from 'hardhat'
-import { utils, BytesLike } from 'ethers'
+import { utils, BytesLike, Contract } from 'ethers'
+import { Provider } from '@ethersproject/abstract-provider'
 import bn from 'bignumber.js'
 // SDK Imports
 import * as entities from './entities'
 import { parseSetting, parsePosition, parseReserve, parseMargin } from './Structs'
-// Typechain Imports
+// Core Repository Imports
 import { PrimitiveEngine, Token } from '../../../typechain'
 import { abi as TokenAbi } from '../../../artifacts/contracts/test/Token.sol/Token.json'
+import { abi as EngineAbi } from '../../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
 
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 })
 
@@ -21,7 +22,9 @@ export function getCreate2Address(factoryAddress: string, [stable, risky]: [stri
 
 // ===== Functions to Construct Instances =====
 
-/// @return A typescript representation of a token
+/**
+ * @return A typescript representation of a token
+ */
 const getTokenEntityFromContract = async (token: Token): Promise<entities.Token> => {
   return new entities.Token(
     (await token.provider.getNetwork()).chainId,
@@ -32,15 +35,29 @@ const getTokenEntityFromContract = async (token: Token): Promise<entities.Token>
   )
 }
 
-/// @return An Engine typescript class using an engine contract
-export async function getEngineEntityFromContract(
-  engine: PrimitiveEngine,
+/**
+ * @return Typechain PrimitiveEngine instance from an address
+ */
+export function getEngineContractFromAddress(
+  engineAddress: string,
+  signerOrProvider?: Provider | undefined
+): PrimitiveEngine {
+  return new Contract(engineAddress, EngineAbi, signerOrProvider) as unknown as PrimitiveEngine
+}
+
+/**
+ * @return An Engine typescript class using an engine contract
+ */
+export async function getEngineEntityFromAddress(
+  engineAddress: string,
   poolIds: BytesLike[],
   posIds: BytesLike[],
-  owners: string[]
+  owners: string[],
+  signerOrProvider?: Provider | undefined
 ): Promise<entities.Engine> {
-  const risky = (await ethers.getContractAt(TokenAbi, await engine.risky())) as unknown as Token
-  const stable = (await ethers.getContractAt(TokenAbi, await engine.stable())) as unknown as Token
+  const engine = getEngineContractFromAddress(engineAddress, signerOrProvider)
+  const risky = new Contract(await engine.risky(), TokenAbi, engine.provider) as unknown as Token
+  const stable = new Contract(await engine.stable(), TokenAbi, engine.provider) as unknown as Token
 
   let settings = {}
   await Promise.all(

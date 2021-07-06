@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat'
+import { constants, utils } from 'ethers'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
 import { Pool, Token } from '../entities'
@@ -48,13 +48,13 @@ export class Engine {
   // ===== Initialization =====
 
   /**
-   *
+   * @notice Sets this typescript class state to the state of an Engine contract
    * @param settings Array of mappings calibration settings using poolId keys
    * @param reserves Array of mappings of reserves using poolId keys
    * @param positions Array of mappings of positions using posId keys
    * @param margins Array of mappings of margin accounts using addresses as keys
    */
-  async init(settings: {}, reserves: {}, positions: {}, margins: {}) {
+  init(settings: {}, reserves: {}, positions: {}, margins: {}) {
     this.margins = margins
     this.settings = settings
     this.reserves = reserves
@@ -66,7 +66,7 @@ export class Engine {
   /**
    * @notice Fetches a Pool instance
    * @param poolId Keccak256 hash of strike, sigma, and maturity
-   * @returns Single typescript representation of a Pool `Pool`
+   * @return Single typescript representation of a Pool `Pool`
    */
   getPool(poolId): Pool {
     const reserve = this.reserves[poolId]
@@ -101,8 +101,8 @@ export class Engine {
    * @param lastTimestamp Latest timestamp used to calculate time until expiry
    * @param riskyPrice Spot reference price of risky asset
    * @param delLiquidity Amount of liquidity to initialize the pool with
-   * @returns initialRisky Amount of risky tokens in the Pool's reserve
-   * @returns initialStable Amount of stable tokens in the Pool's reserve
+   * @return initialRisky Amount of risky tokens in the Pool's reserve
+   * @return initialStable Amount of stable tokens in the Pool's reserve
    */
   create(
     owner: string,
@@ -301,17 +301,14 @@ export class Engine {
    * @return Keccak256 hash of owner address and poolId key
    */
   static getPositionId(owner: string, poolId: BytesLike) {
-    return ethers.utils.solidityKeccak256(['string', 'bytes32'], [owner, poolId])
+    return utils.solidityKeccak256(['string', 'bytes32'], [owner, poolId])
   }
 
   /**
    * @return Keccak256 hash of option curve parameters
    */
   static getPoolId(strike: Wei, sigma: Percentage, maturity: Time) {
-    return ethers.utils.solidityKeccak256(
-      ['uint256', 'uint64', 'uint32'],
-      [strike.raw, Math.floor(+sigma.float), maturity.raw]
-    )
+    return utils.solidityKeccak256(['uint256', 'uint64', 'uint32'], [strike.raw, Math.floor(+sigma.float), maturity.raw])
   }
 }
 

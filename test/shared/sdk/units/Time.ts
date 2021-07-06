@@ -5,12 +5,15 @@ import { BigNumberish } from '@ethersproject/bignumber'
 export class Time {
   readonly raw: number
   /**
-   * @param raw  A number returned from a smart contract call
+   * @param raw  Integer value in seconds used or returned during smart contract calls
    * */
   constructor(raw: number) {
     this.raw = Math.floor(raw) // seconds
   }
 
+  /**
+   * @return year float value used in javascript math
+   */
   get years(): number {
     return this.raw / Time.YearInSeconds
   }
@@ -20,8 +23,12 @@ export class Time {
   }
 
   sub(x: BigNumberish | Time): Time {
-    if (x instanceof Time) x = x.raw
+    x = x.toString()
     return new Time(this.raw - +x.toString())
+  }
+
+  toString(): string {
+    return this.raw.toString()
   }
 
   /**

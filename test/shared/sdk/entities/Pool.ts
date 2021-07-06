@@ -20,7 +20,7 @@ export class Pool {
   public tau: Time
 
   /**
-   *
+   * @notice Builds a typescript representation of a single curve within an Engine contract
    * @param entity Engine typescript representation class which this Pool is in
    * @param initialRisky Reserve amount to initialize the pool's risky tokens
    * @param liquidity Total liquidity supply to initialize the pool with
@@ -81,7 +81,9 @@ export class Pool {
     )
   }
 
-  /// @notice A Risky to Stable token swap
+  /**
+   * @notice A Risky to Stable token swap
+   */
   swapAmountOutStable(deltaOut: Wei): SwapReturn {
     const reserveRiskyLast = this.reserveRisky
 
@@ -169,6 +171,9 @@ export class Pool {
     }
   }
 
+  /**
+   * @notice A Stable to Risky token swap
+   */
   swapAmountOutRisky(deltaOut: Wei): SwapReturn {
     const reserveStableLast = this.reserveStable
 
