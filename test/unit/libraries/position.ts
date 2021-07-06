@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestPosition } from '../../../typechain'
-import { parseWei } from '../../shared/sdk'
+import { parseWei } from 'web3-units'
 import { utils, BytesLike } from 'ethers'
 import loadContext from '../context'
 

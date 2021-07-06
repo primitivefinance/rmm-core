@@ -1,6 +1,6 @@
 import { Wallet, constants } from 'ethers'
 import { Contracts } from '../../../types'
-import { parseWei } from '../../shared/sdk'
+import { parseWei } from 'web3-units'
 
 import { config } from '../context'
 

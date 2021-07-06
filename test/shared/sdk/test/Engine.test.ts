@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { constants } from 'ethers'
 import * as entities from '../entities'
-import { parseWei, Wei, Percentage, Time, toBN } from '../../../shared/sdk'
+import { parseWei, Wei, Percentage, Time, toBN } from 'web3-units'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = {
   strike: parseWei('2500'),

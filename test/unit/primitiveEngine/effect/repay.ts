@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BytesLike, constants } from 'ethers'
-import { parseWei, Percentage } from '../../../shared/sdk'
+import { parseWei, Percentage } from 'web3-units'
 
 import loadContext, { config } from '../../context'
 import { repayFragment } from '../fragments'

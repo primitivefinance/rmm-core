@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { constants } from 'ethers'
 
-import { parseWei } from '../../../shared/sdk'
+import { parseWei } from 'web3-units'
 
 import { withdrawFragment } from '../fragments'
 

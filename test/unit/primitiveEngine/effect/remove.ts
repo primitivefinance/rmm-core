@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants, BytesLike } from 'ethers'
 
-import { parseWei } from '../../../shared/sdk'
+import { parseWei } from 'web3-units'
 
 import { removeFragment } from '../fragments'
 
