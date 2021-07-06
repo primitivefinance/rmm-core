@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat'
 /// SDK Imports
 import * as entities from './entities'
+import CoveredCallAMM from './Cfmm'
 import { callDelta } from './BlackScholes'
 import { Calibration, Position, Reserve, Margin } from './Structs'
-import { getTradingFunction, getInverseTradingFunction, calcInvariant } from './ReplicationMath'
-import { BytesLike, parseWei, Wei, Percentage, Time, Mantissa, BigNumber, Integer64x64, PERCENTAGE } from './Units'
+import { BytesLike, parseWei, Wei, Percentage, Time, BigNumber, Integer64x64 } from './Units'
 
 // Typechain Imports
 import { PrimitiveEngine, Token } from '../../../typechain'
@@ -20,6 +20,7 @@ export interface SwapReturn {
   reserveRisky: Wei
   reserveStable: Wei
   invariant: Integer64x64
+  effectivePriceOutStable?: Wei
 }
 
 interface SettingRaw {
@@ -110,6 +111,7 @@ export async function getEngineEntityFromContract(
 
 /// @notice Typescript Class representation of PrimitiveEngine.sol
 class Engine {
+  public readonly fee: number = 0
   public readonly risky!: entities.Token
   public readonly stable!: entities.Token
   public settings!: Calibration[] | {}
@@ -121,14 +123,16 @@ class Engine {
    * Constructs a typescript representation to simulate an Engine
    * @param risky Risky asset as a typescript class `Token`
    * @param stable Stable asset as a typescript class `Token`
+   * @param fee   Basis points to expense for swapsIn
    */
-  constructor(risky: entities.Token, stable: entities.Token) {
+  constructor(risky: entities.Token, stable: entities.Token, fee?: number) {
     this.risky = risky
     this.stable = stable
     this.margins = {}
     this.settings = {}
     this.reserves = {}
     this.positions = {}
+    if (fee) this.fee = fee
   }
 
   // ===== Initialization =====
@@ -185,6 +189,33 @@ class Engine {
     }
   }
 
+  // ===== Get =====
+
+  getPool(poolId): CoveredCallAMM {
+    const reserve = this.reserves[poolId]
+    const setting = this.settings[poolId]
+    return new CoveredCallAMM(
+      this,
+      reserve.reserveRisky,
+      reserve.liquidity,
+      setting.strike,
+      setting.sigma,
+      setting.maturity,
+      setting.lastTimestamp,
+      reserve.reserveStable
+    )
+  }
+
+  get lastTimestamp(): number {
+    return this.lastTimestamp
+  }
+
+  set lastTimestamp(timestamp) {
+    this.lastTimestamp = timestamp
+  }
+
+  // ===== Create =====
+
   create(
     owner: string,
     strike: Wei,
@@ -195,31 +226,33 @@ class Engine {
     delLiquidity: Wei
   ) {
     const poolId = Engine.getPoolId(strike, sigma, maturity)
-    const tau = maturity.raw - lastTimestamp.raw
-    const calibration = { strike: strike, sigma: sigma, maturity: maturity, lastTimestamp: lastTimestamp }
-    const delta = new Mantissa(callDelta(strike.float, sigma.raw, tau, riskyPrice.float)).float
-    const resRisky = parseWei(1 - delta)
-    const resStable = parseWei(getTradingFunction(0, resRisky.float, delLiquidity.float, strike.float, sigma.raw, tau))
-    const delRisky = resRisky.mul(delLiquidity).div(parseWei('1'))
-    const delStable = resStable.mul(delLiquidity).div(parseWei('1'))
-    const zero = new Wei(0)
+    const tau = maturity.sub(lastTimestamp)
+    const delta = callDelta(strike.float, sigma.float, tau.years, riskyPrice.float)
+    const resRisky = parseWei(1 - delta) // 1 unit of risky reserve
+    const delRisky = resRisky.mul(delLiquidity).div(parseWei('1')) // 1 * deLLiquidity units of risky reserve
+    const zero = parseWei(0)
+    const pool: CoveredCallAMM = new CoveredCallAMM(this, delRisky, delLiquidity, strike, sigma, maturity, lastTimestamp)
+    // Commit memory pool state to storage
     this.reserves[poolId] = {
-      reserveRisky: delRisky,
-      reserveStable: delStable,
-      liquidity: delLiquidity,
+      reserveRisky: pool.reserveRisky,
+      reserveStable: pool.reserveStable,
+      liquidity: pool.liquidity,
       float: zero,
       debt: zero,
     }
     this.positions[Engine.getPositionId(owner, poolId)] = {
-      balanceRisky: zero,
-      balanceStable: zero,
       liquidity: delLiquidity,
       float: zero,
       debt: zero,
     }
-    this.settings[poolId] = calibration
+    this.settings[poolId] = {
+      strike: pool.strike,
+      sigma: pool.sigma,
+      maturity: pool.maturity,
+      lastTimestamp: pool.lastTimestamp,
+    }
 
-    return { initialRisky: resRisky, initialStable: resStable }
+    return { initialRisky: pool.reserveRisky, initialStable: pool.reserveStable }
   }
 
   // ===== Margin =====
@@ -241,188 +274,71 @@ class Engine {
   // ===== Liquidity =====
   /// @notice Increases liquidity balance of `owner`
   allocate(poolId: BytesLike, recipient: string, delLiquidity: Wei, fromMargin?: boolean) {
-    let reserve = this.reserves[poolId.toString()]
-    let posId = Engine.getPositionId(recipient, poolId)
-    let position = this.positions[posId]
-    let delRisky = delLiquidity.mul(reserve.reserveRisky).div(reserve.liquidity)
-    let delStable = delLiquidity.mul(reserve.reserveStable).div(reserve.liquidity)
-    reserve.reserveRisky = reserve.reserveRisky.add(delRisky)
-    reserve.reserveStable = reserve.reserveStable.add(delStable)
-    reserve.liquidity = reserve.liquidity.add(delLiquidity)
+    const pool: CoveredCallAMM = this.getPool(poolId) // memory pool
+    // Calculate liquidity to provide
+    const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
+    const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
+    // Commit state updates to position liquidity
+    const posId = Engine.getPositionId(recipient, poolId)
+    const position = this.positions[posId]
     position.liquidity = position.liquidity.add(delLiquidity)
-
+    // Commit pool memory state to storage
+    const reserve = this.reserves[poolId.toString()]
+    reserve.reserveRisky = pool.reserveRisky.add(delRisky)
+    reserve.reserveStable = pool.reserveStable.add(delStable)
+    reserve.liquidity = pool.liquidity.add(delLiquidity)
     return { delRisky, delStable }
   }
 
   /// @notice Decreases liquidity balance of `owner`
   remove(poolId: BytesLike, owner: string, delLiquidity: Wei, toMargin?: boolean) {
-    let reserve = this.reserves[poolId.toString()]
-    let posId = Engine.getPositionId(owner, poolId)
-    let position = this.positions[posId]
-    let delRisky = delLiquidity.mul(reserve.reserveRisky).div(reserve.liquidity)
-    let delStable = delLiquidity.mul(reserve.reserveStable).div(reserve.liquidity)
+    const pool: CoveredCallAMM = this.getPool(poolId) // get memory pool
+    // Calculate liquidity to provide
+    const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
+    const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
+    // Commit state updates to position liquidity
+    const posId = Engine.getPositionId(owner, poolId)
+    const position = this.positions[posId]
+    position.liquidity = position.liquidity.sub(delLiquidity)
+    // Commit pool memory state to storage
+    const reserve = this.reserves[poolId.toString()]
     reserve.reserveRisky = reserve.reserveRisky.sub(delRisky)
     reserve.reserveStable = reserve.reserveStable.sub(delStable)
     reserve.liquidity = reserve.liquidity.sub(delLiquidity)
-    position.liquidity = position.liquidity.sub(delLiquidity)
   }
 
   // ===== Swapping =====
 
   /// @notice Swaps between tokens in the reserve, returning the cost of the swap as `deltaIn`
-  swap(poolId: BytesLike, riskyForStable: boolean, deltaOut: Wei): SwapReturn {
-    let swapReturn: SwapReturn = riskyForStable
-      ? this.swapRiskyForStable(poolId, deltaOut)
-      : this.swapStableForRisky(poolId, deltaOut)
+  swap(poolId: BytesLike, riskyForStable: boolean, deltaOut: Wei, lastTimestamp?: number): SwapReturn {
+    if (lastTimestamp) this.lastTimestamp = lastTimestamp
+    const pool: CoveredCallAMM = this.getPool(poolId) // get a pool in memory
+    const swapReturn: SwapReturn = riskyForStable ? pool.swapAmountOutStable(deltaOut) : pool.swapAmountOutRisky(deltaOut)
+    // Commit memory state pool to storage state
+    const setting = this.settings[poolId.toString()]
+    setting.lastTimestamp = pool.lastTimestamp
+    const reserve = this.reserves[poolId.toString()]
+    reserve.reserveRisky = pool.reserveRisky
+    reserve.reserveStable = pool.reserveStable
     return swapReturn
-  }
-
-  /// @notice A Stable to Risky token swap
-  swapStableForRisky(poolId: BytesLike, deltaOut: Wei): SwapReturn {
-    poolId = poolId.toString()
-    const reserve: Reserve = this.reserves[poolId]
-    const setting: Calibration = this.settings[poolId]
-    const reserveStableLast = reserve.reserveStable
-    console.log(reserve, setting, reserveStableLast.float)
-
-    // 1. Calculate the new time until expiry `tau`
-    const tau = setting.maturity.years - setting.lastTimestamp.years
-
-    // 2. Calculate the new invariant with the new tau
-    const invariantLast = new Integer64x64(
-      calcInvariant(
-        reserve.reserveRisky.float,
-        reserve.reserveStable.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.float,
-        tau
-      )
-    )
-
-    // 3. Calculate the new risky reserve since we know how much risky is being swapped out
-    reserve.reserveRisky = reserve.reserveRisky.sub(deltaOut)
-    // 4. Calculate the new stable reserves using the known new risky reserves, and new invariant
-    reserve.reserveStable = parseWei(
-      getTradingFunction(
-        invariantLast.float,
-        reserve.reserveRisky.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.float,
-        tau
-      )
-    )
-
-    // 5. Calculate the new invariant with the new reserves and tau
-    const nextInvariant = new Integer64x64(
-      calcInvariant(
-        reserve.reserveRisky.float,
-        reserve.reserveStable.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.float,
-        tau
-      )
-    )
-
-    // 6. Check the nextInvariant is >= invariantLast
-    if (nextInvariant.float < invariantLast.float)
-      console.log('invariant not passing', `${nextInvariant} < ${invariantLast}`)
-
-    // 7. Calculate the change in risky reserve by comparing new reserve to previous
-    const reserveStable = reserve.reserveStable
-    const deltaIn = reserveStableLast.gt(reserveStable)
-      ? reserveStableLast.sub(reserveStable)
-      : reserveStable.sub(reserveStableLast)
-    return {
-      deltaIn,
-      reserveRisky: reserve.reserveRisky,
-      reserveStable: reserve.reserveStable,
-      invariant: nextInvariant,
-    }
-  }
-
-  /// @notice A Risky to Stable token swap
-  swapRiskyForStable(poolId: BytesLike, deltaOut: Wei): SwapReturn {
-    poolId = poolId.toString()
-    const reserve: Reserve = this.reserves[poolId] // get state of reserve
-    const setting: Calibration = this.settings[poolId] // get state of calibration
-    const reserveRiskyLast = reserve.reserveRisky
-
-    // 1. Calculate the new time until expiry `tau`
-    const tau = setting.maturity.years - setting.lastTimestamp.years
-
-    // 2. Calculate the new invariant with the new `tau` and reserves state
-    const invariantLast: Integer64x64 = new Integer64x64(
-      calcInvariant(
-        reserve.reserveRisky.float,
-        reserve.reserveStable.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.float,
-        tau
-      )
-    )
-
-    // 3. Calculate the new stable reserves (we know the new stable reserves because we are swapping out stables)
-    reserve.reserveStable = reserve.reserveStable.sub(deltaOut)
-    // 4. Calculate the new risky reserve using the new stable reserve and new invariant
-    reserve.reserveRisky = parseWei(
-      getInverseTradingFunction(
-        invariantLast.float,
-        reserve.reserveStable.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.float,
-        tau
-      )
-    )
-    // 5. Calculate the new invariant with the new reserve values and tau
-    const nextInvariant = new Integer64x64(
-      calcInvariant(
-        reserve.reserveRisky.float,
-        reserve.reserveStable.float,
-        reserve.liquidity.float,
-        setting.strike.float,
-        setting.sigma.raw,
-        tau
-      )
-    )
-
-    // 6. Check the nextInvariant is >= invariantLast
-    if (nextInvariant.float < invariantLast.float)
-      console.error('invariant not passing', `${nextInvariant} < ${invariantLast}`)
-
-    // 7. Calculate the change in risky reserve by comparing new reserve to previous
-    const reserveRisky = reserve.reserveRisky
-    const deltaIn = reserveRisky.gt(reserveRiskyLast)
-      ? reserveRisky.sub(reserveRiskyLast)
-      : reserveRiskyLast.sub(reserveRisky)
-    return {
-      deltaIn,
-      reserveRisky: reserve.reserveRisky,
-      reserveStable: reserve.reserveStable,
-      invariant: nextInvariant,
-    }
   }
 
   // ===== Lending =====
 
   /// @notice Increases the float of an `owner`'s position
   lend(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
-    let position = this.positions[Engine.getPositionId(owner, poolId)]
-    let reserve = this.reserves[poolId.toString()]
+    const position = this.positions[Engine.getPositionId(owner, poolId)]
     // positions.lend
     position.float = position.float.add(delLiquidity)
+    const reserve = this.reserves[poolId.toString()]
     // reserve.addFloat
     reserve.float = reserve.float.add(delLiquidity)
   }
 
   /// @notice Decreases the float of an `owner`'s position
   claim(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
-    let position = this.positions[Engine.getPositionId(owner, poolId)]
-    let reserve = this.reserves[poolId.toString()]
+    const position = this.positions[Engine.getPositionId(owner, poolId)]
+    const reserve = this.reserves[poolId.toString()]
     // positions.claim
     position.float = position.float.sub(delLiquidity)
     // reserve.removeFloat
@@ -431,40 +347,39 @@ class Engine {
 
   /// @notice Increases the debt of an `owner`'s position
   borrow(poolId: BytesLike, owner: string, delLiquidity: Wei): any {
-    let position = this.positions[Engine.getPositionId(owner, poolId)]
-    let reserve = this.reserves[poolId.toString()]
-    let delRisky = delLiquidity.mul(reserve.reserveRisky).div(reserve.liquidity)
-    let delStable = delLiquidity.mul(reserve.reserveStable).div(reserve.liquidity)
+    const pool: CoveredCallAMM = this.getPool(poolId)
+    const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
+    const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
     // position.borrow
+    const position = this.positions[Engine.getPositionId(owner, poolId)]
     position.debt = position.debt.add(delLiquidity)
-    position.balanceRisky = position.balanceRisky.add(delLiquidity)
-    // reserve.remove
-    reserve.reserveRisky = reserve.reserveRisky.sub(delRisky)
-    reserve.reserveStable = reserve.reserveStable.sub(delStable)
     // reserve.borrowFloat
+    const reserve = this.reserves[poolId.toString()]
     reserve.float = reserve.float.sub(delLiquidity)
     reserve.debt = reserve.debt.add(delLiquidity)
-
+    // reserve.remove: Commit pool memory state to storage
+    reserve.reserveRisky = pool.reserveRisky.sub(delRisky)
+    reserve.reserveStable = pool.reserveStable.sub(delStable)
     return { delRisky, delStable }
   }
 
   /// @notice Decreases the debt of an `owner`'s position
   repay(poolId: BytesLike, owner: string, delLiquidity: Wei, fromMargin?: boolean): any {
-    let position = this.positions[Engine.getPositionId(owner, poolId)]
-    let reserve = this.reserves[poolId.toString()]
-    let delRisky = delLiquidity.mul(reserve.reserveRisky).div(reserve.liquidity)
-    let delStable = delLiquidity.mul(reserve.reserveStable).div(reserve.liquidity)
-    // reserve.allocate
+    const pool: CoveredCallAMM = this.getPool(poolId)
+    const delRisky = delLiquidity.mul(pool.reserveRisky).div(pool.liquidity)
+    const delStable = delLiquidity.mul(pool.reserveStable).div(pool.liquidity)
+    // reserve.allocate: Commit pool memory state to storage
+    const reserve = this.reserves[poolId.toString()]
     reserve.reserveRisky = reserve.reserveRisky.add(delRisky)
     reserve.reserveStable = reserve.reserveStable.add(delStable)
     reserve.liquidity = reserve.liquidity.add(delLiquidity)
-    position.balanceRisky = position.balanceRisky.sub(delLiquidity)
     // position.repay
+    const position = this.positions[Engine.getPositionId(owner, poolId)]
     position.liquidity = position.liquidity.sub(delLiquidity)
     position.debt = position.debt.sub(delLiquidity)
     if (fromMargin) {
       // margin.withdraw
-      let margin = this.margins[owner]
+      const margin = this.margins[owner]
       margin.balanceRisky = margin.balanceRisky.sub(delRisky)
       margin.balanceStable = margin.balanceStable.sub(delStable)
     } else {

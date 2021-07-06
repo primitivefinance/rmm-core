@@ -108,7 +108,6 @@ describe('SDK: Engine entity', function () {
       await entity.lend(poolId, deployer.address, amount0.mul(2))
       ;({ delRisky, delStable } = await entity.borrow(poolId, deployer.address, amount0))
       expect(entity.positions[posId].debt.raw).to.be.eq(amount0.raw)
-      expect(entity.positions[posId].balanceRisky.raw).to.be.eq(amount0.raw)
       expect(entity.reserves[poolId].float.raw).to.be.eq(amount0.raw) // we added twice the float, then borrowed half
       expect(entity.reserves[poolId].debt.raw).to.be.eq(amount0.raw)
     })
@@ -121,7 +120,6 @@ describe('SDK: Engine entity', function () {
       await entity.repay(poolId, deployer.address, amount0)
       // no net change
       expect(entity.positions[posId].debt.raw).to.be.eq(0)
-      expect(entity.positions[posId].balanceRisky.raw).to.be.eq(0)
       expect(entity.reserves[poolId].reserveRisky.raw).to.be.gte(initialRisky.raw)
       expect(entity.reserves[poolId].reserveStable.raw).to.be.gte(initialStable.raw)
       expect(entity.reserves[poolId].float.raw).to.be.eq(amount0.raw)
