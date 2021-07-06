@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
-import { Integer64x64, Wei } from '../../shared/sdk'
+import { Integer64x64, Wei } from 'web3-units'
 import loadContext, { config } from '../context'
 import { callDelta, calculateD1, moneyness } from '../../shared/sdk/BlackScholes'
 

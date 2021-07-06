@@ -1,6 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber'
 /// SDK Imports
-import { Wei, Percentage, Time } from './Units'
+import { Wei, Percentage, Time } from 'web3-units'
 
 /**
  * @notice Defines a pool's parameters in the Engine

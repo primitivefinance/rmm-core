@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import loadContext from '../../context'
-import { parseWei } from '../../../shared/sdk'
+import { parseWei } from 'web3-units'
 
 const empty = constants.HashZero
 

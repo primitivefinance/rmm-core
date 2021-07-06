@@ -3,7 +3,7 @@ import { Contracts, Functions, Mocks, ContractName } from '../../types'
 import { Wallet, constants } from 'ethers'
 import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
-import { parseWei, Percentage, Time, Wei, toBN } from '../shared/sdk'
+import { parseWei, Percentage, Time, Wei, toBN } from 'web3-units'
 interface Config {
   strike: Wei
   sigma: Percentage

@@ -4,7 +4,7 @@ import { BytesLike } from '@ethersproject/bytes'
 import { Pool, Token } from '../entities'
 import { callDelta } from '../BlackScholes'
 import { Calibration, Position, Reserve, Margin } from '../Structs'
-import { parseWei, Wei, Percentage, Time, Integer64x64 } from '../Units'
+import { parseWei, Wei, Percentage, Time, Integer64x64 } from 'web3-units'
 
 // ===== Interfaces =====
 export interface SwapReturn {

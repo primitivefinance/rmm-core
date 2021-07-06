@@ -1,15 +1,8 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestReplicationMath } from '../../../typechain'
-import {
-  Integer64x64,
-  parseWei,
-  Time,
-  getProportionalVol,
-  getTradingFunction,
-  getInverseTradingFunction,
-  calcInvariant,
-} from '../../shared/sdk'
+import { Integer64x64, parseWei, Time } from 'web3-units'
+import { getProportionalVol, getTradingFunction, getInverseTradingFunction, calcInvariant } from '../../shared/sdk'
 import loadContext, { config } from '../context'
 
 const { strike, sigma, maturity, lastTimestamp } = config

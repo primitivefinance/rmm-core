@@ -7,18 +7,9 @@ import { PrimitiveEngine, EngineAllocate, EngineSwap } from '../../../../typecha
 import loadContext, { config } from '../../context'
 import { swapFragment } from '../fragments'
 // SDK Imports
-import {
-  Wei,
-  Percentage,
-  Time,
-  parseWei,
-  Integer64x64,
-  getEngineEntityFromAddress,
-  Engine,
-  EngineEvents,
-  ERC20Events,
-  Pool,
-} from '../../../shared/sdk'
+import { Wei, Percentage, Time, parseWei, Integer64x64 } from 'web3-units'
+
+import { getEngineEntityFromAddress, Engine, EngineEvents, ERC20Events, Pool } from '../../../shared/sdk'
 
 // Constants
 const { strike, sigma, maturity, lastTimestamp, spot } = config
@@ -57,7 +48,7 @@ describe('Engine:swap', function () {
     })
 
     describe('sucess cases', function () {
-      it.only('Engine::Swap: Swap Risky to Stable from EOA using Margin', async function () {
+      it('Engine::Swap: Swap Risky to Stable from EOA using Margin', async function () {
         // before: add tokens to margin to do swaps with
         //await this.functions.depositFunction(INITIAL_MARGIN.raw, INITIAL_MARGIN.raw, deployer)
         const deltaOut = parseWei('1') // deltaOut to swap

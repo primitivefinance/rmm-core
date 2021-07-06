@@ -1,8 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber, constants, BytesLike } from 'ethers'
-import { formatEther } from '@ethersproject/units'
-import { parseWei, Wei, Engine } from '../../../shared/sdk'
+import { parseWei, Wei } from 'web3-units'
 
 import loadContext, { config } from '../../context'
 import { createFragment } from '../fragments'

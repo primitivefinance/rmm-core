@@ -1,7 +1,7 @@
 import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
 import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../ReplicationMath'
-import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from '../Units'
+import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
 
 /**
  * @notice Typescript representation of an individual Pool in an Engine
