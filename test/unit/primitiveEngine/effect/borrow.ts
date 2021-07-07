@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-
-import { parseWei, BytesLike, Wallet, constants } from '../../../shared/sdk/Units'
+import { constants, BytesLike, Wallet } from 'ethers'
+import { parseWei } from 'web3-units'
 
 import loadContext, { config } from '../../context'
 import { borrowFragment } from '../fragments'
@@ -12,7 +12,7 @@ const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
   before(async function () {
-    await loadContext(
+    loadContext(
       waffle.provider,
       ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineBorrow'],
       borrowFragment

@@ -1,21 +1,20 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants } from 'ethers'
+import { BytesLike, constants } from 'ethers'
+import { parseWei, Percentage } from 'web3-units'
 
-import loadContext from '../../context'
+import loadContext, { config } from '../../context'
 import { repayFragment } from '../fragments'
-
-import { parseWei, BytesLike, PERCENTAGE } from '../../../shared/sdk/Units'
 
 let poolId: BytesLike
 let posId: BytesLike
 
-const [strike, sigma, time, _] = [parseWei('1000').raw, 0.85 * PERCENTAGE, 1655655140, parseWei('1100').raw]
+const { strike, sigma, maturity, lastTimestamp, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('repay', function () {
   before(async function () {
-    await loadContext(
+    loadContext(
       waffle.provider,
       ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineRepay'],
       repayFragment
@@ -23,7 +22,7 @@ describe('repay', function () {
   })
 
   beforeEach(async function () {
-    poolId = await this.contracts.engine.getPoolId(strike, sigma, time)
+    poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
     posId = await this.contracts.engineRepay.getPosition(poolId)
   })
 
