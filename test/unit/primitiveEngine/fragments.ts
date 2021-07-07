@@ -118,9 +118,9 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
   await contracts.engineDeposit.deposit(contracts.engineSwap.address, parseWei('1000').raw, parseWei('1000').raw, empty)
   await contracts.engineDeposit.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, empty)
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('0.01').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
   const poolId = await contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('1000').raw, empty)
+  //await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('1000').raw, empty)
 }
 
 export async function repayFragment(signers: Wallet[], contracts: Contracts): Promise<void> {

@@ -14,10 +14,10 @@ interface Config {
 
 export const config: Config = {
   strike: parseWei('2500'),
-  sigma: new Percentage(toBN(Percentage.Mantissa * 1.1)),
+  sigma: new Percentage(toBN(Percentage.Mantissa * 1)),
   maturity: new Time(Time.YearInSeconds + +Date.now() / 1000),
   lastTimestamp: new Time(+Date.now() / 1000),
-  spot: parseWei('1750'),
+  spot: parseWei('2000'),
 }
 
 export default function loadContext(

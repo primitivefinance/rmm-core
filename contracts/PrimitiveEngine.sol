@@ -25,6 +25,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
@@ -329,9 +331,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 }
             }
 
-            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
-            require(invariantOf(details.poolId) >= invariant, "Invariant"); // invariant must be constant or growing
-            emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
+            reserve.swap(details.riskyForStable, ((details.deltaIn * 9985) / 1e4), amountOut, _blockTimestamp());
+            require(invariantOf(details.poolId) >> 64 >= invariant >> 64, "Invariant"); // FIX: invariant must be constant or growing
+            emit Swap(msg.sender, details.poolId, details.riskyForStable, ((details.deltaIn * 9985) / 1e4), amountOut);
         }
     }
 
