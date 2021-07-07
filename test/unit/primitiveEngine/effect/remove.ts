@@ -1,8 +1,8 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants } from 'ethers'
+import { BigNumber, constants, BytesLike } from 'ethers'
 
-import { parseWei, BytesLike } from '../../../shared/sdk/Units'
+import { parseWei } from 'web3-units'
 
 import { removeFragment } from '../fragments'
 
@@ -16,7 +16,7 @@ let posId: string
 
 describe('remove', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
   })
 
   describe('when removing to margin', function () {

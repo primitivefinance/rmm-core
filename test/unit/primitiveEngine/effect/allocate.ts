@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-
-import { parseWei, BigNumber, constants, BytesLike } from '../../../shared/sdk/Units'
+import { BigNumber, constants, BytesLike } from 'ethers'
+import { parseWei } from 'web3-units'
 
 import { allocateFragment } from '../fragments'
 
@@ -13,7 +13,7 @@ let poolId: string
 
 describe('allocate', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
   })
 
   describe('when allocating from margin', function () {

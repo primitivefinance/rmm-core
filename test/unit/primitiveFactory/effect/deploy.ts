@@ -8,7 +8,7 @@ import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Tok
 
 describe('deploy', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['factoryDeploy'], async () => {})
+    loadContext(waffle.provider, ['factoryDeploy'], async () => {})
   })
 
   describe('when the parameters are valid', function () {

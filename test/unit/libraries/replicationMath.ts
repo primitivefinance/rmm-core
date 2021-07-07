@@ -1,20 +1,15 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestReplicationMath } from '../../../typechain'
-import { Integer64x64, parseWei, Time } from '../../shared/sdk/Units'
-import {
-  getProportionalVol,
-  getTradingFunction,
-  getInverseTradingFunction,
-  calcInvariant,
-} from '../../shared/sdk/ReplicationMath'
+import { Integer64x64, parseWei, Time } from 'web3-units'
+import { getProportionalVol, getTradingFunction, getInverseTradingFunction, calcInvariant } from '../../shared/sdk'
 import loadContext, { config } from '../context'
 
 const { strike, sigma, maturity, lastTimestamp } = config
 
 describe('testReplicationMath', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testReplicationMath'], async () => {})
+    loadContext(waffle.provider, ['testReplicationMath'], async () => {})
   })
 
   describe('replicationMath', function () {
@@ -35,7 +30,7 @@ describe('testReplicationMath', function () {
       let expected: number = new Integer64x64(
         await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
-      let actual: number = getTradingFunction(reserveRisky.float, liquidity.float, strike.float, sigma.float, tau.years)
+      let actual: number = getTradingFunction(0, reserveRisky.float, liquidity.float, strike.float, sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
     it('getInverseTradingFunction', async function () {
@@ -43,6 +38,7 @@ describe('testReplicationMath', function () {
         await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
       let actual: number = getInverseTradingFunction(
+        0,
         reserveStable.float,
         liquidity.float,
         strike.float,

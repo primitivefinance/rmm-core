@@ -1,12 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, BytesLike, parseWei } from '../../shared/sdk/Units'
+import { BigNumber, BytesLike } from 'ethers'
+import { parseWei } from 'web3-units'
 import { TestReserve } from '../../../typechain'
 import loadContext from '../context'
 
 describe('testReserve', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testReserve'], async () => {})
+    loadContext(waffle.provider, ['testReserve'], async () => {})
   })
 
   describe('reserve', function () {
@@ -44,7 +45,7 @@ describe('testReserve', function () {
         before.liquidity,
         before.float,
         before.debt,
-        (before.blockTimestamp + timestep),
+        before.blockTimestamp + timestep,
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,

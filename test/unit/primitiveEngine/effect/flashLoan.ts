@@ -3,13 +3,13 @@ import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import loadContext from '../../context'
-import { parseWei } from '../../../shared/sdk/Units'
+import { parseWei } from 'web3-units'
 
 const empty = constants.HashZero
 
 describe('flashLoan', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['flashBorrower'])
+    loadContext(waffle.provider, ['flashBorrower'])
   })
 
   describe('when funds are available', function () {

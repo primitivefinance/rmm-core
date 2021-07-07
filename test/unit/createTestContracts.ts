@@ -28,7 +28,7 @@ export async function initializeBaseContracts(deployer: Wallet): Promise<BaseCon
   const factory = (await deploy('PrimitiveFactory', deployer)) as ContractTypes.PrimitiveFactory
   await factory.deploy(risky.address, stable.address)
   const addr = await factory.getEngine(risky.address, stable.address)
-  const engine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as ContractTypes.PrimitiveEngine
+  const engine = (await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown as ContractTypes.PrimitiveEngine
   return { factory, engine, stable, risky }
 }
 

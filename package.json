@@ -20,7 +20,7 @@
     "url": "chttps://github.com/primitivefinance/primitive-v2-core.git"
   },
   "author": "Primitive",
-  "license": "GNU",
+  "license": "GPL-3.0-or-later",
   "homepage": "https://primitive.finance",
   "scripts": {
     "compile": "hardhat compile",
@@ -69,7 +69,8 @@
     "ts-generator": "^0.1.1",
     "ts-node": "^9.1.1",
     "typechain": "^4.0.3",
-    "typescript": "^4.2.3"
+    "typescript": "^4.2.3",
+    "web3-units": "^0.1.0"
   },
   "postinstall": "typechain",
   "lint-staged": {

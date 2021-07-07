@@ -1,13 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestPosition } from '../../../typechain'
-import { parseWei, BytesLike } from '../../shared/sdk/Units'
-import { utils } from 'ethers'
+import { parseWei } from 'web3-units'
+import { utils, BytesLike } from 'ethers'
 import loadContext from '../context'
 
 describe('testPosition', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testPosition'], async () => {})
+    loadContext(waffle.provider, ['testPosition'], async () => {})
   })
 
   describe('position', function () {

@@ -1,11 +1,11 @@
 import { expect } from 'chai'
-import { BigNumber } from '../../../shared/sdk/Units'
+import { BigNumber } from 'ethers'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
 describe('position', function () {
   beforeEach(async function () {
-    await loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [], async function () {})
   })
 
   it('returns 0 for all fields when the position is uninitialized', async function () {
