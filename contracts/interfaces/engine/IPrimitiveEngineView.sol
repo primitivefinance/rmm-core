@@ -7,16 +7,17 @@ pragma solidity 0.8.0;
 interface IPrimitiveEngineView {
     // ===== View =====
 
-    /// @notice         Computes the reserve value of `token` using the known `reserve` value of the other token
-    /// @param  poolId  Keccak256 hash of strike price, volatility, and maturity timestamp
-    /// @param  token   Reserve of the token to compute
-    /// @param  balance Balance of reserve of the other token, which is known
-    /// @return reserveOfToken  Reserve of the `token`
-    function compute(
-        bytes32 poolId,
-        address token,
-        uint256 balance
-    ) external view returns (int128 reserveOfToken);
+    /// @notice Fetches expected stable token reserves using risky reserve balance
+    /// @param  poolId        Keccak256 hash of strike price, volatility, and maturity timestamp
+    /// @param  reserveRisky  Current reserve of risky tokens
+    /// @return reserveStable Expected stable token reserve
+    function getStableGivenRisky(bytes32 poolId, uint256 reserveRisky) external view returns (int128 reserveStable);
+
+    /// @notice Fetches expected risky token reserves using stable reserve balance
+    /// @param  poolId        Keccak256 hash of strike price, volatility, and maturity timestamp
+    /// @param  reserveStable Current reserve of stable tokens
+    /// @return reserveRisky  Expected risky token reserve
+    function getRiskyGivenStable(bytes32 poolId, uint256 reserveStable) external view returns (int128 reserveRisky);
 
     /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
     /// @param  poolId The pool id to get the invariant of
@@ -64,16 +65,16 @@ interface IPrimitiveEngineView {
     /// @param  poolId  Pool id to fetch the parameters of
     /// @return strike  Strike price of the pool
     /// sigma           Volatility of the pool
-    /// time            Time until expiry of the pool
-    /// blockTimestamp  Timestamp on pool creation
+    /// maturity        Timestamp of maturity
+    /// lastTimestamp   Last timestamp used to calculate time until expiry, "tau"
     function settings(bytes32 poolId)
         external
         view
         returns (
             uint128 strike,
             uint64 sigma,
-            uint32 time,
-            uint32 blockTimestamp
+            uint32 maturity,
+            uint32 lastTimestamp
         );
 
     /// @notice Fetches Position data struct using a position id
@@ -96,13 +97,13 @@ interface IPrimitiveEngineView {
     /// balanceStable           Balance of the stable token
     function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
 
-    /// @param  strike  Strike price of the pool
-    /// @param  sigma   Volatility of the pool
-    /// @param  time    Time until expiry of the pool
-    /// @return         Keccak256 hash of the `calibration` parameters and Engine contract address
+    /// @param  strike      Strike price of the pool
+    /// @param  sigma       Volatility of the pool, scaled by Mantissa of 1e4
+    /// @param  maturity    Timestamp of Maturity
+    /// @return             Keccak256 hash of the `calibration` parameters and Engine contract address
     function getPoolId(
         uint256 strike,
         uint64 sigma,
-        uint32 time
+        uint32 maturity
     ) external view returns (bytes32);
 }

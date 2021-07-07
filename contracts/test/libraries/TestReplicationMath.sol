@@ -13,37 +13,46 @@ contract TestReplicationMath {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    /// @return RY2 The calculated stable reserve, using the risky reserve
+    /// @return reserveStable The calculated stable reserve, using the risky reserve
     function getTradingFunction(
-        uint256 RX1,
+        int128 invariantLast,
+        uint256 reserveRisky,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 RY2) {
-        RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, tau);
+    ) public pure returns (int128 reserveStable) {
+        reserveStable = ReplicationMath.getTradingFunction(invariantLast, reserveRisky, liquidity, strike, sigma, tau);
     }
 
-    /// @return RX1 The calculated risky reserve, using the stable reserve
+    /// @return reserveRisky The calculated risky reserve, using the stable reserve
     function getInverseTradingFunction(
-        uint256 RY2,
+        int128 invariantLast,
+        uint256 reserveStable,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 RX1) {
-        RX1 = ReplicationMath.getInverseTradingFunction(RY2, liquidity, strike, sigma, tau);
+    ) public pure returns (int128 reserveRisky) {
+        reserveRisky = ReplicationMath.getInverseTradingFunction(
+            invariantLast,
+            reserveStable,
+            liquidity,
+            strike,
+            sigma,
+            tau
+        );
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
     function calcInvariant(
-        uint256 RX1,
-        uint256 RY2,
+        uint256 reserveRisky,
+        uint256 reserveStable,
         uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, tau);
+        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, liquidity, strike, sigma, tau);
     }
 }
