@@ -1,6 +1,6 @@
 import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
-import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../ReplicationMath'
+import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../../ReplicationMath'
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
 
 /**
