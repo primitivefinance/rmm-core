@@ -11,7 +11,7 @@ const empty: BytesLike = constants.HashZero
 
 describe('create', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
+    loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
   })
 
   describe('when the parameters are valid', function () {
@@ -53,7 +53,6 @@ describe('create', function () {
       const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
 
       const reserve = await this.contracts.engine.reserves(poolId)
-      console.log(reserve)
 
       // TODO: Check RX1 and RY2
 

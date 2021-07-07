@@ -12,7 +12,7 @@ const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
   before(async function () {
-    await loadContext(
+    loadContext(
       waffle.provider,
       ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineBorrow'],
       borrowFragment

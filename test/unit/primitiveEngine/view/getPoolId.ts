@@ -5,7 +5,7 @@ import loadContext from '../../context'
 
 describe('getPoolId', function () {
   beforeEach(async function () {
-    await loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [], async function () {})
   })
 
   it('returns the poolId given settings', async function () {

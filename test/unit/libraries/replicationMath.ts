@@ -9,7 +9,7 @@ const { strike, sigma, maturity, lastTimestamp } = config
 
 describe('testReplicationMath', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testReplicationMath'], async () => {})
+    loadContext(waffle.provider, ['testReplicationMath'], async () => {})
   })
 
   describe('replicationMath', function () {

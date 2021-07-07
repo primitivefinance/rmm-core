@@ -7,7 +7,7 @@ import loadContext from '../context'
 
 describe('testReserve', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testReserve'], async () => {})
+    loadContext(waffle.provider, ['testReserve'], async () => {})
   })
 
   describe('reserve', function () {

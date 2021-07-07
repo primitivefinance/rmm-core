@@ -17,7 +17,7 @@ const empty: BytesLike = constants.HashZero
 
 describe('Engine:swap', function () {
   before('Load context', async function () {
-    await loadContext(
+    loadContext(
       waffle.provider,
       ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate'],
       swapFragment
