@@ -13,7 +13,7 @@ let poolId: string
 
 describe('allocate', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
   })
 
   describe('when allocating from margin', function () {

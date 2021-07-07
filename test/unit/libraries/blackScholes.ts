@@ -9,7 +9,7 @@ const { strike, sigma, maturity, lastTimestamp, spot } = config
 
 describe('testBlackScholes', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testBlackScholes'], async () => {})
+    loadContext(waffle.provider, ['testBlackScholes'], async () => {})
   })
 
   describe('blackScholes', function () {

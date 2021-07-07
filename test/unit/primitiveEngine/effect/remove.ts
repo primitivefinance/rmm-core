@@ -16,7 +16,7 @@ let posId: string
 
 describe('remove', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
   })
 
   describe('when removing to margin', function () {

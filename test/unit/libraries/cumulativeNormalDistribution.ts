@@ -7,7 +7,7 @@ import loadContext from '../context'
 
 describe('testCumulativeNormalDistribution', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testCumulativeNormalDistribution'], async () => {})
+    loadContext(waffle.provider, ['testCumulativeNormalDistribution'], async () => {})
   })
 
   describe('cumulative', function () {

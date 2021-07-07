@@ -20,11 +20,11 @@ export const config: Config = {
   spot: parseWei('1750'),
 }
 
-export default async function loadContext(
+export default function loadContext(
   provider: MockProvider,
   contracts: ContractName[],
   action?: (signers: Wallet[], contracts: Contracts) => Promise<void>
-): Promise<void> {
+): void {
   const loadFixture = createFixtureLoader(provider.getWallets(), provider)
 
   beforeEach(async function () {

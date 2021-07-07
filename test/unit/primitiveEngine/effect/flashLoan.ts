@@ -9,7 +9,7 @@ const empty = constants.HashZero
 
 describe('flashLoan', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['flashBorrower'])
+    loadContext(waffle.provider, ['flashBorrower'])
   })
 
   describe('when funds are available', function () {

@@ -6,7 +6,7 @@ import { createFragment } from '../fragments'
 
 describe('constructor', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['engineCreate'], createFragment)
+    loadContext(waffle.provider, ['engineCreate'], createFragment)
   })
 
   describe('when the contract is deployed', function () {
