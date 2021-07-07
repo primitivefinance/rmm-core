@@ -28,14 +28,14 @@ describe('testReplicationMath', function () {
     })
     it('getTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
+        await math.getTradingFunction(0, reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
       let actual: number = getTradingFunction(0, reserveRisky.float, liquidity.float, strike.float, sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
     it('getInverseTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
+        await math.getInverseTradingFunction(0, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
       ).parsed
       let actual: number = getInverseTradingFunction(
         0,
