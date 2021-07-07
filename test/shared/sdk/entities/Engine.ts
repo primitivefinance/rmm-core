@@ -2,7 +2,7 @@ import { utils } from 'ethers'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
 import { Pool, Token } from '../entities'
-import { callDelta } from '../BlackScholes'
+import { callDelta } from '../../BlackScholes'
 import { Calibration, Position, Reserve, Margin } from '../Structs'
 import { parseWei, Wei, Percentage, Time, Integer64x64 } from 'web3-units'
 
