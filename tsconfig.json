@@ -7,14 +7,11 @@
     "resolveJsonModule": true,
     "preserveSymlinks": true,
     "outDir": "dist",
-    "typeRoots": ["./typechain", "./node_modules/@types"],
-    "types": ["@nomiclabs/hardhat-ethers", "@nomiclabs/hardhat-waffle"],
     "noImplicitAny": false
   },
   "ts-node": {
     "files": true
   },
-  "include": ["./test", "./src"],
-  "exclude": ["node_modules"],
+  "include": ["./test", "./src", "./scripts", "./types"],
   "files": ["./hardhat.config.ts"]
 }
