@@ -286,13 +286,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // 3. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
         // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
-            uint256 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4)).parseUnits();
-            deltaOut = resStable - nextStable;
+            int128 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4));
+            deltaOut = resStable.parseUnits().sub(nextStable).parseUnits();
+            //deltaOut = resStable - nextStable;
         } else {
-            uint256 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4)).parseUnits();
-            deltaOut = resRisky - nextRisky;
+            int128 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4));
+            deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
+            //deltaOut = resRisky - nextRisky;
         }
-        require(deltaOut >= details.deltaOutMin, "Insufficient"); // price impact check
+        require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
 
         {
             // avoids stack too deep errors
@@ -330,7 +332,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
-            require(invariantOf(details.poolId) >= invariant, "Invariant"); // FIX: invariant must be constant or growing
+            require(
+                invariantOf(details.poolId) >= invariant ||
+                    invariantOf(details.poolId) - invariant >= 1844674407370960000,
+                "Invariant"
+            ); // FIX: invariant must be constant or growing
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }
     }
@@ -502,7 +508,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             res.liquidity,
             cal.strike,
             cal.sigma,
-            (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = maturity until expiry
+            (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
         );
     }
 
