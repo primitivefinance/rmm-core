@@ -1,19 +1,27 @@
-import fs from 'fs-extra'
+import fs from 'fs'
 
-async function updateDeployments(chainId: number, contractName: string, address: string) {
+export async function updateLog(chainId: number, contractName: string, address: string) {
   try {
-    const file = await fs.readJson('./deployments.json', {
+    const logRaw = await fs.promises.readFile('./deployments.json', {
       encoding: 'utf-8',
-      flag: 'a',
+      flag: 'a+',
     })
-    console.log(file)
+    let log
+
+    if (logRaw.length === 0) {
+      log = {}
+    } else {
+      log = JSON.parse(logRaw)
+    }
+
+    if (!log[chainId]) {
+      log[chainId] = {};
+    }
+
+    log[chainId][contractName] = address;
+
+    await fs.promises.writeFile('./deployments.json', JSON.stringify(log, null, 2));
   } catch (e) {
     console.error(e)
   }
 }
-
-async function main() {
-  await updateDeployments(0, 'Foo', '0x0')
-}
-
-main()
