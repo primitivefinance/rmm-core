@@ -8,6 +8,11 @@ import "../../libraries/ReplicationMath.sol";
 /// @dev     Tests each step in ReplicationMath.getTradingFunction. For testing ONLY
 
 contract TestTradingFunction {
+    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
+    using CumulativeNormalDistribution for int128;
+    using Units for int128;
+    using Units for uint256;
+
     function step0(uint256 strike) public view returns (int128 K) {
         K = strike.parseUnits();
     }
