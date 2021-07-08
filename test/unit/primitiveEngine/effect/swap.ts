@@ -4,7 +4,7 @@ import { ethers, waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
 import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 // Context Imports
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
 import { EngineEvents, ERC20Events, getSpotPrice } from '../../../shared'

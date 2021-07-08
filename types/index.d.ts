@@ -2,7 +2,7 @@ import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
-import { Wei, Time, Percentage } from 'web3-units'
+import { Config } from '../test/unit/config'
 
 export interface Functions {
   depositFunction: DepositFunction
@@ -42,12 +42,12 @@ export interface Mocks {
   factory: MockContract
 }
 
-export interface Config {
-  strike: Wei
-  sigma: Percentage
-  maturity: Time
-  lastTimestamp: Time
-  spot: Wei
+export interface Configs {
+  all: Config[]
+  strikes: Config[]
+  sigmas: Config[]
+  maturities: Config[]
+  spots: Config[]
 }
 
 declare module 'mocha' {
@@ -56,7 +56,7 @@ declare module 'mocha' {
     contracts: Contracts
     functions: Functions
     mocks: Mocks
-    config: Config
+    configs: Configs
   }
 }
 

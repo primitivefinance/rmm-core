@@ -1,17 +1,14 @@
 import { createFixtureLoader, MockProvider } from 'ethereum-waffle'
-import { Contracts, Functions, Mocks, ContractName, Config } from '../../types'
+import { Contracts, Functions, Mocks, ContractName, Configs } from '../../types'
 import { Wallet } from 'ethers'
 import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
-import { parseWei, Percentage, Time, toBN } from 'web3-units'
-
-export const config: Config = {
-  strike: parseWei('25'),
-  sigma: new Percentage(toBN(Percentage.Mantissa * 1)),
-  maturity: new Time(Time.YearInSeconds),
-  lastTimestamp: new Time(0),
-  spot: parseWei('10'),
-}
+import createTestConfigs, { DEFAULT_CONFIG } from './createTestConfigs'
+export { DEFAULT_CONFIG }
+const strikesToTest = [10, 15, 25, 100]
+const sigmasToTest = [0.1, 0.25, 0.5, 0.75, 1, 2]
+const maturitiesToTest = [0.01, 0.1, 1, 10]
+const spotsToTest = [5, 10, 15, 30, 60, 120]
 
 export default function loadContext(
   provider: MockProvider,
@@ -25,22 +22,25 @@ export default function loadContext(
       const [deployer] = signers
       let loadedContracts: Contracts = {} as Contracts
       let loadedFunctions: Functions = {} as Functions
+      let loadedConfigs: Configs = {} as Configs
 
       loadedContracts = await createTestContracts(contracts, deployer)
       loadedFunctions = createEngineFunctions(contracts, loadedContracts, deployer)
+      loadedConfigs = createTestConfigs(strikesToTest, sigmasToTest, maturitiesToTest, spotsToTest)
 
       if (action) await action(signers, loadedContracts)
 
-      return { contracts: loadedContracts, functions: loadedFunctions }
+      return { contracts: loadedContracts, functions: loadedFunctions, configs: loadedConfigs }
     })
 
+    this.configs = {} as Configs
     this.contracts = {} as Contracts
     this.functions = {} as Functions
     this.mocks = {} as Mocks
     this.signers = provider.getWallets()
     this.deployer = this.signers[0]
-    this.config = config // enables us to have dynamic config fixtures
 
+    Object.assign(this.configs, loadedFixture.configs) // enables us to have dynamic config fixtures
     Object.assign(this.contracts, loadedFixture.contracts)
     Object.assign(this.functions, loadedFixture.functions)
   })
