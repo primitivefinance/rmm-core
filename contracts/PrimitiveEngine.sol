@@ -25,6 +25,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
@@ -86,7 +88,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @return blockTimestamp casted as a uint32
-    function _blockTimestamp() internal view returns (uint32 blockTimestamp) {
+    function _blockTimestamp() internal view virtual returns (uint32 blockTimestamp) {
         // solhint-disable-next-line
         blockTimestamp = uint32(block.timestamp);
     }
@@ -283,7 +285,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
         (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
 
-        // 3. Calculate swapOut token reserve using new invariant + new time until expiry
+        // 3. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
         // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
             uint256 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4)).parseUnits();
@@ -329,8 +331,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 }
             }
 
-            reserve.swap(details.riskyForStable, ((details.deltaIn * 9985) / 1e4), amountOut, _blockTimestamp());
-            require(invariantOf(details.poolId) >> 64 >= invariant >> 64, "Invariant"); // FIX: invariant must be constant or growing
+            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
+            require(invariantOf(details.poolId) >= invariant, "Invariant"); // FIX: invariant must be constant or growing
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }
     }

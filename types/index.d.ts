@@ -10,8 +10,8 @@ export interface Functions {
 }
 
 export interface Contracts {
-  engine: ContractTypes.PrimitiveEngine
-  factory: ContractTypes.PrimitiveFactory
+  engine: ContractTypes.MockEngine
+  factory: ContractTypes.MockFactory
   risky: ContractTypes.Token
   stable: ContractTypes.Token
   engineCreate: ContractTypes.EngineCreate

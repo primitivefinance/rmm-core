@@ -1,4 +1,4 @@
-/// SDK Imports
+import numeric from 'numeric'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 
 /**
@@ -83,4 +83,20 @@ export function calcInvariant(
   const input: number = getTradingFunction(0, reserveRisky, liquidity, strike, sigma, tau)
   const invariant: number = reserveStable - input
   return invariant
+}
+
+export function getSpotPrice(
+  reserveRisky: number,
+  reserveStable: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const fn = function (x: number[]) {
+    return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
+  }
+  const spot = numeric.gradient(fn, [reserveRisky, reserveStable])
+  //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
+  return spot[0] / spot[1]
 }

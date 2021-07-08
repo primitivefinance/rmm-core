@@ -1,15 +1,20 @@
-import { BigNumberish, constants, Wallet, Transaction, BytesLike } from 'ethers'
+import { BigNumberish, constants, Wallet, ContractTransaction, BytesLike } from 'ethers'
 import { Contracts, Functions, ContractName } from '../../types'
 
 const empty: BytesLike = constants.HashZero
-export type DepositFunction = (delRisky: BigNumberish, delStable: BigNumberish, from?: Wallet) => Promise<Transaction>
+export type DepositFunction = (
+  delRisky: BigNumberish,
+  delStable: BigNumberish,
+  from?: Wallet
+) => Promise<ContractTransaction>
 export type SwapFunction = (
+  signer: Wallet,
   poolId: BytesLike | string,
   addXRemoveY: boolean,
   deltaOut: BigNumberish,
   deltaInMax: BigNumberish,
   fromMargin: boolean
-) => Promise<Transaction>
+) => Promise<ContractTransaction>
 
 export default function createEngineFunctions(
   contracts: ContractName[],
@@ -23,34 +28,39 @@ export default function createEngineFunctions(
     switch (contractName) {
       case 'engineSwap':
         const swapFunction: SwapFunction = async (
+          signer: Wallet,
           poolId: BytesLike | string,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
-        ): Promise<Transaction> => {
-          await loadedContracts.risky.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          await loadedContracts.stable.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          return loadedContracts.engineSwap.swap(poolId, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
+        ): Promise<ContractTransaction> => {
+          await loadedContracts.risky.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
+          await loadedContracts.stable.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
+          return loadedContracts.engineSwap
+            .connect(signer)
+            .swap(poolId, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
         }
 
         loadedFunctions.swapXForY = (
+          signer: Wallet,
           poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(poolId, true, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, true, deltaOut, deltaInMax, fromMargin)
         }
         loadedFunctions.swapYForX = (
+          signer: Wallet,
           poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(poolId, false, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, false, deltaOut, deltaInMax, fromMargin)
         }
         break
       case 'engineCreate':
@@ -62,7 +72,7 @@ export default function createEngineFunctions(
           delRisky: BigNumberish,
           delStable: BigNumberish,
           from?: Wallet
-        ): Promise<Transaction> => {
+        ): Promise<ContractTransaction> => {
           if (from) {
             loadedContracts.risky.connect(from)
             loadedContracts.stable.connect(from)
