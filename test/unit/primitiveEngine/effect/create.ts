@@ -6,7 +6,7 @@ import { parseWei, Wei } from 'web3-units'
 import loadContext, { config } from '../../context'
 import { createFragment } from '../fragments'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity, lastTimestamp, spot } = config
 const empty: BytesLike = constants.HashZero
 
 describe('create', function () {
@@ -48,7 +48,7 @@ describe('create', function () {
         empty
       )
       const receipt = await tx.wait()
-      const { timestamp } = await waffle.provider.getBlock(receipt.blockNumber)
+      const timestamp = lastTimestamp.raw
 
       const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
 
@@ -74,6 +74,8 @@ describe('create', function () {
     })
 
     it('reverts when the pool already exists', async function () {
+      // set a new mock timestamp to create the pool with
+      await this.contracts.engine.advanceTime(1)
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
       await expect(
         this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)

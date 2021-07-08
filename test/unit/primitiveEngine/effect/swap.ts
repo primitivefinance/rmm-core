@@ -113,7 +113,7 @@ const FailCases: SwapTestCase[] = [
     deltaIn: parseWei(1),
     fromMargin: true,
     signer: 1,
-    revertMsg: ERC20Events.EXCEEDS_BALANCE,
+    revertMsg: 'panic code',
   },
   {
     riskyForStable: false,
