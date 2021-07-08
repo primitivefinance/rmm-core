@@ -1,6 +1,6 @@
 {
   "name": "@primitivefinance/primitive-v2-core",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Primitive V2 protocol contracts.",
   "main": "index.js",
   "keywords": [
