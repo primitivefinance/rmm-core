@@ -207,7 +207,7 @@ describe('Engine:swap', function () {
           this.contracts.engineAllocate,
           this.contracts.engineSwap,
         ]
-        poolId = await engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+        poolId = await engine.getPoolId(this.config.strike.raw, this.config.sigma.raw, this.config.maturity.raw)
         ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([
           this.contracts.risky.balanceOf(engine.address),
           this.contracts.stable.balanceOf(engine.address),
@@ -219,8 +219,8 @@ describe('Engine:swap', function () {
           new Wei(preReserves.reserveRisky).float,
           new Wei(preReserves.reserveStable).float,
           new Wei(preReserves.liquidity).float,
-          strike.float,
-          sigma.float,
+          this.config.strike.float,
+          this.config.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
@@ -267,8 +267,8 @@ describe('Engine:swap', function () {
             new Wei(postReserve.reserveRisky).float,
             new Wei(postReserve.reserveStable).float,
             new Wei(postReserve.liquidity).float,
-            strike.float,
-            sigma.float,
+            this.config.strike.float,
+            this.config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 

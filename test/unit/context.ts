@@ -1,16 +1,9 @@
 import { createFixtureLoader, MockProvider } from 'ethereum-waffle'
-import { Contracts, Functions, Mocks, ContractName } from '../../types'
-import { Wallet, constants } from 'ethers'
+import { Contracts, Functions, Mocks, ContractName, Config } from '../../types'
+import { Wallet } from 'ethers'
 import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
-import { parseWei, Percentage, Time, Wei, toBN } from 'web3-units'
-interface Config {
-  strike: Wei
-  sigma: Percentage
-  maturity: Time
-  lastTimestamp: Time
-  spot: Wei
-}
+import { parseWei, Percentage, Time, toBN } from 'web3-units'
 
 export const config: Config = {
   strike: parseWei('25'),
@@ -46,6 +39,7 @@ export default function loadContext(
     this.mocks = {} as Mocks
     this.signers = provider.getWallets()
     this.deployer = this.signers[0]
+    this.config = config // enables us to have dynamic config fixtures
 
     Object.assign(this.contracts, loadedFixture.contracts)
     Object.assign(this.functions, loadedFixture.functions)
