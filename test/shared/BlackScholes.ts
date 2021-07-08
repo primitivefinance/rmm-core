@@ -1,5 +1,6 @@
 /// SDK Imports
 import { std_n_cdf } from './CumulativeNormalDistribution'
+import { getProportionalVol } from './ReplicationMath'
 
 /**
  * @param strike Strike price of option
@@ -30,4 +31,13 @@ export function callDelta(strike: number, sigma: number, tau: number, spot: numb
   const d1 = calculateD1(strike, sigma, tau, spot)
   const delta: number = std_n_cdf(d1)
   return delta
+}
+
+/**
+ * @returns Black-Scholes price of call option with parameters
+ */
+export function premium(strike: number, sigma: number, tau: number, spot: number): number {
+  const d1 = calculateD1(strike, sigma, tau, spot)
+  const d2 = d1 - getProportionalVol(sigma, tau)
+  return std_n_cdf(d1) * spot - std_n_cdf(d2) * strike * Math.exp(-tau * 0)
 }

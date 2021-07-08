@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BytesLike, constants } from 'ethers'
 import { parseWei, Percentage } from 'web3-units'
 
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { repayFragment } from '../fragments'
 
 let poolId: BytesLike
