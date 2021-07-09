@@ -5,7 +5,7 @@ import { parseWei } from 'web3-units'
 
 import { allocateFragment } from '../fragments'
 
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 
 const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
