@@ -2,6 +2,7 @@ import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
+import { Config } from '../test/unit/config'
 
 export interface Functions {
   depositFunction: DepositFunction
@@ -41,12 +42,21 @@ export interface Mocks {
   factory: MockContract
 }
 
+export interface Configs {
+  all: Config[]
+  strikes: Config[]
+  sigmas: Config[]
+  maturities: Config[]
+  spots: Config[]
+}
+
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
     contracts: Contracts
     functions: Functions
     mocks: Mocks
+    configs: Configs
   }
 }
 
