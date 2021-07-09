@@ -53,7 +53,6 @@ library Position {
         uint256 delLiquidity
     ) internal returns (Data storage position) {
         position = fetch(positions, msg.sender, poolId);
-        require(position.liquidity == 0, "Must borrow from 0");
         position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
     }
 
