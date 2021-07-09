@@ -226,7 +226,7 @@ describe('testReplicationMath', function () {
         let step4 = new Integer64x64(
           await fixture.getRiskyGivenStable.step4(
             toBN((inversedCDF * +Integer64x64.Denominator).toString()),
-            toBN(vol * +Integer64x64.Denominator)
+            Integer64x64.Denominator.mul(vol).mul(Percentage.Mantissa)
           )
         )
         expect(step4.parsed).to.be.eq(expected)
@@ -276,19 +276,32 @@ describe('testReplicationMath', function () {
 
     describe('Invariant: calcInvariant', async function () {
       it('step0', async function () {
-        let expected = new Integer64x64(config.strike.raw.mul(Integer64x64.Denominator)).raw
-        let step0 = await fixture.calcInvariant.step0(
-          reserveRisky.raw,
-          liquidity.raw,
-          config.strike.raw,
-          config.sigma.raw,
-          config.maturity.sub(config.lastTimestamp).raw
+        const tau = config.maturity.sub(config.lastTimestamp)
+        let expected = getTradingFunction(
+          0,
+          reserveRisky.float,
+          liquidity.float,
+          config.strike.float,
+          config.sigma.float,
+          tau.years
         )
-        expect(step0).to.be.eq(expected)
+        let step0 = new Integer64x64(
+          await fixture.calcInvariant.step0(reserveRisky.raw, liquidity.raw, config.strike.raw, config.sigma.raw, tau.raw)
+        )
+        expect(step0.parsed).to.be.eq(expected)
       })
 
       it('step1', async function () {
-        let expected = new Integer64x64(config.strike.raw.mul(Integer64x64.Denominator)).raw
+        const tau = config.maturity.sub(config.lastTimestamp)
+        let reserve2 = getTradingFunction(
+          0,
+          reserveRisky.float,
+          liquidity.float,
+          config.strike.float,
+          config.sigma.float,
+          tau.years
+        )
+        let expected = new Integer64x64(Integer64x64.Denominator.mul(reserveStable.sub(parseWei(reserve2)).raw))
         let step0 = await fixture.calcInvariant.step0(
           reserveRisky.raw,
           liquidity.raw,
@@ -296,8 +309,8 @@ describe('testReplicationMath', function () {
           config.sigma.raw,
           config.maturity.sub(config.lastTimestamp).raw
         )
-        let step1 = await fixture.calcInvariant.step1(reserveStable.raw, step0)
-        expect(step1).to.be.eq(expected)
+        let step1 = new Integer64x64(await fixture.calcInvariant.step1(reserveStable.raw, step0))
+        expect(step1.parsed).to.be.eq(expected.parsed / Math.pow(10, 18))
       })
 
       it('calcInvariant', async function () {
