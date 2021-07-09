@@ -5,6 +5,7 @@ import 'prettier-plugin-solidity'
 import 'hardhat-tracer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import 'hardhat-contract-sizer'
 import { HardhatUserConfig } from 'hardhat/config'
 
 const config: HardhatUserConfig = {
@@ -18,13 +19,21 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 400,
+        runs: 100,
+      },
+      metadata: {
+        bytecodeHash: 'none',
       },
     },
   },
   gasReporter: {
     currency: 'USD',
     gasPrice: 100,
+  },
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: true,
+    disambiguatePaths: true,
   },
   paths: {
     sources: './contracts',
