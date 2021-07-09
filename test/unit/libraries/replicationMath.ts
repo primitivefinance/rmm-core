@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { TestReplicationMath } from '../../../typechain'
 import { Integer64x64, parseWei, Time } from 'web3-units'
 import { getProportionalVol, getTradingFunction, getInverseTradingFunction, calcInvariant } from '../../shared'
-import loadContext, { config } from '../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../context'
 
 const { strike, sigma, maturity, lastTimestamp } = config
 
