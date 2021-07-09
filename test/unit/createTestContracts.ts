@@ -117,6 +117,13 @@ export default async function createTestContracts(contracts: ContractName[], dep
       case 'flashBorrower':
         loadedContracts.flashBorrower = (await deploy('FlashBorrower', deployer)) as ContractTypes.FlashBorrower
         break
+      case 'reentrancyAttacker':
+        loadedContracts.reentrancyAttacker = (await deploy(
+          'ReentrancyAttacker',
+          deployer
+        )) as ContractTypes.ReentrancyAttacker
+        await initializeTestContract(loadedContracts.reentrancyAttacker, loadedContracts)
+        break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)
     }
