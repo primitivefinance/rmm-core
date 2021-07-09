@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestReplicationMath } from '../../../typechain'
 import { Integer64x64, parseWei, Time } from 'web3-units'
-import { getProportionalVol, getTradingFunction, getInverseTradingFunction, calcInvariant } from '../../shared/sdk'
+import { getProportionalVol, getTradingFunction, getInverseTradingFunction, calcInvariant } from '../../shared'
 import loadContext, { config } from '../context'
 
 const { strike, sigma, maturity, lastTimestamp } = config
@@ -28,15 +28,15 @@ describe('testReplicationMath', function () {
     })
     it('getTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getTradingFunction(reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
-      ).parsed
+        await math.getTradingFunction(0, reserveRisky.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
+      ).float
       let actual: number = getTradingFunction(0, reserveRisky.float, liquidity.float, strike.float, sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
     it('getInverseTradingFunction', async function () {
       let expected: number = new Integer64x64(
-        await math.getInverseTradingFunction(reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
-      ).parsed
+        await math.getInverseTradingFunction(0, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
+      ).float
       let actual: number = getInverseTradingFunction(
         0,
         reserveStable.float,
@@ -51,7 +51,7 @@ describe('testReplicationMath', function () {
     it('calcInvariant', async function () {
       let expected: number = new Integer64x64(
         await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
-      ).parsed
+      ).float
       let actual: number = calcInvariant(
         reserveRisky.float,
         reserveStable.float,

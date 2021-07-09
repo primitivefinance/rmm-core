@@ -3,11 +3,11 @@ import { Wallet, Contract } from 'ethers'
 import { Contracts, ContractName } from '../../types'
 import { deployContract } from 'ethereum-waffle'
 import * as ContractTypes from '../../typechain'
-import { abi as PrimitiveEngineAbi } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
+import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
 type BaseContracts = {
-  factory: ContractTypes.PrimitiveFactory
-  engine: ContractTypes.PrimitiveEngine
+  factory: ContractTypes.MockFactory
+  engine: ContractTypes.MockEngine
   risky: ContractTypes.Token
   stable: ContractTypes.Token
 }
@@ -25,10 +25,10 @@ async function initializeTestContract<T extends Contract>(contract: T, loadedCon
 export async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
   const risky = (await deploy('Token', deployer)) as ContractTypes.Token
   const stable = (await deploy('Token', deployer)) as ContractTypes.Token
-  const factory = (await deploy('PrimitiveFactory', deployer)) as ContractTypes.PrimitiveFactory
+  const factory = (await deploy('MockFactory', deployer)) as ContractTypes.MockFactory
   await factory.deploy(risky.address, stable.address)
   const addr = await factory.getEngine(risky.address, stable.address)
-  const engine = (await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown as ContractTypes.PrimitiveEngine
+  const engine = (await ethers.getContractAt(MockEngineAbi, addr)) as unknown as ContractTypes.MockEngine
   return { factory, engine, stable, risky }
 }
 
