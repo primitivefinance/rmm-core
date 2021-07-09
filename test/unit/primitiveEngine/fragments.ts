@@ -2,7 +2,7 @@ import { Wallet, constants } from 'ethers'
 import { Contracts } from '../../../types'
 import { parseWei } from 'web3-units'
 
-import { config } from '../context'
+import { DEFAULT_CONFIG as config } from '../context'
 
 const { strike, sigma, maturity, spot } = config
 const empty = constants.HashZero

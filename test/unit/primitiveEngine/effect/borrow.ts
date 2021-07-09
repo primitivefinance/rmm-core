@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
 
