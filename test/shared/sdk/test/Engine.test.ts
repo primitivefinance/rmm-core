@@ -90,7 +90,7 @@ describe('SDK: Engine entity', function () {
       expect(entity.reserves[poolId].reserveRisky.raw).to.be.gte(0)
       expect(entity.reserves[poolId].reserveStable.raw).to.be.gte(0)
       expect(entity.positions[posId].liquidity.raw).to.be.eq(amount0.add(initialLiquidity).raw)
-      entity.swap(poolId, true, parseWei('1'))
+      entity.swap(poolId, true, parseWei('0.1'))
     })
 
     it('lend', async function () {

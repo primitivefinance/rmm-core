@@ -28,15 +28,18 @@
     "test:logs": "hardhat test --logs",
     "test:engine": "hardhat test ./test/unit/primitiveEngine",
     "test:factory": "hardhat test ./test/unit/primitiveFactory",
+    "test:reentrancy": "hardhat test ./test/unit/primitiveEngine/effect/reentrancy.ts",
     "test:create": "hardhat test ./test/unit/primitiveEngine/effect/create.ts",
     "test:deposit": "hardhat test ./test/unit/primitiveEngine/effect/deposit.ts",
     "test:withdraw": "hardhat test ./test/unit/primitiveEngine/effect/withdraw.ts",
     "test:allocate": "hardhat test ./test/unit/primitiveEngine/effect/allocate.ts",
     "test:remove": "hardhat test ./test/unit/primitiveEngine/effect/remove.ts",
-    "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
-    "test:borrow": "hardhat test ./test/unit/primitiveEngine/effect/borrow.ts",
     "test:lend": "hardhat test ./test/unit/primitiveEngine/effect/lend.ts",
+    "test:borrow": "hardhat test ./test/unit/primitiveEngine/effect/borrow.ts",
+    "test:repay": "hardhat test ./test/unit/primitiveEngine/effect/repay.ts",
+    "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:lib": "hardhat test ./test/unit/libraries",
+    "test:bs": "hardhat test ./test/unit/libraries/blackScholes.ts",
     "test:sdk": "hardhat test ./test/shared/sdk/test",
     "prepare": "husky install"
   },
@@ -70,7 +73,7 @@
     "ts-node": "^9.1.1",
     "typechain": "^4.0.3",
     "typescript": "^4.2.3",
-    "web3-units": "^0.1.0"
+    "web3-units": "0.1.1"
   },
   "postinstall": "typechain",
   "lint-staged": {

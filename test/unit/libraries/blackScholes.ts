@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
 import { Integer64x64, Wei } from 'web3-units'
 import loadContext, { config } from '../context'
-import { callDelta, calculateD1, moneyness } from '../../shared/sdk/BlackScholes'
+import { callDelta, calculateD1, moneyness } from '../../shared/BlackScholes'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = config
 
@@ -27,10 +27,10 @@ describe('testBlackScholes', function () {
     })
 
     it('callDelta', async function () {
-      let delta = callDelta(strike.float, sigma.float, tau, spot.float)
-      expect(new Integer64x64(await blackScholes.callDelta(params, spot.raw)).parsed).to.be.eq(delta)
+      const expected = callDelta(strike.float, sigma.float, tau, spot.float)
+      const actual = new Integer64x64(await blackScholes.callDelta(params, spot.raw)).parsed
+      expect(actual).to.be.eq(expected)
     })
-    it('putDelta', async function () {})
     it('d1', async function () {
       let d1 = Math.floor(calculateD1(strike.float, sigma.float, tau, spot.float) * Wei.Mantissa) / Wei.Mantissa
       expect(new Integer64x64(await blackScholes.d1(params, spot.raw)).parsed).to.be.eq(d1)

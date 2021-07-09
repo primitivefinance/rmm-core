@@ -1,17 +1,15 @@
-import { constants, utils } from 'ethers'
+import { utils } from 'ethers'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
 import { Pool, Token } from '../entities'
-import { callDelta } from '../BlackScholes'
+import { callDelta } from '../../BlackScholes'
 import { Calibration, Position, Reserve, Margin } from '../Structs'
 import { parseWei, Wei, Percentage, Time, Integer64x64 } from 'web3-units'
 
 // ===== Interfaces =====
 export interface SwapReturn {
-  deltaIn: Wei
-  reserveRisky: Wei
-  reserveStable: Wei
-  invariant: Integer64x64
+  deltaOut: Wei
+  pool: Pool
   effectivePriceOutStable?: Wei
 }
 
@@ -21,7 +19,7 @@ export interface SwapReturn {
  * @notice Typescript Class representation of PrimitiveEngine.sol
  */
 export class Engine {
-  public readonly fee: number = 0
+  public readonly fee: number = 0.0015 // bips
   public readonly risky!: Token
   public readonly stable!: Token
   public settings!: Calibration[] | {}
@@ -208,10 +206,10 @@ export class Engine {
   /**
    * @notice Swaps between tokens in the reserve, returning the cost of the swap as `deltaIn`
    */
-  swap(poolId: BytesLike, riskyForStable: boolean, deltaOut: Wei, lastTimestamp?: number): SwapReturn {
+  swap(poolId: BytesLike, riskyForStable: boolean, deltaIn: Wei, lastTimestamp?: number): SwapReturn {
     if (lastTimestamp) this.lastTimestamp = lastTimestamp
     const pool: Pool = this.getPool(poolId) // get a pool in memory
-    const swapReturn: SwapReturn = riskyForStable ? pool.swapAmountOutStable(deltaOut) : pool.swapAmountOutRisky(deltaOut)
+    const swapReturn: SwapReturn = riskyForStable ? pool.swapAmountInRisky(deltaIn) : pool.swapAmountInStable(deltaIn)
     // Commit memory state pool to storage state
     const setting = this.settings[poolId.toString()]
     setting.lastTimestamp = pool.lastTimestamp

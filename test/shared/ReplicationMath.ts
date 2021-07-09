@@ -1,4 +1,4 @@
-/// SDK Imports
+import numeric from 'numeric'
 import { inverse_std_n_cdf, std_n_cdf } from './CumulativeNormalDistribution'
 
 /**
@@ -19,7 +19,6 @@ export function getProportionalVol(sigma: number, tau: number): number {
  * @param strike Price point that defines complete stable token composition of the pool
  * @param sigma Implied volatility of the pool
  * @param tau Time until expiry
- * @param fee Fee to charge on the way in
  * @returns Covered Call AMM black-scholes trading function
  */
 export function getTradingFunction(
@@ -28,14 +27,12 @@ export function getTradingFunction(
   liquidity: number,
   strike: number,
   sigma: number,
-  tau: number,
-  fee: number = 0
+  tau: number
 ): number {
   const K = strike
   const vol = getProportionalVol(sigma, tau)
   if (vol <= 0) return 0
-  const gamma: number = 1 - fee
-  const reserve: number = (reserveRisky * gamma) / liquidity
+  const reserve: number = reserveRisky / liquidity
   const inverseInput: number = 1 - +reserve
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi - vol
@@ -51,7 +48,6 @@ export function getTradingFunction(
  * @param strike Price point that defines complete stable token composition of the pool
  * @param sigma Implied volatility of the pool
  * @param tau Time until expiry
- * @param fee Fee to charge on the way in
  * @returns Covered Call AMM black-scholes inverse trading function
  */
 export function getInverseTradingFunction(
@@ -60,14 +56,12 @@ export function getInverseTradingFunction(
   liquidity: number,
   strike: number,
   sigma: number,
-  tau: number,
-  fee: number = 0
+  tau: number
 ): number {
   const K = strike
   const vol = getProportionalVol(sigma, tau)
   if (vol <= 0) return 0
-  const gamma: number = 1 - fee
-  const reserve: number = (reserveStable * gamma) / liquidity
+  const reserve: number = reserveStable / liquidity
   const inverseInput: number = (reserve - invariantLast) / K
   const phi: number = inverse_std_n_cdf(inverseInput)
   const input = phi + vol
@@ -89,4 +83,20 @@ export function calcInvariant(
   const input: number = getTradingFunction(0, reserveRisky, liquidity, strike, sigma, tau)
   const invariant: number = reserveStable - input
   return invariant
+}
+
+export function getSpotPrice(
+  reserveRisky: number,
+  reserveStable: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const fn = function (x: number[]) {
+    return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
+  }
+  const spot = numeric.gradient(fn, [reserveRisky, reserveStable])
+  //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
+  return spot[0] / spot[1]
 }

@@ -32,8 +32,8 @@ library Margin {
 
     /// @notice Removes risky and stable token balance from `msg.sender`'s internal margin account
     /// @param  margins     The margin data mapping which is used with `msg.sender` to get a margin account
-    /// @param  delRisky    The amount of risky tokens to add to margin
-    /// @param  delStable   The amount of stable tokens to add to margin
+    /// @param  delRisky    The amount of risky tokens to subtract from margin
+    /// @param  delStable   The amount of stable tokens to subtract from margin
     /// @return margin      Data storage of a margin account
     function withdraw(
         mapping(address => Data) storage margins,
