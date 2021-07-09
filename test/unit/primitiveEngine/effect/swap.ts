@@ -4,7 +4,7 @@ import { ethers, waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
 import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 // Context Imports
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
 import { EngineEvents, ERC20Events, getSpotPrice } from '../../../shared'
@@ -207,7 +207,7 @@ describe('Engine:swap', function () {
           this.contracts.engineAllocate,
           this.contracts.engineSwap,
         ]
-        poolId = await engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+        poolId = await engine.getPoolId(this.config.strike.raw, this.config.sigma.raw, this.config.maturity.raw)
         ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([
           this.contracts.risky.balanceOf(engine.address),
           this.contracts.stable.balanceOf(engine.address),
@@ -219,8 +219,8 @@ describe('Engine:swap', function () {
           new Wei(preReserves.reserveRisky).float,
           new Wei(preReserves.reserveStable).float,
           new Wei(preReserves.liquidity).float,
-          strike.float,
-          sigma.float,
+          this.config.strike.float,
+          this.config.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
@@ -267,8 +267,8 @@ describe('Engine:swap', function () {
             new Wei(postReserve.reserveRisky).float,
             new Wei(postReserve.reserveStable).float,
             new Wei(postReserve.liquidity).float,
-            strike.float,
-            sigma.float,
+            this.config.strike.float,
+            this.config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 

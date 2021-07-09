@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, constants, BytesLike } from 'ethers'
 import { parseWei, Wei } from 'web3-units'
 
-import loadContext, { config } from '../../context'
+import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { createFragment } from '../fragments'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = config
