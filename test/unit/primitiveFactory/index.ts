@@ -1,2 +1,2 @@
-import './effect/create';
-import './view/owner';
+import './effect/deploy'
+import './view/owner'

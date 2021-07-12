@@ -1,13 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestPosition } from '../../../typechain'
-import { parseWei, PERCENTAGE, Wei, fromMantissa, fromInt, BytesLike } from '../../shared/Units'
-import { utils } from 'ethers'
+import { parseWei } from 'web3-units'
+import { utils, BytesLike } from 'ethers'
 import loadContext from '../context'
 
 describe('testPosition', function () {
   before(async function () {
-    await loadContext(waffle.provider, ['testPosition'], async () => {})
+    loadContext(waffle.provider, ['testPosition'], async () => {})
   })
 
   describe('position', function () {
@@ -42,7 +42,6 @@ describe('testPosition', function () {
       await position.shouldBorrow(poolId, amount)
       expect((await position.pos()).liquidity).to.be.deep.eq(0) // removed all liquidity
       expect((await position.pos()).debt).to.be.deep.eq(before.debt.add(amount))
-      expect((await position.pos()).balanceRisky).to.be.deep.eq(before.balanceRisky.add(amount))
     })
     it('shouldLend', async function () {
       let amount = parseWei('0.1').raw
@@ -59,10 +58,11 @@ describe('testPosition', function () {
     })
     it('shouldRepay', async function () {
       let amount = parseWei('0.1').raw
+      await position.shouldRemove(poolId, (await position.pos()).liquidity) // remove all liq so we can borrow
+      await position.shouldBorrow(poolId, amount)
       await position.shouldRepay(poolId, amount) // borrow from this account so we can repay
-      expect((await position.pos()).liquidity).to.be.deep.eq(before.liquidity.sub(amount))
+      expect((await position.pos()).liquidity).to.be.deep.eq(0)
       expect((await position.pos()).debt).to.be.deep.eq(before.debt) // no change
-      expect((await position.pos()).balanceRisky).to.be.deep.eq(before.balanceRisky) // no change
     })
     it('shouldGetPositionId', async function () {
       expect(await position.shouldGetPositionId(this.signers[0].address, poolId)).to.be.deep.eq(

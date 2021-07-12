@@ -12,24 +12,36 @@ contract EngineDeposit {
 
     constructor() {}
 
-    function initialize(address _engine, address _risky, address _stable) public {
-      engine = _engine;
-      risky = _risky;
-      stable = _stable;
+    function initialize(
+        address _engine,
+        address _risky,
+        address _stable
+    ) public {
+        engine = _engine;
+        risky = _risky;
+        stable = _stable;
     }
 
-    function deposit(address owner, uint256 dRisky, uint256 dStable, bytes calldata data) public { 
-      CALLER = msg.sender;
-      IPrimitiveEngine(engine).deposit(owner, dRisky, dStable, data);
+    function deposit(
+        address owner,
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        CALLER = msg.sender;
+        IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
     }
 
-    function depositCallback(uint256 dRisky, uint256 dStable, bytes calldata data) public {
-        IERC20(risky).transferFrom(CALLER, engine, dRisky);
-        IERC20(stable).transferFrom(CALLER, engine, dStable);
+    function depositCallback(
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        IERC20(risky).transferFrom(CALLER, engine, delRisky);
+        IERC20(stable).transferFrom(CALLER, engine, delStable);
     }
 
     function name() public pure returns (string memory) {
-      return "EngineDeposit";
+        return "EngineDeposit";
     }
 }
-

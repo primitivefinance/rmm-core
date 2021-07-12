@@ -1,11 +1,11 @@
 import { expect } from 'chai'
-import { BigNumber } from '../../../shared/Units'
+import { BigNumber } from 'ethers'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
 describe('getPoolId', function () {
   beforeEach(async function () {
-    await loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [], async function () {})
   })
 
   it('returns the poolId given settings', async function () {

@@ -2,6 +2,7 @@ import { Wallet } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
+import { Config } from '../test/unit/config'
 
 export interface Functions {
   depositFunction: DepositFunction
@@ -10,8 +11,8 @@ export interface Functions {
 }
 
 export interface Contracts {
-  engine: ContractTypes.PrimitiveEngine
-  factory: ContractTypes.PrimitiveFactory
+  engine: ContractTypes.MockEngine
+  factory: ContractTypes.MockFactory
   risky: ContractTypes.Token
   stable: ContractTypes.Token
   engineCreate: ContractTypes.EngineCreate
@@ -21,7 +22,9 @@ export interface Contracts {
   engineAllocate: ContractTypes.EngineAllocate
   engineRemove: ContractTypes.EngineRemove
   engineLend: ContractTypes.EngineLend
-  factoryCreate: ContractTypes.FactoryCreate
+  engineBorrow: ContractTypes.EngineBorrow
+  engineRepay: ContractTypes.EngineRepay
+  badEngineDeposit: ContractTypes.BadEngineDeposit
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin
@@ -29,6 +32,8 @@ export interface Contracts {
   testReplicationMath: ContractTypes.TestReplicationMath
   testBlackScholes: ContractTypes.TestBlackScholes
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
+  flashBorrower: ContractTypes.FlashBorrower
+  reentrancyAttacker: ContractTypes.ReentrancyAttacker
 }
 
 export interface Mocks {
@@ -38,12 +43,21 @@ export interface Mocks {
   factory: MockContract
 }
 
+export interface Configs {
+  all: Config[]
+  strikes: Config[]
+  sigmas: Config[]
+  maturities: Config[]
+  spots: Config[]
+}
+
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
     contracts: Contracts
     functions: Functions
     mocks: Mocks
+    configs: Configs
   }
 }
 
@@ -63,3 +77,8 @@ type ContractName =
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineLend'
+  | 'engineBorrow'
+  | 'engineRepay'
+  | 'badEngineDeposit'
+  | 'flashBorrower'
+  | 'reentrancyAttacker'

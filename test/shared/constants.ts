@@ -1,7 +1,6 @@
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
 }
-
 export const EngineEvents = {
   DEPOSITED: 'Deposited',
   WITHDRAWN: 'Withdrawn',

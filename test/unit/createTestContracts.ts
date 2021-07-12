@@ -3,16 +3,16 @@ import { Wallet, Contract } from 'ethers'
 import { Contracts, ContractName } from '../../types'
 import { deployContract } from 'ethereum-waffle'
 import * as ContractTypes from '../../typechain'
-import { abi as PrimitiveEngineAbi } from '../../artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json'
+import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
 type BaseContracts = {
-  factory: ContractTypes.PrimitiveFactory
-  engine: ContractTypes.PrimitiveEngine
+  factory: ContractTypes.MockFactory
+  engine: ContractTypes.MockEngine
   risky: ContractTypes.Token
   stable: ContractTypes.Token
 }
 
-async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
+export async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
   const artifact = await hre.artifacts.readArtifact(contractName)
   const contract = await deployContract(deployer, artifact, [], { gasLimit: 9500000 })
   return contract
@@ -22,13 +22,13 @@ async function initializeTestContract<T extends Contract>(contract: T, loadedCon
   await contract.initialize(loadedContracts.engine.address, loadedContracts.risky.address, loadedContracts.stable.address)
 }
 
-async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
+export async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
   const risky = (await deploy('Token', deployer)) as ContractTypes.Token
   const stable = (await deploy('Token', deployer)) as ContractTypes.Token
-  const factory = (await deploy('PrimitiveFactory', deployer)) as ContractTypes.PrimitiveFactory
-  await factory.create(risky.address, stable.address)
+  const factory = (await deploy('MockFactory', deployer)) as ContractTypes.MockFactory
+  await factory.deploy(risky.address, stable.address)
   const addr = await factory.getEngine(risky.address, stable.address)
-  const engine = ((await ethers.getContractAt(PrimitiveEngineAbi, addr)) as unknown) as ContractTypes.PrimitiveEngine
+  const engine = (await ethers.getContractAt(MockEngineAbi, addr)) as unknown as ContractTypes.MockEngine
   return { factory, engine, stable, risky }
 }
 
@@ -74,12 +74,17 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.engineLend = (await deploy('EngineLend', deployer)) as ContractTypes.EngineLend
         await initializeTestContract(loadedContracts.engineLend, loadedContracts)
         break
-      case 'factoryCreate':
-        loadedContracts.factoryCreate = (await deploy('FactoryCreate', deployer)) as ContractTypes.FactoryCreate
-        await loadedContracts.factoryCreate.initialize(loadedContracts.factory.address)
+      case 'engineBorrow':
+        loadedContracts.engineBorrow = (await deploy('EngineBorrow', deployer)) as ContractTypes.EngineBorrow
+        await initializeTestContract(loadedContracts.engineBorrow, loadedContracts)
+        break
+      case 'engineRepay':
+        loadedContracts.engineRepay = (await deploy('EngineRepay', deployer)) as ContractTypes.EngineRepay
+        await initializeTestContract(loadedContracts.engineRepay, loadedContracts)
         break
       case 'factoryDeploy':
         loadedContracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
+        await loadedContracts.factoryDeploy.initialize(loadedContracts.factory.address)
         break
       case 'testReserve':
         loadedContracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
@@ -104,6 +109,20 @@ export default async function createTestContracts(contracts: ContractName[], dep
           'TestCumulativeNormalDistribution',
           deployer
         )) as ContractTypes.TestCumulativeNormalDistribution
+        break
+      case 'badEngineDeposit':
+        loadedContracts.badEngineDeposit = (await deploy('BadEngineDeposit', deployer)) as ContractTypes.BadEngineDeposit
+        await initializeTestContract(loadedContracts.badEngineDeposit, loadedContracts)
+        break
+      case 'flashBorrower':
+        loadedContracts.flashBorrower = (await deploy('FlashBorrower', deployer)) as ContractTypes.FlashBorrower
+        break
+      case 'reentrancyAttacker':
+        loadedContracts.reentrancyAttacker = (await deploy(
+          'ReentrancyAttacker',
+          deployer
+        )) as ContractTypes.ReentrancyAttacker
+        await initializeTestContract(loadedContracts.reentrancyAttacker, loadedContracts)
         break
       default:
         throw new Error(`Unknown contract name: ${contractName}`)

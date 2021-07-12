@@ -23,15 +23,15 @@ library Units {
     /// @param   x The wei value.
     /// @return  y The wei value as an int128.
     function parseUnits(uint256 x) internal pure returns (int128 y) {
-        y =  x.divu(DENOMINATOR);
+        y = x.divu(DENOMINATOR);
     }
 
     /// @dev     Converts a wei value int128 into an uint256 value.
     /// @param   x The wei value as an int128.
     /// @return  y The wei value.
-    function parseUnits(int128 x) internal pure returns (uint y) {
-        y = fromInt(x) * 1e18 / MANTISSA;
-    } 
+    function parseUnits(int128 x) internal pure returns (uint256 y) {
+        y = (fromInt(x) * 1e18) / MANTISSA;
+    }
 
     /// @dev     Converts a denormalized percentage (10000 = 100%, 100 = 1%) into an int128.
     /// @param   denorm The percentage value multiplied by PERCENTAGE, which is 10,000.
@@ -44,8 +44,8 @@ library Units {
     /// @dev     Converts an int128 percentage to a denormalized uint percentage.
     /// @param   denorm The int128 percentage.
     /// @return  The uint percentage denormalized by PERCENTAGE, which is 10,000.
-    function percentage(int128 denorm) internal pure returns (uint) {
-        uint numerator = denorm.mul(PERCENTAGE_INT).toUInt();
+    function percentage(int128 denorm) internal pure returns (uint256) {
+        uint256 numerator = denorm.mul(PERCENTAGE_INT).toUInt();
         return numerator;
     }
 
@@ -66,6 +66,4 @@ library Units {
         x = x.mul((MANTISSA).fromUInt());
         y = x > 0 ? (x).toUInt() : uint256(0);
     }
-
-    
 }
