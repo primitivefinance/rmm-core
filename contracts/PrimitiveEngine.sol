@@ -288,11 +288,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (details.riskyForStable) {
             int128 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4));
             deltaOut = resStable.parseUnits().sub(nextStable).parseUnits();
-            //deltaOut = resStable - nextStable;
         } else {
             int128 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4));
             deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
-            //deltaOut = resRisky - nextRisky;
         }
         require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
 
