@@ -1,16 +1,20 @@
-import { BigNumberish } from '../shared/Units'
-import { constants, Wallet, Transaction, BytesLike } from 'ethers'
+import { BigNumberish, constants, Wallet, ContractTransaction, BytesLike } from 'ethers'
 import { Contracts, Functions, ContractName } from '../../types'
 
 const empty: BytesLike = constants.HashZero
-export type DepositFunction = (deltaX: BigNumberish, deltaY: BigNumberish, from?: Wallet) => Promise<Transaction>
+export type DepositFunction = (
+  delRisky: BigNumberish,
+  delStable: BigNumberish,
+  from?: Wallet
+) => Promise<ContractTransaction>
 export type SwapFunction = (
-  pid: BytesLike | string,
+  signer: Wallet,
+  poolId: BytesLike | string,
   addXRemoveY: boolean,
   deltaOut: BigNumberish,
   deltaInMax: BigNumberish,
   fromMargin: boolean
-) => Promise<Transaction>
+) => Promise<ContractTransaction>
 
 export default function createEngineFunctions(
   contracts: ContractName[],
@@ -24,34 +28,39 @@ export default function createEngineFunctions(
     switch (contractName) {
       case 'engineSwap':
         const swapFunction: SwapFunction = async (
-          pid: BytesLike | string,
+          signer: Wallet,
+          poolId: BytesLike | string,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
-        ): Promise<Transaction> => {
-          await loadedContracts.risky.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          await loadedContracts.stable.approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          return loadedContracts.engineSwap.swap(pid, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
+        ): Promise<ContractTransaction> => {
+          await loadedContracts.risky.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
+          await loadedContracts.stable.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
+          return loadedContracts.engineSwap
+            .connect(signer)
+            .swap(poolId, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
         }
 
         loadedFunctions.swapXForY = (
-          pid: BytesLike,
+          signer: Wallet,
+          poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(pid, true, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, true, deltaOut, deltaInMax, fromMargin)
         }
         loadedFunctions.swapYForX = (
-          pid: BytesLike,
+          signer: Wallet,
+          poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
           deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(pid, false, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, false, deltaOut, deltaInMax, fromMargin)
         }
         break
       case 'engineCreate':
@@ -60,10 +69,10 @@ export default function createEngineFunctions(
         break
       case 'engineDeposit':
         loadedFunctions.depositFunction = async (
-          deltaX: BigNumberish,
-          deltaY: BigNumberish,
+          delRisky: BigNumberish,
+          delStable: BigNumberish,
           from?: Wallet
-        ): Promise<Transaction> => {
+        ): Promise<ContractTransaction> => {
           if (from) {
             loadedContracts.risky.connect(from)
             loadedContracts.stable.connect(from)
@@ -71,7 +80,7 @@ export default function createEngineFunctions(
           }
           await loadedContracts.risky.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
           await loadedContracts.stable.approve(loadedContracts.engineDeposit.address, constants.MaxUint256)
-          return loadedContracts.engineDeposit.deposit(deployer.address, deltaX, deltaY, empty)
+          return loadedContracts.engineDeposit.deposit(from ? from.address : deployer.address, delRisky, delStable, empty)
         }
         break
       default:

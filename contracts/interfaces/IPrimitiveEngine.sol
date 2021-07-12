@@ -7,11 +7,9 @@ import "./engine/IPrimitiveEngineEvents.sol";
 import "./engine/IPrimitiveEngineView.sol";
 import "./IERC3156FlashLender.sol";
 
-
-interface IPrimitiveEngine is 
-    IPrimitiveEngineActions, 
-    IPrimitiveEngineEvents, 
+interface IPrimitiveEngine is
+    IPrimitiveEngineActions,
+    IPrimitiveEngineEvents,
     IPrimitiveEngineView,
     IERC3156FlashLender
-{
-}
+{}

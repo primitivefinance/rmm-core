@@ -8,24 +8,51 @@ import "../../libraries/ReplicationMath.sol";
 /// @dev     For testing purposes ONLY
 
 contract TestReplicationMath {
-
-    /// @return vol The sigma * sqrt(time)
-    function getProportionalVolatility(uint sigma, uint time) public pure returns (int128 vol) {
-        vol = ReplicationMath.getProportionalVolatility(sigma, time);
+    /// @return vol The sigma * sqrt(tau)
+    function getProportionalVolatility(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
+        vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    /// @return RY2 The calculated stable reserve, using the risky reserve
-    function getTradingFunction(uint RX1, uint liquidity, uint strike, uint sigma, uint time) public pure returns (int128 RY2) {
-        RY2 = ReplicationMath.getTradingFunction(RX1, liquidity, strike, sigma, time);
+    /// @return reserveStable The calculated stable reserve, using the risky reserve
+    function getTradingFunction(
+        int128 invariantLast,
+        uint256 reserveRisky,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public pure returns (int128 reserveStable) {
+        reserveStable = ReplicationMath.getTradingFunction(invariantLast, reserveRisky, liquidity, strike, sigma, tau);
     }
 
-    /// @return RX1 The calculated risky reserve, using the stable reserve
-    function getInverseTradingFunction(uint RY2, uint liquidity, uint strike, uint sigma, uint time) public pure returns (int128 RX1) {
-        RX1 = ReplicationMath.getInverseTradingFunction(RY2, liquidity, strike, sigma, time);
+    /// @return reserveRisky The calculated risky reserve, using the stable reserve
+    function getInverseTradingFunction(
+        int128 invariantLast,
+        uint256 reserveStable,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public pure returns (int128 reserveRisky) {
+        reserveRisky = ReplicationMath.getInverseTradingFunction(
+            invariantLast,
+            reserveStable,
+            liquidity,
+            strike,
+            sigma,
+            tau
+        );
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
-    function calcInvariant(uint RX1, uint RY2, uint liquidity, uint strike, uint sigma, uint time) public pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(RX1, RY2, liquidity, strike, sigma, time);
+    function calcInvariant(
+        uint256 reserveRisky,
+        uint256 reserveStable,
+        uint256 liquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public pure returns (int128 invariant) {
+        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, liquidity, strike, sigma, tau);
     }
 }
