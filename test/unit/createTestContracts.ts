@@ -12,7 +12,7 @@ type BaseContracts = {
   stable: ContractTypes.Token
 }
 
-async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
+export async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
   const artifact = await hre.artifacts.readArtifact(contractName)
   const contract = await deployContract(deployer, artifact, [], { gasLimit: 9500000 })
   return contract
