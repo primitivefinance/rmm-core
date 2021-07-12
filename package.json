@@ -1,6 +1,6 @@
 {
   "name": "@primitivefinance/primitive-v2-core",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Primitive V2 protocol contracts.",
   "main": "index.js",
   "keywords": [
@@ -51,10 +51,13 @@
     "@typechain/ethers-v5": "^6.0.5",
     "@typechain/hardhat": "^1.0.1",
     "@types/chai": "^4.2.15",
+    "@types/fs-extra": "^9.0.12",
     "@types/mocha": "^8.2.2",
     "@types/node": "^14.14.36",
     "bignumber.js": "^9.0.1",
     "chai": "^4.3.4",
+    "defender-relay-client": "^1.8.0",
+    "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",
     "hardhat": "^2.3.0",
