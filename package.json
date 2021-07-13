@@ -17,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "chttps://github.com/primitivefinance/primitive-v2-core.git"
+    "url": "https://github.com/primitivefinance/primitive-v2-core.git"
   },
   "author": "Primitive",
   "license": "GPL-3.0-or-later",
