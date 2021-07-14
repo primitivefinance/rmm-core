@@ -76,16 +76,28 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei): Wei {
-    return parseWei(
-      getTradingFunction(
-        this.invariant.float,
-        reserveRisky.float,
-        this.liquidity.float,
-        this.strike.float,
-        this.sigma.float,
-        this.tau.years
-      )
+    const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
+    console.log(
+      Math.abs(invariant) >= 1e-8,
+      invariant,
+      reserveRisky.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
     )
+
+    let stable = getTradingFunction(
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
+      reserveRisky.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
+    )
+
+    stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
+    return parseWei(stable)
   }
 
   /**
@@ -94,16 +106,18 @@ export class Pool {
    * @return reserveRisky Expected amount of risky token reserves
    */
   getRiskyGivenStable(reserveStable: Wei): Wei {
+    const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
     console.log(
-      this.invariant.float,
+      Math.abs(invariant) >= 1e-8,
+      invariant,
       reserveStable.float,
       this.liquidity.float,
       this.strike.float,
       this.sigma.float,
       this.tau.years
     )
-    const risky = getInverseTradingFunction(
-      this.invariant.float,
+    let risky = getInverseTradingFunction(
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
       reserveStable.float,
       this.liquidity.float,
       this.strike.float,
@@ -111,6 +125,7 @@ export class Pool {
       this.tau.years
     )
     console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float}`)
+    risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
     return parseWei(risky)
   }
 
@@ -174,7 +189,7 @@ export class Pool {
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveRisky = this.reserveRisky.add(deltaInWithFee)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky)
-    const deltaOut = newReserveStable.sub(this.reserveStable)
+    const deltaOut = this.reserveStable.sub(newReserveStable)
     const effectivePriceOutStable = deltaOut.div(deltaIn)
     return {
       deltaOut,

@@ -90,7 +90,7 @@ export class Arbitrageur {
       console.log(`   Sell profit: ${profit}`)
       if (profit > 0) {
         pool.swapAmountInRisky(optimalTrade) // do the arbitrage
-        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
+        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed / Math.pow(10, 18)}`)
       }
     } else if (buyPriceRisky < spot.float - this.optimalAmount) {
       const func = (amountIn) => {
@@ -112,7 +112,7 @@ export class Arbitrageur {
       console.log(`   Buy profit: ${profit}`)
       if (profit > 0) {
         pool.swapAmountInStable(optimalTrade) // do the arbitrage
-        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
+        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed / Math.pow(10, 18)}`)
       }
     }
 
