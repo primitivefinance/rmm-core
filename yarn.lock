@@ -4709,6 +4709,11 @@ ganache-core@^2.13.2:
     ethereumjs-wallet "0.6.5"
     web3 "1.2.11"
 
+gaussian@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/gaussian/-/gaussian-1.2.0.tgz#5b081744008c1b0a8eb510da695ed7328fb8913a"
+  integrity sha512-Pz/InFmDZ6VqCbXF+2+O6USIbPUPWhJ7DnqrZKfo9mMHszCd4pBad3WCVa9ruzzrBizYonsv0ZBmuv4rR8NRQg==
+
 get-caller-file@^1.0.1:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/get-caller-file/-/get-caller-file-1.0.3.tgz#f978fa4c90d1dfe7ff2d6beda2a515e713bdcf4a"

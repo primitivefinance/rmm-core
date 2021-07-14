@@ -2,6 +2,24 @@ import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
 import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../../ReplicationMath'
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
+import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
+import { quantilePrime } from './Arb'
+
+export const nonNegative = (x: number): boolean => {
+  return x >= 0
+}
+
+export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
+  return new Pool(
+    poolToClone.entity,
+    newRisky,
+    newStable,
+    poolToClone.strike,
+    poolToClone.sigma,
+    poolToClone.maturity,
+    poolToClone.lastTimestamp
+  )
+}
 
 /**
  * @notice Typescript representation of an individual Pool in an Engine
@@ -58,16 +76,28 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei): Wei {
-    return parseWei(
-      getTradingFunction(
-        this.invariant.float,
-        reserveRisky.float,
-        this.liquidity.float,
-        this.strike.float,
-        this.sigma.float,
-        this.tau.years
-      )
+    const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
+    console.log(
+      Math.abs(invariant) >= 1e-8,
+      invariant,
+      reserveRisky.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
     )
+
+    let stable = getTradingFunction(
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
+      reserveRisky.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
+    )
+
+    stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
+    return parseWei(stable)
   }
 
   /**
@@ -76,16 +106,27 @@ export class Pool {
    * @return reserveRisky Expected amount of risky token reserves
    */
   getRiskyGivenStable(reserveStable: Wei): Wei {
-    return parseWei(
-      getInverseTradingFunction(
-        this.invariant.float,
-        reserveStable.float,
-        this.liquidity.float,
-        this.strike.float,
-        this.sigma.float,
-        this.tau.years
-      )
+    const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
+    console.log(
+      Math.abs(invariant) >= 1e-8,
+      invariant,
+      reserveStable.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
     )
+    let risky = getInverseTradingFunction(
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
+      reserveStable.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
+    )
+    console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float}`)
+    risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
+    return parseWei(risky)
   }
 
   /**
@@ -148,11 +189,11 @@ export class Pool {
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveRisky = this.reserveRisky.add(deltaInWithFee)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky)
-    const deltaOut = newReserveStable.sub(this.reserveStable)
+    const deltaOut = this.reserveStable.sub(newReserveStable)
     const effectivePriceOutStable = deltaOut.div(deltaIn)
     return {
       deltaOut,
-      pool: this,
+      pool: clonePool(this, newReserveRisky, newReserveStable),
       effectivePriceOutStable: effectivePriceOutStable,
     }
   }
@@ -195,17 +236,65 @@ export class Pool {
     const effectivePriceOutStable = deltaIn.div(deltaOut)
     return {
       deltaOut,
-      pool: this,
+      pool: clonePool(this, newReserveRisky, newReserveStable),
       effectivePriceOutStable: effectivePriceOutStable,
     }
   }
 
   getSpotPrice(): Wei {
-    const fn = function (this, x: number[]) {
-      return calcInvariant(x[0], x[1], this.liquidity.float, this.strike.float, this.sigma.float, this.tau.years)
+    const liquidity = this.liquidity.float
+    const strike = this.strike.float
+    const sigma = this.sigma.float
+    const tau = this.tau.years
+    const fn = function (x: number[]) {
+      return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
     }
     const spot = numeric.gradient(fn, [this.reserveRisky.float, this.reserveStable.float])
     //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
     return parseWei(spot[0] / spot[1])
+  }
+
+  /**
+   * @notice See https://arxiv.org/pdf/2012.08040.pdf
+   * @param amountIn Amount of risky token to add to risky reserve
+   * @return Marginal price after a trade with size `amountIn` with the current reserves.
+   */
+  getMarginalPriceSwapRiskyIn(amountIn) {
+    if (!nonNegative(amountIn)) return 0
+    const gamma = 1 - this.entity.fee
+    const reserveRisky = this.reserveRisky.float / this.liquidity.float
+    const invariant = this.invariant
+    const strike = this.strike
+    const sigma = this.sigma
+    const tau = this.tau
+    const step0 = 1 - reserveRisky - gamma * amountIn
+    const step1 = sigma.float * Math.sqrt(tau.years)
+    const step2 = quantilePrime(step0)
+
+    return gamma * strike.float * step1 * step2
+  }
+
+  /**
+   * @notice See https://arxiv.org/pdf/2012.08040.pdf
+   * @param amountIn Amount of stable token to add to stable reserve
+   * @return Marginal price after a trade with size `amountIn` with the current reserves.
+   */
+  getMarginalPriceSwapStableIn(amountIn) {
+    if (!nonNegative(amountIn)) return 0
+    const gamma = 1 - this.entity.fee
+    const reserveStable = this.reserveStable.float / this.liquidity.float
+    const invariant = this.invariant
+    const strike = this.strike
+    const sigma = this.sigma
+    const tau = this.tau
+    const step0 = (reserveStable + gamma * amountIn - invariant.parsed / Math.pow(10, 18)) / strike.float
+    const step1 = sigma.float * Math.sqrt(tau.years)
+    const step3 = inverse_std_n_cdf(step0)
+    const step4 = std_n_cdf(step3 + step1)
+    const step5 = step0 * (1 / strike.float)
+    const step6 = quantilePrime(step5)
+    const step7 = gamma * step4 * step6
+    //console.log({ step0, step1, step3, step4, step5, step6, step7 }, 1 / step7)
+    return 1 / step7
   }
 }
