@@ -5,6 +5,18 @@ import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'we
 import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
 import { quantilePrime } from './Arb'
 
+export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
+  return new Pool(
+    poolToClone.entity,
+    newRisky,
+    newStable,
+    poolToClone.strike,
+    poolToClone.sigma,
+    poolToClone.maturity,
+    poolToClone.lastTimestamp
+  )
+}
+
 /**
  * @notice Typescript representation of an individual Pool in an Engine
  */
@@ -154,7 +166,7 @@ export class Pool {
     const effectivePriceOutStable = deltaOut.div(deltaIn)
     return {
       deltaOut,
-      pool: this,
+      pool: clonePool(this, newReserveRisky, newReserveStable),
       effectivePriceOutStable: effectivePriceOutStable,
     }
   }
@@ -197,14 +209,18 @@ export class Pool {
     const effectivePriceOutStable = deltaIn.div(deltaOut)
     return {
       deltaOut,
-      pool: this,
+      pool: clonePool(this, newReserveRisky, newReserveStable),
       effectivePriceOutStable: effectivePriceOutStable,
     }
   }
 
   getSpotPrice(): Wei {
-    const fn = function (this, x: number[]) {
-      return calcInvariant(x[0], x[1], this.liquidity.float, this.strike.float, this.sigma.float, this.tau.years)
+    const liquidity = this.liquidity.float
+    const strike = this.strike.float
+    const sigma = this.sigma.float
+    const tau = this.tau.years
+    const fn = function (x: number[]) {
+      return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
     }
     const spot = numeric.gradient(fn, [this.reserveRisky.float, this.reserveStable.float])
     //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
