@@ -1,3 +1,5 @@
+import gaussian from 'gaussian'
+
 function cdf(x, mean, variance) {
   return 0.5 * (1 + erf((x - mean) / Math.sqrt(2 * variance)))
 }
@@ -25,7 +27,13 @@ export function std_n_cdf(x) {
   return cdf(x, 0, 1)
 }
 
+// source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
 export function inverse_std_n_cdf(x) {
+  return gaussian(0, 1).ppf(x)
+}
+
+// solidity implementation: https://arxiv.org/pdf/1002.0567.pdf
+/* export function inverse_std_n_cdf(x) {
   const q = x - 0.5
   const r = Math.pow(q, 2)
   const a0 = 0.151015506
@@ -38,4 +46,4 @@ export function inverse_std_n_cdf(x) {
   const input = a2 + numerator / denominator
   const result = q * input
   return result
-}
+} */
