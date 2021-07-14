@@ -1,6 +1,6 @@
 import { Pool } from './Pool'
 import { Arbitrageur } from './Arb'
-import { parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
+import { Integer64x64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
 import { constants, Contract } from 'ethers'
 import { GBM } from '../generateGBM'
 import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
@@ -76,39 +76,36 @@ async function main() {
       let effectiveLpArray: number[] = []
 
       for (let i = 0; i < length; i++) {
+        console.log(`\n       On step: ${i} out of ${length}`)
         let day = i
         let theoreticalTau = pool.tau.years - day / 365
         let dtau = 1
         let spot = gbm[i]
         if (i % dtau == 0) {
           pool.tau = new Time((pool.tau.years - day / 365) * Time.YearInSeconds)
+          pool.invariant = new Integer64x64(
+            Integer64x64.Denominator.mul(pool.reserveStable.sub(pool.getRiskyGivenStable(pool.reserveRisky)).raw)
+          )
+          spotPriceArray.push(pool.getSpotPrice().float)
         }
 
-        console.log(theoreticalTau)
-
-        if (pool.tau.years > 0.05) {
+        if (pool.tau.years >= 0) {
           arbitrageur.arbitrageExactly(parseWei(spot), pool)
-          let theoreticalRisky = getRiskyReservesGivenSpotPrice(spot, pool.strike.float, pool.sigma.float, theoreticalTau)
-          let theoreticalStable = getStableGivenRisky(theoreticalRisky, pool.strike.float, pool.sigma.float, theoreticalTau)
-          if (spot > 2300 && spot < 2350) {
-          }
-
-          let theoreticalLpValue = theoreticalRisky * spot + theoreticalStable
-          theoreticalLpArray.push(theoreticalLpValue)
-          effectiveLpArray.push(pool.reserveRisky.float * spot + pool.reserveStable.float)
-          console.log('getting spot price', pool.liquidity)
-          spotPriceArray.push(pool.getSpotPrice().float)
-          //let { effectivePriceOutStable } = pool.virtualSwapAmountInRisky(parseWei(EPSILON))
-          //minMarginalPriceArray.push(effectivePriceOutStable?.float)
-          //;({ effectivePriceOutStable } = pool.virtualSwapAmountInStable(parseWei(EPSILON)))
-          //maxMarginalPriceArray.push(effectivePriceOutStable?.float)
           maxMarginalPriceArray.push(pool.getMarginalPriceSwapStableIn(0))
           minMarginalPriceArray.push(pool.getMarginalPriceSwapRiskyIn(0))
+          let theoreticalRisky = getRiskyReservesGivenSpotPrice(spot, pool.strike.float, pool.sigma.float, theoreticalTau)
+          let theoreticalStable = getStableGivenRisky(theoreticalRisky, pool.strike.float, pool.sigma.float, theoreticalTau)
+          let theoreticalLpValue = theoreticalRisky * spot + theoreticalStable
+          let effectiveLpValue = pool.reserveRisky.float * spot + pool.reserveStable.float
+          theoreticalLpArray.push(theoreticalLpValue)
+          effectiveLpArray.push(effectiveLpValue)
+          console.log(`\n       Theoretical Lp value: ${theoreticalLpValue}`)
+          console.log(`\n       Effective Lp value: ${effectiveLpValue}`)
         }
       }
 
       const arrays = [theoreticalLpArray, effectiveLpArray, spotPriceArray, minMarginalPriceArray, maxMarginalPriceArray]
-      console.log(`\n Arrays:`)
+      console.log(`\n       Arrays:`)
       console.log(arrays)
       await updateLog(+s, +fee, arrays)
     }
