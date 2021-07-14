@@ -1,9 +1,10 @@
 import { parseWei, Wei } from 'web3-units'
 import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
 import { Pool } from './Pool'
+import gaussian from 'gaussian'
 
 export const quantilePrime = (x) => {
-  return Math.pow(std_n_cdf(inverse_std_n_cdf(x)), -1)
+  return gaussian(0, 1).pdf(inverse_std_n_cdf(x)) ** -1
 }
 
 export const EPSILON = 1e-3
@@ -84,10 +85,10 @@ export class Arbitrageur {
       console.log(`\n   Optimal trade is: ${optimalTrade}`)
       optimalTrade = parseWei(Math.floor(optimalTrade * 1e18) / 1e18)
       const { deltaOut } = pool.virtualSwapAmountInRisky(optimalTrade)
-      const profit = deltaOut.sub(optimalTrade.mul(spot))
+      const profit = deltaOut.float - optimalTrade.float * spot.float
 
-      console.log(`   Sell profit: ${profit.float}`)
-      if (profit.float > 0) {
+      console.log(`   Sell profit: ${profit}`)
+      if (profit > 0) {
         pool.swapAmountInRisky(optimalTrade) // do the arbitrage
         console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
       }
@@ -102,15 +103,14 @@ export class Arbitrageur {
       } else {
         optimalTrade = strike.float - R2
       }
-
+      console.log(`\n   Optimal trade is: ${optimalTrade}`)
       optimalTrade = parseWei(Math.floor(optimalTrade * 1e18) / 1e18)
 
-      console.log(`\n   Optimal trade is: ${optimalTrade.float}`)
-
       const { deltaOut } = pool.virtualSwapAmountInStable(optimalTrade)
-      const profit = optimalTrade.mul(spot.float).sub(deltaOut)
-      console.log(`   Buy profit: ${profit.float}`)
-      if (profit.float > 0) {
+      console.log(`   Got delta out of ${deltaOut.float}`)
+      const profit = optimalTrade.float * spot.float - deltaOut.float
+      console.log(`   Buy profit: ${profit}`)
+      if (profit > 0) {
         pool.swapAmountInStable(optimalTrade) // do the arbitrage
         console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
       }
