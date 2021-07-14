@@ -5,6 +5,10 @@ import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'we
 import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
 import { quantilePrime } from './Arb'
 
+export const nonNegative = (x: number): boolean => {
+  return x >= 0
+}
+
 export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
   return new Pool(
     poolToClone.entity,
@@ -241,18 +245,18 @@ export class Pool {
    * @return Marginal price after a trade with size `amountIn` with the current reserves.
    */
   getMarginalPriceSwapRiskyIn(amountIn) {
+    if (!nonNegative(amountIn)) return 0
     const gamma = 1 - this.entity.fee
     const reserveRisky = this.reserveRisky.float / this.liquidity.float
     const invariant = this.invariant
     const strike = this.strike
     const sigma = this.sigma
     const tau = this.tau
-    return (
-      gamma *
-      strike.float *
-      std_n_cdf(inverse_std_n_cdf(1 - reserveRisky - gamma * amountIn) - sigma.float * Math.sqrt(tau.years)) *
-      quantilePrime(1 - reserveRisky - gamma * amountIn)
-    )
+    const step0 = 1 - reserveRisky - gamma * amountIn
+    const step1 = sigma.float * Math.sqrt(tau.years)
+    const step2 = quantilePrime(step0)
+
+    return gamma * strike.float * step1 * step2
   }
 
   /**
@@ -261,21 +265,21 @@ export class Pool {
    * @return Marginal price after a trade with size `amountIn` with the current reserves.
    */
   getMarginalPriceSwapStableIn(amountIn) {
+    if (!nonNegative(amountIn)) return 0
     const gamma = 1 - this.entity.fee
     const reserveStable = this.reserveStable.float / this.liquidity.float
     const invariant = this.invariant
     const strike = this.strike
     const sigma = this.sigma
     const tau = this.tau
-    return (
-      1 /
-      (gamma *
-        std_n_cdf(
-          inverse_std_n_cdf((reserveStable + gamma * amountIn - invariant.parsed) / strike.float) +
-            sigma.float * Math.sqrt(tau.years)
-        ) *
-        quantilePrime((reserveStable + gamma * amountIn - invariant.parsed) / strike.float) *
-        (1 / strike.float))
-    )
+    const step0 = (reserveStable + gamma * amountIn - invariant.parsed / Math.pow(10, 18)) / strike.float
+    const step1 = sigma.float * Math.sqrt(tau.years)
+    const step3 = inverse_std_n_cdf(step0)
+    const step4 = std_n_cdf(step3 + step1)
+    const step5 = step0 * (1 / strike.float)
+    const step6 = quantilePrime(step5)
+    const step7 = gamma * step4 * step6
+    //console.log({ step0, step1, step3, step4, step5, step6, step7 }, 1 / step7)
+    return 1 / step7
   }
 }

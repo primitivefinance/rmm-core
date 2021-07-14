@@ -37,13 +37,15 @@ export function getStableGivenRisky(risky, K, sigma, tau) {
   return getTradingFunction(0, risky, 1, K, sigma, tau)
 }
 
-const fees = [0, 0.005, 0.01, 0.015, 0.02, 0.025, 0.03, 0.035, 0.04, 0.045, 0.05]
+const fees = [0, 0.005]
 
 const seeds = [5]
 
 async function main() {
   for (const s of seeds) {
+    console.log(`\n-----Start sim for seed of ${s}-----`)
     for (const fee of fees) {
+      console.log(`\n-----Start sim for fee of ${fee}-----`)
       const gammaStr = (1 - fee).toString()
       const engine: Engine = new Engine(DefaultTokens.risky, DefaultTokens.stable, fee)
       const pool: Pool = new Pool(
@@ -71,10 +73,10 @@ async function main() {
       let effectiveLpArray: number[] = []
 
       for (let i = 0; i < length - 1; i++) {
-        console.log(`\n       On step: ${i} out of ${length}`)
+        console.log(`\nOn step: ${i} out of ${length - 1}`)
         let day = i
         let theoreticalTau = T.years - day / 365
-        console.log(`\n     Theoretical tau: ${theoreticalTau}`)
+        console.log(`\n Theoretical tau: ${theoreticalTau}`)
         let dtau = 1
         let spot = gbm[i]
         if (i % dtau == 0) {
@@ -95,8 +97,8 @@ async function main() {
           let effectiveLpValue = pool.reserveRisky.float * spot + pool.reserveStable.float
           theoreticalLpArray.push(theoreticalLpValue)
           effectiveLpArray.push(effectiveLpValue)
-          console.log(`\n       Theoretical Lp value: ${theoreticalLpValue}`)
-          console.log(`\n       Effective Lp value: ${effectiveLpValue}`)
+          console.log(`\n   Theoretical Lp value: ${theoreticalLpValue}`)
+          console.log(`\n   Effective Lp value: ${effectiveLpValue}`)
         }
       }
 
@@ -107,10 +109,12 @@ async function main() {
         minMarginalPrice: minMarginalPriceArray,
         maxMarginalPriceArray: maxMarginalPriceArray,
       }
-      console.log(`\n       results:`)
+      console.log(`\n   Results:`)
       console.log(results)
       await updateLog(+s, +fee, results)
+      console.log(`\n-----------------------------------`)
     }
+    console.log(`\n-----------------------------------`)
   }
 }
 
