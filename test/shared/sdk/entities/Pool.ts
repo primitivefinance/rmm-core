@@ -159,6 +159,7 @@ export class Pool {
 
   virtualSwapAmountInRisky(deltaIn: Wei): SwapReturn {
     const gamma = 1 - this.entity.fee
+    console.log(deltaIn.float)
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveRisky = this.reserveRisky.add(deltaInWithFee)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky)

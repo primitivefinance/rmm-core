@@ -31,7 +31,7 @@ function bisection(func, a, b) {
     else a = c
   }
   //prints value of c upto 4 decimal places
-  console.log('\n   The value of ' + 'root is : ' + c.toFixed(4))
+  console.log('\n   The value of ' + 'root is : ' + c)
   return c
 }
 
@@ -49,6 +49,7 @@ export class Arbitrageur {
   }
 
   arbitrageExactly(spot: Wei, pool: Pool) {
+    console.log(`\n   ----- Start Arb at spot price: ${spot.float} -----`)
     const gamma = 1 - pool.entity.fee
     const [R1, R2, invariant, strike, sigma, tau] = [
       pool.reserveRisky.float / pool.liquidity.float,
@@ -65,33 +66,56 @@ export class Arbitrageur {
     // Marginal price of buying epsilon risky
     const buyPriceRisky = pool.getMarginalPriceSwapStableIn(0)
 
-    console.log(`\n     Sell price of risky: ${sellPriceRisky}`)
-    console.log(`       Buy price risky:     ${buyPriceRisky}`)
+    console.log(`\n   Sell price of risky: ${sellPriceRisky}`)
+    console.log(`   Buy price risky:     ${buyPriceRisky}`)
+    console.log(`   Market price: ${spot.float}`)
 
     if (sellPriceRisky > spot.float + this.optimalAmount) {
       const func = (amountIn) => {
         return pool.getMarginalPriceSwapRiskyIn(amountIn) - spot.float
       }
 
-      const optimalTrade = parseWei(bisection(func, 0, 1 - R1 - EPSILON)) // bisect
-
+      let optimalTrade
+      if (true) {
+        optimalTrade = bisection(func, EPSILON, 1 - R1 - EPSILON) // bisect
+      } else {
+        optimalTrade = 1 - R1
+      }
+      console.log(`\n   Optimal trade is: ${optimalTrade}`)
+      optimalTrade = parseWei(Math.floor(optimalTrade * 1e18) / 1e18)
       const { deltaOut } = pool.virtualSwapAmountInRisky(optimalTrade)
-      const profit = deltaOut.sub(optimalTrade.mul(spot.float))
+      const profit = deltaOut.sub(optimalTrade.mul(spot))
 
-      console.log(`\n   Sell profit: ${profit.float}`)
-
-      pool.swapAmountInRisky(optimalTrade) // do the arbitrage
+      console.log(`   Sell profit: ${profit.float}`)
+      if (profit.float > 0) {
+        pool.swapAmountInRisky(optimalTrade) // do the arbitrage
+        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
+      }
     } else if (buyPriceRisky < spot.float - this.optimalAmount) {
       const func = (amountIn) => {
         return spot.float - pool.getMarginalPriceSwapStableIn(amountIn)
       }
 
-      const optimalTrade = parseWei(bisection(func, 0, strike.float - R2 - EPSILON)) //bisect func
+      let optimalTrade
+      if (true) {
+        optimalTrade = bisection(func, 0, strike.float - R2 - EPSILON) //bisect func
+      } else {
+        optimalTrade = strike.float - R2
+      }
+
+      optimalTrade = parseWei(Math.floor(optimalTrade * 1e18) / 1e18)
+
+      console.log(`\n   Optimal trade is: ${optimalTrade.float}`)
 
       const { deltaOut } = pool.virtualSwapAmountInStable(optimalTrade)
       const profit = optimalTrade.mul(spot.float).sub(deltaOut)
-      console.log(`\n   Buy profit: ${profit.float}`)
-      pool.swapAmountInStable(optimalTrade) // do the arbitrage
+      console.log(`   Buy profit: ${profit.float}`)
+      if (profit.float > 0) {
+        pool.swapAmountInStable(optimalTrade) // do the arbitrage
+        console.log(`   Invariant after arbitrage: ${pool.invariant.parsed}`)
+      }
     }
+
+    console.log(`\n   ----- End Arb -----`)
   }
 }
