@@ -2,6 +2,8 @@ import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
 import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../../ReplicationMath'
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
+import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
+import { quantilePrime } from './Arb'
 
 /**
  * @notice Typescript representation of an individual Pool in an Engine
@@ -207,5 +209,49 @@ export class Pool {
     const spot = numeric.gradient(fn, [this.reserveRisky.float, this.reserveStable.float])
     //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
     return parseWei(spot[0] / spot[1])
+  }
+
+  /**
+   * @notice See https://arxiv.org/pdf/2012.08040.pdf
+   * @param amountIn Amount of risky token to add to risky reserve
+   * @return Marginal price after a trade with size `amountIn` with the current reserves.
+   */
+  getMarginalPriceSwapRiskyIn(amountIn) {
+    const gamma = 1 - this.entity.fee
+    const reserveRisky = this.reserveRisky.float / this.liquidity.float
+    const invariant = this.invariant
+    const strike = this.strike
+    const sigma = this.sigma
+    const tau = this.tau
+    return (
+      gamma *
+      strike.float *
+      std_n_cdf(inverse_std_n_cdf(1 - reserveRisky - gamma * amountIn) - sigma.float * Math.sqrt(tau.years)) *
+      quantilePrime(1 - reserveRisky - gamma * amountIn)
+    )
+  }
+
+  /**
+   * @notice See https://arxiv.org/pdf/2012.08040.pdf
+   * @param amountIn Amount of stable token to add to stable reserve
+   * @return Marginal price after a trade with size `amountIn` with the current reserves.
+   */
+  getMarginalPriceSwapStableIn(amountIn) {
+    const gamma = 1 - this.entity.fee
+    const reserveStable = this.reserveStable.float / this.liquidity.float
+    const invariant = this.invariant
+    const strike = this.strike
+    const sigma = this.sigma
+    const tau = this.tau
+    return (
+      1 /
+      (gamma *
+        std_n_cdf(
+          inverse_std_n_cdf((reserveStable + gamma * amountIn - invariant.parsed) / strike.float) +
+            sigma.float * Math.sqrt(tau.years)
+        ) *
+        quantilePrime((reserveStable + gamma * amountIn - invariant.parsed) / strike.float) *
+        (1 / strike.float))
+    )
   }
 }
