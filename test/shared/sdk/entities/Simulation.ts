@@ -62,8 +62,8 @@ async function main() {
       const T: Time = config.maturity.sub(config.lastTimestamp)
       const sigma: number = config.sigma.float / Math.sqrt(T.years)
       const spot: Wei = parseWei(1000)
-      const dt = 1
-      const gbm: any[] = GBM(spot.float, mu, sigma, T.years, dt * 365, true)
+      const dt = 365
+      const gbm: any[] = GBM(spot.float, mu, sigma, T.years, dt, true)
       const length = gbm.length
 
       let spotPriceArray: number[] = []
@@ -73,7 +73,7 @@ async function main() {
       let effectiveLpArray: number[] = []
 
       for (let i = 0; i < length - 1; i++) {
-        console.log(`\nOn step: ${i} out of ${length - 1}`)
+        console.log(`\nOn step: ${i} out of ${length - 1} for fee case: ${fee} and seed: ${s}`)
         let day = i
         let theoreticalTau = T.years - day / 365
         console.log(`\n Theoretical tau: ${theoreticalTau}`)
