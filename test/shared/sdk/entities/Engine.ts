@@ -1,4 +1,4 @@
-import { utils } from 'ethers'
+import { constants, utils } from 'ethers'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
 import { Pool, Token } from '../entities'
@@ -11,6 +11,11 @@ export interface SwapReturn {
   deltaOut: Wei
   pool: Pool
   effectivePriceOutStable?: Wei
+}
+
+export const DefaultTokens = {
+  risky: new Token(1337, constants.AddressZero, 18, 'RISKY', 'RISKY'),
+  stable: new Token(1337, constants.AddressZero, 18, 'STABLE', 'STABLE'),
 }
 
 // ===== Engine Class =====
