@@ -90,16 +90,24 @@ export class Pool {
    * @return reserveRisky Expected amount of risky token reserves
    */
   getRiskyGivenStable(reserveStable: Wei): Wei {
-    return parseWei(
-      getInverseTradingFunction(
-        this.invariant.float,
-        reserveStable.float,
-        this.liquidity.float,
-        this.strike.float,
-        this.sigma.float,
-        this.tau.years
-      )
+    console.log(
+      this.invariant.float,
+      reserveStable.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
     )
+    const risky = getInverseTradingFunction(
+      this.invariant.float,
+      reserveStable.float,
+      this.liquidity.float,
+      this.strike.float,
+      this.sigma.float,
+      this.tau.years
+    )
+    console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float}`)
+    return parseWei(risky)
   }
 
   /**
@@ -159,7 +167,6 @@ export class Pool {
 
   virtualSwapAmountInRisky(deltaIn: Wei): SwapReturn {
     const gamma = 1 - this.entity.fee
-    console.log(deltaIn.float)
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveRisky = this.reserveRisky.add(deltaInWithFee)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky)

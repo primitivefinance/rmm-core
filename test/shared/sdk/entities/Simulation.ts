@@ -57,17 +57,12 @@ async function main() {
       )
       const arbitrageur: Arbitrageur = new Arbitrageur()
       const mu = 0.00003
-      const T: Time = pool.tau
+      const T: Time = config.maturity.sub(config.lastTimestamp)
       const sigma: number = config.sigma.float / Math.sqrt(T.years)
       const spot: Wei = parseWei(1000)
       const dt = 1
       const gbm: any[] = GBM(spot.float, mu, sigma, T.years, dt * 365, true)
-      const [t, S] = gbm
       const length = gbm.length
-      let constantPrice: number[] = []
-      for (let i = 0; i < length; i++) {
-        constantPrice.push(spot.float)
-      }
 
       let spotPriceArray: number[] = []
       let minMarginalPriceArray: number[] = []
@@ -75,14 +70,15 @@ async function main() {
       let theoreticalLpArray: number[] = []
       let effectiveLpArray: number[] = []
 
-      for (let i = 0; i < length; i++) {
+      for (let i = 0; i < length - 1; i++) {
         console.log(`\n       On step: ${i} out of ${length}`)
         let day = i
-        let theoreticalTau = pool.tau.years - day / 365
+        let theoreticalTau = T.years - day / 365
+        console.log(`\n     Theoretical tau: ${theoreticalTau}`)
         let dtau = 1
         let spot = gbm[i]
         if (i % dtau == 0) {
-          pool.tau = new Time((pool.tau.years - day / 365) * Time.YearInSeconds)
+          pool.tau = new Time(theoreticalTau * Time.YearInSeconds)
           pool.invariant = new Integer64x64(
             Integer64x64.Denominator.mul(pool.reserveStable.sub(pool.getRiskyGivenStable(pool.reserveRisky)).raw)
           )
@@ -104,15 +100,21 @@ async function main() {
         }
       }
 
-      const arrays = [theoreticalLpArray, effectiveLpArray, spotPriceArray, minMarginalPriceArray, maxMarginalPriceArray]
-      console.log(`\n       Arrays:`)
-      console.log(arrays)
-      await updateLog(+s, +fee, arrays)
+      const results = {
+        theoreticalLp: theoreticalLpArray,
+        effectiveLp: effectiveLpArray,
+        spotPrice: spotPriceArray,
+        minMarginalPrice: minMarginalPriceArray,
+        maxMarginalPriceArray: maxMarginalPriceArray,
+      }
+      console.log(`\n       results:`)
+      console.log(results)
+      await updateLog(+s, +fee, results)
     }
   }
 }
 
-export async function updateLog(seed: number, fee: number, arrays: any[]) {
+export async function updateLog(seed: number, fee: number, results: Object) {
   try {
     const logRaw = await fs.promises.readFile('./simulationData.json', {
       encoding: 'utf-8',
@@ -130,7 +132,7 @@ export async function updateLog(seed: number, fee: number, arrays: any[]) {
       log[seed] = {}
     }
 
-    log[seed][fee] = arrays
+    log[seed][fee] = results
 
     await fs.promises.writeFile('./simulationData.json', JSON.stringify(log, null, 2))
   } catch (e) {

@@ -76,7 +76,7 @@ export class Arbitrageur {
       }
 
       let optimalTrade
-      if (true) {
+      if (Math.sign(func(EPSILON)) != Math.sign(func(1 - R1 - EPSILON))) {
         optimalTrade = bisection(func, EPSILON, 1 - R1 - EPSILON) // bisect
       } else {
         optimalTrade = 1 - R1
@@ -97,7 +97,7 @@ export class Arbitrageur {
       }
 
       let optimalTrade
-      if (true) {
+      if (Math.sign(func(EPSILON)) != Math.sign(func(strike.float - R2 - EPSILON))) {
         optimalTrade = bisection(func, 0, strike.float - R2 - EPSILON) //bisect func
       } else {
         optimalTrade = strike.float - R2
