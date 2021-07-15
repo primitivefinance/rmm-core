@@ -108,8 +108,7 @@ export class Pool {
   getRiskyGivenStable(reserveStable: Wei): Wei {
     const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
     console.log(
-      Math.abs(invariant) >= 1e-8,
-      invariant,
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
       reserveStable.float,
       this.liquidity.float,
       this.strike.float,
@@ -155,10 +154,15 @@ export class Pool {
     return this.invariant
   }
 
+  get defaultSwapReturn(): SwapReturn {
+    return { deltaOut: parseWei(0), pool: this, effectivePriceOutStable: parseWei(0) }
+  }
+
   /**
    * @notice A Risky to Stable token swap
    */
   swapAmountInRisky(deltaIn: Wei): SwapReturn {
+    if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const reserveStableLast = this.reserveStable
     const invariantLast: Integer64x64 = this.calcInvariant()
 
@@ -167,7 +171,9 @@ export class Pool {
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     this.reserveRisky = this.reserveRisky.add(deltaInWithFee)
     // 1. Calculate the new stable reserve using the new risky reserve
-    this.reserveStable = this.getStableGivenRisky(this.reserveRisky)
+    const newReserveStable = this.getStableGivenRisky(this.reserveRisky)
+    if (newReserveStable.raw.isNegative()) return this.defaultSwapReturn
+    this.reserveStable = newReserveStable
     // 2. Calculate the new invariant with the new reserve values
     const nextInvariant = this.calcInvariant()
     // 3. Check the nextInvariant is >= invariantLast in the fee-less case, set it if valid
@@ -186,10 +192,12 @@ export class Pool {
   }
 
   virtualSwapAmountInRisky(deltaIn: Wei): SwapReturn {
+    if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const gamma = 1 - this.entity.fee
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveRisky = this.reserveRisky.add(deltaInWithFee)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky)
+    if (newReserveStable.raw.isNegative()) return this.defaultSwapReturn
     const deltaOut = this.reserveStable.sub(newReserveStable)
     const effectivePriceOutStable = deltaOut.div(deltaIn)
     return {
@@ -203,6 +211,7 @@ export class Pool {
    * @notice A Stable to Risky token swap
    */
   swapAmountInStable(deltaIn: Wei): SwapReturn {
+    if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const reserveRiskyLast = this.reserveRisky
     const invariantLast: Integer64x64 = this.calcInvariant()
 
@@ -211,7 +220,9 @@ export class Pool {
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     this.reserveStable = this.reserveStable.add(deltaInWithFee)
     // 1. Calculate the new risky reserves using the known new stable reserves
-    this.reserveRisky = this.getRiskyGivenStable(this.reserveStable)
+    const newReserveRisky = this.getRiskyGivenStable(this.reserveStable)
+    if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
+    this.reserveRisky = newReserveRisky
     // 2. Calculate the new invariant with the new reserves
     const nextInvariant = this.calcInvariant()
     // 3. Check the nextInvariant is >= invariantLast
@@ -229,10 +240,12 @@ export class Pool {
   }
 
   virtualSwapAmountInStable(deltaIn: Wei): SwapReturn {
+    if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const gamma = 1 - this.entity.fee
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     const newReserveStable = this.reserveStable.add(deltaInWithFee)
     const newReserveRisky = this.getRiskyGivenStable(newReserveStable)
+    if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
     const deltaOut = this.reserveRisky.sub(newReserveRisky)
     const effectivePriceOutStable = deltaIn.div(deltaOut)
     return {
