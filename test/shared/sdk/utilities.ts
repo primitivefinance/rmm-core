@@ -1,6 +1,7 @@
+import bn from 'bignumber.js'
+import fs from 'fs'
 import { utils, BytesLike, Contract } from 'ethers'
 import { Provider } from '@ethersproject/abstract-provider'
-import bn from 'bignumber.js'
 // SDK Imports
 import * as entities from './entities'
 import { parseSetting, parsePosition, parseReserve, parseMargin } from './Structs'

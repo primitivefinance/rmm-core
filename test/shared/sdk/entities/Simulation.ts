@@ -65,13 +65,13 @@ async function main() {
     parseWei(1),
     parseWei(strike),
     new Percentage(toBN(Percentage.Mantissa * sigma)),
-    new Time(tau),
+    new Time(Time.YearInSeconds * tau),
     new Time(0)
   )
   const arbitrageur: Arbitrageur = new Arbitrageur()
 
   // Step 3. Get a geometric brownian motion of spot prices using PriceActionParameters
-  const gbm: number[] = GBM(spot, drift, normalSigma, period, increment, true)
+  const gbm: number[] = GBM(spot, drift, normalSigma, period, steps, true)
 
   // Step 4. Initialize arrays to push to
   let spotPriceArray: number[] = []
