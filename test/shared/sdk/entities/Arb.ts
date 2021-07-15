@@ -1,40 +1,7 @@
 import { parseWei, Wei } from 'web3-units'
-import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
+import { quantilePrime } from '../../CumulativeNormalDistribution'
 import { Pool } from './Pool'
-import gaussian from 'gaussian'
-
-export const quantilePrime = (x) => {
-  return gaussian(0, 1).pdf(inverse_std_n_cdf(x)) ** -1
-}
-
-export const EPSILON = 1e-3
-
-// JavaScript program for implementation
-// of Bisection Method for
-// solving equations
-
-// Prints root of func(x) with error of EPSILON
-function bisection(func, a, b) {
-  if (func(a) * func(b) >= 0) {
-    console.log('\n You have not assumed' + ' right a and b')
-    return
-  }
-
-  let c = a
-  while (b - a >= EPSILON) {
-    // Find middle point
-    c = (a + b) / 2
-
-    // Check if middle point is root
-    if (func(c) == 0.0) break
-    // Decide the side to repeat the steps
-    else if (func(c) * func(a) < 0) b = c
-    else a = c
-  }
-  //prints value of c upto 4 decimal places
-  console.log('\n   The value of ' + 'root is : ' + c)
-  return c
-}
+import { EPSILON, bisection } from '../utilities'
 
 // This code is contributed by susmitakundugoaldanga.
 

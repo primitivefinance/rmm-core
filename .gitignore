@@ -12,4 +12,4 @@ dist
 
 .vscode/
 
-.simulationData.json
+simulationData.json
