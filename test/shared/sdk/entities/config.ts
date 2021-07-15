@@ -11,7 +11,7 @@ export const PriceActionParameters = {
   ANNUALIZED_VOLATILITY: 1.5, // desired volatility
   DRIFT: 0.00003, // drift of geometric brownian motion
   TIME_HORIZON: 60, // time horizon in days
-  TIME_STEP_SIZE: 0.01041666666, // size of time steps in days
+  TIME_STEP_SIZE: 1, // size of time steps in days
 }
 
 // Simulation Parameters

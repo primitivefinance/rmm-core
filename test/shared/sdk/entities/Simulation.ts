@@ -71,7 +71,7 @@ async function main() {
   const arbitrageur: Arbitrageur = new Arbitrageur()
 
   // Step 3. Get a geometric brownian motion of spot prices using PriceActionParameters
-  const gbm: number[] = GBM(spot, drift, normalSigma, period, steps, true)
+  const gbm: number[] = GBM(spot, drift, normalSigma, period, period / increment, true)
 
   // Step 4. Initialize arrays to push to
   let spotPriceArray: number[] = []
@@ -84,13 +84,18 @@ async function main() {
   for (let i = 0; i < gbm.length - 1; i++) {
     console.log(`\nOn step: ${i} out of ${gbm.length - 1} for fee case: ${fee}`)
     let step = i // individual step number
-    let spot = gbm[i] // spot price at step
+    let spot = gbm[step] // spot price at step
 
     // Step 6a. IMPORTANT! Update the time until expiry of the pool and the sim, if the step > dTau
+    // Subtract the amount of time that passes in each step from the tau
+    // Time that has passed in a step is the
     let theoreticalTau = tau - step / 365
     console.log(`\n Theoretical tau: ${theoreticalTau}`)
     if (i % dTau == 0) {
+      console.log(` i % dTau = ${i % dTau} and tau Diff = ${tau - theoreticalTau}`)
+      console.log(`   Previous pool tau: ${pool.tau.years}`)
       pool.tau = new Time(theoreticalTau * Time.YearInSeconds) // set pool tau in seconds
+      console.log(`   After pool tau: ${pool.tau.years}`)
 
       // Step 6b. IMPORTANT! Update the pool's invariant, using the new tau
       pool.invariant = new Integer64x64(
@@ -118,9 +123,15 @@ async function main() {
       console.log(`\n   Theoretical Lp value: ${theoreticalLpValue}`)
       console.log(`\n   Effective Lp value: ${effectiveLpValue}`)
     }
+
+    if (pool.tau.years < 0) {
+      console.log(`\n Breaking at tau: ${theoreticalTau}`)
+      break
+    }
   }
 
   const results = {
+    gbm: gbm,
     theoreticalLp: theoreticalLpArray,
     effectiveLp: effectiveLpArray,
     spotPrice: spotPriceArray,
