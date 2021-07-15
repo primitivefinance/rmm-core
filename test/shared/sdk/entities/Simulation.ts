@@ -84,7 +84,7 @@ async function main() {
   for (let i = 0; i < gbm.length - 1; i++) {
     console.log(`\nOn step: ${i} out of ${gbm.length - 1} for fee case: ${fee}`)
     let step = i // individual step number
-    let spot = gbm[step] // spot price at step
+    let price = gbm[step] // spot price at step
 
     // Step 6a. IMPORTANT! Update the time until expiry of the pool and the sim, if the step > dTau
     // Subtract the amount of time that passes in each step from the tau
@@ -109,13 +109,13 @@ async function main() {
     // Step 7. If the pool has not reached maturity, attempt to arbitrage
     if (pool.tau.years >= 0) {
       // Step 8. Arbitrage the pool, such that the after the swap the pool's spot price == `spot`
-      arbitrageur.arbitrageExactly(parseWei(spot), pool)
+      arbitrageur.arbitrageExactly(parseWei(price), pool)
 
       // Step 9. Append key data points to arrays
-      let theoreticalRisky = getRiskyReservesGivenSpotPrice(spot, pool.strike.float, pool.sigma.float, theoreticalTau)
+      let theoreticalRisky = getRiskyReservesGivenSpotPrice(price, pool.strike.float, pool.sigma.float, theoreticalTau)
       let theoreticalStable = getStableGivenRisky(theoreticalRisky, pool.strike.float, pool.sigma.float, theoreticalTau)
-      let theoreticalLpValue = theoreticalRisky * spot + theoreticalStable
-      let effectiveLpValue = pool.reserveRisky.float * spot + pool.reserveStable.float
+      let theoreticalLpValue = theoreticalRisky * price + theoreticalStable
+      let effectiveLpValue = pool.reserveRisky.float * price + pool.reserveStable.float
       maxMarginalPriceArray.push(pool.getMarginalPriceSwapStableIn(0))
       minMarginalPriceArray.push(pool.getMarginalPriceSwapRiskyIn(0))
       theoreticalLpArray.push(theoreticalLpValue)
