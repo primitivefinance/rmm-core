@@ -1,6 +1,7 @@
+import bn from 'bignumber.js'
+import fs from 'fs'
 import { utils, BytesLike, Contract } from 'ethers'
 import { Provider } from '@ethersproject/abstract-provider'
-import bn from 'bignumber.js'
 // SDK Imports
 import * as entities from './entities'
 import { parseSetting, parsePosition, parseReserve, parseMargin } from './Structs'
@@ -18,6 +19,62 @@ export function getCreate2Address(factoryAddress: string, [stable, risky]: [stri
 
   const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join('')}`
   return utils.getAddress(`0x${utils.keccak256(sanitizedInputs).slice(-40)}`)
+}
+
+export const EPSILON = 1e-3
+
+/**
+ * @notice source: https://www.geeksforgeeks.org/program-for-bisection-method/
+ * This code is contributed by susmitakundugoaldanga.
+ * @param func Returns a value, run the bisection such that the return value is 0
+ * @param a Left most point
+ * @param b Right most point
+ * @returns Root of function
+ */
+export const bisection = (func, a, b) => {
+  if (func(a) * func(b) >= 0) {
+    console.log('\n You have not assumed' + ' right a and b')
+    return
+  }
+
+  let c = a
+  while (b - a >= EPSILON) {
+    // Find middle point
+    c = (a + b) / 2
+
+    // Check if middle point is root
+    if (func(c) == 0.0) break
+    // Decide the side to repeat the steps
+    else if (func(c) * func(a) < 0) b = c
+    else a = c
+  }
+  return c
+}
+
+export async function updateLog(seed: number, fee: number, results: Object) {
+  try {
+    const logRaw = await fs.promises.readFile('./simulationData.json', {
+      encoding: 'utf-8',
+      flag: 'a+',
+    })
+    let log
+
+    if (logRaw.length === 0) {
+      log = {}
+    } else {
+      log = JSON.parse(logRaw)
+    }
+
+    if (!log[seed]) {
+      log[seed] = {}
+    }
+
+    log[seed][fee] = results
+
+    await fs.promises.writeFile('./simulationData.json', JSON.stringify(log, null, 2))
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 // ===== Functions to Construct Instances =====
