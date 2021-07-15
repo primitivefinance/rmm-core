@@ -22,6 +22,14 @@ export function getCreate2Address(factoryAddress: string, [stable, risky]: [stri
 
 export const EPSILON = 1e-3
 
+/**
+ * @notice source: https://www.geeksforgeeks.org/program-for-bisection-method/
+ * This code is contributed by susmitakundugoaldanga.
+ * @param func Returns a value, run the bisection such that the return value is 0
+ * @param a Left most point
+ * @param b Right most point
+ * @returns Root of function
+ */
 export const bisection = (func, a, b) => {
   if (func(a) * func(b) >= 0) {
     console.log('\n You have not assumed' + ' right a and b')
