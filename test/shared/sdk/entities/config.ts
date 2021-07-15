@@ -10,7 +10,7 @@ export const PriceActionParameters = {
   INITIAL_REFERENCE_PRICE: 2000, // reference market price
   ANNUALIZED_VOLATILITY: 1.5, // desired volatility
   DRIFT: 0.00003, // drift of geometric brownian motion
-  TIME_HORIZON: 60, // time horizon in days
+  TIME_HORIZON: 15, // time horizon in days
   TIME_STEP_SIZE: 1, // size of time steps in days
 }
 
