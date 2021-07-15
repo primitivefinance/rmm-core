@@ -20,6 +20,28 @@ export function getCreate2Address(factoryAddress: string, [stable, risky]: [stri
   return utils.getAddress(`0x${utils.keccak256(sanitizedInputs).slice(-40)}`)
 }
 
+export const EPSILON = 1e-3
+
+export const bisection = (func, a, b) => {
+  if (func(a) * func(b) >= 0) {
+    console.log('\n You have not assumed' + ' right a and b')
+    return
+  }
+
+  let c = a
+  while (b - a >= EPSILON) {
+    // Find middle point
+    c = (a + b) / 2
+
+    // Check if middle point is root
+    if (func(c) == 0.0) break
+    // Decide the side to repeat the steps
+    else if (func(c) * func(a) < 0) b = c
+    else a = c
+  }
+  return c
+}
+
 // ===== Functions to Construct Instances =====
 
 /**

@@ -42,6 +42,7 @@
     "test:lib": "hardhat test ./test/unit/libraries",
     "test:bs": "hardhat test ./test/unit/libraries/blackScholes.ts",
     "test:sdk": "hardhat test ./test/shared/sdk/test",
+    "run:sim": "hardhat run ./test/shared/sdk/entities/Simulation.ts",
     "prepare": "husky install"
   },
   "devDependencies": {
