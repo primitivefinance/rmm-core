@@ -1,5 +1,4 @@
 import { parseWei, Wei } from 'web3-units'
-import { quantilePrime } from '../../CumulativeNormalDistribution'
 import { Pool } from './Pool'
 import { EPSILON, bisection } from '../utilities'
 
@@ -60,7 +59,6 @@ export class Arbitrageur {
    */
   arbitrageExactly(spot: Wei, pool: Pool) {
     console.log(`\n   ----- Start Arb at spot price: ${spot.float} -----`)
-    const gamma = 1 - pool.entity.fee
     const [R1, R2, invariant, strike, sigma, tau] = [
       pool.reserveRisky.float / pool.liquidity.float,
       pool.reserveStable.float / pool.liquidity.float,

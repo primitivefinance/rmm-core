@@ -50,6 +50,32 @@ export const bisection = (func, a, b) => {
   return c
 }
 
+export async function updateLog(seed: number, fee: number, results: Object) {
+  try {
+    const logRaw = await fs.promises.readFile('./simulationData.json', {
+      encoding: 'utf-8',
+      flag: 'a+',
+    })
+    let log
+
+    if (logRaw.length === 0) {
+      log = {}
+    } else {
+      log = JSON.parse(logRaw)
+    }
+
+    if (!log[seed]) {
+      log[seed] = {}
+    }
+
+    log[seed][fee] = results
+
+    await fs.promises.writeFile('./simulationData.json', JSON.stringify(log, null, 2))
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 // ===== Functions to Construct Instances =====
 
 /**
