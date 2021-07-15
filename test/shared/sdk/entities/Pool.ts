@@ -2,8 +2,7 @@ import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
 import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../../ReplicationMath'
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
-import { inverse_std_n_cdf, std_n_cdf } from '../../CumulativeNormalDistribution'
-import { quantilePrime } from './Arb'
+import { inverse_std_n_cdf, std_n_cdf, quantilePrime } from '../../CumulativeNormalDistribution'
 
 export const nonNegative = (x: number): boolean => {
   return x >= 0
@@ -97,6 +96,7 @@ export class Pool {
     )
 
     stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
+    if (isNaN(stable)) return parseWei(0)
     return parseWei(stable)
   }
 
@@ -126,6 +126,7 @@ export class Pool {
     )
     console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float}`)
     risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
+    if (isNaN(risky)) return parseWei(0)
     return parseWei(risky)
   }
 
@@ -249,6 +250,7 @@ export class Pool {
     const fn = function (x: number[]) {
       return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
     }
+    if (isNaN(fn([this.reserveRisky.float, this.reserveStable.float]))) return parseWei(0)
     const spot = numeric.gradient(fn, [this.reserveRisky.float, this.reserveStable.float])
     //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
     return parseWei(spot[0] / spot[1])
