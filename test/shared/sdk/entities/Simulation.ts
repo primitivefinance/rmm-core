@@ -99,7 +99,7 @@ async function main() {
 
       // Step 6b. IMPORTANT! Update the pool's invariant, using the new tau
       pool.invariant = new Integer64x64(
-        Integer64x64.Denominator.mul(pool.reserveStable.sub(pool.getRiskyGivenStable(pool.reserveRisky)).raw)
+        Integer64x64.Denominator.mul(pool.reserveStable.sub(pool.getStableGivenRisky(pool.reserveRisky)).raw)
       )
 
       // Step 6c. Append the new pool spot price to the spot price array

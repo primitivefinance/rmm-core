@@ -2,7 +2,7 @@ import numeric from 'numeric'
 import { Engine, SwapReturn } from './Engine'
 import { getInverseTradingFunction, getTradingFunction, calcInvariant } from '../../ReplicationMath'
 import { Integer64x64, Percentage, Time, Wei, parseWei, parseInt64x64 } from 'web3-units'
-import { inverse_std_n_cdf, std_n_cdf, quantilePrime } from '../../CumulativeNormalDistribution'
+import { inverse_std_n_cdf, std_n_cdf, quantilePrime, std_n_pdf } from '../../CumulativeNormalDistribution'
 
 export const nonNegative = (x: number): boolean => {
   return x >= 0
@@ -74,7 +74,7 @@ export class Pool {
    * @param reserveRisky Amount of risky tokens in reserve
    * @return reserveStable Expected amount of stable token reserves
    */
-  getStableGivenRisky(reserveRisky: Wei): Wei {
+  getStableGivenRisky(reserveRisky: Wei, noInvariant?: boolean): Wei {
     const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
     console.log(
       Math.abs(invariant) >= 1e-8,
@@ -87,7 +87,7 @@ export class Pool {
     )
 
     let stable = getTradingFunction(
-      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
+      Math.abs(invariant) >= 1e-8 || noInvariant ? 0 : invariant,
       reserveRisky.float,
       this.liquidity.float,
       this.strike.float,
@@ -256,17 +256,13 @@ export class Pool {
   }
 
   getSpotPrice(): Wei {
+    const risky = this.reserveRisky.float
     const liquidity = this.liquidity.float
     const strike = this.strike.float
     const sigma = this.sigma.float
     const tau = this.tau.years
-    const fn = function (x: number[]) {
-      return calcInvariant(x[0], x[1], liquidity, strike, sigma, tau)
-    }
-    if (isNaN(fn([this.reserveRisky.float, this.reserveStable.float]))) return parseWei(0)
-    const spot = numeric.gradient(fn, [this.reserveRisky.float, this.reserveStable.float])
-    //console.log({ spot }, [x[0].float, x[1].float], spot[0] / spot[1])
-    return parseWei(spot[0] / spot[1])
+    const spot = getTradingFunction(0, risky, liquidity, strike, sigma, tau) * quantilePrime(1 - risky)
+    return parseWei(spot)
   }
 
   /**
@@ -285,8 +281,10 @@ export class Pool {
     const step0 = 1 - reserveRisky - gamma * amountIn
     const step1 = sigma.float * Math.sqrt(tau.years)
     const step2 = quantilePrime(step0)
-
-    return gamma * strike.float * step1 * step2
+    const step3 = gamma * strike.float
+    const step4 = inverse_std_n_cdf(step0)
+    const step5 = std_n_pdf(step4 - step1)
+    return step3 * step5 * step2
   }
 
   /**
@@ -305,7 +303,7 @@ export class Pool {
     const step0 = (reserveStable + gamma * amountIn - invariant.parsed / Math.pow(10, 18)) / strike.float
     const step1 = sigma.float * Math.sqrt(tau.years)
     const step3 = inverse_std_n_cdf(step0)
-    const step4 = std_n_cdf(step3 + step1)
+    const step4 = std_n_pdf(step3 + step1)
     const step5 = step0 * (1 / strike.float)
     const step6 = quantilePrime(step5)
     const step7 = gamma * step4 * step6
