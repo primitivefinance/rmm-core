@@ -6,6 +6,15 @@ import gaussian from 'gaussian'
  * @returns CDF of x
  */
 export const std_n_cdf = (x) => {
+  return gaussian(0, 1).cdf(x)
+}
+
+/**
+ * @notice  Cumulative Normal Distribution Function
+ * source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
+ * @returns CDF of x
+ */
+export const std_n_pdf = (x) => {
   return gaussian(0, 1).pdf(x)
 }
 
