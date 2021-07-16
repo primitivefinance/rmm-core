@@ -140,7 +140,7 @@ export class Arbitrageur {
 
       // Step 7b. Calculate the profit of the swap, by comparing the amount of
       // risky out * price of risky in riskless (received) and riskless in (paid)
-      const profit = optimalTrade.float * spot.float - deltaOut.float
+      const profit = deltaOut.float * spot.float - optimalTrade.float
       console.log(`   Buy profit: ${profit}`)
 
       // Step 8b. Check the profit condition
