@@ -35,5 +35,5 @@ jobs:
 
       - name: Test
         env:
-          ARBITRIUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
+          ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
         run: yarn test
