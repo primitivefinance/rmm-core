@@ -1,9 +1,6 @@
 import hre from 'hardhat'
 
-import {
-  PrimitiveFactory__factory,
-  TestToken__factory,
-} from '../typechain'
+import { PrimitiveFactory__factory, TestToken__factory } from '../typechain'
 
 async function main() {
   console.log('\n\n#-----------------------------------------------------#\n')
