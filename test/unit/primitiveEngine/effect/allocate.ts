@@ -61,7 +61,7 @@ describe('allocate', function () {
         this.contracts.engineAllocate.allocateFromMargin(
           poolId,
           this.contracts.engineAllocate.address,
-          parseWei('10').raw,
+          parseWei('10000000').raw,
           empty
         )
       ).to.reverted
