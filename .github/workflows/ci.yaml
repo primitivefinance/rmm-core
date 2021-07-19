@@ -9,7 +9,7 @@ on:
 
 jobs:
   lint-test:
-    name: Lint, Build, and Test
+    name: Lint and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -32,9 +32,6 @@ jobs:
           auto_fix: false
           continue_on_error: true
           prettier_extensions: 'css,html,js,json,jsx,md,sass,scss,ts,tsx,vue,yaml,yml,sol'
-
-      - name: Build
-        run: yarn build
 
       - name: Test
         env:
