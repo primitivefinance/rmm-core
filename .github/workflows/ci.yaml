@@ -5,7 +5,7 @@ on:
     tags-ignore:
       - "**"
     branches:
-      - "main"
+      - "develop"
 
 jobs:
   lint-test:
