@@ -2,13 +2,14 @@
 import { expect, assert } from 'chai'
 import { ethers, waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
-import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
+import { MockEngine, EngineAllocate, EngineSwap, EngineCreate } from '../../../../typechain'
 // Context Imports
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
 import { EngineEvents, ERC20Events, getSpotPrice } from '../../../shared'
 import { Functions } from '../../../../types'
+import { Config } from '../../config'
 
 // Constants
 const { strike, sigma, maturity, lastTimestamp, spot } = config
@@ -83,27 +84,6 @@ const SuccessCases: SwapTestCase[] = [
     deltaIn: parseWei(1),
     fromMargin: false,
   },
-  // 2e3
-  {
-    riskyForStable: true,
-    deltaIn: new Wei(toBN(2000)),
-    fromMargin: true,
-  },
-  {
-    riskyForStable: true,
-    deltaIn: new Wei(toBN(2000)),
-    fromMargin: false,
-  },
-  {
-    riskyForStable: false,
-    deltaIn: new Wei(toBN(2000)),
-    fromMargin: true,
-  },
-  {
-    riskyForStable: false,
-    deltaIn: new Wei(toBN(2000)),
-    fromMargin: false,
-  },
 ]
 
 const FailCases: SwapTestCase[] = [
@@ -134,6 +114,31 @@ const FailCases: SwapTestCase[] = [
     deltaIn: parseWei(1),
     fromMargin: false,
     deltaOutMin: new Wei(constants.MaxUint256),
+    revertMsg: 'Insufficient',
+  },
+  // 2e3
+  {
+    riskyForStable: true,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: true,
+    revertMsg: 'Insufficient',
+  },
+  {
+    riskyForStable: true,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: false,
+    revertMsg: 'Insufficient',
+  },
+  {
+    riskyForStable: false,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: true,
+    revertMsg: 'Insufficient',
+  },
+  {
+    riskyForStable: false,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: false,
     revertMsg: 'Insufficient',
   },
 ]
@@ -207,7 +212,15 @@ describe('Engine:swap', function () {
           this.contracts.engineAllocate,
           this.contracts.engineSwap,
         ]
-        poolId = await engine.getPoolId(this.config.strike.raw, this.config.sigma.raw, this.config.maturity.raw)
+        poolId = await engine.getPoolId(config.strike.raw, config.sigma.raw, config.maturity.raw)
+        /* await this.contracts.engineCreate.create(
+          config.strike.raw,
+          config.sigma.raw,
+          config.maturity.raw,
+          config.spot.raw,
+          parseWei('1').raw,
+          empty
+        ) */
         ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([
           this.contracts.risky.balanceOf(engine.address),
           this.contracts.stable.balanceOf(engine.address),
@@ -219,8 +232,8 @@ describe('Engine:swap', function () {
           new Wei(preReserves.reserveRisky).float,
           new Wei(preReserves.reserveStable).float,
           new Wei(preReserves.liquidity).float,
-          this.config.strike.float,
-          this.config.sigma.float,
+          config.strike.float,
+          config.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
@@ -267,8 +280,8 @@ describe('Engine:swap', function () {
             new Wei(postReserve.reserveRisky).float,
             new Wei(postReserve.reserveStable).float,
             new Wei(postReserve.liquidity).float,
-            this.config.strike.float,
-            this.config.sigma.float,
+            config.strike.float,
+            config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 
