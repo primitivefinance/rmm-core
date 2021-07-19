@@ -1,7 +1,8 @@
-import { utils } from 'ethers'
+import { constants, utils } from 'ethers'
 import { BytesLike } from '@ethersproject/bytes'
 /// SDK Imports
-import { Pool, Token } from '../entities'
+import { Pool } from './Pool'
+import { Token } from './Token'
 import { callDelta } from '../../BlackScholes'
 import { Calibration, Position, Reserve, Margin } from '../Structs'
 import { parseWei, Wei, Percentage, Time, Integer64x64 } from 'web3-units'
@@ -11,6 +12,11 @@ export interface SwapReturn {
   deltaOut: Wei
   pool: Pool
   effectivePriceOutStable?: Wei
+}
+
+export const DefaultTokens = {
+  risky: new Token(1337, constants.AddressZero, 18, 'RISKY', 'RISKY'),
+  stable: new Token(1337, constants.AddressZero, 18, 'STABLE', 'STABLE'),
 }
 
 // ===== Engine Class =====

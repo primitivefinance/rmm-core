@@ -11,3 +11,5 @@ typechain/
 dist
 
 .vscode/
+
+simulationData.json

@@ -1,4 +1,42 @@
-function cdf(x, mean, variance) {
+import gaussian from 'gaussian'
+
+/**
+ * @notice  Cumulative Normal Distribution Function
+ * source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
+ * @returns CDF of x
+ */
+export const std_n_cdf = (x) => {
+  return gaussian(0, 1).cdf(x)
+}
+
+/**
+ * @notice  Cumulative Normal Distribution Function
+ * source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
+ * @returns CDF of x
+ */
+export const std_n_pdf = (x) => {
+  return gaussian(0, 1).pdf(x)
+}
+
+/**
+ * @notice Quantile function
+ * source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
+ * @returns CDF^-1 of x
+ */
+export function inverse_std_n_cdf(x) {
+  return gaussian(0, 1).ppf(x)
+}
+
+/**
+ * source: https://github.com/errcw/gaussian/blob/master/lib/gaussian.js
+ * @returns CDF(CDF(x)^-1)^-1
+ */
+export const quantilePrime = (x) => {
+  return gaussian(0, 1).pdf(inverse_std_n_cdf(x)) ** -1
+}
+
+// Used in solidity implementation
+/* function cdf(x, mean, variance) {
   return 0.5 * (1 + erf((x - mean) / Math.sqrt(2 * variance)))
 }
 
@@ -23,9 +61,10 @@ function erf(x) {
 
 export function std_n_cdf(x) {
   return cdf(x, 0, 1)
-}
+} */
 
-export function inverse_std_n_cdf(x) {
+// solidity implementation: https://arxiv.org/pdf/1002.0567.pdf
+/* export function inverse_std_n_cdf(x) {
   const q = x - 0.5
   const r = Math.pow(q, 2)
   const a0 = 0.151015506
@@ -38,4 +77,4 @@ export function inverse_std_n_cdf(x) {
   const input = a2 + numerator / denominator
   const result = q * input
   return result
-}
+} */

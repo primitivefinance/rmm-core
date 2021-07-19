@@ -1,6 +1,6 @@
 {
   "name": "@primitivefinance/primitive-v2-core",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Primitive V2 protocol contracts.",
   "main": "index.js",
   "keywords": [
@@ -13,11 +13,12 @@
     "artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json",
     "artifacts/contracts/PrimitiveFactory.sol/PrimitiveFactory.json",
     "artifacts/contracts/interfaces/**/*.json",
-    "!artifacts/contracts/interfaces/**/*.dbg.json"
+    "!artifacts/contracts/interfaces/**/*.dbg.json",
+    "typechain"
   ],
   "repository": {
     "type": "git",
-    "url": "chttps://github.com/primitivefinance/primitive-v2-core.git"
+    "url": "https://github.com/primitivefinance/primitive-v2-core.git"
   },
   "author": "Primitive",
   "license": "GPL-3.0-or-later",
@@ -41,6 +42,7 @@
     "test:lib": "hardhat test ./test/unit/libraries",
     "test:bs": "hardhat test ./test/unit/libraries/blackScholes.ts",
     "test:sdk": "hardhat test ./test/shared/sdk/test",
+    "run:sim": "hardhat run ./test/shared/sdk/entities/Simulation.ts",
     "prepare": "husky install"
   },
   "devDependencies": {
@@ -60,6 +62,7 @@
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.32",
+    "gaussian": "^1.2.0",
     "hardhat": "^2.3.0",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-gas-reporter": "^1.0.4",
