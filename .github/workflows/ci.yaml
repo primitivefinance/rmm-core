@@ -3,13 +3,13 @@ name: CI
 on:
   push:
     tags-ignore:
-      - "**"
+      - '**'
     branches:
-      - "develop"
+      - 'develop'
 
 jobs:
   lint-test:
-    name: Lint, Build, and Test 
+    name: Lint, Build, and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +23,6 @@ jobs:
 
       - name: Install Dependencies
         run: yarn install --frozen-lockfile
-
 
       - name: Lint
         uses: wearerequired/lint-action@v1

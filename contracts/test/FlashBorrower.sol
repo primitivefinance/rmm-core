@@ -6,7 +6,11 @@ import "../interfaces/IERC3156FlashLender.sol";
 import "../interfaces/IERC20.sol";
 
 contract FlashBorrower is IERC3156FlashBorrower {
-    enum Action {NORMAL, NOFEE, NOTING}
+    enum Action {
+        NORMAL,
+        NOFEE,
+        NOTING
+    }
     Action private _action;
 
     function flashBorrow(

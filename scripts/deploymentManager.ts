@@ -15,12 +15,12 @@ export async function updateLog(chainId: number, contractName: string, address: 
     }
 
     if (!log[chainId]) {
-      log[chainId] = {};
+      log[chainId] = {}
     }
 
-    log[chainId][contractName] = address;
+    log[chainId][contractName] = address
 
-    await fs.promises.writeFile('./deployments.json', JSON.stringify(log, null, 2));
+    await fs.promises.writeFile('./deployments.json', JSON.stringify(log, null, 2))
   } catch (e) {
     console.error(e)
   }
