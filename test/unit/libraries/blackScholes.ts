@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
 import { Integer64x64, Wei } from 'web3-units'
 import loadContext, { DEFAULT_CONFIG as config } from '../context'
-import { callDelta, calculateD1, moneyness } from '../../shared/BlackScholes'
+import { callDelta, calculateD1, moneyness } from '@primitivefinance/v2-math'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = config
 
