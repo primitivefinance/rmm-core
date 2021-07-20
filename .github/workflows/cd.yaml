@@ -9,7 +9,7 @@ on:
 
 jobs:
   compile-publish:
-    name: Build and Publish
+    name: Compile and Publish
     runs-on: ubuntu-latest
 
     steps:
