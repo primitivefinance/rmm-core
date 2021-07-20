@@ -1,8 +1,15 @@
 {
-  "name": "@primitivefinance/primitive-v2-core",
-  "version": "0.1.2",
-  "description": "Primitive V2 protocol contracts.",
+  "name": "@primitivefinance/v2-core",
+  "version": "1.0.0",
+  "description": "Primitive V2 core smart contracts",
   "main": "index.js",
+    "repository": {
+    "type": "git",
+    "url": "https://github.com/primitivefinance/primitive-v2-core.git"
+  },
+  "author": "Primitive",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://primitive.finance",
   "keywords": [
     "primitive",
     "v2",
@@ -16,13 +23,6 @@
     "!artifacts/contracts/interfaces/**/*.dbg.json",
     "typechain"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/primitivefinance/primitive-v2-core.git"
-  },
-  "author": "Primitive",
-  "license": "GPL-3.0-or-later",
-  "homepage": "https://primitive.finance",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
@@ -85,5 +85,13 @@
   "postinstall": "typechain",
   "lint-staged": {
     "*.{js,ts,sol,md}": "prettier --write"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
   }
 }
