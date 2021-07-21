@@ -7,9 +7,26 @@ import { MockEngine, EngineAllocate, EngineSwap, EngineCreate } from '../../../.
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
-import { EngineEvents, ERC20Events, getSpotPrice } from '../../../shared'
+import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { Config } from '../../config'
+
+export const ERC20Events = {
+  EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
+}
+export const EngineEvents = {
+  DEPOSITED: 'Deposited',
+  WITHDRAWN: 'Withdrawn',
+  CREATE: 'Create',
+  UPDATE: 'Update',
+  ADDED_BOTH: 'AddedBoth',
+  REMOVED_BOTH: 'RemovedBoth',
+  SWAP: 'Swap',
+  LOANED: 'Loaned',
+  CLAIMED: 'Claimed',
+  BORROWED: 'Borrowed',
+  REPAID: 'Repaid',
+}
 
 // Constants
 const { strike, sigma, maturity, lastTimestamp, spot } = config
@@ -230,7 +247,6 @@ describe('Engine:swap', function () {
         ])
         preSpot = getSpotPrice(
           new Wei(preReserves.reserveRisky).float,
-          new Wei(preReserves.reserveStable).float,
           new Wei(preReserves.liquidity).float,
           config.strike.float,
           config.sigma.float,
@@ -278,7 +294,6 @@ describe('Engine:swap', function () {
 
           const postSpot = getSpotPrice(
             new Wei(postReserve.reserveRisky).float,
-            new Wei(postReserve.reserveStable).float,
             new Wei(postReserve.liquidity).float,
             config.strike.float,
             config.sigma.float,

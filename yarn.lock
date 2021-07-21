@@ -702,6 +702,14 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
+"@primitivefinance/v2-math@^1.2.2":
+  version "1.2.2"
+  resolved "https://npm.pkg.github.com/download/@primitivefinance/v2-math/1.2.2/d3c7c7a61fa05f341fd8bc1c29cbc56e7807429cd36a85f8cbe8377f93abe5be#2ad5e991856a7b83e197a47f3114747e94700e4b"
+  integrity sha512-Cp7AYT+QGbwhATheKiVfOge2C8nWLWxz1Qx+iCmPAmn87dNQBAYQ9FiR980TFj8scp5B+2em6lC9c+PLTY+yRQ==
+  dependencies:
+    gaussian "^1.2.0"
+    numeric "^1.2.6"
+
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
   resolved "https://registry.yarnpkg.com/@resolver-engine/core/-/core-0.3.3.tgz#590f77d85d45bc7ecc4e06c654f41345db6ca967"

@@ -2,7 +2,7 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
 import { parseWei, Integer64x64, Wei } from 'web3-units'
-import { std_n_cdf, inverse_std_n_cdf } from '../../shared/CumulativeNormalDistribution'
+import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
 import loadContext from '../context'
 
 describe('testCumulativeNormalDistribution', function () {

@@ -10,7 +10,7 @@ import {
   calcInvariant,
   inverse_std_n_cdf,
   std_n_cdf,
-} from '../../shared'
+} from '@primitivefinance/v2-math'
 import loadContext, { DEFAULT_CONFIG as config } from '../context'
 import { deploy } from '../createTestContracts'
 const { createFixtureLoader } = waffle
