@@ -1,20 +1,20 @@
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
+import { BigNumber, utils } from 'ethers'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
 describe('getPoolId', function () {
-  beforeEach(async function () {
+  before(async function () {
     loadContext(waffle.provider, [], async function () {})
   })
 
   it('returns the poolId given settings', async function () {
     expect(
       await this.contracts.engine.getPoolId(
-        BigNumber.from(10).pow(18),
-        BigNumber.from(10).pow(18),
-        BigNumber.from(10).pow(18)
+        utils.parseEther('2000'),
+        utils.parseEther('1'),
+        1626885358,
       )
-    ).to.equal('0x0f9be503f4dda9fd2a3c37ac50ff9d7a0459677a989225e86f32b16fea06a547')
+    ).to.equal('0x6093cfe2dcd31f99fc9c000b2a4131da40c5edf520b07056908a5618fd958602')
   })
 })
