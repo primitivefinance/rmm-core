@@ -4,7 +4,7 @@ import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
 describe('position', function () {
-  beforeEach(async function () {
+  before(async function () {
     loadContext(waffle.provider, [], async function () {})
   })
 
