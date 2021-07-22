@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 library SafeCast {
     function toUint128(uint256 x) internal pure returns (uint128 z) {
