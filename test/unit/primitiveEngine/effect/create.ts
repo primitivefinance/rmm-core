@@ -14,7 +14,7 @@ describe('create', function () {
     loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
   })
 
-  describe('when the parameters are valid', function () {
+  describe('success cases', function () {
     it('deploys a new pool', async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
     })
@@ -72,39 +72,39 @@ describe('create', function () {
       expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.not.equal(0)
       expect(await this.contracts.stable.balanceOf(this.contracts.engine.address)).to.not.equal(0)
     })
+  })
 
+  describe('fail cases', function () {
     it('reverts when the pool already exists', async function () {
       // set a new mock timestamp to create the pool with
       await this.contracts.engine.advanceTime(1)
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
       await expect(
         this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Initialized')
+      ).to.be.revertedWith('PoolDuplicateError()')
     })
-  })
 
-  describe('when the parameters are not valid', function () {
     it('reverts if strike is 0', async function () {
       await expect(
         this.contracts.engine.create(0, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Zero')
+      ).to.revertedWith('CalibrationError()')
     })
 
     it('reverts if sigma.raw is 0', async function () {
       await expect(
         this.contracts.engine.create(strike.raw, 0, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Zero')
+      ).to.revertedWith('CalibrationError()')
     })
 
     it('reverts if maturity.raw is 0', async function () {
       await expect(
         this.contracts.engine.create(strike.raw, sigma.raw, 0, spot.raw, parseWei('1').raw, empty)
-      ).to.revertedWith('Zero')
+      ).to.revertedWith('CalibrationError()')
     })
 
     it('reverts if liquidity is 0', async function () {
       await expect(this.contracts.engine.create(strike.raw, sigma.raw, maturity.raw, spot.raw, 0, empty)).to.revertedWith(
-        'Zero'
+        'CalibrationError()'
       )
     })
   })

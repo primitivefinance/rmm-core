@@ -14,7 +14,7 @@ describe('deposit', function () {
     loadContext(waffle.provider, ['engineDeposit', 'badEngineDeposit'], depositFragment)
   })
 
-  describe('when the parameters are valid', function () {
+  describe('success cases', function () {
     it('adds to the user margin account', async function () {
       await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
 
@@ -70,7 +70,9 @@ describe('deposit', function () {
         .to.emit(this.contracts.engine, 'Deposited')
         .withArgs(this.contracts.engineDeposit.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
     })
+  })
 
+  describe('fail cases', function () {
     it('reverts when the user does not have sufficient funds', async function () {
       await expect(
         this.contracts.engineDeposit.deposit(
@@ -91,7 +93,7 @@ describe('deposit', function () {
           empty,
           0
         )
-      ).to.revertedWith('Not enough stable')
+      ).to.revertedWith('StableBalanceError()')
     })
 
     it('reverts when the callback did not transfer the risky', async function () {
@@ -103,7 +105,7 @@ describe('deposit', function () {
           empty,
           1
         )
-      ).to.revertedWith('Not enough risky')
+      ).to.revertedWith('RiskyBalanceError()')
     })
 
     it('reverts when the callback did not transfer the risky or the stable', async function () {
@@ -115,7 +117,7 @@ describe('deposit', function () {
           empty,
           2
         )
-      ).to.revertedWith('Not enough risky')
+      ).to.revertedWith('RiskyBalanceError()')
     })
   })
 })

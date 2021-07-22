@@ -9,27 +9,33 @@ import { lendFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 
 const { strike, sigma, maturity, spot } = config
+let poolId, posId: string
 
 describe('lend', function () {
   before(async function () {
     loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend'], lendFragment)
+    poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+    posId = await this.contracts.engineLend.getPosition(poolId)
   })
 
-  describe('when the parameters are valid', function () {
+  describe('success cases', function () {
     it('adds 1 liquidity share to float', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-      const posid = await this.contracts.engineLend.getPosition(poolId)
       await this.contracts.engineLend.lend(poolId, parseWei('1').raw)
 
-      expect(await this.contracts.engine.positions(posid)).to.be.deep.eq([
+      expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
         parseWei('1').raw,
         parseWei('10').raw,
         BigNumber.from('0'),
       ])
     })
+  })
+
+  describe('fail cases', function () {
+    it('fails to add 0 liquidity', async function () {
+      await expect(this.contracts.engineLend.lend(poolId, parseWei('20').raw)).to.be.revertedWith('ZeroLiquidityError()')
+    })
 
     it('fails to add more to float than is available in the position liquidity', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       await expect(this.contracts.engineLend.lend(poolId, parseWei('20').raw)).to.be.reverted
     })
   })
