@@ -41,8 +41,6 @@
     "test:swap": "hardhat test ./test/unit/primitiveEngine/effect/swap.ts",
     "test:lib": "hardhat test ./test/unit/libraries",
     "test:bs": "hardhat test ./test/unit/libraries/blackScholes.ts",
-    "test:sdk": "hardhat test ./test/shared/sdk/test",
-    "run:sim": "hardhat run ./test/shared/sdk/entities/Simulation.ts",
     "prepare": "husky install"
   },
   "devDependencies": {
@@ -55,6 +53,7 @@
     "@types/chai": "^4.2.21",
     "@types/mocha": "^8.2.3",
     "@types/node": "^16.4.0",
+    "@primitivefinance/v2-math": "^1.2.2",
     "bignumber.js": "^9.0.1",
     "chai": "^4.3.4",
     "defender-relay-client": "^1.10.0",
