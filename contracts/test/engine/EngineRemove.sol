@@ -42,7 +42,10 @@ contract EngineRemove {
         uint256 delRisky,
         uint256 delStable,
         bytes memory data
-    ) public {
+    ) public pure {
+        delRisky;
+        delStable;
+        data;
         return;
     }
 
@@ -50,7 +53,7 @@ contract EngineRemove {
         posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "EngineRemove";
     }
 }

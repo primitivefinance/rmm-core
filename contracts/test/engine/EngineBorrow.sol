@@ -30,6 +30,7 @@ contract EngineBorrow {
         uint256 delLiquidity,
         bytes calldata data
     ) public {
+        owner;
         CALLER = msg.sender;
         IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
     }
@@ -41,6 +42,7 @@ contract EngineBorrow {
         uint256 maxPremium,
         bytes calldata data
     ) public {
+        owner;
         CALLER = msg.sender;
         IPrimitiveEngine(engine).borrow(poolId, delLiquidity, maxPremium, data);
     }
@@ -51,6 +53,7 @@ contract EngineBorrow {
         uint256 delLiquidity,
         bytes calldata data
     ) public {
+        owner;
         CALLER = msg.sender;
         dontPay = 0;
         IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
@@ -63,6 +66,7 @@ contract EngineBorrow {
         uint256 delStable,
         bytes calldata data
     ) public {
+        data;
         uint256 riskyNeeded = delLiquidity - delRisky;
         if (dontPay == 0) return;
         IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
@@ -75,19 +79,13 @@ contract EngineBorrow {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
-        )
-    {
+    ) external {
         CALLER = msg.sender;
         IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
     }
 
     function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+        data;
         IERC20(stable).transferFrom(CALLER, msg.sender, delStable);
         IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
     }
@@ -96,7 +94,7 @@ contract EngineBorrow {
         posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "EngineBorrow";
     }
 }

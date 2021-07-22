@@ -19,11 +19,11 @@ contract TestCalcInvariant {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public view returns (int128 reserve2) {
+    ) public pure returns (int128 reserve2) {
         reserve2 = ReplicationMath.getTradingFunction(0, reserveRisky, liquidity, strike, sigma, tau);
     }
 
-    function step1(uint256 reserveStable, int128 reserve2) public view returns (int128 invariant) {
+    function step1(uint256 reserveStable, int128 reserve2) public pure returns (int128 invariant) {
         invariant = reserveStable.parseUnits().sub(reserve2);
     }
 
@@ -35,7 +35,7 @@ contract TestCalcInvariant {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public view returns (int128 invariant) {
+    ) public pure returns (int128 invariant) {
         int128 reserve2 = step0(reserveRisky, liquidity, strike, sigma, tau);
         invariant = step1(reserveStable, reserve2);
     }

@@ -54,6 +54,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).create(_strike, uint64(_sigma), uint32(_maturity), _riskyPrice, _delLiquidity, data);
     }
 
@@ -95,6 +97,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).allocate(_poolId, _owner, _delLiquidity, false, data);
     }
 
@@ -113,6 +117,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes memory data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).remove(_poolId, _delLiquidity, false, data);
     }
 
@@ -170,14 +176,7 @@ contract ReentrancyAttacker {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
-        )
-    {
+    ) external {
         CALLER = msg.sender;
 
         _poolId = poolId;
@@ -188,6 +187,7 @@ contract ReentrancyAttacker {
     }
 
     function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+        delStable;
         IPrimitiveEngine(engine).repay(_poolId, _owner, _delLiquidity, false, data);
     }
 }

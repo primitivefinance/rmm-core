@@ -30,7 +30,7 @@ contract EngineLend {
         posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "EngineLend";
     }
 }
