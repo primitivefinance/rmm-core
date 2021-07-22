@@ -116,7 +116,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 timestamp = _blockTimestamp();
 
         {
-            (uint256 strikePrice, uint256 vol, uint32 maturity) = (strike, sigma, maturity);
+            (uint256 strikePrice, uint256 vol) = (strike, sigma);
             uint32 tau = maturity - timestamp;
             int128 callDelta = BlackScholes.deltaCall(riskyPrice, strikePrice, vol, tau);
             uint256 resRisky = uint256(1).fromUInt().sub(callDelta).parseUnits(); // risky = 1 - delta
@@ -436,7 +436,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
         reserve.repayFloat(delLiquidity);
         // Balances prior to callback/transfers
-        uint256 preRisky = IERC20(risky).balanceOf(address(this));
+        // uint256 preRisky = IERC20(risky).balanceOf(address(this));
         uint256 preStable = IERC20(stable).balanceOf(address(this));
         if (fromMargin) {
             margins.withdraw(0, delStable); // pay stables from margin balance

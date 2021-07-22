@@ -41,6 +41,8 @@ contract BadEngineDeposit {
         uint256 dStable,
         bytes calldata data
     ) public {
+        data;
+
         if (currentScenario == 0) {
             IERC20(risky).transferFrom(CALLER, engine, dRisky);
         } else if (currentScenario == 1) {

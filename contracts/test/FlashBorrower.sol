@@ -31,6 +31,9 @@ contract FlashBorrower is IERC3156FlashBorrower {
         uint256 fee,
         bytes calldata data
     ) external override returns (bytes32) {
+        initiator;
+        data;
+
         if (_action == Action.NORMAL) {
             IERC20(token).transfer(msg.sender, amount + fee);
         } else if (_action == Action.NOFEE) {

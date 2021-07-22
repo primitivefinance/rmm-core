@@ -17,11 +17,11 @@ library CumulativeNormalDistribution {
         int128 p = 0x53dd02a4f5ee2e46;
         int128 one = uint256(1).fromUInt();
         int128 two = uint256(2).fromUInt();
-        int128 a1 = 0x413c831bb169f874;
-        int128 a2 = -0x48d4c730f051a5fe;
+        // int128 a1 = 0x413c831bb169f874;
+        // int128 a2 = -0x48d4c730f051a5fe;
         int128 a3 = 0x16a09e667f3bcc908;
-        int128 a4 = -0x17401c57014c38f14;
-        int128 a5 = 0x10fb844255a12d72e;
+        // int128 a4 = -0x17401c57014c38f14;
+        // int128 a5 = 0x10fb844255a12d72e;
         int128 z = x.div(a3);
         int128 t = one.div(one.add(p.mul(z.abs())));
         int128 erf = getErrorFunction(z, t);

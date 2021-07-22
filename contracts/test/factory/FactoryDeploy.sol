@@ -16,7 +16,7 @@ contract FactoryDeploy {
         IPrimitiveFactory(factory).deploy(risky, riskless);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "FactoryDeploy";
     }
 }

@@ -37,6 +37,7 @@ contract EngineDeposit {
         uint256 delStable,
         bytes calldata data
     ) public {
+        data;
         IERC20(risky).transferFrom(CALLER, engine, delRisky);
         IERC20(stable).transferFrom(CALLER, engine, delStable);
     }
