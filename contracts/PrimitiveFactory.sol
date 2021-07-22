@@ -10,6 +10,12 @@ import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
+    // 23.07 Kb with requires
+    // 22.99 Kb without requires
+
+    error SameTokenError();
+    error ZeroAddressError();
+
     /// @inheritdoc IPrimitiveFactory
     address public override owner;
 
@@ -31,8 +37,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
 
     /// @inheritdoc IPrimitiveFactory
     function deploy(address risky, address stable) external override returns (address engine) {
-        require(risky != stable, "Cannot be same token");
-        require(risky != address(0) && stable != address(0), "Cannot be zero address");
+        if (risky == stable) revert SameTokenError();
+        if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
+
         engine = deploy(address(this), risky, stable);
         getEngine[risky][stable] = engine;
         emit Deployed(msg.sender, risky, stable, engine);
