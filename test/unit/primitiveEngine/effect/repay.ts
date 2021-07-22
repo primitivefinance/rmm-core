@@ -144,7 +144,7 @@ describe('repay', function () {
             false,
             empty
           )
-        )
+        ).to.be.reverted
       })
     })
   })
