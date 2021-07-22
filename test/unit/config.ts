@@ -1,5 +1,5 @@
 import { parseWei, Percentage, Time, Wei, toBN } from 'web3-units'
-import { callDelta, premium } from '../shared'
+import { callDelta, callPremium } from '@primitivefinance/v2-math'
 
 /**
  * @notice Calibration Struct; Class representation of each Curve's parameters
@@ -46,7 +46,7 @@ export class Config {
    * @returns Black-Scholes implied premium
    */
   get premium(): number {
-    return premium(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
+    return callPremium(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
   }
 
   /**
