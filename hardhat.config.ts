@@ -29,10 +29,11 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: 'USD',
     gasPrice: 100,
+    enabled: false,
   },
   contractSizer: {
     alphaSort: true,
-    runOnCompile: true,
+    runOnCompile: false,
     disambiguatePaths: true,
   },
   paths: {

@@ -26,17 +26,6 @@ describe('deploy', function () {
     it('emits the Deployed event', async function () {
       const [deployer] = this.signers
 
-      /*
-      const poolAddress = getCreate2Address(
-        this.contracts.factory.address,
-        [
-          this.contracts.risky.address,
-          this.contracts.stable.address,
-        ],
-        (await hre.artifacts.readArtifact('PrimitiveEngine')).bytecode,
-      );
-      */
-
       let mockRisky = await deployMockContract(deployer, Token)
       let mockStable = await deployMockContract(deployer, Token)
       const engineAddress = await this.contracts.factory.callStatic.deploy(mockRisky.address, mockStable.address)
@@ -51,19 +40,19 @@ describe('deploy', function () {
     it('reverts when tokens are the same', async function () {
       await expect(
         this.contracts.factoryDeploy.deploy(this.contracts.risky.address, this.contracts.risky.address)
-      ).to.revertedWith('Cannot be same token')
+      ).to.be.revertedWith('SameTokenError()')
     })
 
     it('reverts when the risky asset is address 0', async function () {
       await expect(
         this.contracts.factoryDeploy.deploy(constants.AddressZero, this.contracts.stable.address)
-      ).to.revertedWith('Cannot be zero address')
+      ).to.be.revertedWith('ZeroAddressError()')
     })
 
     it('reverts when the stable asset is address 0', async function () {
-      await expect(this.contracts.factoryDeploy.deploy(this.contracts.risky.address, constants.AddressZero)).to.revertedWith(
-        'Cannot be zero address'
-      )
+      await expect(
+        this.contracts.factoryDeploy.deploy(this.contracts.risky.address, constants.AddressZero)
+      ).to.be.revertedWith('ZeroAddressError()')
     })
   })
 })
