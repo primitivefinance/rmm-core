@@ -56,7 +56,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     error RemoveLiquidityError();
 
     error DeltaInError();
-    error DeltaOutError();
+    error DeltaOutError(uint256 expected, uint256 actual);
 
     error InvariantError();
 
@@ -326,8 +326,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
         }
 
-        // require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
-        if (deltaOut < details.deltaOutMin) revert DeltaOutError();
+        require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
+        // if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false) revert DeltaOutError(details.deltaOutMin, deltaOut);
 
         {
             // avoids stack too deep errors
@@ -367,11 +367,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
 
             // FIX: invariant must be constant or growing
-            if (
-                invariantOf(details.poolId) < invariant || invariantOf(details.poolId) - invariant < 1844674407370960000
-            ) {
-                revert InvariantError();
-            }
+            // if (invariantOf(details.poolId) < invariant && invariantOf(details.poolId) - invariant >= 1844674407370960000) revert InvariantError();
+
+            require(
+                invariantOf(details.poolId) >= invariant ||
+                    invariantOf(details.poolId) - invariant >= 1844674407370960000,
+                "Invariant"
+            );
 
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }
