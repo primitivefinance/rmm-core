@@ -326,8 +326,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
         }
 
-        require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
-        // if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false) revert DeltaOutError(details.deltaOutMin, deltaOut);
+        // require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
+        if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false) revert DeltaOutError(details.deltaOutMin, deltaOut);
 
         {
             // avoids stack too deep errors
