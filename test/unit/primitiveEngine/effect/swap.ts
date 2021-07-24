@@ -124,39 +124,39 @@ const FailCases: SwapTestCase[] = [
     deltaIn: parseWei(1),
     fromMargin: false,
     deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: parseWei(1),
     fromMargin: false,
     deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   // 2e3
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: true,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: false,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: true,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: false,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
 ]
 
@@ -299,6 +299,8 @@ describe('Engine:swap', function () {
             config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
+
+          console.log('Post spot', postSpot.toString())
 
           expect(deltaOut).to.be.eq(balanceOut)
           expect(postInvariant).to.be.gte(preInvariant)
