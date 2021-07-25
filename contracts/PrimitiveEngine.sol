@@ -42,27 +42,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Position for Position.Data;
     using Transfers for IERC20;
 
-    error CalibrationError();
-    error PoolDuplicateError();
-
-    // TODO: Add `expect` `actual` variables
-    error RiskyBalanceError();
-    error StableBalanceError();
-
-    error UninitializedError();
-    error ZeroDeltasError();
-
-    error ZeroLiquidityError();
-    error RemoveLiquidityError();
-
-    error DeltaInError();
-    error DeltaOutError(uint256 expected, uint256 actual);
-
-    error InvariantError();
-
-    error InsufficientFloatError();
-    error AboveMaxPremiumError();
-
     /// @dev Parameters of each pool, writes all at the same maturity to maximize gas efficiency
     struct Calibration {
         uint128 strike; // strike price of the option
