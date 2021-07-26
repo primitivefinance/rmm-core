@@ -117,7 +117,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         if ((maturity * sigma * strike * delLiquidity) == 0) revert CalibrationError();
-        poolId = getPoolId(strike, sigma, maturity);
+        poolId = keccak256(abi.encodePacked(factory, maturity, sigma, strike));
         if (settings[poolId].lastTimestamp != 0) revert PoolDuplicateError();
 
         uint32 timestamp = _blockTimestamp();
@@ -306,7 +306,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         // require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
-        if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false) revert DeltaOutError(details.deltaOutMin, deltaOut);
+        if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false)
+            revert DeltaOutError(details.deltaOutMin, deltaOut);
 
         {
             // avoids stack too deep errors
@@ -538,15 +539,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             cal.sigma,
             (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
         );
-    }
-
-    /// @inheritdoc IPrimitiveEngineView
-    function getPoolId(
-        uint256 strike,
-        uint64 sigma,
-        uint32 maturity
-    ) public view override returns (bytes32 poolId) {
-        poolId = keccak256(abi.encodePacked(factory, maturity, sigma, strike));
     }
 
     // ===== Flashes =====
