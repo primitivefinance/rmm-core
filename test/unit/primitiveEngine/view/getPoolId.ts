@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { BigNumber, utils } from 'ethers'
+import { utils } from 'ethers'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
@@ -9,12 +9,15 @@ describe('getPoolId', function () {
   })
 
   it('returns the poolId given settings', async function () {
-    expect(
-      await this.contracts.engine.getPoolId(
-        utils.parseEther('2000'),
-        utils.parseEther('1'),
-        1626885358,
+    const poolId = utils.keccak256(
+      utils.solidityPack(
+        ['address', 'uint32', 'uint64', 'uint256'],
+        [this.contracts.factory.address, 1626885358, utils.parseEther('1'), utils.parseEther('2000')]
       )
-    ).to.equal('0x6093cfe2dcd31f99fc9c000b2a4131da40c5edf520b07056908a5618fd958602')
+    )
+
+    expect(await this.contracts.engine.getPoolId(utils.parseEther('2000'), utils.parseEther('1'), 1626885358)).to.equal(
+      poolId
+    )
   })
 })

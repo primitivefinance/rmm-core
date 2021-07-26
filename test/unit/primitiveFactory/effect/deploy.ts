@@ -1,10 +1,17 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants } from 'ethers'
+import { constants, utils } from 'ethers'
 
 import loadContext from '../../context'
 import { deployMockContract } from 'ethereum-waffle'
 import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
+import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
+
+function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
+  const salt = utils.solidityKeccak256(['bytes'], [utils.defaultAbiCoder.encode(['address', 'address'], [risky, stable])])
+
+  return utils.getCreate2Address(factory, salt, utils.keccak256(bytecode))
+}
 
 describe('deploy', function () {
   before(async function () {
@@ -13,9 +20,11 @@ describe('deploy', function () {
 
   describe('when the parameters are valid', function () {
     let deployer
+
     beforeEach(async function () {
       deployer = this.signers[0]
     })
+
     it('deploys a new PrimitiveEngine', async function () {
       let mockRisky = await deployMockContract(deployer, Token)
       let mockStable = await deployMockContract(deployer, Token)
@@ -28,7 +37,12 @@ describe('deploy', function () {
 
       let mockRisky = await deployMockContract(deployer, Token)
       let mockStable = await deployMockContract(deployer, Token)
-      const engineAddress = await this.contracts.factory.callStatic.deploy(mockRisky.address, mockStable.address)
+      const engineAddress = computeEngineAddress(
+        this.contracts.factory.address,
+        mockRisky.address,
+        mockStable.address,
+        bytecode
+      )
 
       await expect(this.contracts.factoryDeploy.deploy(mockRisky.address, mockStable.address))
         .to.emit(this.contracts.factory, 'Deployed')
