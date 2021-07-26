@@ -96,14 +96,4 @@ interface IPrimitiveEngineView {
     /// @return balanceRisky    Balance of the risky token
     /// balanceStable           Balance of the stable token
     function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
-
-    /// @param  strike      Strike price of the pool
-    /// @param  sigma       Volatility of the pool, scaled by Mantissa of 1e4
-    /// @param  maturity    Timestamp of Maturity
-    /// @return             Keccak256 hash of the `calibration` parameters and Engine contract address
-    function getPoolId(
-        uint256 strike,
-        uint64 sigma,
-        uint32 maturity
-    ) external view returns (bytes32);
 }
