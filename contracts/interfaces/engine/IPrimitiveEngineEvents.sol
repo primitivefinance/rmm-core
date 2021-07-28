@@ -71,8 +71,7 @@ interface IPrimitiveEngineEvents {
     /// @param  recipient       Owner of the position which receives liquidity shares
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity shares borrowed, and added as debt
-    /// @param  maxPremium      Maximum amount of risky tokens to pay as a `premium` to collateralize the position
-    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity, uint256 maxPremium);
+    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity);
 
     /// @notice Repays a borrowed position, reduces liquidity shares of position and debt.
     /// @param  owner           Owner of the position to repay

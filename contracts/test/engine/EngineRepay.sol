@@ -33,19 +33,18 @@ contract EngineRepay {
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
     }
 
     function borrowMaxPremium(
         bytes32 poolId,
         address owner,
         uint256 delLiquidity,
-        uint256 maxPremium,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, maxPremium, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
     }
 
     function borrowWithoutPaying(
@@ -57,7 +56,7 @@ contract EngineRepay {
         owner;
         CALLER = msg.sender;
         dontPay = 0;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
         dontPay = 1;
     }
 

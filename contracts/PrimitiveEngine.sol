@@ -380,7 +380,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function borrow(
         bytes32 poolId,
         uint256 delLiquidity,
-        uint256 maxPremium,
         bytes calldata data
     ) external override lock returns (uint256 premium) {
         // Source: Convex Payoff Approimation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
@@ -410,7 +409,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
             // Check price impact tolerance
             premium = delLiquidity - delRisky;
-            if (premium > maxPremium) revert AboveMaxPremiumError();
             // Check balances after position creation
             uint256 postRisky = IERC20(risky).balanceOf(address(this));
             uint256 postStable = IERC20(stable).balanceOf(address(this));
@@ -419,7 +417,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (postStable < preStable - delStable) revert StableBalanceError();
         }
 
-        emit Borrowed(msg.sender, poolId, delLiquidity, maxPremium);
+        emit Borrowed(msg.sender, poolId, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
