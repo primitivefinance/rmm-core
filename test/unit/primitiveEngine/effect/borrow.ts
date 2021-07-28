@@ -6,8 +6,9 @@ import { parseWei } from 'web3-units'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
+import { computePoolId } from '../../utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity } = config
 const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
@@ -24,7 +25,7 @@ describe('borrow', function () {
     let deployer: Wallet, engine: PrimitiveEngine, engineBorrow: EngineBorrow
 
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+      poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
       posId = await this.contracts.engineBorrow.getPosition(poolId)
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(
@@ -36,6 +37,7 @@ describe('borrow', function () {
 
       await this.contracts.engineLend.lend(poolId, parseWei('100').raw)
     })
+
     describe('success cases', async function () {
       it('originates one long option position', async function () {
         await engineBorrow.borrow(poolId, engineBorrow.address, parseWei('1').raw, empty)

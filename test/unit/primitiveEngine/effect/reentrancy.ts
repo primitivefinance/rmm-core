@@ -4,8 +4,8 @@ import { constants, BytesLike } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import { reentrancyFragment } from '../fragments'
-
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
+import { computePoolId } from '../../utils'
 
 const { strike, sigma, maturity, spot } = config
 const empty: BytesLike = constants.HashZero
@@ -18,6 +18,10 @@ describe('reentrancy', function () {
       ['reentrancyAttacker', 'engineCreate', 'engineAllocate', 'engineLend', 'engineBorrow'],
       reentrancyFragment
     )
+  })
+
+  beforeEach(async function () {
+    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
   })
 
   describe('when calling create in the create callback', function () {
@@ -43,7 +47,6 @@ describe('reentrancy', function () {
   describe('when calling allocate in the allocate callback', function () {
     beforeEach(async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
     })
 
     it('reverts the transaction', async function () {
@@ -56,7 +59,6 @@ describe('reentrancy', function () {
   describe('when calling remove in the remove callback', function () {
     beforeEach(async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.reentrancyAttacker.address,
@@ -73,7 +75,6 @@ describe('reentrancy', function () {
   describe('when calling borrow in the borrow callback', function () {
     beforeEach(async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineLend.address,
@@ -93,7 +94,6 @@ describe('reentrancy', function () {
   describe('when calling repay in the repay callback', function () {
     beforeEach(async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineLend.address,

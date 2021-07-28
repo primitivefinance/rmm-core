@@ -1,14 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
-
 import { parseWei } from 'web3-units'
 
 import { lendFragment } from '../fragments'
-
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
+import { computePoolId } from '../../utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity } = config
 let poolId, posId: string
 
 describe('lend', function () {
@@ -17,7 +16,7 @@ describe('lend', function () {
   })
 
   beforeEach(async function () {
-    poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineLend.getPosition(poolId)
   })
 

@@ -7,9 +7,12 @@ import { MockEngine, EngineAllocate, EngineSwap, EngineCreate } from '../../../.
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
-import { getSpotPrice } from '@primitivefinance/v2-math'
+import { getSpotPrice, getProportionalVol, inverse_std_n_cdf, std_n_cdf, quantilePrime } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { Config } from '../../config'
+import { computePoolId } from '../../utils'
+
+let poolId: string
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -26,6 +29,25 @@ export const EngineEvents = {
   CLAIMED: 'Claimed',
   BORROWED: 'Borrowed',
   REPAID: 'Repaid',
+}
+
+function getTradingFunction(
+  invariantLast: number = 0,
+  reserveRisky: number,
+  liquidity: number,
+  strike: number,
+  sigma: number,
+  tau: number
+): number {
+  const K = strike
+  const vol = getProportionalVol(sigma, tau)
+  if (vol <= 0) return 0
+  const reserve: number = reserveRisky / liquidity
+  const inverseInput: number = 1 - +reserve
+  const phi: number = inverse_std_n_cdf(inverseInput)
+  const input = phi - vol
+  const reserveStable = K * std_n_cdf(input) + invariantLast
+  return reserveStable
 }
 
 // Constants
@@ -229,7 +251,9 @@ describe('Engine:swap', function () {
           this.contracts.engineAllocate,
           this.contracts.engineSwap,
         ]
-        poolId = await engine.getPoolId(config.strike.raw, config.sigma.raw, config.maturity.raw)
+
+        poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+
         /* await this.contracts.engineCreate.create(
           config.strike.raw,
           config.sigma.raw,
@@ -292,6 +316,17 @@ describe('Engine:swap', function () {
               deltaOut
             )
 
+          const postSpot =
+            getTradingFunction(
+              0,
+              new Wei(postReserve.reserveRisky).float,
+              new Wei(postReserve.liquidity).float,
+              config.strike.float,
+              config.sigma.float,
+              new Time(postSetting.maturity - postSetting.lastTimestamp).years
+            ) * quantilePrime(1 - new Wei(postReserve.reserveRisky).float)
+
+          /*
           const postSpot = getSpotPrice(
             new Wei(postReserve.reserveRisky).float,
             new Wei(postReserve.liquidity).float,
@@ -299,6 +334,7 @@ describe('Engine:swap', function () {
             config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
+          */
 
           console.log('Post spot', postSpot.toString())
 
