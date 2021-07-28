@@ -19,7 +19,7 @@ interface IPrimitiveEngineErrors {
     error RemoveLiquidityError();
 
     error DeltaInError();
-    error DeltaOutError(uint256 expected, uint256 actual);
+    error DeltaOutError();
 
     error InvariantError();
 

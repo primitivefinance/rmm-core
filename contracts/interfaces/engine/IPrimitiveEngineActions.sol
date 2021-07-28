@@ -89,7 +89,6 @@ interface IPrimitiveEngineActions {
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  riskyForStable Whether to do a risky to stable token swap, or stable to risky swap
     /// @param  deltaIn     Amount of tokens to swap
-    /// @param  deltaOutMin Min amount of tokens to receive in exchange for `deltaIn` amount
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the swapCallback function
     /// @return deltaOut    Amount of either stable or risky tokens that were sent out of this contract as payment
@@ -97,7 +96,6 @@ interface IPrimitiveEngineActions {
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
-        uint256 deltaOutMin,
         bool fromMargin,
         bytes calldata data
     ) external returns (uint256 deltaOut);

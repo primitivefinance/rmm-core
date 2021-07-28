@@ -264,7 +264,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     struct SwapDetails {
         bytes32 poolId;
         uint256 deltaIn;
-        uint256 deltaOutMin;
         bool riskyForStable;
         bool fromMargin;
     }
@@ -274,7 +273,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
-        uint256 deltaOutMin,
         bool fromMargin,
         bytes calldata data
     ) external override lock returns (uint256 deltaOut) {
@@ -283,7 +281,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         SwapDetails memory details = SwapDetails({
             poolId: poolId,
             deltaIn: deltaIn,
-            deltaOutMin: deltaOutMin,
             riskyForStable: riskyForStable,
             fromMargin: fromMargin
         });
@@ -305,9 +302,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
         }
 
-        // require(deltaOut >= details.deltaOutMin && deltaOut > 0, "Insufficient"); // price impact check
-        if ((deltaOut >= details.deltaOutMin && deltaOut > 0) == false)
-            revert DeltaOutError(details.deltaOutMin, deltaOut);
+        if (deltaOut == 0) revert DeltaOutError();
 
         {
             // avoids stack too deep errors
