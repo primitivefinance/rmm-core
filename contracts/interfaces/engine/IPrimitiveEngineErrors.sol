@@ -8,9 +8,8 @@ interface IPrimitiveEngineErrors {
     error CalibrationError();
     error PoolDuplicateError();
 
-    // TODO: Add `expect` `actual` variables
-    error RiskyBalanceError();
-    error StableBalanceError();
+    error RiskyBalanceError(uint256 expected, uint256 actual);
+    error StableBalanceError(uint256 expected, uint256 actual);
 
     error UninitializedError();
     error ZeroDeltasError();
