@@ -134,7 +134,7 @@ contract ReentrancyAttacker {
         _owner = owner;
         _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
     }
 
     function borrowWithGoodCallback(
@@ -150,7 +150,7 @@ contract ReentrancyAttacker {
         _delLiquidity = delLiquidity;
 
         _goodCallback = true;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
         _goodCallback = false;
     }
 
@@ -166,7 +166,7 @@ contract ReentrancyAttacker {
             IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
             IERC20(stable).transfer(CALLER, delStable);
         } else {
-            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, type(uint256).max, data);
+            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, data);
         }
     }
 
