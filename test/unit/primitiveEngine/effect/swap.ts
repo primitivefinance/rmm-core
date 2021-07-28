@@ -1,18 +1,15 @@
 // Standard Imports
 import { expect, assert } from 'chai'
-import { ethers, waffle } from 'hardhat'
+import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
-import { MockEngine, EngineAllocate, EngineSwap, EngineCreate } from '../../../../typechain'
+import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 // Context Imports
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
-import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
+import { Wei, Time, parseWei, toBN } from 'web3-units'
 import { getSpotPrice, getProportionalVol, inverse_std_n_cdf, std_n_cdf, quantilePrime } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
-import { Config } from '../../config'
 import { computePoolId } from '../../utils'
-
-let poolId: string
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -51,7 +48,7 @@ function getTradingFunction(
 }
 
 // Constants
-const { strike, sigma, maturity, lastTimestamp, spot } = config
+const { strike, sigma, maturity, lastTimestamp } = config
 const empty: BytesLike = constants.HashZero
 
 const onError = (error: any, revertReason: string | undefined) => {
@@ -65,6 +62,7 @@ const onError = (error: any, revertReason: string | undefined) => {
 
   const reasonsList = error.results && Object.values(error.results).map((o: any) => o.reason)
   const message = error instanceof Object && 'message' in error ? error.message : JSON.stringify(error)
+  console.log(message)
   const isReverted = reasonsList
     ? reasonsList.some((r: string) => r === revertReason)
     : message.includes('revert') && message.includes(revertReason) && shouldRevert
@@ -325,6 +323,10 @@ describe('Engine:swap', function () {
               new Time(postSetting.maturity - postSetting.lastTimestamp).years
             ) * quantilePrime(1 - new Wei(postReserve.reserveRisky).float)
 
+          console.log(1 - new Wei(postReserve.reserveRisky).float)
+          console.log(quantilePrime(1 - new Wei(postReserve.reserveRisky).float))
+          console.log(quantilePrime(1))
+
           /*
           const postSpot = getSpotPrice(
             new Wei(postReserve.reserveRisky).float,
@@ -335,7 +337,7 @@ describe('Engine:swap', function () {
           )
           */
 
-          console.log('Post spot', postSpot.toString())
+          // console.log('Post spot', postSpot.toString())
 
           expect(deltaOut).to.be.eq(balanceOut)
           expect(postInvariant).to.be.gte(preInvariant)
