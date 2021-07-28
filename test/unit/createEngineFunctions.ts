@@ -12,7 +12,6 @@ export type SwapFunction = (
   poolId: BytesLike | string,
   addXRemoveY: boolean,
   deltaOut: BigNumberish,
-  deltaInMax: BigNumberish,
   fromMargin: boolean
 ) => Promise<ContractTransaction>
 
@@ -32,14 +31,11 @@ export default function createEngineFunctions(
           poolId: BytesLike | string,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
-          deltaInMax: BigNumberish,
           fromMargin: boolean
         ): Promise<ContractTransaction> => {
           await loadedContracts.risky.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
           await loadedContracts.stable.connect(signer).approve(loadedContracts.engineSwap.address, constants.MaxUint256)
-          return loadedContracts.engineSwap
-            .connect(signer)
-            .swap(poolId, addXRemoveY, deltaOut, deltaInMax, fromMargin, empty)
+          return loadedContracts.engineSwap.connect(signer).swap(poolId, addXRemoveY, deltaOut, fromMargin, empty)
         }
 
         loadedFunctions.swapXForY = (
@@ -47,20 +43,18 @@ export default function createEngineFunctions(
           poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
-          deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(signer, poolId, true, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, true, deltaOut, fromMargin)
         }
         loadedFunctions.swapYForX = (
           signer: Wallet,
           poolId: BytesLike,
           addXRemoveY: boolean,
           deltaOut: BigNumberish,
-          deltaInMax: BigNumberish,
           fromMargin: boolean
         ) => {
-          return swapFunction(signer, poolId, false, deltaOut, deltaInMax, fromMargin)
+          return swapFunction(signer, poolId, false, deltaOut, fromMargin)
         }
         break
       case 'engineCreate':

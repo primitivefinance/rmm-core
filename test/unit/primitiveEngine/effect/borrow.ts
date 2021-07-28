@@ -64,10 +64,6 @@ describe('borrow', function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, parseWei('0').raw, empty)).to.be.reverted
       })
 
-      it('fails to originate 1 long option, because premium is above max premium', async function () {
-        await expect(engineBorrow.borrowMaxPremium(poolId, engineBorrow.address, parseWei('1').raw, 0, empty)).to.be.reverted
-      })
-
       it('fails to originate 1 long option, because no tokens were paid', async function () {
         await expect(engineBorrow.borrowWithoutPaying(poolId, engineBorrow.address, parseWei('1').raw, empty)).to.be.reverted
       })

@@ -1,10 +1,11 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BytesLike, constants } from 'ethers'
-import { parseWei, Percentage } from 'web3-units'
+import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { repayFragment } from '../fragments'
+import { computePoolId } from '../../utils'
 
 let poolId: BytesLike
 let posId: BytesLike
@@ -22,7 +23,7 @@ describe('repay', function () {
   })
 
   beforeEach(async function () {
-    poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineRepay.getPosition(poolId)
   })
 
