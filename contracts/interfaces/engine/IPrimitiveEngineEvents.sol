@@ -67,7 +67,7 @@ interface IPrimitiveEngineEvents {
     /// @param  delLiquidity    Amount of liquidity shares removed from the float
     event Claimed(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
 
-    /// @notice Adds liqidity shares to a `recipient`'s position while adding an equal amount of debt
+    /// @notice Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient       Owner of the position which receives liquidity shares
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity shares borrowed, and added as debt

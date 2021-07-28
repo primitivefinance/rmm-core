@@ -382,7 +382,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delLiquidity,
         bytes calldata data
     ) external override lock returns (uint256 premium) {
-        // Source: Convex Payoff Approimation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
+        // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
         Reserve.Data storage reserve = reserves[poolId];
 
         if (delLiquidity == 0) revert ZeroLiquidityError();
