@@ -236,7 +236,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             reserve.liquidity
         );
 
-        if (resLiquidity < delLiquidity) revert RemoveLiquidityError();
+        if (resLiquidity < delLiquidity) revert RemoveLiquidityError(delLiquidity, resLiquidity);
 
         delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky to remove
         delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable to remove

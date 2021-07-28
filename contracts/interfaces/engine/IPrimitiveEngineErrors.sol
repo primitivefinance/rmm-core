@@ -16,7 +16,7 @@ interface IPrimitiveEngineErrors {
     error ZeroDeltasError();
 
     error ZeroLiquidityError();
-    error RemoveLiquidityError();
+    error RemoveLiquidityError(uint256 delLiquidity, uint256 resLiquidity);
 
     error DeltaInError();
     error DeltaOutError();
