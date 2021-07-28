@@ -3,11 +3,11 @@ import { expect } from 'chai'
 import { BigNumber, constants, BytesLike } from 'ethers'
 
 import { parseWei } from 'web3-units'
-
 import { removeFragment } from '../fragments'
+import { computePoolId } from '../../utils'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity } = config
 
 const delLiquidity = parseWei('1')
 const empty: BytesLike = constants.HashZero
@@ -21,8 +21,7 @@ describe('remove', function () {
 
   describe('when removing to margin', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-      posId = await this.contracts.engineRemove.getPosition(poolId)
+      poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
     })
 
     describe('success cases', function () {
@@ -85,7 +84,6 @@ describe('remove', function () {
 
   describe('when removing to external', function () {
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       posId = await this.contracts.engineRemove.getPosition(poolId)
     })
 

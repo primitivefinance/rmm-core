@@ -1,17 +1,23 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, BytesLike } from 'ethers'
-import { parseWei, Wei } from 'web3-units'
+import { constants, BytesLike } from 'ethers'
+import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { createFragment } from '../fragments'
+import { computePoolId } from '../../utils'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = config
 const empty: BytesLike = constants.HashZero
+let poolId: string
 
 describe('create', function () {
   before(async function () {
     loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
+  })
+
+  beforeEach(async function () {
+    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
   })
 
   describe('success cases', function () {
@@ -20,8 +26,6 @@ describe('create', function () {
     })
 
     it('emits the Created event', async function () {
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-
       await expect(
         this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
       )
@@ -32,9 +36,7 @@ describe('create', function () {
     it('gives liquidity to the sender', async function () {
       await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
 
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
       const pos = await this.contracts.engineCreate.fetch(poolId)
-
       expect(pos.liquidity).to.equal(parseWei('1').sub('1000').raw)
     })
 
@@ -47,10 +49,8 @@ describe('create', function () {
         parseWei('1').raw,
         empty
       )
-      const receipt = await tx.wait()
+      await tx.wait()
       const timestamp = lastTimestamp.raw
-
-      const poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
 
       const reserve = await this.contracts.engine.reserves(poolId)
 

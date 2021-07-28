@@ -4,16 +4,20 @@ import { BigNumber, constants, BytesLike } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import { allocateFragment } from '../fragments'
-
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
+import { computePoolId } from '../../utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity } = config
 const empty: BytesLike = constants.HashZero
 let poolId: string
 
 describe('allocate', function () {
   before(async function () {
     loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
+  })
+
+  beforeEach(async function () {
+    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
   })
 
   describe('when allocating from margin', function () {
@@ -24,8 +28,6 @@ describe('allocate', function () {
         parseWei('1000').raw,
         empty
       )
-
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
     })
 
     describe('success cases', function () {
@@ -90,10 +92,6 @@ describe('allocate', function () {
   })
 
   describe('when allocating from external', function () {
-    beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
-    })
-
     describe('success cases', function () {
       it('updates the position if enough risky and stable are provided', async function () {
         const posId = await this.contracts.engineAllocate.getPosition(poolId)
