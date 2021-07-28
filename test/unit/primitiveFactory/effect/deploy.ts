@@ -1,17 +1,13 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants, utils } from 'ethers'
+import { constants } from 'ethers'
 
 import loadContext from '../../context'
 import { deployMockContract } from 'ethereum-waffle'
 import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
 import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
-function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
-  const salt = utils.solidityKeccak256(['bytes'], [utils.defaultAbiCoder.encode(['address', 'address'], [risky, stable])])
-
-  return utils.getCreate2Address(factory, salt, utils.keccak256(bytecode))
-}
+import { computeEngineAddress } from '../../utils'
 
 describe('deploy', function () {
   before(async function () {
