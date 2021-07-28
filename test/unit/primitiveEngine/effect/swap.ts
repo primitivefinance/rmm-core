@@ -209,19 +209,18 @@ async function doSwap(
   functions: Functions
 ): Promise<ContractTransaction> {
   let swap: ContractTransaction
-  const limit = testCase.deltaOutMin ? testCase.deltaOutMin.raw : 0
   const signer = testCase.signer ? signers[testCase.signer] : signers[0]
   if (testCase.riskyForStable) {
     if (testCase.fromMargin) {
-      swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, limit, true, empty)
+      swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, true, empty)
     } else {
-      swap = await functions.swapXForY(signer, poolId, true, testCase.deltaIn.raw, limit, testCase.fromMargin)
+      swap = await functions.swapXForY(signer, poolId, true, testCase.deltaIn.raw, testCase.fromMargin)
     }
   } else {
     if (testCase.fromMargin) {
-      swap = await engine.swap(poolId, false, testCase.deltaIn.raw, limit, true, empty)
+      swap = await engine.swap(poolId, false, testCase.deltaIn.raw, true, empty)
     } else {
-      swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, limit, testCase.fromMargin)
+      swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, testCase.fromMargin)
     }
   }
   return swap

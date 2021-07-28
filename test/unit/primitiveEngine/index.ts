@@ -11,8 +11,6 @@ import './effect/repay'
 import './effect/swap'
 import './effect/withdraw'
 
-import './view/calcInvariant'
-import './view/getPoolId'
 import './view/margins'
 import './view/positions'
 import './view/reserves'
