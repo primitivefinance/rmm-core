@@ -1,21 +1,7 @@
 import { BigNumber } from 'ethers'
-import { PrimitiveEngine } from '../../typechain'
+import { PrimitiveEngine } from '../../../typechain'
 
-function supportFoo(Assertion: Chai.AssertionStatic) {
-  Assertion.addMethod('foo', function (this: any) {
-    const subject = this._obj
-
-    this.assert(
-      subject == 'foo',
-      `Expected ${subject} to be foo`,
-      `Expected ${subject} not to be foo`,
-      'Proper foo is foo',
-      subject
-    )
-  })
-}
-
-function supportMargin(Assertion: Chai.AssertionStatic) {
+export default function supportMargin(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod(
     'increaseMargin',
     async function (this: any, engine: PrimitiveEngine, owner: string, risky: BigNumber, stable: BigNumber) {
@@ -71,9 +57,4 @@ function supportMargin(Assertion: Chai.AssertionStatic) {
       )
     }
   )
-}
-
-export function primitiveChai(chai: Chai.ChaiStatic) {
-  supportFoo(chai.Assertion)
-  supportMargin(chai.Assertion)
 }

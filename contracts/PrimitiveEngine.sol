@@ -98,6 +98,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
         blockTimestamp = uint32(block.timestamp);
     }
 
+    error ShouldRevert(uint256 foo, uint256 bar);
+
+    function revert(uint256 foo, uint256 bar) external {
+        revert ShouldRevert(foo, bar);
+    }
+
     /// @inheritdoc IPrimitiveEngineActions
     function create(
         uint256 strike,
