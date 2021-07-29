@@ -51,25 +51,6 @@ export interface Configs {
   spots: Config[]
 }
 
-declare global {
-  export namespace Chai {
-    interface Assertion {
-      decreaseMargin(
-        engine: ContractTypes.PrimitiveEngine,
-        owner: string,
-        risky: BigNumber,
-        stable: BigNumber
-      ): AsyncAssertion
-      increaseMargin(
-        engine: ContractTypes.PrimitiveEngine,
-        owner: string,
-        risky: BigNumber,
-        stable: BigNumber
-      ): AsyncAssertion
-    }
-  }
-}
-
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
@@ -101,3 +82,22 @@ type ContractName =
   | 'badEngineDeposit'
   | 'flashBorrower'
   | 'reentrancyAttacker'
+
+  declare global {
+    export namespace Chai {
+      interface Assertion {
+        decreaseMargin(
+          engine: ContractTypes.PrimitiveEngine,
+          owner: string,
+          risky: BigNumber,
+          stable: BigNumber
+        ): AsyncAssertion
+        increaseMargin(
+          engine: ContractTypes.PrimitiveEngine,
+          owner: string,
+          risky: BigNumber,
+          stable: BigNumber
+        ): AsyncAssertion
+      }
+    }
+  }

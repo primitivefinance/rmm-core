@@ -34,4 +34,9 @@ describe('deposit / withdraw', function () {
       this.contracts.engineDeposit.deposit(this.contracts.engineWithdraw.address, risky, stable, constants.HashZero)
     ).to.increaseMargin(this.contracts.engine, this.contracts.engineWithdraw.address, risky, stable)
   })
+
+  it('reverts', async function () {
+    const receipt = await this.contracts.engine.revert('100', '200')
+    console.log(receipt)
+  })
 })
