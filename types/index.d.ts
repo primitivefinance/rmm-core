@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers'
+import { Wallet, BigNumber } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
@@ -49,6 +49,25 @@ export interface Configs {
   sigmas: Config[]
   maturities: Config[]
   spots: Config[]
+}
+
+declare global {
+  export namespace Chai {
+    interface Assertion {
+      decreaseMargin(
+        engine: ContractTypes.PrimitiveEngine,
+        owner: string,
+        risky: BigNumber,
+        stable: BigNumber
+      ): AsyncAssertion
+      increaseMargin(
+        engine: ContractTypes.PrimitiveEngine,
+        owner: string,
+        risky: BigNumber,
+        stable: BigNumber
+      ): AsyncAssertion
+    }
+  }
 }
 
 declare module 'mocha' {
