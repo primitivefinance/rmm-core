@@ -7,7 +7,7 @@ import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Time, parseWei, toBN } from 'web3-units'
-import { getSpotPrice, getProportionalVol, inverse_std_n_cdf, std_n_cdf, quantilePrime } from '@primitivefinance/v2-math'
+import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { computePoolId } from '../../utils'
 
@@ -26,25 +26,6 @@ export const EngineEvents = {
   CLAIMED: 'Claimed',
   BORROWED: 'Borrowed',
   REPAID: 'Repaid',
-}
-
-function getTradingFunction(
-  invariantLast: number = 0,
-  reserveRisky: number,
-  liquidity: number,
-  strike: number,
-  sigma: number,
-  tau: number
-): number {
-  const K = strike
-  const vol = getProportionalVol(sigma, tau)
-  if (vol <= 0) return 0
-  const reserve: number = reserveRisky / liquidity
-  const inverseInput: number = 1 - +reserve
-  const phi: number = inverse_std_n_cdf(inverseInput)
-  const input = phi - vol
-  const reserveStable = K * std_n_cdf(input) + invariantLast
-  return reserveStable
 }
 
 // Constants
@@ -287,6 +268,11 @@ describe('Engine:swap', function () {
             return
           }
 
+          console.log('Pre reserve')
+          console.log(preReserves.reserveRisky.toString())
+          console.log(preReserves.liquidity.toString())
+          console.log(preReserves.reserveRisky.div(preReserves.liquidity).toString())
+
           const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
             this.contracts.risky.balanceOf(engine.address),
             this.contracts.stable.balanceOf(engine.address),
@@ -294,6 +280,11 @@ describe('Engine:swap', function () {
             engine.settings(poolId),
             engine.invariantOf(poolId),
           ])
+
+          console.log('Post reserve')
+          console.log(postReserve.reserveRisky.toString())
+          console.log(postReserve.liquidity.toString())
+          console.log(postReserve.reserveRisky.div(postReserve.liquidity).toString())
 
           const balanceOut = testCase.riskyForStable
             ? preBalanceStable.sub(postBalanceStable)
@@ -313,21 +304,6 @@ describe('Engine:swap', function () {
               deltaOut
             )
 
-          const postSpot =
-            getTradingFunction(
-              0,
-              new Wei(postReserve.reserveRisky).float,
-              new Wei(postReserve.liquidity).float,
-              config.strike.float,
-              config.sigma.float,
-              new Time(postSetting.maturity - postSetting.lastTimestamp).years
-            ) * quantilePrime(1 - new Wei(postReserve.reserveRisky).float)
-
-          console.log(1 - new Wei(postReserve.reserveRisky).float)
-          console.log(quantilePrime(1 - new Wei(postReserve.reserveRisky).float))
-          console.log(quantilePrime(1))
-
-          /*
           const postSpot = getSpotPrice(
             new Wei(postReserve.reserveRisky).float,
             new Wei(postReserve.liquidity).float,
@@ -335,9 +311,6 @@ describe('Engine:swap', function () {
             config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
-          */
-
-          // console.log('Post spot', postSpot.toString())
 
           expect(deltaOut).to.be.eq(balanceOut)
           expect(postInvariant).to.be.gte(preInvariant)
