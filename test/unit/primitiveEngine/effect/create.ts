@@ -5,7 +5,7 @@ import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { createFragment } from '../fragments'
-import { computePoolId } from '../../utils'
+import { computePoolId } from '../../../shared/utils'
 
 const { strike, sigma, maturity, lastTimestamp, spot } = config
 const empty: BytesLike = constants.HashZero

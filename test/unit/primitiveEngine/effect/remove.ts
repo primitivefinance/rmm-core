@@ -4,7 +4,7 @@ import { BigNumber, constants, BytesLike } from 'ethers'
 
 import { parseWei } from 'web3-units'
 import { removeFragment } from '../fragments'
-import { computePoolId } from '../../utils'
+import { computePoolId } from '../../../shared/utils'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 const { strike, sigma, maturity } = config

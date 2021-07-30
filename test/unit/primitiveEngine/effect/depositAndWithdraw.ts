@@ -5,7 +5,7 @@ import { constants } from 'ethers'
 
 import { withdrawFragment } from '../fragments'
 import loadContext from '../../context'
-import { primitiveChai } from '../../matchers'
+import { primitiveChai } from '../../../shared/matchers'
 
 chai.use(primitiveChai)
 
@@ -14,6 +14,7 @@ describe('deposit / withdraw', function () {
     loadContext(waffle.provider, ['engineDeposit', 'engineWithdraw'], withdrawFragment)
   })
 
+  /*
   it('withdraws from the margin account', async function () {
     const risky = parseWei('10').raw
     const stable = parseWei('5').raw
@@ -36,7 +37,9 @@ describe('deposit / withdraw', function () {
   })
 
   it('reverts', async function () {
-    const receipt = await this.contracts.engine.revert('100', '200')
-    console.log(receipt)
+    await expect(
+      this.contracts.engine.revert('100', '200')
+    ).to.revertWithCustomError('ShouldRevert', ['100', '200'])
   })
+  */
 })

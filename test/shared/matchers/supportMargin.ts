@@ -1,6 +1,8 @@
 import { BigNumber } from 'ethers'
 import { PrimitiveEngine } from '../../../typechain'
 
+// Chai matchers for the margins of the PrimitiveEngine
+
 export default function supportMargin(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod(
     'increaseMargin',
