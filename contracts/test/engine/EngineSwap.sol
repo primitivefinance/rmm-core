@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
@@ -26,12 +26,11 @@ contract EngineSwap {
         bytes32 pid,
         bool riskyForStable,
         uint256 deltaOut,
-        uint256 deltaInMax,
         bool fromMargin,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, deltaInMax, fromMargin, data);
+        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, data);
     }
 
     function swapCallback(
@@ -39,6 +38,7 @@ contract EngineSwap {
         uint256 delStable,
         bytes calldata data
     ) public {
+        data;
         IERC20(risky).transferFrom(CALLER, engine, delRisky);
         IERC20(stable).transferFrom(CALLER, engine, delStable);
     }

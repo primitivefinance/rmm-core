@@ -1,12 +1,11 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { constants, BytesLike } from 'ethers'
-
 import { parseWei } from 'web3-units'
 
+import expect from '../../../shared/expect'
 import { depositFragment } from '../fragments'
-
 import loadContext from '../../context'
+
 const empty: BytesLike = constants.HashZero
 
 describe('deposit', function () {
@@ -14,27 +13,31 @@ describe('deposit', function () {
     loadContext(waffle.provider, ['engineDeposit', 'badEngineDeposit'], depositFragment)
   })
 
-  describe('when the parameters are valid', function () {
+  describe('success cases', function () {
     it('adds to the user margin account', async function () {
-      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
-
-      const margin = await this.contracts.engine.margins(this.signers[0].address)
-
-      expect(margin.balanceRisky).to.equal(parseWei('1001').raw)
-      expect(margin.balanceStable).to.equal(parseWei('999').raw)
+      await expect(
+        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
+      ).to.increaseMargin(this.contracts.engine, this.signers[0].address, parseWei('1001').raw, parseWei('999').raw)
     })
 
     it('adds to the margin account of another address when specified', async function () {
-      await this.contracts.engineDeposit.deposit(
+      await expect(
+        this.contracts.engineDeposit.deposit(
+          this.contracts.engineDeposit.address,
+          parseWei('101').raw,
+          parseWei('100').raw,
+          empty
+        )
+      ).to.increaseMargin(
+        this.contracts.engine,
         this.contracts.engineDeposit.address,
-        parseWei('1000').raw,
-        parseWei('1000').raw,
-        empty
+        parseWei('101').raw,
+        parseWei('100').raw
       )
 
       expect(await this.contracts.engine.margins(this.contracts.engineDeposit.address)).to.be.deep.eq([
-        parseWei('1000').raw,
-        parseWei('1000').raw,
+        parseWei('101').raw,
+        parseWei('100').raw,
       ])
     })
 
@@ -70,7 +73,9 @@ describe('deposit', function () {
         .to.emit(this.contracts.engine, 'Deposited')
         .withArgs(this.contracts.engineDeposit.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
     })
+  })
 
+  describe('fail cases', function () {
     it('reverts when the user does not have sufficient funds', async function () {
       await expect(
         this.contracts.engineDeposit.deposit(
@@ -91,7 +96,7 @@ describe('deposit', function () {
           empty,
           0
         )
-      ).to.revertedWith('Not enough stable')
+      ).to.revertWithCustomError('StableBalanceError', [parseWei('1000').raw.toString(), '0'])
     })
 
     it('reverts when the callback did not transfer the risky', async function () {
@@ -103,7 +108,7 @@ describe('deposit', function () {
           empty,
           1
         )
-      ).to.revertedWith('Not enough risky')
+      ).to.revertWithCustomError('RiskyBalanceError', [parseWei('1000').raw.toString(), '0'])
     })
 
     it('reverts when the callback did not transfer the risky or the stable', async function () {
@@ -115,7 +120,7 @@ describe('deposit', function () {
           empty,
           2
         )
-      ).to.revertedWith('Not enough risky')
+      ).to.revertWithCustomError('RiskyBalanceError', [parseWei('1000').raw.toString(), '0'])
     })
   })
 })

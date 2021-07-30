@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 /// @title  The events for the Primitive Engine contract
 /// @author Primitive
@@ -9,8 +9,8 @@ interface IPrimitiveEngineEvents {
     /// @param  from    Calling `msg.sender` of the create function
     /// @param  strike  Strike price of the option of the curve to calibrate to
     /// @param  sigma   Volatility of the option of the curve to calibrate to
-    /// @param  time    Time until expiry of the option of the curve to calibrate to
-    event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed time);
+    /// @param  maturity    Maturity timestamp of the option of the curve to calibrate to
+    event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
 
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
@@ -67,12 +67,11 @@ interface IPrimitiveEngineEvents {
     /// @param  delLiquidity    Amount of liquidity shares removed from the float
     event Claimed(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
 
-    /// @notice Adds liqidity shares to a `recipient`'s position while adding an equal amount of debt
+    /// @notice Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient       Owner of the position which receives liquidity shares
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity shares borrowed, and added as debt
-    /// @param  maxPremium      Maximum amount of risky tokens to pay as a `premium` to collateralize the position
-    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity, uint256 maxPremium);
+    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity);
 
     /// @notice Repays a borrowed position, reduces liquidity shares of position and debt.
     /// @param  owner           Owner of the position to repay

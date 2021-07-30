@@ -1,15 +1,15 @@
 // Standard Imports
 import { expect, assert } from 'chai'
-import { ethers, waffle } from 'hardhat'
+import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
-import { MockEngine, EngineAllocate, EngineSwap, EngineCreate } from '../../../../typechain'
+import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 // Context Imports
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
-import { Wei, Percentage, Time, parseWei, Integer64x64, toBN } from 'web3-units'
+import { Wei, Time, parseWei, toBN } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
-import { Config } from '../../config'
+import { computePoolId } from '../../../shared/utils'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -29,7 +29,7 @@ export const EngineEvents = {
 }
 
 // Constants
-const { strike, sigma, maturity, lastTimestamp, spot } = config
+const { strike, sigma, maturity, lastTimestamp } = config
 const empty: BytesLike = constants.HashZero
 
 const onError = (error: any, revertReason: string | undefined) => {
@@ -43,6 +43,7 @@ const onError = (error: any, revertReason: string | undefined) => {
 
   const reasonsList = error.results && Object.values(error.results).map((o: any) => o.reason)
   const message = error instanceof Object && 'message' in error ? error.message : JSON.stringify(error)
+  console.log(message)
   const isReverted = reasonsList
     ? reasonsList.some((r: string) => r === revertReason)
     : message.includes('revert') && message.includes(revertReason) && shouldRevert
@@ -124,39 +125,39 @@ const FailCases: SwapTestCase[] = [
     deltaIn: parseWei(1),
     fromMargin: false,
     deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: parseWei(1),
     fromMargin: false,
     deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   // 2e3
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: true,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: false,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: true,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
   {
     riskyForStable: false,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: false,
-    revertMsg: 'Insufficient',
+    revertMsg: 'DeltaOutError',
   },
 ]
 
@@ -187,19 +188,18 @@ async function doSwap(
   functions: Functions
 ): Promise<ContractTransaction> {
   let swap: ContractTransaction
-  const limit = testCase.deltaOutMin ? testCase.deltaOutMin.raw : 0
   const signer = testCase.signer ? signers[testCase.signer] : signers[0]
   if (testCase.riskyForStable) {
     if (testCase.fromMargin) {
-      swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, limit, true, empty)
+      swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, true, empty)
     } else {
-      swap = await functions.swapXForY(signer, poolId, true, testCase.deltaIn.raw, limit, testCase.fromMargin)
+      swap = await functions.swapXForY(signer, poolId, true, testCase.deltaIn.raw, testCase.fromMargin)
     }
   } else {
     if (testCase.fromMargin) {
-      swap = await engine.swap(poolId, false, testCase.deltaIn.raw, limit, true, empty)
+      swap = await engine.swap(poolId, false, testCase.deltaIn.raw, true, empty)
     } else {
-      swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, limit, testCase.fromMargin)
+      swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, testCase.fromMargin)
     }
   }
   return swap
@@ -229,7 +229,9 @@ describe('Engine:swap', function () {
           this.contracts.engineAllocate,
           this.contracts.engineSwap,
         ]
-        poolId = await engine.getPoolId(config.strike.raw, config.sigma.raw, config.maturity.raw)
+
+        poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+
         /* await this.contracts.engineCreate.create(
           config.strike.raw,
           config.sigma.raw,
@@ -266,6 +268,11 @@ describe('Engine:swap', function () {
             return
           }
 
+          console.log('Pre reserve')
+          console.log(preReserves.reserveRisky.toString())
+          console.log(preReserves.liquidity.toString())
+          console.log(preReserves.reserveRisky.div(preReserves.liquidity).toString())
+
           const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
             this.contracts.risky.balanceOf(engine.address),
             this.contracts.stable.balanceOf(engine.address),
@@ -273,6 +280,11 @@ describe('Engine:swap', function () {
             engine.settings(poolId),
             engine.invariantOf(poolId),
           ])
+
+          console.log('Post reserve')
+          console.log(postReserve.reserveRisky.toString())
+          console.log(postReserve.liquidity.toString())
+          console.log(postReserve.reserveRisky.div(postReserve.liquidity).toString())
 
           const balanceOut = testCase.riskyForStable
             ? preBalanceStable.sub(postBalanceStable)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../libraries/ReplicationMath.sol";
 
@@ -13,15 +13,15 @@ contract TestInverseTradingFunction {
     using Units for int128;
     using Units for uint256;
 
-    function step0(uint256 strike) public view returns (int128 K) {
+    function step0(uint256 strike) public pure returns (int128 K) {
         K = strike.parseUnits();
     }
 
-    function step1(uint256 sigma, uint256 tau) public view returns (int128 vol) {
+    function step1(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    function step2(uint256 reserveRisky, uint256 liquidity) public view returns (int128 reserve) {
+    function step2(uint256 reserveRisky, uint256 liquidity) public pure returns (int128 reserve) {
         reserve = ((reserveRisky * 1e18) / liquidity).parseUnits();
     }
 
@@ -29,15 +29,15 @@ contract TestInverseTradingFunction {
         int128 reserve,
         int128 invariantLast,
         int128 K
-    ) public view returns (int128 phi) {
+    ) public pure returns (int128 phi) {
         phi = reserve.sub(invariantLast).div(K).getInverseCDF(); // CDF^-1((reserveStable - invariantLast)/K)
     }
 
-    function step4(int128 phi, int128 vol) public view returns (int128 input) {
+    function step4(int128 phi, int128 vol) public pure returns (int128 input) {
         input = phi.mul(Units.PERCENTAGE_INT).add(vol).div(Units.PERCENTAGE_INT); // phi + vol
     }
 
-    function step5(int128 input, uint256 liquidity) public view returns (int128 reserveRisky) {
+    function step5(int128 input, uint256 liquidity) public pure returns (int128 reserveRisky) {
         reserveRisky = uint256(1).fromUInt().sub(input.getCDF()).mul(liquidity.parseUnits());
     }
 
@@ -49,7 +49,7 @@ contract TestInverseTradingFunction {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public view returns (int128 reserveRisky) {
+    ) public pure returns (int128 reserveRisky) {
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
         int128 reserve = step2(reserveStable, liquidity);
