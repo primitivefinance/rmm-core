@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
@@ -37,6 +37,7 @@ contract EngineDeposit {
         uint256 delStable,
         bytes calldata data
     ) public {
+        data;
         IERC20(risky).transferFrom(CALLER, engine, delRisky);
         IERC20(stable).transferFrom(CALLER, engine, delStable);
     }

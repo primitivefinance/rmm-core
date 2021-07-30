@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveFactory.sol";
 
@@ -16,7 +16,7 @@ contract FactoryDeploy {
         IPrimitiveFactory(factory).deploy(risky, riskless);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "FactoryDeploy";
     }
 }

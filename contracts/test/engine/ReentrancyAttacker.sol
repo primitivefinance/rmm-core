@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
@@ -54,6 +54,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).create(_strike, uint64(_sigma), uint32(_maturity), _riskyPrice, _delLiquidity, data);
     }
 
@@ -95,6 +97,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).allocate(_poolId, _owner, _delLiquidity, false, data);
     }
 
@@ -113,6 +117,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes memory data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).remove(_poolId, _delLiquidity, false, data);
     }
 
@@ -128,7 +134,7 @@ contract ReentrancyAttacker {
         _owner = owner;
         _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
     }
 
     function borrowWithGoodCallback(
@@ -144,7 +150,7 @@ contract ReentrancyAttacker {
         _delLiquidity = delLiquidity;
 
         _goodCallback = true;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
         _goodCallback = false;
     }
 
@@ -160,7 +166,7 @@ contract ReentrancyAttacker {
             IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
             IERC20(stable).transfer(CALLER, delStable);
         } else {
-            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, type(uint256).max, data);
+            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, data);
         }
     }
 
@@ -170,14 +176,7 @@ contract ReentrancyAttacker {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
-        )
-    {
+    ) external {
         CALLER = msg.sender;
 
         _poolId = poolId;
@@ -188,6 +187,7 @@ contract ReentrancyAttacker {
     }
 
     function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+        delStable;
         IPrimitiveEngine(engine).repay(_poolId, _owner, _delLiquidity, false, data);
     }
 }
