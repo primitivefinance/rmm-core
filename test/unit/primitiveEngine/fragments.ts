@@ -3,7 +3,7 @@ import { Contracts } from '../../../types'
 import { parseWei } from 'web3-units'
 
 import { DEFAULT_CONFIG as config } from '../context'
-import { computePoolId } from '../utils'
+import { computePoolId } from '../../shared/utils'
 
 const { strike, sigma, maturity, spot } = config
 const empty = constants.HashZero

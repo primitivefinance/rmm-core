@@ -5,7 +5,7 @@ import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { repayFragment } from '../fragments'
-import { computePoolId } from '../../utils'
+import { computePoolId } from '../../../shared/utils'
 
 let poolId: BytesLike
 let posId: BytesLike

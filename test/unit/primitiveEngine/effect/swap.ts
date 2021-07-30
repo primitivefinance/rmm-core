@@ -9,7 +9,7 @@ import { swapFragment } from '../fragments'
 import { Wei, Time, parseWei, toBN } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
-import { computePoolId } from '../../utils'
+import { computePoolId } from '../../../shared/utils'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',

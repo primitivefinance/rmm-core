@@ -6,7 +6,7 @@ import { parseWei } from 'web3-units'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
-import { computePoolId } from '../../utils'
+import { computePoolId } from '../../../shared/utils'
 
 const { strike, sigma, maturity } = config
 const empty: BytesLike = constants.HashZero
