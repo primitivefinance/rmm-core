@@ -554,7 +554,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         address token,
         uint256 amount,
         bytes calldata data
-    ) external override returns (bool) {
+    ) external override lock returns (bool) {
         uint256 fee = flashFee(token, amount); // reverts if unsupported token
         uint256 balanceBefore = token == stable ? balanceStable() : balanceRisky();
         IERC20(token).safeTransfer(address(receiver), amount);

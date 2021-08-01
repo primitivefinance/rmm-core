@@ -75,6 +75,7 @@ contract FlashAttacker is IERC3156FlashBorrower {
         uint256 delStable,
         bytes calldata data
     ) external {
+        data;
         require(callbackData.engine == msg.sender, "Not engine");
         if (delRisky > 0) IERC20(callbackData.risky).transfer(msg.sender, delRisky);
         if (delStable > 0) IERC20(callbackData.stable).transfer(msg.sender, delStable);
