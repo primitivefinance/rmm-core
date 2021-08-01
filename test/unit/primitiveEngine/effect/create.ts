@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants, BytesLike } from 'ethers'
-import { parseWei } from 'web3-units'
+import { constants, BytesLike, BigNumber } from 'ethers'
+import { parseWei, Wei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { createFragment } from '../fragments'
@@ -106,6 +106,27 @@ describe('create', function () {
       await expect(this.contracts.engine.create(strike.raw, sigma.raw, maturity.raw, spot.raw, 0, empty)).to.revertedWith(
         'CalibrationError()'
       )
+    })
+
+    it.only('reverts if the actual delta amounts are 0', async function () {
+      // the amounts of tokens to transfer in are calculated from:
+      // calculated Risky * deltaLiquidity / 1e18
+      // therefore, if risk*delLiquidity < 1e18, delRisky would be 0. But this wouldn't cause a revert
+      // must pass in > 1000 liquidity, since its subtracted from `allocate` call
+      // additionally, skew the pool to be 99% risky by making it a deep OTM option, this will cause
+      // the expected reserve stable to be close to 0 (but not 0),
+      // which will cause our delStable to be calculated as 0, which it should not be
+      await this.contracts.engineCreate.create(
+        parseWei('100').raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei('0.01').raw,
+        1001,
+        empty
+      )
+      const res = await this.contracts.engine.reserves(poolId)
+      console.log(`\n Stable balance of newly created pool: ${res.reserveStable.toString()}`)
+      expect(res.reserveStable.isZero()).to.eq(false)
     })
   })
 })
