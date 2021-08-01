@@ -21,7 +21,21 @@ describe('flashAttack', function () {
       await this.contracts.stable.approve(this.contracts.flashAttacker.address, constants.MaxUint256)
     })
 
-    it('successfully uses flash loan to drain the funds into the attacker contract', async function () {
+    it('fails to attack because of reentrancy guard', async function () {
+      await expect(
+        this.contracts.flashAttacker.flashBorrow(
+          this.contracts.engine.address,
+          this.contracts.risky.address,
+          parseWei('100').raw,
+          0,
+          empty
+        )
+      ).to.reverted
+    })
+
+    // Poc attacks if no mutex is on flash loan function
+
+    /* it('successfully uses flash loan to drain the funds into the attacker contract', async function () {
       const bal0 = await this.contracts.risky.balanceOf(this.contracts.flashAttacker.address)
       console.log(`\n Balance before: ${bal0}`)
       await this.contracts.flashAttacker.flashBorrow(
@@ -50,6 +64,6 @@ describe('flashAttack', function () {
       )
 
       expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.not.equal(balance.add(fee))
-    })
+    }) */
   })
 })
