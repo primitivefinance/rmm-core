@@ -391,6 +391,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function borrow(
         bytes32 poolId,
         uint256 delLiquidity,
+        bool fromMargin,
         bytes calldata data
     ) external override lock returns (uint256 premium) {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
