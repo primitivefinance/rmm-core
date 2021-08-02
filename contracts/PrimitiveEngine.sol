@@ -395,11 +395,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (uint256 premium) {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
-        Reserve.Data storage reserve = reserves[poolId];
-
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
         // fail early if not enough float to borrow
+        Reserve.Data storage reserve = reserves[poolId];
         if (reserve.float < delLiquidity) revert InsufficientFloatError();
 
         uint256 resLiquidity = reserve.liquidity; // global liquidity balance
@@ -407,25 +406,30 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delStable = (delLiquidity * reserve.reserveStable) / resLiquidity; // amount of stable asset
 
         {
-            // Balances before position creation
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             // 0. Update position of `msg.sender` with `delLiquidity` units of debt and `risky` tokens
             positions.borrow(poolId, delLiquidity);
             // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
             reserve.borrowFloat(delLiquidity);
             // 2. Remove liquidity: Releases `risky` and `stable` tokens
             reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
-            // 3. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
-            IERC20(stable).safeTransfer(msg.sender, delStable); // transfer the stable tokens of the liquidity out to the `msg.sender`
-            IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
-            // Check price impact tolerance
-            premium = delLiquidity - delRisky;
-            // Check balances after position creation
-            uint256 postRisky = IERC20(risky).balanceOf(address(this));
-            uint256 postStable = IERC20(stable).balanceOf(address(this));
+            premium = delLiquidity - delRisky; // premium that must be paid
 
-            if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, postRisky);
-            if (balanceStable() < balStable - delStable) revert StableBalanceError(balStable - delStable, postStable);
+            // Balances before position creation
+            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
+            IERC20(stable).safeTransfer(msg.sender, delStable); // transfer the stable tokens of the liquidity out to the `msg.sender`
+
+            if (fromMargin) {
+                margins.withdraw(premium, 0); // pay premium from margin risky balance
+            } else {
+                // 3. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
+                IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
+                // Check balances after position creation
+                uint256 postRisky = balanceRisky();
+                if (postRisky < balRisky + premium) revert RiskyBalanceError(balRisky + premium, postRisky);
+            }
+
+            uint256 postStable = balanceStable();
+            if (postStable < balStable - delStable) revert StableBalanceError(balStable - delStable, postStable);
         }
 
         emit Borrowed(msg.sender, poolId, delLiquidity);
