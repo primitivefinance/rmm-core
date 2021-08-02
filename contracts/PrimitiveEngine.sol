@@ -67,8 +67,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     uint8 private unlocked = 1;
 
-    error LockedError();
-
     modifier lock() {
         if (unlocked != 1) revert LockedError();
 
