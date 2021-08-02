@@ -115,11 +115,13 @@ interface IPrimitiveEngineActions {
     /// @notice Increases the `msg.sender`'s position's liquidity value and also adds the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
+    /// @param  fromMargin      Use margin risky balance to pay premium?
     /// @param  data            Arbitrary data that is passed to the borrowCallback function
     /// @return premium         Price paid to open position
     function borrow(
         bytes32 poolId,
         uint256 delLiquidity,
+        bool fromMargin,
         bytes calldata data
     ) external returns (uint256 premium);
 

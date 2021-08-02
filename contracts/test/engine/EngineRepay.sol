@@ -33,7 +33,7 @@ contract EngineRepay {
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
     }
 
     function borrowMaxPremium(
@@ -44,7 +44,7 @@ contract EngineRepay {
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
     }
 
     function borrowWithoutPaying(
@@ -56,7 +56,7 @@ contract EngineRepay {
         owner;
         CALLER = msg.sender;
         dontPay = 0;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
         dontPay = 1;
     }
 
