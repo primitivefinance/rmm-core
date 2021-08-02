@@ -109,9 +109,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 strike,
         uint64 sigma,
         uint32 maturity,
-        uint256 riskyPrice,
-        uint256 delLiquidity,
-        bytes calldata data
+        uint256 delta
     )
         external
         override
@@ -122,42 +120,25 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint256 delStable
         )
     {
-        if ((maturity * sigma * strike * delLiquidity) == 0) revert CalibrationError();
         poolId = keccak256(abi.encodePacked(factory, maturity, sigma, strike));
         if (settings[poolId].lastTimestamp != 0) revert PoolDuplicateError();
-
         uint32 timestamp = _blockTimestamp();
-
-        {
-            (uint256 strikePrice, uint256 vol) = (strike, sigma);
-            uint32 tau = maturity - timestamp;
-            int128 callDelta = BlackScholes.deltaCall(riskyPrice, strikePrice, vol, tau);
-            uint256 resRisky = uint256(1).fromUInt().sub(callDelta).parseUnits(); // risky = 1 - delta
-            uint256 resStable = ReplicationMath
-            .getTradingFunction(0, resRisky, 1e18, strikePrice, vol, tau)
-            .parseUnits();
-            delRisky = (resRisky * delLiquidity) / 1e18;
-            delStable = (resStable * delLiquidity) / 1e18;
-        }
-        {
-            uint256 balRisky = balanceRisky();
-            uint256 balStable = balanceStable();
-            IPrimitiveCreateCallback(msg.sender).createCallback(delRisky, delStable, data);
-            if (balanceRisky() < delRisky + balRisky) revert RiskyBalanceError(delRisky + balRisky, balanceRisky());
-            if (balanceStable() < delStable + balStable)
-                revert StableBalanceError(delStable + balStable, balanceStable());
-        }
-
-        Reserve.Data storage reserve = reserves[poolId];
-        reserve.allocate(delRisky, delStable, delLiquidity, timestamp);
-        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
-        settings[poolId] = Calibration({
+        Calibration memory cal = Calibration({
             strike: strike.toUint128(),
             sigma: sigma,
             maturity: maturity,
             lastTimestamp: timestamp
         });
-        emit Created(msg.sender, strike, sigma, maturity);
+
+        uint32 tau = cal.maturity - timestamp; // time until expiry
+        delRisky = 1e18 - delta; // risky = 1 - delta
+        delStable = ReplicationMath.getTradingFunction(0, delRisky, 1e18, cal.strike, cal.sigma, tau).parseUnits();
+        if ((delRisky * delStable) == 0) revert CalibrationError();
+
+        settings[poolId] = cal; // initialize calibration
+        Reserve.Data storage reserve = reserves[poolId];
+        reserve.allocate(delRisky, delStable, 1e18, timestamp); // initialize reserves
+        emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
     // ===== Margin =====
@@ -209,7 +190,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             reserve.reserveStable
         );
 
-        if (resLiquidity == 0) revert UninitializedError();
+        if (reserve.blockTimestamp == 0) revert UninitializedError();
         delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky tokens to provide
         delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable tokens to provide
         if (delRisky * delStable == 0) revert ZeroDeltasError();
