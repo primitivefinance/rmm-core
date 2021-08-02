@@ -74,12 +74,7 @@ describe('allocate', function () {
 
       it('reverts if there is no liquidity', async function () {
         await expect(
-          this.contracts.engineAllocate.allocateFromMargin(
-            '0x41b1a0649752af1b28b3dc29a1556eee781e4a4c3a1f7f53f90fa834de098c4d',
-            this.signers[0].address,
-            parseWei('1').raw,
-            empty
-          )
+          this.contracts.engineAllocate.allocateFromMargin(empty, this.signers[0].address, parseWei('1').raw, empty)
         ).to.be.revertedWith('UninitializedError()')
       })
 

@@ -7,7 +7,7 @@ import { reentrancyFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity, spot, delta } = config
 const empty: BytesLike = constants.HashZero
 let poolId: string
 
@@ -24,17 +24,9 @@ describe('reentrancy', function () {
     poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
   })
 
-  describe('when calling create in the create callback', function () {
-    it('reverts the transaction', async function () {
-      await expect(
-        this.contracts.reentrancyAttacker.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Locked')
-    })
-  })
-
   describe('when calling deposit in the deposit callback', function () {
     beforeEach(async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
     })
 
     it('reverts the transaction', async function () {
@@ -46,7 +38,7 @@ describe('reentrancy', function () {
 
   describe('when calling allocate in the allocate callback', function () {
     beforeEach(async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
     })
 
     it('reverts the transaction', async function () {
@@ -58,7 +50,7 @@ describe('reentrancy', function () {
 
   describe('when calling remove in the remove callback', function () {
     beforeEach(async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.reentrancyAttacker.address,
@@ -74,7 +66,7 @@ describe('reentrancy', function () {
 
   describe('when calling borrow in the borrow callback', function () {
     beforeEach(async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineLend.address,
@@ -93,7 +85,7 @@ describe('reentrancy', function () {
 
   describe('when calling repay in the repay callback', function () {
     beforeEach(async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineLend.address,

@@ -5,7 +5,7 @@ import { parseWei } from 'web3-units'
 import { DEFAULT_CONFIG as config } from '../context'
 import { computePoolId } from '../../shared/utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity, spot, delta } = config
 const empty = constants.HashZero
 
 export async function createFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -45,7 +45,9 @@ export async function allocateFragment(signers: Wallet[], contracts: Contracts):
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
+  const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, signers[0].address, parseWei('100').raw, empty)
 }
 
 export async function removeFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -59,7 +61,7 @@ export async function removeFragment(signers: Wallet[], contracts: Contracts): P
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
 
   const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
 
@@ -77,7 +79,7 @@ export async function lendFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.stable.approve(contracts.engineCreate.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineCreate.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
 
   const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
 
@@ -97,7 +99,7 @@ export async function borrowFragment(signers: Wallet[], contracts: Contracts): P
   await contracts.stable.approve(contracts.engineBorrow.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineBorrow.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
 
   const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
 
@@ -119,7 +121,7 @@ export async function swapFragment(signers: Wallet[], contracts: Contracts): Pro
   await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
   await contracts.engineDeposit.deposit(contracts.engineSwap.address, parseWei('1000').raw, parseWei('1000').raw, empty)
   await contracts.engineDeposit.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, empty)
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
   // const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
   // await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('1000').raw, empty)
 }
@@ -137,7 +139,7 @@ export async function repayFragment(signers: Wallet[], contracts: Contracts): Pr
   await contracts.stable.approve(contracts.engineRepay.address, constants.MaxUint256)
   await contracts.risky.approve(contracts.engineRepay.address, constants.MaxUint256)
 
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, spot.raw, parseWei('1').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
 
   const poolId = computePoolId(contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
 
