@@ -4,7 +4,7 @@ pragma solidity 0.8.6;
 import "../../PrimitiveEngine.sol";
 
 contract MockEngine is PrimitiveEngine {
-    uint256 public time = 0;
+    uint256 public time = 1;
 
     function advanceTime(uint256 by) external {
         time += by;
