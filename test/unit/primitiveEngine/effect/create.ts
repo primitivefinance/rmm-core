@@ -108,7 +108,7 @@ describe('create', function () {
       )
     })
 
-    it.only('reverts if the actual delta amounts are 0', async function () {
+    it('reverts if the actual delta amounts are 0', async function () {
       // the amounts of tokens to transfer in are calculated from:
       // calculated Risky * deltaLiquidity / 1e18
       // therefore, if risk*delLiquidity < 1e18, delRisky would be 0. But this wouldn't cause a revert

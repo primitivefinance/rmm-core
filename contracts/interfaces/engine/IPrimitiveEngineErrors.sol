@@ -6,6 +6,7 @@ pragma solidity 0.8.6;
 
 interface IPrimitiveEngineErrors {
     error LockedError();
+    error BalanceError();
 
     error CalibrationError();
     error PoolDuplicateError();
