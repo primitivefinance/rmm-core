@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-/// @title  The errors for the Primitive Engine contract
+/// @title  Errors for the Primitive Engine contract
 /// @author Primitive
 
 interface IPrimitiveEngineErrors {
+    error LockedError();
+    error BalanceError();
+
     error CalibrationError();
     error PoolDuplicateError();
 

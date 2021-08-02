@@ -30,22 +30,10 @@ contract EngineCreate {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 riskyPrice,
-        uint256 delLiquidity,
-        bytes calldata data
+        uint256 delta
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPrice, delLiquidity, data);
-    }
-
-    function createCallback(
-        uint256 delRisky,
-        uint256 delStable,
-        bytes calldata data
-    ) public {
-        data;
-        IERC20(risky).transferFrom(CALLER, engine, delRisky);
-        IERC20(stable).transferFrom(CALLER, engine, delStable);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta);
     }
 
     function fetch(bytes32 pid)
