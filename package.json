@@ -26,6 +26,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:parallel": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:logs": "hardhat test --logs",
     "test:engine": "hardhat test ./test/unit/primitiveEngine",
     "test:factory": "hardhat test ./test/unit/primitiveFactory",
@@ -87,5 +88,8 @@
     "branches": [
       "main"
     ]
+  },
+  "dependencies": {
+    "mocha": "^9.0.3"
   }
 }
