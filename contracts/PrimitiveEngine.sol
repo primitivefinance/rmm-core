@@ -25,8 +25,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-import "hardhat/console.sol";
-
 // With requires 21.65  Kb
 // Without requires 21.10 Kb
 
@@ -289,8 +287,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
             uint256 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4)).parseUnits();
-            console.log(resRisky + ((deltaIn * 9985) / 1e4));
-            console.log(nextStable);
             deltaOut = resStable - nextStable;
         } else {
             uint256 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4)).parseUnits();
@@ -487,8 +483,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
-        console.log(cal.maturity, cal.lastTimestamp, _blockTimestamp());
-        console.log(invariantLast.parseUnits(), reserveRisky, tau);
         reserveStable = ReplicationMath.getTradingFunction(
             invariantLast,
             reserveRisky,
