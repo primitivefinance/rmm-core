@@ -56,6 +56,7 @@ export class Pool {
   public lastTimestamp: Time
   public invariant: Integer64x64
   public tau: Time
+  public debug: boolean = false
 
   /**
    * @notice Builds a typescript representation of a single curve within an Engine contract
@@ -121,7 +122,6 @@ export class Pool {
       this.sigma.float,
       this.tau.years
     )
-    console.log({ stable })
 
     stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
     if (isNaN(stable)) return parseWei(0)
@@ -212,7 +212,6 @@ export class Pool {
       .div(parseWei(1))
     if (newReserveStable.raw.isNegative()) return this.defaultSwapReturn
     const deltaOut = reserveStableLast.sub(newReserveStable)
-    console.log(reserveStableLast.float, newReserveStable.float, deltaOut.float)
 
     this.reserveRisky = this.reserveRisky.add(deltaIn)
     this.reserveStable = this.reserveStable.sub(deltaOut)
@@ -223,7 +222,8 @@ export class Pool {
       console.log('invariant not passing', `${nextInvariant.wei} < ${invariantLast.wei}`)
 
     const effectivePriceOutStable = deltaOut.div(deltaIn) // stable per risky
-    if (debug) return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
+    if (this.debug)
+      return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
     return {
       deltaOut,
       pool: this,
@@ -250,7 +250,7 @@ export class Pool {
   /**
    * @notice A Stable to Risky token swap
    */
-  swapAmountInStable(deltaIn: Wei): SwapReturn {
+  swapAmountInStable(deltaIn: Wei, debug?: boolean): DebugReturn {
     if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const reserveRiskyLast = this.reserveRisky
     const invariantLast: Integer64x64 = this.calcInvariant()
@@ -260,7 +260,7 @@ export class Pool {
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     this.reserveStable = this.reserveStable.add(deltaInWithFee)
     // 1. Calculate the new risky reserves using the known new stable reserves
-    const newReserveRisky = this.getRiskyGivenStable(this.reserveStable)
+    const newReserveRisky = this.getRiskyGivenStable(this.reserveStable).mul(this.liquidity).div(parseWei(1))
     if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
     this.reserveRisky = newReserveRisky
     // 2. Calculate the new invariant with the new reserves
@@ -272,6 +272,8 @@ export class Pool {
     const reserveRisky = this.reserveRisky
     const deltaOut = reserveRiskyLast.sub(reserveRisky)
     const effectivePriceOutStable = deltaIn.div(deltaOut) // stable per risky
+    if (this.debug)
+      return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
     return {
       deltaOut,
       pool: this,

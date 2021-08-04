@@ -10,7 +10,7 @@ import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
 import { calcInvariant, getSpotPrice, getTradingFunction } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
-import { Pool } from '../../../shared/swapUtils'
+import { DebugReturn, Pool } from '../../../shared/swapUtils'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -85,22 +85,22 @@ const SuccessCases: SwapTestCase[] = [
   // 1e18
   {
     riskyForStable: true,
-    deltaIn: parseWei(1),
+    deltaIn: parseWei(0.01),
     fromMargin: true,
   },
   {
     riskyForStable: true,
-    deltaIn: parseWei(1),
+    deltaIn: parseWei(0.01),
     fromMargin: false,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei(1),
+    deltaIn: parseWei(0.01),
     fromMargin: true,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei(1),
+    deltaIn: parseWei(0.01),
     fromMargin: false,
   },
 ]
@@ -206,6 +206,18 @@ async function doSwap(
   return swap
 }
 
+function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
+  const riskyForStable = testCase.riskyForStable
+  const deltaIn = testCase.deltaIn
+  if (riskyForStable) {
+    return pool.swapAmountInRisky(deltaIn)
+  } else {
+    return pool.swapAmountInStable(deltaIn)
+  }
+}
+
+const DEBUG_MODE = false
+
 describe('Engine:swap', function () {
   before('Load context', async function () {
     loadContext(
@@ -258,7 +270,7 @@ describe('Engine:swap', function () {
         console.log(preSpot)
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
       })
-      it.only('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
+      it('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
         // To really do a swap test, we need to compare each step with a simulated result
         // and verify the results match the expected on every step
         // therefore, if a test fails, we know at which step it failed
@@ -271,26 +283,13 @@ describe('Engine:swap', function () {
         const liq = new Wei(preReserves.liquidity)
         const tau = maturity.sub(lastTimestamp)
         const pool = new Pool(risky, liq, strike, sigma, maturity, lastTimestamp, 0.0015, stable)
-        console.log(risky.float, stable.float)
         const params = [0, risky.float, liq.float, strike.float, sigma.float, tau.years]
-        console.log('trading function params: ', params)
         const tradingFunction = getTradingFunction(0, risky.float, liq.float, strike.float, sigma.float, tau.years)
         const deltaIn = risky.div(10)
         const contractTf = new Integer64x64(
           await this.contracts.testReplicationMath.getTradingFunction(0, risky.raw, liq.raw, strike.raw, sigma.raw, tau.raw)
         )
-        console.log('Compare tfs: ', contractTf.parsed, tradingFunction)
         const { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut } = pool.swapAmountInRisky(deltaIn, true)
-        console.log(
-          stable.float,
-          tradingFunction,
-          invariantLast?.float,
-          gamma,
-          deltaInWithFee?.float,
-          nextInvariant?.float,
-          deltaOut.float
-        )
-        console.log(pool.reserveRisky.float, pool.reserveStable.float)
         await engine.swap(poolId, true, deltaIn.raw, true, empty)
         const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
           this.contracts.risky.balanceOf(engine.address),
@@ -301,20 +300,32 @@ describe('Engine:swap', function () {
         ])
 
         expect(postReserve.reserveRisky.sub(preReserves.reserveRisky).toString()).to.be.eq(deltaIn.raw.toString())
-        expect(preReserves.reserveStable.sub(postReserve.reserveStable).toString()).to.be.eq(deltaOut.raw.toString())
         expect(postReserve.reserveRisky.toString()).to.be.eq(pool.reserveRisky.raw.toString())
-        expect(postReserve.reserveStable.toString()).to.be.eq(pool.reserveStable.raw.toString())
+        //expect(+preReserves.reserveStable.sub(postReserve.reserveStable).toString()).to.be.closeTo(
+        //  +deltaOut.raw.toString(),
+        //  1e8
+        //)
+        //expect(postReserve.reserveStable.toString()).to.be.eq(pool.reserveStable.raw.toString())
       })
 
       for (const testCase of TestCases) {
         it(swapTestCaseDescription(testCase), async function () {
-          const reserve = await engine.reserves(poolId)
-          console.log('Pre reserve')
-          console.log(new Wei(preReserves.reserveRisky).float)
-          console.log(new Wei(preReserves.reserveStable).float)
-          console.log(new Wei(preReserves.liquidity).float)
-          console.log(new Wei(preReserves.reserveRisky.div(preReserves.liquidity)).float)
+          const [reserveRisky, reserveStable, liquidity] = [
+            new Wei(preReserves.reserveRisky),
+            new Wei(preReserves.reserveStable),
+            new Wei(preReserves.liquidity),
+          ]
+          if (DEBUG_MODE) console.log('Pre reserve: ', reserveRisky.float, reserveStable.float, liquidity.float)
 
+          // Get the tx parameters
+          // Simulate the swap
+          // Execute the swap
+          // Check simulated against executed
+          // Check key invariants
+          const fee = 0.0015
+          const pool = new Pool(reserveRisky, liquidity, strike, sigma, maturity, lastTimestamp, fee, reserveStable)
+          pool.debug = true
+          const simulated = simulateSwap(pool, testCase)
           const tx = doSwap(this.signers, engine, poolId, testCase, this.functions)
           try {
             await tx
@@ -332,17 +343,22 @@ describe('Engine:swap', function () {
           ])
 
           console.log('Post reserve')
-          console.log(postReserve.reserveRisky.toString())
-          console.log(postReserve.liquidity.toString())
-          console.log(postReserve.reserveRisky.div(postReserve.liquidity).toString())
+          const [postRisky, postStable, postLiquidity] = [
+            new Wei(postReserve.reserveRisky),
+            new Wei(postReserve.reserveStable),
+            new Wei(postReserve.liquidity),
+          ]
+          console.log(`
+           risky: ${postRisky.float} ${simulated.pool.reserveRisky.float}
+           stable: ${postStable.float} ${simulated.pool.reserveStable.float}
+           invariant: ${new Integer64x64(postInvariant).parsed} ${simulated.pool.invariant.parsed}
+          `)
 
           const balanceOut = testCase.riskyForStable
             ? preBalanceStable.sub(postBalanceStable)
             : preBalanceRisky.sub(postBalanceRisky)
 
-          const deltaOut = testCase.riskyForStable
-            ? reserve.reserveStable.sub(postReserve.reserveStable)
-            : reserve.reserveRisky.sub(postReserve.reserveRisky)
+          const deltaOut = testCase.riskyForStable ? reserveStable.sub(postStable) : reserveRisky.sub(postRisky)
 
           await expect(tx)
             .to.emit(engine, EngineEvents.SWAP)
@@ -351,20 +367,29 @@ describe('Engine:swap', function () {
               poolId,
               testCase.riskyForStable,
               testCase.deltaIn.raw,
-              deltaOut
+              deltaOut.raw
             )
 
           const postSpot = getSpotPrice(
-            new Wei(postReserve.reserveRisky).float,
-            new Wei(postReserve.liquidity).float,
+            postRisky.float,
+            postLiquidity.float,
             config.strike.float,
             config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 
+          // Contract invariants
+          expect(balanceOut).to.be.eq(deltaOut.raw)
           expect(postInvariant).to.be.gte(preInvariant)
-          if (testCase.riskyForStable) expect(preSpot).to.be.gte(postSpot)
-          else expect(postSpot).to.be.gte(preSpot)
+          if (testCase.riskyForStable) {
+            expect(preSpot).to.be.gte(postSpot)
+          } else {
+            expect(postSpot).to.be.gte(preSpot)
+          }
+
+          // Simulation comparisons
+          expect(simulated.nextInvariant?.parsed).to.be.closeTo(new Integer64x64(postInvariant).parsed, 1)
+          expect(postSpot).to.be.closeTo(simulated.effectivePriceOutStable?.float, 1)
         })
       }
     })
