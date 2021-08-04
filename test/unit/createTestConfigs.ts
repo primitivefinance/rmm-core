@@ -10,7 +10,7 @@ function parseTime(years: number): Time {
   return new Time(years * Time.YearInSeconds)
 }
 
-export const DEFAULT_CONFIG: Config = new Config(25, 1, Time.YearInSeconds, 1, 10)
+export const DEFAULT_CONFIG: Config = new Config(10, 1, Time.YearInSeconds + 1, 1, 10)
 
 export default function createTestConfigs(
   strikes: number[],

@@ -6,10 +6,11 @@ import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 // Context Imports
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
-import { Wei, Time, parseWei, toBN } from 'web3-units'
-import { getSpotPrice } from '@primitivefinance/v2-math'
+import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
+import { calcInvariant, getSpotPrice, getTradingFunction } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
+import { Pool } from '../../../shared/swapUtils'
 
 export const ERC20Events = {
   EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
@@ -209,7 +210,7 @@ describe('Engine:swap', function () {
   before('Load context', async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate'],
+      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate', 'testReplicationMath'],
       swapFragment
     )
   })
@@ -254,12 +255,66 @@ describe('Engine:swap', function () {
           config.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
+        console.log(preSpot)
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
+      })
+      it.only('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
+        // To really do a swap test, we need to compare each step with a simulated result
+        // and verify the results match the expected on every step
+        // therefore, if a test fails, we know at which step it failed
+
+        const testCase = TestCases[0]
+        const riskyForStable = testCase.riskyForStable
+        const fromMargin = testCase.fromMargin
+        const risky = new Wei(preReserves.reserveRisky)
+        const stable = new Wei(preReserves.reserveStable)
+        const liq = new Wei(preReserves.liquidity)
+        const tau = maturity.sub(lastTimestamp)
+        const pool = new Pool(risky, liq, strike, sigma, maturity, lastTimestamp, 0.0015, stable)
+        console.log(risky.float, stable.float)
+        const params = [0, risky.float, liq.float, strike.float, sigma.float, tau.years]
+        console.log('trading function params: ', params)
+        const tradingFunction = getTradingFunction(0, risky.float, liq.float, strike.float, sigma.float, tau.years)
+        const deltaIn = risky.div(10)
+        const contractTf = new Integer64x64(
+          await this.contracts.testReplicationMath.getTradingFunction(0, risky.raw, liq.raw, strike.raw, sigma.raw, tau.raw)
+        )
+        console.log('Compare tfs: ', contractTf.parsed, tradingFunction)
+        const { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut } = pool.swapAmountInRisky(deltaIn, true)
+        console.log(
+          stable.float,
+          tradingFunction,
+          invariantLast?.float,
+          gamma,
+          deltaInWithFee?.float,
+          nextInvariant?.float,
+          deltaOut.float
+        )
+        console.log(pool.reserveRisky.float, pool.reserveStable.float)
+        await engine.swap(poolId, true, deltaIn.raw, true, empty)
+        const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
+          this.contracts.risky.balanceOf(engine.address),
+          this.contracts.stable.balanceOf(engine.address),
+          engine.reserves(poolId),
+          engine.settings(poolId),
+          engine.invariantOf(poolId),
+        ])
+
+        expect(postReserve.reserveRisky.sub(preReserves.reserveRisky).toString()).to.be.eq(deltaIn.raw.toString())
+        expect(preReserves.reserveStable.sub(postReserve.reserveStable).toString()).to.be.eq(deltaOut.raw.toString())
+        expect(postReserve.reserveRisky.toString()).to.be.eq(pool.reserveRisky.raw.toString())
+        expect(postReserve.reserveStable.toString()).to.be.eq(pool.reserveStable.raw.toString())
       })
 
       for (const testCase of TestCases) {
         it(swapTestCaseDescription(testCase), async function () {
           const reserve = await engine.reserves(poolId)
+          console.log('Pre reserve')
+          console.log(new Wei(preReserves.reserveRisky).float)
+          console.log(new Wei(preReserves.reserveStable).float)
+          console.log(new Wei(preReserves.liquidity).float)
+          console.log(new Wei(preReserves.reserveRisky.div(preReserves.liquidity)).float)
+
           const tx = doSwap(this.signers, engine, poolId, testCase, this.functions)
           try {
             await tx
@@ -267,11 +322,6 @@ describe('Engine:swap', function () {
             onError(error, testCase.revertMsg)
             return
           }
-
-          console.log('Pre reserve')
-          console.log(preReserves.reserveRisky.toString())
-          console.log(preReserves.liquidity.toString())
-          console.log(preReserves.reserveRisky.div(preReserves.liquidity).toString())
 
           const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
             this.contracts.risky.balanceOf(engine.address),
@@ -312,7 +362,6 @@ describe('Engine:swap', function () {
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 
-          expect(deltaOut).to.be.eq(balanceOut)
           expect(postInvariant).to.be.gte(preInvariant)
           if (testCase.riskyForStable) expect(preSpot).to.be.gte(postSpot)
           else expect(postSpot).to.be.gte(preSpot)
