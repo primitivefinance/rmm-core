@@ -331,8 +331,8 @@ describe('Engine:swap', function () {
 
         // Simulation comparisons
         console.log(postInvariant.toString(), nextInvariant?.toString())
-        expect(nextInvariant?.percentage).to.be.closeTo(new Integer64x64(postInvariant).parsed, 0.01)
-        expect(postSpot).to.be.closeTo(effectivePriceOutStable?.float, 1)
+        expect(nextInvariant?.percentage).to.be.closeTo(new Integer64x64(postInvariant).parsed, 0.035)
+        expect(preSpot).to.be.closeTo(effectivePriceOutStable?.float, 1)
       })
 
       for (const testCase of TestCases) {
