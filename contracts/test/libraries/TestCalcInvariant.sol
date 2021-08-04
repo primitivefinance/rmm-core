@@ -15,7 +15,6 @@ contract TestCalcInvariant {
 
     function step0(
         uint256 reserveRisky,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
@@ -31,12 +30,11 @@ contract TestCalcInvariant {
     function calcInvariant(
         uint256 reserveRisky,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 invariant) {
-        int128 reserve2 = step0(reserveRisky, liquidity, strike, sigma, tau);
+        int128 reserve2 = step0(reserveRisky, strike, sigma, tau);
         invariant = step1(reserveStable, reserve2);
     }
 }

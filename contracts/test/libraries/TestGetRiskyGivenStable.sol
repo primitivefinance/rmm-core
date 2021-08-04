@@ -3,11 +3,11 @@ pragma solidity 0.8.6;
 
 import "../../libraries/ReplicationMath.sol";
 
-/// @title   Test Trading Function
+/// @title   Test Get Risky Given Stable
 /// @author  Primitive
-/// @dev     Tests each step in ReplicationMath.getInverseTradingFunction. For testing ONLY
+/// @dev     Tests each step in ReplicationMath.getRiskyGivenStable. For testing ONLY
 
-contract TestInverseTradingFunction {
+contract TestGetRiskyGivenStable {
     using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
     using CumulativeNormalDistribution for int128;
     using Units for int128;
@@ -21,8 +21,8 @@ contract TestInverseTradingFunction {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    function step2(uint256 reserveRisky, uint256 liquidity) public pure returns (int128 reserve) {
-        reserve = ((reserveRisky * 1e18) / liquidity).parseUnits();
+    function step2(uint256 reserveRisky) public pure returns (int128 reserve) {
+        reserve = reserveRisky.parseUnits();
     }
 
     function step3(
@@ -34,27 +34,26 @@ contract TestInverseTradingFunction {
     }
 
     function step4(int128 phi, int128 vol) public pure returns (int128 input) {
-        input = phi.mul(Units.PERCENTAGE_INT).add(vol).div(Units.PERCENTAGE_INT); // phi + vol
+        input = phi.add(vol); // phi + vol
     }
 
-    function step5(int128 input, uint256 liquidity) public pure returns (int128 reserveRisky) {
-        reserveRisky = uint256(1).fromUInt().sub(input.getCDF()).mul(liquidity.parseUnits());
+    function step5(int128 input) public pure returns (int128 reserveRisky) {
+        reserveRisky = ReplicationMath.ONE_INT.sub(input.getCDF());
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
-    function getInverseTradingFunction(
+    function getRiskyGivenStable(
         int128 invariantLast,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 reserveRisky) {
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
-        int128 reserve = step2(reserveStable, liquidity);
+        int128 reserve = step2(reserveStable);
         int128 phi = step3(reserve, invariantLast, K);
         int128 input = step4(phi, vol);
-        reserveRisky = step5(input, liquidity);
+        reserveRisky = step5(input);
     }
 }
