@@ -270,7 +270,7 @@ describe('Engine:swap', function () {
         console.log(preSpot)
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
       })
-      it('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
+      it.only('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
         // To really do a swap test, we need to compare each step with a simulated result
         // and verify the results match the expected on every step
         // therefore, if a test fails, we know at which step it failed
@@ -289,7 +289,9 @@ describe('Engine:swap', function () {
         const contractTf = new Integer64x64(
           await this.contracts.testReplicationMath.getTradingFunction(0, risky.raw, liq.raw, strike.raw, sigma.raw, tau.raw)
         )
-        const { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut } = pool.swapAmountInRisky(deltaIn, true)
+        pool.debug = true
+        const { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, effectivePriceOutStable } =
+          pool.swapAmountInRisky(deltaIn, true)
         await engine.swap(poolId, true, deltaIn.raw, true, empty)
         const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
           this.contracts.risky.balanceOf(engine.address),
@@ -306,6 +308,31 @@ describe('Engine:swap', function () {
         //  1e8
         //)
         //expect(postReserve.reserveStable.toString()).to.be.eq(pool.reserveStable.raw.toString())
+        const [postRisky, postStable, postLiquidity] = [
+          new Wei(postReserve.reserveRisky),
+          new Wei(postReserve.reserveStable),
+          new Wei(postReserve.liquidity),
+        ]
+        const postSpot = getSpotPrice(
+          postRisky.float,
+          postLiquidity.float,
+          config.strike.float,
+          config.sigma.float,
+          new Time(postSetting.maturity - postSetting.lastTimestamp).years
+        )
+
+        // Contract invariants
+        expect(postInvariant).to.be.gte(preInvariant)
+        if (testCase.riskyForStable) {
+          expect(preSpot).to.be.gte(postSpot)
+        } else {
+          expect(postSpot).to.be.gte(preSpot)
+        }
+
+        // Simulation comparisons
+        console.log(postInvariant.toString(), nextInvariant?.toString())
+        expect(nextInvariant?.percentage).to.be.closeTo(new Integer64x64(postInvariant).parsed, 0.01)
+        expect(postSpot).to.be.closeTo(effectivePriceOutStable?.float, 1)
       })
 
       for (const testCase of TestCases) {

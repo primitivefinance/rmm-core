@@ -134,7 +134,7 @@ export class Pool {
    * @return reserveRisky Expected amount of risky token reserves
    */
   getRiskyGivenStable(reserveStable: Wei): Wei {
-    const invariant = Math.floor(this.invariant.parsed) / Math.pow(10, 18)
+    const invariant = this.invariant.percentage
     console.log(
       'invariant: ',
       Math.abs(invariant) >= 1e-8 ? 0 : invariant,
@@ -157,7 +157,7 @@ export class Pool {
       this.sigma.float,
       this.tau.years
     )
-    console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float}`)
+    console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
     risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
     if (isNaN(risky)) return parseWei(0)
     return parseWei(risky)
@@ -176,16 +176,14 @@ export class Pool {
    */
   calcInvariant(): Integer64x64 {
     this.invariant = parseInt64x64(
-      parseWei(
-        calcInvariant(
-          this.reserveRisky.float,
-          this.reserveStable.float,
-          this.liquidity.float,
-          this.strike.float,
-          this.sigma.float,
-          this.tau.years
-        )
-      ).raw
+      calcInvariant(
+        this.reserveRisky.float,
+        this.reserveStable.float,
+        this.liquidity.float,
+        this.strike.float,
+        this.sigma.float,
+        this.tau.years
+      )
     )
     return this.invariant
   }
@@ -218,10 +216,10 @@ export class Pool {
     // 2. Calculate the new invariant with the new reserve values
     const nextInvariant = this.calcInvariant()
     // 3. Check the nextInvariant is >= invariantLast in the fee-less case, set it if valid
-    if (nextInvariant.wei < invariantLast.wei)
-      console.log('invariant not passing', `${nextInvariant.wei} < ${invariantLast.wei}`)
+    if (nextInvariant.percentage < invariantLast.percentage)
+      console.log('invariant not passing', `${nextInvariant.percentage} < ${invariantLast.percentage}`)
 
-    const effectivePriceOutStable = deltaOut.div(deltaIn) // stable per risky
+    const effectivePriceOutStable = deltaOut.mul(parseWei(1)).div(deltaIn) // stable per risky
     if (this.debug)
       return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
     return {
@@ -253,24 +251,27 @@ export class Pool {
   swapAmountInStable(deltaIn: Wei, debug?: boolean): DebugReturn {
     if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const reserveRiskyLast = this.reserveRisky
+    const reserveStableLast = this.reserveStable
     const invariantLast: Integer64x64 = this.calcInvariant()
 
     // 0. Calculate the new risky reserve since we know how much risky is being swapped out
     const gamma = 1 - this.fee
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
-    this.reserveStable = this.reserveStable.add(deltaInWithFee)
     // 1. Calculate the new risky reserves using the known new stable reserves
-    const newReserveRisky = this.getRiskyGivenStable(this.reserveStable).mul(this.liquidity).div(parseWei(1))
+    const newReserveRisky = this.getRiskyGivenStable(reserveStableLast.add(deltaInWithFee))
+      .mul(this.liquidity)
+      .div(parseWei(1))
     if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
-    this.reserveRisky = newReserveRisky
+    const deltaOut = reserveRiskyLast.sub(newReserveRisky)
+
+    this.reserveStable = this.reserveStable.add(deltaIn)
+    this.reserveRisky = this.reserveRisky.sub(deltaOut)
     // 2. Calculate the new invariant with the new reserves
     const nextInvariant = this.calcInvariant()
     // 3. Check the nextInvariant is >= invariantLast
     if (nextInvariant.parsed < invariantLast.parsed)
       console.log('invariant not passing', `${nextInvariant.parsed} < ${invariantLast.parsed}`)
     // 4. Calculate the change in risky reserve by comparing new reserve to previous
-    const reserveRisky = this.reserveRisky
-    const deltaOut = reserveRiskyLast.sub(reserveRisky)
     const effectivePriceOutStable = deltaIn.div(deltaOut) // stable per risky
     if (this.debug)
       return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
