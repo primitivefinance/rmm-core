@@ -132,7 +132,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint32 tau = cal.maturity - timestamp; // time until expiry
         delRisky = 1e18 - delta; // risky = 1 - delta
-        delStable = ReplicationMath.getTradingFunction(0, delRisky, 1e18, cal.strike, cal.sigma, tau).parseUnits();
+        delStable = ReplicationMath.getStableGivenRisky(0, delRisky, cal.strike, cal.sigma, tau).parseUnits();
         if ((delRisky * delStable) == 0) revert CalibrationError();
 
         settings[poolId] = cal; // initialize calibration
@@ -276,7 +276,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             fromMargin: fromMargin
         });
 
-        // 1. Update the lastTimestamp, which is will be used whenever time until expiry is calculated
+        // 1. Update the lastTimestamp, effectively updating the time until expiry
         settings[details.poolId].lastTimestamp = _blockTimestamp();
         // 2. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
         int128 invariant = invariantOf(details.poolId);
@@ -483,14 +483,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
-        reserveStable = ReplicationMath.getTradingFunction(
-            invariantLast,
-            reserveRisky,
-            res.liquidity,
-            cal.strike,
-            cal.sigma,
-            tau
-        );
+        reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, cal.strike, cal.sigma, tau);
+        reserveStable = reserveStable.mul(res.liquidity.parseUnits());
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -504,14 +498,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
-        reserveRisky = ReplicationMath.getInverseTradingFunction(
-            invariantLast,
-            reserveStable,
-            res.liquidity,
-            cal.strike,
-            cal.sigma,
-            tau
-        );
+        reserveRisky = ReplicationMath
+        .getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau)
+        .mul(res.liquidity.parseUnits());
     }
 
     // ===== View =====
@@ -523,7 +512,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         invariant = ReplicationMath.calcInvariant(
             res.reserveRisky,
             res.reserveStable,
-            res.liquidity,
             cal.strike,
             cal.sigma,
             (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
