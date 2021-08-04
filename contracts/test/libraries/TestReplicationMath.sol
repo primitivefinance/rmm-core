@@ -17,7 +17,6 @@ contract TestReplicationMath {
     function getStableGivenRisky(
         int128 invariantLast,
         uint256 reserveRisky,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
@@ -29,7 +28,6 @@ contract TestReplicationMath {
     function getRiskyGivenStable(
         int128 invariantLast,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
@@ -41,7 +39,6 @@ contract TestReplicationMath {
     function calcInvariant(
         uint256 reserveRisky,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
