@@ -83,7 +83,8 @@ describe('testReplicationMath', function () {
     })
 
     it('getProportionalVolatility', async function () {
-      let expected: number = new Integer64x64(await math.getProportionalVolatility(sigma.raw, tau.raw)).percentage
+      let expected: number =
+        new Integer64x64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed / Percentage.Mantissa
       let actual: number = getProportionalVol(sigma.float, tau.years)
       expect(actual).to.be.eq(expected)
     })
@@ -99,7 +100,7 @@ describe('testReplicationMath', function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let expected = config.sigma.float * Math.sqrt(tau.years)
         let step1 = new Integer64x64(await fixture.getStableGivenRisky.step1(config.sigma.raw, tau.raw))
-        expect(step1.percentage).to.be.eq(expected)
+        expect(step1.parsed / Percentage.Mantissa).to.be.eq(expected)
         expect(step1.raw).to.be.eq(toBN(expected).mul(Integer64x64.Denominator).mul(Percentage.Mantissa))
       })
 
@@ -118,7 +119,7 @@ describe('testReplicationMath', function () {
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF
         let step3 = new Integer64x64(await fixture.getStableGivenRisky.step3(reserve.raw))
-        expect(step3.parsed).to.be.eq(expected)
+        expect(step3.float).to.be.eq(expected)
       })
 
       it('step4: calculate input = phi - vol', async function () {
@@ -129,7 +130,7 @@ describe('testReplicationMath', function () {
         let expected = inversedCDF - vol
         let step4 = new Integer64x64(
           await fixture.getStableGivenRisky.step4(
-            toBN((inversedCDF * +Integer64x64.Denominator).toString()),
+            toBN(Math.floor(inversedCDF * +Integer64x64.Denominator).toString()),
             toBN(vol).mul(Integer64x64.Denominator).mul(Percentage.Mantissa)
           )
         )
@@ -193,7 +194,7 @@ describe('testReplicationMath', function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let expected = config.sigma.float * Math.sqrt(tau.years)
         let step1 = new Integer64x64(await fixture.getRiskyGivenStable.step1(config.sigma.raw, tau.raw))
-        expect(step1.percentage).to.be.eq(expected)
+        expect(step1.parsed / Percentage.Mantissa).to.be.eq(expected)
         expect(step1.raw).to.be.eq(toBN(expected).mul(Integer64x64.Denominator).mul(Percentage.Mantissa))
       })
 
@@ -316,7 +317,7 @@ describe('testReplicationMath', function () {
       it('calcInvariant', async function () {
         let expected: number = new Integer64x64(
           await math.calcInvariant(reserveRisky.raw, reserveStable.raw, liquidity.raw, strike.raw, sigma.raw, tau.raw)
-        ).float
+        ).parsed
         let actual: number = calcInvariant(
           reserveRisky.float,
           reserveStable.float,

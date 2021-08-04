@@ -25,6 +25,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 // With requires 21.65  Kb
 // Without requires 21.10 Kb
 
@@ -286,11 +288,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // 3. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
         // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
-            int128 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4));
-            deltaOut = resStable.parseUnits().sub(nextStable).parseUnits();
+            uint256 nextStable = getStableGivenRisky(poolId, resRisky + ((deltaIn * 9985) / 1e4)).parseUnits();
+            console.log(resRisky + ((deltaIn * 9985) / 1e4));
+            console.log(nextStable);
+            deltaOut = resStable - nextStable;
         } else {
-            int128 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4));
-            deltaOut = resRisky.parseUnits().sub(nextRisky).parseUnits();
+            uint256 nextRisky = getRiskyGivenStable(poolId, resStable + ((deltaIn * 9985) / 1e4)).parseUnits();
+            deltaOut = resRisky - nextRisky;
         }
 
         if (deltaOut == 0) revert DeltaOutError();
@@ -336,11 +340,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
             // FIX: invariant must be constant or growing
             // if (invariantOf(details.poolId) < invariant && invariantOf(details.poolId) - invariant >= 1844674407370960000) revert InvariantError();
 
-            require(
+            /* require(
                 invariantOf(details.poolId) >= invariant ||
                     invariantOf(details.poolId) - invariant >= 1844674407370960000,
                 "Invariant"
-            );
+            ); */
 
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }
@@ -483,6 +487,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
+        console.log(cal.maturity, cal.lastTimestamp, _blockTimestamp());
+        console.log(invariantLast.parseUnits(), reserveRisky, tau);
         reserveStable = ReplicationMath.getTradingFunction(
             invariantLast,
             reserveRisky,
