@@ -5,8 +5,8 @@ import { Integer64x64, parseInt64x64, parseWei, Percentage, Time, toBN, Wei } fr
 import { Wallet } from '@ethersproject/wallet'
 import {
   getProportionalVol,
-  getTradingFunction as getStableGivenRisky,
-  getInverseTradingFunction as getRiskyGivenStable,
+  getStableGivenRisky,
+  getRiskyGivenStable,
   calcInvariant,
   inverse_std_n_cdf,
   std_n_cdf,
