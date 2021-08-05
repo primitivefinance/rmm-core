@@ -1,7 +1,7 @@
 import { utils, BigNumber } from 'ethers'
-import { Wei, Percentage, Time, Integer64x64, parseInt64x64, parseWei } from 'web3-units'
+import { Wei, Percentage, Time, Integer64x64, parseInt64x64, parseWei, toBN } from 'web3-units'
 import { quantilePrime, std_n_pdf, std_n_cdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
-import { getTradingFunction, getInverseTradingFunction, calcInvariant } from '@primitivefinance/v2-math'
+import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
 
 const { keccak256, solidityPack } = utils
 
@@ -114,13 +114,12 @@ export class Pool {
       this.tau.years
     )
 
-    let stable = getTradingFunction(
-      Math.abs(invariant) >= 1e-8 || noInvariant ? 0 : invariant,
+    let stable = getStableGivenRisky(
       reserveRisky.float,
-      this.liquidity.float,
       this.strike.float,
       this.sigma.float,
-      this.tau.years
+      this.tau.years,
+      Math.abs(invariant) >= 1e-8 || noInvariant ? 0 : invariant
     )
 
     stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
@@ -149,13 +148,12 @@ export class Pool {
       'tau: ',
       this.tau.years
     )
-    let risky = getInverseTradingFunction(
-      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
+    let risky = getRiskyGivenStable(
       reserveStable.float,
-      this.liquidity.float,
       this.strike.float,
       this.sigma.float,
-      this.tau.years
+      this.tau.years,
+      Math.abs(invariant) >= 1e-8 ? 0 : invariant
     )
     console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
     risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
@@ -175,16 +173,12 @@ export class Pool {
    * @return invariant Calculated invariant using this Pool's state
    */
   calcInvariant(): Integer64x64 {
-    this.invariant = parseInt64x64(
-      calcInvariant(
-        this.reserveRisky.float,
-        this.reserveStable.float,
-        this.liquidity.float,
-        this.strike.float,
-        this.sigma.float,
-        this.tau.years
-      )
-    )
+    const risky = this.reserveRisky.float / this.liquidity.float
+    const stable = this.reserveStable.float / this.liquidity.float
+    let invariant = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
+    invariant = Math.floor(invariant * Math.pow(10, 18))
+    console.log(risky, stable, invariant)
+    this.invariant = new Integer64x64(toBN(invariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
     return this.invariant
   }
 
@@ -205,9 +199,8 @@ export class Pool {
     const gamma = 1 - this.fee
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     // 1. Calculate the new stable reserve using the new risky reserve
-    const newReserveStable = this.getStableGivenRisky(reserveRiskyLast.add(deltaInWithFee))
-      .mul(this.liquidity)
-      .div(parseWei(1))
+    const newRiskyReserve = reserveRiskyLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
+    const newReserveStable = this.getStableGivenRisky(newRiskyReserve).mul(this.liquidity).div(parseWei(1))
     if (newReserveStable.raw.isNegative()) return this.defaultSwapReturn
     const deltaOut = reserveStableLast.sub(newReserveStable)
 
@@ -258,9 +251,8 @@ export class Pool {
     const gamma = 1 - this.fee
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
     // 1. Calculate the new risky reserves using the known new stable reserves
-    const newReserveRisky = this.getRiskyGivenStable(reserveStableLast.add(deltaInWithFee))
-      .mul(this.liquidity)
-      .div(parseWei(1))
+    const newStableReserve = reserveStableLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
+    const newReserveRisky = this.getRiskyGivenStable(newStableReserve).mul(this.liquidity).div(parseWei(1))
     if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
     const deltaOut = reserveRiskyLast.sub(newReserveRisky)
 
@@ -304,7 +296,7 @@ export class Pool {
     const strike = this.strike.float
     const sigma = this.sigma.float
     const tau = this.tau.years
-    const spot = getTradingFunction(0, risky, liquidity, strike, sigma, tau) * quantilePrime(1 - risky)
+    const spot = getStableGivenRisky(risky, liquidity, strike, sigma, tau) * quantilePrime(1 - risky)
     return parseWei(spot)
   }
 

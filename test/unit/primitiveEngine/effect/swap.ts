@@ -7,7 +7,7 @@ import { MockEngine, EngineAllocate, EngineSwap } from '../../../../typechain'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { swapFragment } from '../fragments'
 import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
-import { calcInvariant, getSpotPrice, getTradingFunction } from '@primitivefinance/v2-math'
+import { calcInvariant, getSpotPrice, getStableGivenRisky } from '@primitivefinance/v2-math'
 import { Functions } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
 import { DebugReturn, Pool } from '../../../shared/swapUtils'
@@ -85,22 +85,22 @@ const SuccessCases: SwapTestCase[] = [
   // 1e18
   {
     riskyForStable: true,
-    deltaIn: parseWei(0.01),
+    deltaIn: parseWei(1),
     fromMargin: true,
   },
   {
     riskyForStable: true,
-    deltaIn: parseWei(0.01),
+    deltaIn: parseWei(1),
     fromMargin: false,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei(0.01),
+    deltaIn: parseWei(10),
     fromMargin: true,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei(0.01),
+    deltaIn: parseWei(10),
     fromMargin: false,
   },
 ]
@@ -120,20 +120,6 @@ const FailCases: SwapTestCase[] = [
     fromMargin: true,
     signer: 1,
     revertMsg: ERC20Events.EXCEEDS_BALANCE,
-  },
-  {
-    riskyForStable: true,
-    deltaIn: parseWei(1),
-    fromMargin: false,
-    deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'DeltaOutError',
-  },
-  {
-    riskyForStable: false,
-    deltaIn: parseWei(1),
-    fromMargin: false,
-    deltaOutMin: new Wei(constants.MaxUint256),
-    revertMsg: 'DeltaOutError',
   },
   // 2e3
   {
@@ -189,7 +175,11 @@ async function doSwap(
   functions: Functions
 ): Promise<ContractTransaction> {
   let swap: ContractTransaction
-  const signer = testCase.signer ? signers[testCase.signer] : signers[0]
+  const signerIndex = testCase.signer ? testCase.signer : 0
+  console.log({ signerIndex })
+  const signer = signers[signerIndex]
+  console.log(await engine.margins(signer.address))
+  console.log('sender ', signer.address)
   if (testCase.riskyForStable) {
     if (testCase.fromMargin) {
       swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, true, empty)
@@ -198,7 +188,7 @@ async function doSwap(
     }
   } else {
     if (testCase.fromMargin) {
-      swap = await engine.swap(poolId, false, testCase.deltaIn.raw, true, empty)
+      swap = await engine.connect(signer).swap(poolId, false, testCase.deltaIn.raw, true, empty)
     } else {
       swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, testCase.fromMargin)
     }
@@ -261,16 +251,14 @@ describe('Engine:swap', function () {
           engine.invariantOf(poolId),
         ])
         preSpot = getSpotPrice(
-          new Wei(preReserves.reserveRisky).float,
-          new Wei(preReserves.liquidity).float,
+          new Wei(preReserves.reserveRisky).float / new Wei(preReserves.liquidity).float,
           config.strike.float,
           config.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
-        console.log(preSpot)
         //await engineAllocate.allocateFromExternal(poolId, engineAllocate.address, parseWei('1').raw, empty)
       })
-      it.only('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
+      it('does swap riskyIn for stableOut from signer[0] margin acc', async function () {
         // To really do a swap test, we need to compare each step with a simulated result
         // and verify the results match the expected on every step
         // therefore, if a test fails, we know at which step it failed
@@ -283,11 +271,12 @@ describe('Engine:swap', function () {
         const liq = new Wei(preReserves.liquidity)
         const tau = maturity.sub(lastTimestamp)
         const pool = new Pool(risky, liq, strike, sigma, maturity, lastTimestamp, 0.0015, stable)
-        const params = [0, risky.float, liq.float, strike.float, sigma.float, tau.years]
-        const tradingFunction = getTradingFunction(0, risky.float, liq.float, strike.float, sigma.float, tau.years)
+        const params = [risky.float, stable.float, liq.float]
+        console.log({ params })
+        const tradingFunction = getStableGivenRisky(risky.float, liq.float, strike.float, sigma.float, tau.years)
         const deltaIn = risky.div(10)
         const contractTf = new Integer64x64(
-          await this.contracts.testReplicationMath.getTradingFunction(0, risky.raw, liq.raw, strike.raw, sigma.raw, tau.raw)
+          await this.contracts.testReplicationMath.getStableGivenRisky(0, risky.raw, strike.raw, sigma.raw, tau.raw)
         )
         pool.debug = true
         const { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, effectivePriceOutStable } =
@@ -313,16 +302,17 @@ describe('Engine:swap', function () {
           new Wei(postReserve.reserveStable),
           new Wei(postReserve.liquidity),
         ]
+        const postParams = [postRisky.float, postStable.float, postLiquidity.float]
+        console.log({ postParams })
         const postSpot = getSpotPrice(
-          postRisky.float,
-          postLiquidity.float,
+          postRisky.float / postLiquidity.float,
           config.strike.float,
           config.sigma.float,
           new Time(postSetting.maturity - postSetting.lastTimestamp).years
         )
 
         // Contract invariants
-        expect(postInvariant).to.be.gte(preInvariant)
+        expect(new Integer64x64(postInvariant).parsed).to.be.gte(new Integer64x64(preInvariant).parsed)
         if (testCase.riskyForStable) {
           expect(preSpot).to.be.gte(postSpot)
         } else {
@@ -342,7 +332,6 @@ describe('Engine:swap', function () {
             new Wei(preReserves.reserveStable),
             new Wei(preReserves.liquidity),
           ]
-          if (DEBUG_MODE) console.log('Pre reserve: ', reserveRisky.float, reserveStable.float, liquidity.float)
 
           // Get the tx parameters
           // Simulate the swap
@@ -352,6 +341,7 @@ describe('Engine:swap', function () {
           const fee = 0.0015
           const pool = new Pool(reserveRisky, liquidity, strike, sigma, maturity, lastTimestamp, fee, reserveStable)
           pool.debug = true
+          if (pool.debug) console.log('Pre reserve: ', reserveRisky.float, reserveStable.float, liquidity.float)
           const simulated = simulateSwap(pool, testCase)
           const tx = doSwap(this.signers, engine, poolId, testCase, this.functions)
           try {
@@ -397,9 +387,9 @@ describe('Engine:swap', function () {
               deltaOut.raw
             )
 
+          console.log('spot params: ')
           const postSpot = getSpotPrice(
-            postRisky.float,
-            postLiquidity.float,
+            postRisky.float / postLiquidity.float,
             config.strike.float,
             config.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
@@ -407,7 +397,7 @@ describe('Engine:swap', function () {
 
           // Contract invariants
           expect(balanceOut).to.be.eq(deltaOut.raw)
-          expect(postInvariant).to.be.gte(preInvariant)
+          expect(new Integer64x64(postInvariant).parsed).to.be.gte(new Integer64x64(preInvariant).parsed)
           if (testCase.riskyForStable) {
             expect(preSpot).to.be.gte(postSpot)
           } else {
@@ -416,7 +406,7 @@ describe('Engine:swap', function () {
 
           // Simulation comparisons
           expect(simulated.nextInvariant?.parsed).to.be.closeTo(new Integer64x64(postInvariant).parsed, 1)
-          expect(postSpot).to.be.closeTo(simulated.effectivePriceOutStable?.float, 1)
+          //expect(postSpot).to.be.closeTo(simulated.effectivePriceOutStable?.float, 1)
         })
       }
     })
