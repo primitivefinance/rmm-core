@@ -98,28 +98,30 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei, noInvariant?: boolean): Wei {
-    const invariant = this.invariant.wei
-    console.log(
-      'invariant: ',
-      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
-      'risky: ',
-      reserveRisky.float / this.liquidity.float,
-      'liquidity: ',
-      this.liquidity.float,
-      'strike: ',
-      this.strike.float,
-      'sigma: ',
-      this.sigma.float,
-      'tau: ',
-      this.tau.years
-    )
+    let invariant = this.invariant.parsed
+    invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
+    if (this.debug)
+      console.log(
+        'invariant: ',
+        invariant,
+        'risky: ',
+        reserveRisky.float / this.liquidity.float,
+        'liquidity: ',
+        this.liquidity.float,
+        'strike: ',
+        this.strike.float,
+        'sigma: ',
+        this.sigma.float,
+        'tau: ',
+        this.tau.years
+      )
 
     let stable = getStableGivenRisky(
       reserveRisky.float,
       this.strike.float,
       this.sigma.float,
       this.tau.years,
-      Math.abs(invariant) >= 1e-8 || noInvariant ? 0 : invariant
+      noInvariant ? 0 : invariant
     )
 
     stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
@@ -132,30 +134,32 @@ export class Pool {
    * @param reserveStable Amount of stable tokens in reserve
    * @return reserveRisky Expected amount of risky token reserves
    */
-  getRiskyGivenStable(reserveStable: Wei): Wei {
-    const invariant = this.invariant.percentage
-    console.log(
-      'invariant: ',
-      Math.abs(invariant) >= 1e-8 ? 0 : invariant,
-      'stable: ',
-      reserveStable.float,
-      'liquidity: ',
-      this.liquidity.float,
-      'strike: ',
-      this.strike.float,
-      'sigma: ',
-      this.sigma.float,
-      'tau: ',
-      this.tau.years
-    )
+  getRiskyGivenStable(reserveStable: Wei, noInvariant?: boolean): Wei {
+    let invariant = this.invariant.parsed
+    invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
+    if (this.debug)
+      console.log(
+        'invariant: ',
+        invariant,
+        'stable: ',
+        reserveStable.float,
+        'liquidity: ',
+        this.liquidity.float,
+        'strike: ',
+        this.strike.float,
+        'sigma: ',
+        this.sigma.float,
+        'tau: ',
+        this.tau.years
+      )
     let risky = getRiskyGivenStable(
       reserveStable.float,
       this.strike.float,
       this.sigma.float,
       this.tau.years,
-      Math.abs(invariant) >= 1e-8 ? 0 : invariant
+      noInvariant ? 0 : invariant
     )
-    console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
+    if (this.debug) console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
     risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
     if (isNaN(risky)) return parseWei(0)
     return parseWei(risky)
@@ -177,8 +181,8 @@ export class Pool {
     const stable = this.reserveStable.float / this.liquidity.float
     let invariant = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
     invariant = Math.floor(invariant * Math.pow(10, 18))
-    console.log(risky, stable, invariant)
     this.invariant = new Integer64x64(toBN(invariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
+    console.log('CALC INVARIANT in SIM: ', invariant.toString())
     return this.invariant
   }
 
@@ -213,13 +217,13 @@ export class Pool {
       console.log('invariant not passing', `${nextInvariant.percentage} < ${invariantLast.percentage}`)
 
     const effectivePriceOutStable = deltaOut.mul(parseWei(1)).div(deltaIn) // stable per risky
-    if (this.debug)
-      return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
-    return {
+
+    return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
+    /* return {
       deltaOut,
       pool: this,
       effectivePriceOutStable: effectivePriceOutStable,
-    }
+    } */
   }
 
   virtualSwapAmountInRisky(deltaIn: Wei): SwapReturn {
@@ -264,14 +268,15 @@ export class Pool {
     if (nextInvariant.parsed < invariantLast.parsed)
       console.log('invariant not passing', `${nextInvariant.parsed} < ${invariantLast.parsed}`)
     // 4. Calculate the change in risky reserve by comparing new reserve to previous
-    const effectivePriceOutStable = deltaIn.div(deltaOut) // stable per risky
-    if (this.debug)
-      return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
-    return {
+    console.log(deltaIn.float, deltaOut.float)
+    const effectivePriceOutStable = deltaIn.mul(parseWei(1)).div(deltaOut) // stable per risky
+
+    return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
+    /* return {
       deltaOut,
       pool: this,
       effectivePriceOutStable: effectivePriceOutStable,
-    }
+    } */
   }
 
   virtualSwapAmountInStable(deltaIn: Wei): SwapReturn {
@@ -292,11 +297,10 @@ export class Pool {
 
   getSpotPrice(): Wei {
     const risky = this.reserveRisky.float
-    const liquidity = this.liquidity.float
     const strike = this.strike.float
     const sigma = this.sigma.float
     const tau = this.tau.years
-    const spot = getStableGivenRisky(risky, liquidity, strike, sigma, tau) * quantilePrime(1 - risky)
+    const spot = getStableGivenRisky(risky, strike, sigma, tau) * quantilePrime(1 - risky)
     return parseWei(spot)
   }
 

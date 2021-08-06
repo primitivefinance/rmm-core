@@ -289,16 +289,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
             uint256 nextRisky = ((resRisky + ((details.deltaIn * 9985) / 1e4)) * 1e18) / reserve.liquidity;
-            console.log(nextRisky);
             uint256 nextStable = ((getStableGivenRisky(details.poolId, nextRisky).parseUnits() * reserve.liquidity) /
                 1e18);
-            console.log(resStable, nextStable);
             deltaOut = resStable - nextStable;
         } else {
             uint256 nextStable = ((resStable + ((details.deltaIn * 9985) / 1e4)) * 1e18) / reserve.liquidity;
             uint256 nextRisky = (getRiskyGivenStable(details.poolId, nextStable).parseUnits() * reserve.liquidity) /
                 1e18;
-            console.log(resRisky, nextRisky);
             deltaOut = resRisky - nextRisky;
         }
 
@@ -315,8 +312,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     if (balanceStable() < balStable - amountOut)
                         revert StableBalanceError(balStable - amountOut, balanceStable());
                 } else {
-                    console.log("sender", msg.sender);
-                    console.log(margins[msg.sender].balanceStable - deltaIn);
                     margins.withdraw(uint256(0), deltaIn); // pay for swap
                     IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds
                     if (balanceRisky() < balRisky - amountOut)
@@ -352,8 +347,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     invariantOf(details.poolId) - invariant >= 1844674407370960000,
                 "Invariant"
             ); */
-            require(invariantOf(details.poolId).parseUnits() >= invariant.parseUnits(), "Invariant");
-
+            require(
+                invariantOf(details.poolId) >= invariant ||
+                    invariantOf(details.poolId).sub(invariant) < Units.MANTISSA_INT,
+                "Invariant"
+            );
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }
     }
@@ -509,6 +507,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
+        console.log("INVARIANT LAST GET RISKY GIVEN STABLE");
+        console.logInt(invariantLast);
         reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau);
     }
 
