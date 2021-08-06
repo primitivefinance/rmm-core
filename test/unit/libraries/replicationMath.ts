@@ -166,23 +166,9 @@ describe('testReplicationMath', function () {
 
       it('getStableGivenRisky', async function () {
         let expected: number = new Integer64x64(
-          await fixture.getStableGivenRisky.getStableGivenRisky(
-            0,
-            reserveStable.raw,
-
-            strike.raw,
-            sigma.raw,
-            tau.raw
-          )
+          await fixture.getStableGivenRisky.getStableGivenRisky(0, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
         ).float
-        let actual: number = getStableGivenRisky(
-          0,
-          reserveStable.float,
-          liquidity.float,
-          strike.float,
-          sigma.float,
-          tau.years
-        )
+        let actual: number = getStableGivenRisky(reserveStable.float, strike.float, sigma.float, tau.years)
         expect(actual).to.be.eq(expected)
       })
     })
@@ -266,14 +252,7 @@ describe('testReplicationMath', function () {
             tau.raw
           )
         ).float
-        let actual: number = getRiskyGivenStable(
-          0,
-          reserveStable.float,
-          liquidity.float,
-          strike.float,
-          sigma.float,
-          tau.years
-        )
+        let actual: number = getRiskyGivenStable(reserveStable.float, liquidity.float, strike.float, sigma.float, tau.years)
         expect(actual).to.be.eq(expected)
       })
     })
@@ -282,9 +261,8 @@ describe('testReplicationMath', function () {
       it('step0', async function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let expected = getStableGivenRisky(
-          0,
           reserveRisky.float,
-          liquidity.float,
+
           config.strike.float,
           config.sigma.float,
           tau.years
@@ -298,9 +276,8 @@ describe('testReplicationMath', function () {
       it('step1', async function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let reserve2 = getStableGivenRisky(
-          0,
           reserveRisky.float,
-          liquidity.float,
+
           config.strike.float,
           config.sigma.float,
           tau.years
@@ -320,14 +297,7 @@ describe('testReplicationMath', function () {
         let expected: number = new Integer64x64(
           await math.calcInvariant(reserveRisky.raw, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
         ).parsed
-        let actual: number = calcInvariant(
-          reserveRisky.float,
-          reserveStable.float,
-          liquidity.float,
-          strike.float,
-          sigma.float,
-          tau.years
-        )
+        let actual: number = calcInvariant(reserveRisky.float, reserveStable.float, strike.float, sigma.float, tau.years)
         expect(actual).to.be.closeTo(expected, precision.invariant)
       })
     })

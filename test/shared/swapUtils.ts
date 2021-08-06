@@ -182,7 +182,6 @@ export class Pool {
     let invariant = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
     invariant = Math.floor(invariant * Math.pow(10, 18))
     this.invariant = new Integer64x64(toBN(invariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
-    console.log('CALC INVARIANT in SIM: ', invariant.toString())
     return this.invariant
   }
 
@@ -219,27 +218,28 @@ export class Pool {
     const effectivePriceOutStable = deltaOut.mul(parseWei(1)).div(deltaIn) // stable per risky
 
     return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
-    /* return {
-      deltaOut,
-      pool: this,
-      effectivePriceOutStable: effectivePriceOutStable,
-    } */
   }
 
-  virtualSwapAmountInRisky(deltaIn: Wei): SwapReturn {
+  virtualSwapAmountInRisky(deltaIn: Wei): DebugReturn {
     if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const gamma = 1 - this.fee
+    const reserveRiskyLast = this.reserveRisky
+    const reserveStableLast = this.reserveStable
+    const invariantLast: Integer64x64 = this.calcInvariant()
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
-    const newReserveRisky = this.reserveRisky.add(deltaIn)
-    const newReserveStable = this.getStableGivenRisky(newReserveRisky)
+
+    const newReserveRisky = reserveRiskyLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
+    const newReserveStable = this.getStableGivenRisky(newReserveRisky).mul(this.liquidity).div(parseWei(1))
     if (newReserveStable.raw.isNegative()) return this.defaultSwapReturn
-    const deltaOut = this.reserveStable.sub(newReserveStable)
-    const effectivePriceOutStable = deltaOut.div(deltaIn)
-    return {
-      deltaOut,
-      pool: clonePool(this, newReserveRisky, newReserveStable),
-      effectivePriceOutStable: effectivePriceOutStable,
-    }
+    const deltaOut = reserveStableLast.sub(newReserveStable)
+
+    const risky = reserveRiskyLast.add(deltaIn).float / this.liquidity.float
+    const stable = reserveStableLast.sub(deltaOut).float / this.liquidity.float
+    let nextInvariant: any = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
+    nextInvariant = Math.floor(nextInvariant * Math.pow(10, 18))
+    nextInvariant = new Integer64x64(toBN(nextInvariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
+    const effectivePriceOutStable = deltaOut.mul(parseWei(1)).div(deltaIn)
+    return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
   }
 
   /**
@@ -268,35 +268,34 @@ export class Pool {
     if (nextInvariant.parsed < invariantLast.parsed)
       console.log('invariant not passing', `${nextInvariant.parsed} < ${invariantLast.parsed}`)
     // 4. Calculate the change in risky reserve by comparing new reserve to previous
-    console.log(deltaIn.float, deltaOut.float)
     const effectivePriceOutStable = deltaIn.mul(parseWei(1)).div(deltaOut) // stable per risky
 
     return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
-    /* return {
-      deltaOut,
-      pool: this,
-      effectivePriceOutStable: effectivePriceOutStable,
-    } */
   }
 
-  virtualSwapAmountInStable(deltaIn: Wei): SwapReturn {
+  virtualSwapAmountInStable(deltaIn: Wei): DebugReturn {
     if (deltaIn.raw.isNegative()) return this.defaultSwapReturn
     const gamma = 1 - this.fee
+    const reserveRiskyLast = this.reserveRisky
+    const reserveStableLast = this.reserveStable
+    const invariantLast: Integer64x64 = this.calcInvariant()
     const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
-    const newReserveStable = this.reserveStable.add(deltaInWithFee)
-    const newReserveRisky = this.getRiskyGivenStable(newReserveStable)
+
+    const newStableReserve = reserveStableLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
+    const newReserveRisky = this.getRiskyGivenStable(newStableReserve).mul(this.liquidity).div(parseWei(1))
     if (newReserveRisky.raw.isNegative()) return this.defaultSwapReturn
-    const deltaOut = this.reserveRisky.sub(newReserveRisky)
-    const effectivePriceOutStable = deltaIn.div(deltaOut)
-    return {
-      deltaOut,
-      pool: clonePool(this, newReserveRisky, newReserveStable),
-      effectivePriceOutStable: effectivePriceOutStable,
-    }
+    const deltaOut = reserveRiskyLast.sub(newReserveRisky)
+    const risky = reserveRiskyLast.sub(deltaOut).float / this.liquidity.float
+    const stable = reserveStableLast.add(deltaIn).float / this.liquidity.float
+    let nextInvariant: any = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
+    nextInvariant = Math.floor(nextInvariant * Math.pow(10, 18))
+    nextInvariant = new Integer64x64(toBN(nextInvariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
+    const effectivePriceOutStable = deltaIn.mul(parseWei(1)).div(deltaOut)
+    return { invariantLast, gamma, deltaInWithFee, nextInvariant, deltaOut, pool: this, effectivePriceOutStable }
   }
 
   getSpotPrice(): Wei {
-    const risky = this.reserveRisky.float
+    const risky = this.reserveRisky.float / this.liquidity.float
     const strike = this.strike.float
     const sigma = this.sigma.float
     const tau = this.tau.years
@@ -350,5 +349,3 @@ export class Pool {
     return 1 / step7
   }
 }
-
-export function swapSteps() {}

@@ -25,8 +25,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-import "hardhat/console.sol";
-
 // With requires 21.65  Kb
 // Without requires 21.10 Kb
 
@@ -338,15 +336,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
-
-            // FIX: invariant must be constant or growing
-            // if (invariantOf(details.poolId) < invariant && invariantOf(details.poolId) - invariant >= 1844674407370960000) revert InvariantError();
-
-            /* require(
-                invariantOf(details.poolId) >= invariant ||
-                    invariantOf(details.poolId) - invariant >= 1844674407370960000,
-                "Invariant"
-            ); */
             require(
                 invariantOf(details.poolId) >= invariant ||
                     invariantOf(details.poolId).sub(invariant) < Units.MANTISSA_INT,
@@ -490,7 +479,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         returns (int128 reserveStable)
     {
         Calibration memory cal = settings[poolId];
-        Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
         reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, cal.strike, cal.sigma, tau);
@@ -504,11 +492,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         returns (int128 reserveRisky)
     {
         Calibration memory cal = settings[poolId];
-        Reserve.Data memory res = reserves[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
-        console.log("INVARIANT LAST GET RISKY GIVEN STABLE");
-        console.logInt(invariantLast);
         reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau);
     }
 
