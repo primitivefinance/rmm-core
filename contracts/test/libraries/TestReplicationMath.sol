@@ -14,45 +14,35 @@ contract TestReplicationMath {
     }
 
     /// @return reserveStable The calculated stable reserve, using the risky reserve
-    function getTradingFunction(
+    function getStableGivenRisky(
         int128 invariantLast,
         uint256 reserveRisky,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 reserveStable) {
-        reserveStable = ReplicationMath.getTradingFunction(invariantLast, reserveRisky, liquidity, strike, sigma, tau);
+        reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, strike, sigma, tau);
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
-    function getInverseTradingFunction(
+    function getRiskyGivenStable(
         int128 invariantLast,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 reserveRisky) {
-        reserveRisky = ReplicationMath.getInverseTradingFunction(
-            invariantLast,
-            reserveStable,
-            liquidity,
-            strike,
-            sigma,
-            tau
-        );
+        reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, strike, sigma, tau);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
     function calcInvariant(
         uint256 reserveRisky,
         uint256 reserveStable,
-        uint256 liquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, liquidity, strike, sigma, tau);
+        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, strike, sigma, tau);
     }
 }
