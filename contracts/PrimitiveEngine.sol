@@ -20,7 +20,6 @@ import "./interfaces/callback/IPrimitiveLendingCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
 import "./interfaces/callback/IPrimitiveMarginCallback.sol";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
-import "./interfaces/callback/IPrimitiveCreateCallback.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
