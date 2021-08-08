@@ -513,42 +513,4 @@ contract PrimitiveEngine is IPrimitiveEngine {
             (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
         );
     }
-
-    // ===== Flashes =====
-
-    /// @inheritdoc IERC3156FlashLender
-    function flashLoan(
-        IERC3156FlashBorrower receiver,
-        address token,
-        uint256 amount,
-        bytes calldata data
-    ) external override lock returns (bool) {
-        uint256 fee = flashFee(token, amount); // reverts if unsupported token
-        uint256 balanceBefore = token == stable ? balanceStable() : balanceRisky();
-        IERC20(token).safeTransfer(address(receiver), amount);
-
-        require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
-            "IERC3156: Callback failed"
-        );
-
-        uint256 balanceAfter = token == stable ? balanceStable() : balanceRisky();
-        require(balanceAfter >= balanceBefore + fee, "Not enough returned");
-        uint256 payment = balanceAfter - balanceBefore;
-
-        emit Flash(msg.sender, address(receiver), token, amount, payment);
-        return true;
-    }
-
-    /// @inheritdoc IERC3156FlashLender
-    function flashFee(address token, uint256 amount) public view override returns (uint256) {
-        require(token == stable || token == risky, "Not supported");
-        return (amount * 15) / 10000;
-    }
-
-    /// @inheritdoc IERC3156FlashLender
-    function maxFlashLoan(address token) external view override returns (uint256) {
-        if (token != stable || token != risky) return 0; // not supported
-        return token == stable ? balanceStable() : balanceRisky();
-    }
 }
