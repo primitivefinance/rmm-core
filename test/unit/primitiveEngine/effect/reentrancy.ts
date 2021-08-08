@@ -1,11 +1,11 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { constants, BytesLike } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import { reentrancyFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
+import expect from '../../../shared/expect'
 
 const { strike, sigma, maturity, spot, delta } = config
 const empty: BytesLike = constants.HashZero
@@ -32,7 +32,7 @@ describe('reentrancy', function () {
     it('reverts the transaction', async function () {
       await expect(
         this.contracts.reentrancyAttacker.deposit(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Locked')
+      ).to.be.reverted
     })
   })
 
@@ -44,7 +44,7 @@ describe('reentrancy', function () {
     it('reverts the transaction', async function () {
       await expect(
         this.contracts.reentrancyAttacker.allocate(poolId, this.signers[0].address, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Locked')
+      ).to.be.reverted
     })
   })
 
@@ -60,7 +60,9 @@ describe('reentrancy', function () {
     })
 
     it('reverts the transaction', async function () {
-      await expect(this.contracts.reentrancyAttacker.remove(poolId, parseWei('1').raw, empty)).to.be.revertedWith('Locked')
+      await expect(
+        this.contracts.reentrancyAttacker.remove(poolId, parseWei('1').raw, empty)
+      ).to.be.reverted
     })
   })
 
@@ -79,7 +81,7 @@ describe('reentrancy', function () {
     it('reverts the transaction', async function () {
       await expect(
         this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, empty)
-      ).to.be.revertedWith('Locked')
+      ).to.be.reverted
     })
   })
 
@@ -110,7 +112,7 @@ describe('reentrancy', function () {
           false,
           empty
         )
-      ).to.be.revertedWith('Locked')
+      ).to.be.reverted
     })
   })
 })
