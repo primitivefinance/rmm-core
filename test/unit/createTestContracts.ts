@@ -114,12 +114,6 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.badEngineDeposit = (await deploy('BadEngineDeposit', deployer)) as ContractTypes.BadEngineDeposit
         await initializeTestContract(loadedContracts.badEngineDeposit, loadedContracts)
         break
-      case 'flashBorrower':
-        loadedContracts.flashBorrower = (await deploy('FlashBorrower', deployer)) as ContractTypes.FlashBorrower
-        break
-      case 'flashAttacker':
-        loadedContracts.flashAttacker = (await deploy('FlashAttacker', deployer)) as ContractTypes.FlashAttacker
-        break
       case 'reentrancyAttacker':
         loadedContracts.reentrancyAttacker = (await deploy(
           'ReentrancyAttacker',

@@ -78,9 +78,4 @@ interface IPrimitiveEngineEvents {
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity to pay
     event Repaid(address indexed owner, bytes32 indexed poolId, uint256 delLiquidity);
-
-    // ===== Flash =====
-    /// @notice Optimistically sends risky and/or stable tokens out of the contract, and expects them to be paid back
-    /// @dev    https://eips.ethereum.org/EIPS/eip-3156
-    event Flash(address indexed from, address indexed receiver, address indexed token, uint256 amount, uint256 payment);
 }
