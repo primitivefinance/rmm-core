@@ -34,7 +34,9 @@ contract ReentrancyAttacker {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 delta
+        uint256 delta,
+        uint256 delLiquidity,
+        bytes calldata data
     ) public {
         CALLER = msg.sender;
 
@@ -42,8 +44,19 @@ contract ReentrancyAttacker {
         _sigma = sigma;
         _maturity = maturity;
         _delta = delta;
+        _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta, delLiquidity, data);
+    }
+
+    function createCallback(
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        delRisky;
+        delStable;
+        IPrimitiveEngine(engine).create(_strike, uint64(_sigma), uint32(_maturity), _delta, _delLiquidity, data);
     }
 
     function deposit(
