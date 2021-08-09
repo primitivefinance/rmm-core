@@ -15,7 +15,7 @@ interface IPrimitiveEngineErrors {
     error PoolDuplicateError();
 
     /// @notice Thrown when the parameters of a new pool are invalid
-    error CalibrationError();
+    error CalibrationError(uint256 delRisky, uint256 delStable);
 
     /// @notice Thrown when the actual risky balance is less than the actual balance
     /// @param expected The expected risky balance
@@ -36,11 +36,6 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when the liquidity parameter is 0
     error ZeroLiquidityError();
 
-    /// @notice Thrown when the available liquidity is less than the required
-    /// @param delLiquidity The required liquidity
-    /// @param resLiquidity The available liquidity
-    error RemoveLiquidityError(uint256 delLiquidity, uint256 resLiquidity);
-
     /// @notice Thrown when the deltaIn parameter is 0
     error DeltaInError();
 
@@ -48,8 +43,7 @@ interface IPrimitiveEngineErrors {
     error DeltaOutError();
 
     /// @notice Thrown when the invariant is invalid
-    error InvariantError();
-
-    /// @notice Thrown if the available reserve is insufficient
-    error InsufficientFloatError();
+    /// @param  invariant Pre-swap invariant updated with new tau
+    /// @param  nextInvariant Post-swap invariant
+    error InvariantError(int128 invariant, int128 nextInvariant);
 }
