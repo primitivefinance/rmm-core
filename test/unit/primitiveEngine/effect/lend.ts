@@ -16,7 +16,7 @@ describe('lend', function () {
   })
 
   beforeEach(async function () {
-    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+    poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineLend.getPosition(poolId)
   })
 

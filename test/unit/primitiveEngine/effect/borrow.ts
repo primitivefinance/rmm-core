@@ -25,7 +25,7 @@ describe('borrow', function () {
     let deployer: Wallet, engine: PrimitiveEngine, engineBorrow: EngineBorrow
 
     beforeEach(async function () {
-      poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+      poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
       posId = await this.contracts.engineBorrow.getPosition(poolId)
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(

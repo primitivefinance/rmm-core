@@ -119,7 +119,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint256 delStable
         )
     {
-        poolId = keccak256(abi.encodePacked(factory, maturity, sigma, strike));
+        poolId = keccak256(abi.encodePacked(address(this), maturity, sigma, strike));
         if (settings[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         uint32 timestamp = _blockTimestamp();
         Calibration memory cal = Calibration({

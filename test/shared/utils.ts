@@ -3,12 +3,12 @@ import { utils, BigNumber } from 'ethers'
 const { keccak256, solidityPack } = utils
 
 export function computePoolId(
-  factory: string,
+  engine: string,
   maturity: string | number,
   sigma: string | BigNumber,
   strike: string | BigNumber
 ): string {
-  return keccak256(solidityPack(['address', 'uint32', 'uint64', 'uint256'], [factory, maturity, sigma, strike]))
+  return keccak256(solidityPack(['address', 'uint32', 'uint64', 'uint256'], [engine, maturity, sigma, strike]))
 }
 
 export function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {

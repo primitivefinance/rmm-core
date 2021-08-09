@@ -18,7 +18,7 @@ describe('create', function () {
   })
 
   beforeEach(async function () {
-    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+    poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
   })
 
   describe('success cases', function () {
@@ -96,7 +96,7 @@ describe('create', function () {
       // the expected reserve stable to be close to 0 (but not 0),
       // which will cause our delStable to be calculated as 0, which it should not be
       let fig = new Config(100, sigma.float, maturity.seconds, 1, spot.float)
-      let pid = computePoolId(this.contracts.factory.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
+      let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
       await this.contracts.engineCreate.create(fig.strike.raw, sigma.raw, maturity.raw, parseWei(fig.delta).raw)
       const res = await this.contracts.engine.reserves(pid)
       expect(res.reserveStable.isZero()).to.eq(false)
