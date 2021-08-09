@@ -3,9 +3,6 @@ pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
-
-import "hardhat/console.sol";
-
 import "../../libraries/Position.sol";
 
 contract EngineCreate {
