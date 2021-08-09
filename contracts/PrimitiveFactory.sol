@@ -10,10 +10,10 @@ import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
-    // 23.07 Kb with requires
-    // 22.99 Kb without requires
-
+    /// @notice Thrown when the risky and stable tokens are the same
     error SameTokenError();
+
+    /// @notice Thrown when the risky or the stable token is 0x0...
     error ZeroAddressError();
 
     /// @inheritdoc IPrimitiveFactory
