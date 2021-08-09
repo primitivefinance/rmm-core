@@ -157,9 +157,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     ) external override lock {
         (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
         IPrimitiveMarginCallback(msg.sender).depositCallback(delRisky, delStable, data); // receive tokens
-        (uint256 nextRisky, uint256 nextStable) = (balanceRisky(), balanceStable());
-        if (nextRisky < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, nextRisky);
-        if (nextStable < balStable + delStable) revert StableBalanceError(balStable + delStable, nextStable);
+        if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
+        if (balanceStable() < balStable + delStable) revert StableBalanceError(balStable + delStable, balanceStable());
 
         margins[owner].deposit(delRisky, delStable); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, owner, delRisky, delStable);
@@ -200,13 +199,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data); // agnostic payment
-            (uint256 nextRisky, uint256 nextStable) = (balanceRisky(), balanceStable());
-            if (nextRisky < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, nextRisky);
-            if (nextStable < balStable + delStable) revert StableBalanceError(balStable + delStable, nextStable);
+            if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
+            if (balanceStable() < balStable + delStable)
+                revert StableBalanceError(balStable + delStable, balanceStable());
         }
 
-        Position.Data storage position = positions.fetch(owner, poolId);
-        position.allocate(delLiquidity); // increase position liquidity
+        positions.fetch(owner, poolId).allocate(delLiquidity); // increase position liquidity
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, poolId, delRisky, delStable);
     }
@@ -233,16 +231,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
 
         if (toMargin) {
-            Margin.Data storage margin = margins[msg.sender];
-            margin.deposit(delRisky, delStable); // increase margin balance
+            margins[msg.sender].deposit(delRisky, delStable); // increase margin balance
         } else {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             IERC20(risky).safeTransfer(msg.sender, delRisky);
             IERC20(stable).safeTransfer(msg.sender, delStable);
             IPrimitiveLiquidityCallback(msg.sender).removeCallback(delRisky, delStable, data); // agnostic withdrawals
-            (uint256 nextRisky, uint256 nextStable) = (balanceRisky(), balanceStable());
-            if (nextRisky < balRisky - delRisky) revert RiskyBalanceError(balRisky - delRisky, nextRisky);
-            if (nextStable < balStable - delStable) revert StableBalanceError(balStable - delStable, nextStable);
+            if (balanceRisky() < balRisky - delRisky) revert RiskyBalanceError(balRisky - delRisky, balanceRisky());
+            if (balanceStable() < balStable - delStable)
+                revert StableBalanceError(balStable - delStable, balanceStable());
         }
         emit Removed(msg.sender, poolId, delRisky, delStable);
     }
@@ -306,24 +303,22 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     margins.withdraw(deltaIn, uint256(0)); // pay for swap
                 } else {
                     IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // invoice
-                    uint256 nextRisky = balanceRisky();
-                    if (balRisky + details.deltaIn > nextRisky)
-                        revert RiskyBalanceError(balRisky + details.deltaIn, nextRisky);
+                    if (balanceRisky() < balRisky + details.deltaIn)
+                        revert RiskyBalanceError(balRisky + details.deltaIn, balanceRisky());
                 }
-                uint256 nextStable = balanceStable();
-                if (balStable - amountOut > nextStable) revert StableBalanceError(balStable - amountOut, nextStable);
+                if (balanceStable() < balStable - amountOut)
+                    revert StableBalanceError(balStable - amountOut, balanceStable());
             } else {
                 IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds first, for callback if needed
                 if (details.fromMargin) {
                     margins.withdraw(uint256(0), deltaIn); // pay for swap
                 } else {
                     IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // invoice
-                    uint256 nextStable = balanceStable();
-                    if (balStable + details.deltaIn > nextStable)
-                        revert StableBalanceError(balStable + details.deltaIn, nextStable);
+                    if (balanceStable() < balStable + details.deltaIn)
+                        revert StableBalanceError(balStable + details.deltaIn, balanceStable());
                 }
-                uint256 nextRisky = balanceRisky();
-                if (balRisky - amountOut > nextRisky) revert RiskyBalanceError(balRisky - amountOut, nextRisky);
+                if (balanceRisky() < balRisky - amountOut)
+                    revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
             }
 
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
@@ -389,12 +384,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 // 4. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
                 IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
                 // Check balances after position creation
-                uint256 postRisky = balanceRisky();
-                if (balRisky + premium > postRisky) revert RiskyBalanceError(balRisky + premium, postRisky);
+                if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, balanceRisky());
             }
 
-            uint256 postStable = balanceStable();
-            if (balStable - delStable > postStable) revert StableBalanceError(balStable - delStable, postStable);
+            if (balanceStable() < balStable - delStable)
+                revert StableBalanceError(balStable - delStable, balanceStable());
         }
 
         emit Borrowed(msg.sender, poolId, delLiquidity, premium);
@@ -433,18 +427,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Update state
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
         reserve.repayFloat(delLiquidity);
-        // Balances prior to callback/transfers
-        uint256 balStable = balanceStable();
         if (fromMargin) {
             margins.withdraw(0, delStable); // pay stables from margin balance
             margins[owner].deposit(premium, 0); // receive remainder `premium` of risky to margin
         } else {
+            // Balances prior to callback/transfers
+            uint256 balStable = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, premium); // This is a concerning line of code!
             IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(delStable, data);
 
             // fails if stable is not paid
-            uint256 nextStable = balanceStable();
-            if (nextStable < balStable + delStable) revert StableBalanceError(balStable + delStable, nextStable);
+            if (balanceStable() < balStable + delStable)
+                revert StableBalanceError(balStable + delStable, balanceStable());
         }
 
         emit Repaid(msg.sender, owner, poolId, delLiquidity, premium);
