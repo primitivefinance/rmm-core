@@ -68,13 +68,13 @@ describe('remove', function () {
 
         await expect(this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, empty))
           .to.emit(this.contracts.engine, 'Removed')
-          .withArgs(this.contracts.engineRemove.address, delRisky.raw, delStable.raw)
+          .withArgs(this.contracts.engineRemove.address, poolId, delRisky.raw, delStable.raw)
       })
     })
 
     describe('fail cases', function () {
       it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToMargin(poolId, 0, empty)).to.be.revertedWith('ZeroLiquidityError()')
+        await expect(this.contracts.engineRemove.removeToMargin(poolId, 0, empty)).to.be.reverted
       })
 
       it('reverts if required amount is too big', async function () {
@@ -132,15 +132,13 @@ describe('remove', function () {
 
         await expect(this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty))
           .to.emit(this.contracts.engine, 'Removed')
-          .withArgs(this.contracts.engineRemove.address, delRisky.raw, delStable.raw)
+          .withArgs(this.contracts.engineRemove.address, poolId, delRisky.raw, delStable.raw)
       })
     })
 
     describe('fail cases', function () {
       it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToExternal(poolId, 0, empty)).to.be.revertedWith(
-          'ZeroLiquidityError()'
-        )
+        await expect(this.contracts.engineRemove.removeToExternal(poolId, 0, empty)).to.be.reverted
       })
 
       it('reverts if required amount is too big', async function () {

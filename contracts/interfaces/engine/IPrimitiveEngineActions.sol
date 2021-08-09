@@ -10,8 +10,10 @@ interface IPrimitiveEngineActions {
     /// @notice         Initializes a curve with parameters in the `settings` storage mapping in the Engine
     /// @param  strike  Strike price of the option to calibrate to
     /// @param  sigma   Volatility of the option to calibrate to
-    /// @param  maturity    Maturity timestamp of the option
+    /// @param  maturity Maturity timestamp of the option
     /// @param  delta   Call option delta, greek to represent the change in option value wrt to a 1% change in underlying value
+    /// @param  delLiquidity Amount of liquidity to mint
+    /// @param  data    Arbitrary data that is passed to the createCallback function
     /// @return poolId  Keccak256 hash of the parameters strike, sigma, and maturity, use to identify this option
     /// delRisky        Amount of risky tokens provided to reserves
     /// delStable       Amount of stable tokens provided to reserves
@@ -19,7 +21,9 @@ interface IPrimitiveEngineActions {
         uint256 strike,
         uint64 sigma,
         uint32 maturity,
-        uint256 delta
+        uint256 delta,
+        uint256 delLiquidity,
+        bytes calldata data
     )
         external
         returns (

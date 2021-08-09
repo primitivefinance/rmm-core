@@ -17,23 +17,42 @@ describe('create', function () {
     loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
   })
 
+  let delLiquidity = parseWei(0)
+
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+    delLiquidity = parseWei(1)
   })
 
   describe('success cases', function () {
     it('deploys a new pool', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
+      await this.contracts.engineCreate.create(
+        strike.raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei(delta).raw,
+        delLiquidity.raw,
+        empty
+      )
     })
 
     it('emits the Created event', async function () {
-      await expect(this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw))
+      await expect(
+        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+      )
         .to.emit(this.contracts.engine, 'Created')
         .withArgs(this.contracts.engineCreate.address, strike.raw, sigma.raw, maturity.raw)
     })
 
     it('updates the reserves of the engine', async function () {
-      const tx = await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
+      const tx = await this.contracts.engineCreate.create(
+        strike.raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei(delta).raw,
+        delLiquidity.raw,
+        empty
+      )
       await tx.wait()
       const timestamp = lastTimestamp.raw
 
@@ -51,11 +70,18 @@ describe('create', function () {
     })
 
     it('updates the calibration struct', async function () {
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
-      const settings = await this.contracts.engine.settings(poolId)
+      await this.contracts.engineCreate.create(
+        strike.raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei(delta).raw,
+        delLiquidity.raw,
+        empty
+      )
+      const calibrations = await this.contracts.engine.calibrations(poolId)
 
       // TODO: Improve this test
-      expect(settings.lastTimestamp).to.not.equal(0)
+      expect(calibrations.lastTimestamp).to.not.equal(0)
     })
   })
 
@@ -63,28 +89,51 @@ describe('create', function () {
     it('reverts when the pool already exists', async function () {
       // set a new mock timestamp to create the pool with
       await this.contracts.engine.advanceTime(1)
-      await this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
+      await this.contracts.engineCreate.create(
+        strike.raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei(delta).raw,
+        delLiquidity.raw,
+        empty
+      )
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw)
+        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
       ).to.be.revertedWith('PoolDuplicateError()')
     })
 
     it('reverts if strike is 0', async function () {
       let fig = new Config(0, sigma.float, maturity.seconds, 1, spot.float)
-      await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw)).to
-        .reverted
+      await expect(
+        this.contracts.engine.create(
+          fig.strike.raw,
+          fig.sigma.raw,
+          fig.maturity.raw,
+          parseWei(fig.delta).raw,
+          delLiquidity.raw,
+          empty
+        )
+      ).to.reverted
     })
 
     /* it('reverts if sigma is 0', async function () {
       let fig = new Config(strike.float, 0, maturity.years, 1, spot.float)
-      await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw)).to
+      await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw), delLiquidity.raw, empty).to
         .reverted
     }) */
 
     it('reverts if maturity is 0', async function () {
       let fig = new Config(strike.float, sigma.float, 0, 1, spot.float)
-      await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw)).to
-        .reverted
+      await expect(
+        this.contracts.engine.create(
+          fig.strike.raw,
+          fig.sigma.raw,
+          fig.maturity.raw,
+          parseWei(fig.delta).raw,
+          delLiquidity.raw,
+          empty
+        )
+      ).to.reverted
     })
 
     it('reverts if the actual delta amounts are 0', async function () {
@@ -97,7 +146,14 @@ describe('create', function () {
       // which will cause our delStable to be calculated as 0, which it should not be
       let fig = new Config(100, sigma.float, maturity.seconds, 1, spot.float)
       let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
-      await this.contracts.engineCreate.create(fig.strike.raw, sigma.raw, maturity.raw, parseWei(fig.delta).raw)
+      await this.contracts.engineCreate.create(
+        fig.strike.raw,
+        sigma.raw,
+        maturity.raw,
+        parseWei(fig.delta).raw,
+        delLiquidity.raw,
+        empty
+      )
       const res = await this.contracts.engine.reserves(pid)
       expect(res.reserveStable.isZero()).to.eq(false)
     })
