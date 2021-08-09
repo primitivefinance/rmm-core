@@ -67,7 +67,7 @@ interface IPrimitiveEngineView {
     /// sigma           Volatility of the pool
     /// maturity        Timestamp of maturity
     /// lastTimestamp   Last timestamp used to calculate time until expiry, "tau"
-    function settings(bytes32 poolId)
+    function calibrations(bytes32 poolId)
         external
         view
         returns (
