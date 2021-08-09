@@ -103,6 +103,33 @@ declare global {
       decreasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
       increasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
       decreasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
+      increaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      decreaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveStable(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      decreaseReserveStable(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveLiquidity(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      decreaseReserveLiquidity(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveFloat(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      decreaseReserveFloat(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      decreaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      updateReserveBlockTimestamp(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        blockTimestamp: number
+      ): AsyncAssertion
+      updateReserveCumulativeRisky(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber,
+        blockTimestamp: number
+      ): AsyncAssertion
+      updateReserveCumulativeStable(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber,
+        blockTimestamp: number
+      ): AsyncAssertion
     }
   }
 }
