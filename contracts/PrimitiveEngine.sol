@@ -15,6 +15,7 @@ import "./libraries/SafeCast.sol";
 import "./libraries/Transfers.sol";
 import "./libraries/Units.sol";
 
+import "./interfaces/callback/IPrimitiveCreateCallback.sol";
 import "./interfaces/callback/IPrimitiveLendingCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
 import "./interfaces/callback/IPrimitiveMarginCallback.sol";
@@ -104,7 +105,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 strike,
         uint64 sigma,
         uint32 maturity,
-        uint256 delta
+        uint256 delta,
+        uint256 delLiquidity,
+        bytes calldata data
     )
         external
         override
@@ -128,11 +131,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 tau = cal.maturity - timestamp; // time until expiry
         delRisky = 1e18 - delta; // Note: delta is defined between 0-1 for call options
         delStable = ReplicationMath.getStableGivenRisky(0, delRisky, cal.strike, cal.sigma, tau).parseUnits();
+        delRisky = (delRisky * delLiquidity) / 1e18;
+        delStable = (delStable * delLiquidity) / 1e18;
         if ((delRisky * delStable) == 0) revert CalibrationError(delRisky, delStable);
 
+        (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
+        IPrimitiveCreateCallback(msg.sender).createCallback(delRisky, delStable, data);
+        if (balanceRisky() < delRisky + balRisky) revert RiskyBalanceError(delRisky + balRisky, balanceRisky());
+        if (balanceStable() < delStable + balStable) revert StableBalanceError(delStable + balStable, balanceStable());
+
         calibrations[poolId] = cal; // initialize calibration
-        Reserve.Data storage reserve = reserves[poolId];
-        reserve.allocate(delRisky, delStable, 1e18, timestamp); // initialize reserves
+        reserves[poolId].allocate(delRisky, delStable, delLiquidity, timestamp); // mint liquidity
+        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
         emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
@@ -318,7 +328,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
             int128 nextInvariant = invariantOf(details.poolId);
-            if (nextInvariant < invariant || nextInvariant.sub(invariant) < Units.MANTISSA_INT)
+            if (invariant > nextInvariant && nextInvariant.sub(invariant) >= Units.MANTISSA_INT)
                 revert InvariantError(invariant, nextInvariant);
             emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
         }

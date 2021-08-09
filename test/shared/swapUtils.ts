@@ -2,17 +2,7 @@ import { utils, BigNumber } from 'ethers'
 import { Wei, Percentage, Time, Integer64x64, parseInt64x64, parseWei, toBN } from 'web3-units'
 import { quantilePrime, std_n_pdf, std_n_cdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
-
 const { keccak256, solidityPack } = utils
-
-export function computePoolId(
-  engine: string,
-  maturity: string | number,
-  sigma: string | BigNumber,
-  strike: string | BigNumber
-): string {
-  return keccak256(solidityPack(['address', 'uint32', 'uint64', 'uint256'], [engine, maturity, sigma, strike]))
-}
 
 export function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
   const salt = utils.solidityKeccak256(['bytes'], [utils.defaultAbiCoder.encode(['address', 'address'], [risky, stable])])

@@ -10,7 +10,7 @@ import { computePoolId } from '../../../shared/utils'
 let poolId: BytesLike
 let posId: BytesLike
 
-const { strike, sigma, maturity, lastTimestamp, spot } = config
+const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
 const empty: BytesLike = constants.HashZero
 
 describe('repay', function () {
@@ -67,7 +67,13 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, false, empty)
       )
         .to.emit(this.contracts.engine, 'Repaid')
-        .withArgs(this.contracts.engineRepay.address, poolId, parseWei('1').raw)
+        .withArgs(
+          this.contracts.engineRepay.address,
+          this.contracts.engineRepay.address,
+          poolId,
+          parseWei('1').raw,
+          parseWei(delta).raw
+        )
     })
 
     describe('when from margin', function () {

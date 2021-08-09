@@ -8,7 +8,7 @@ export function computePoolId(
   sigma: string | BigNumber,
   strike: string | BigNumber
 ): string {
-  return keccak256(solidityPack(['address', 'uint32', 'uint64', 'uint256'], [engine, maturity, sigma, strike]))
+  return keccak256(solidityPack(['address', 'uint256', 'uint64', 'uint32'], [engine, strike, sigma, maturity]))
 }
 
 export function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
