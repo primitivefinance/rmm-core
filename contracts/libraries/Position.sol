@@ -21,7 +21,7 @@ library Position {
     /// @dev    Used across all Engines.
     /// @param  positions    Mapping of position Ids to Positions
     /// @param  owner        Controlling address of the position
-    /// @param  poolId       Keccak256 hash of the pool parameters: strike, volatility, and time until expiry
+    /// @param  poolId       Keccak256 hash of the engine address and pool parameters (strike, volatility, and time until expiry)
     function fetch(
         mapping(bytes32 => Data) storage positions,
         address owner,
@@ -37,6 +37,8 @@ library Position {
     }
 
     /// @notice Decrease the balance of liquidity
+    /// @param poolId Keccak256 hash of the engine address and pool parameters (strike, volatility, and time until expiry)
+    /// @param delLiquidity The liquidity to remove
     function remove(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -47,6 +49,8 @@ library Position {
     }
 
     /// @notice Adds a debt balance of `delLiquidity` to `position`
+    /// @param poolId Keccak256 hash of the engine address and pool parameters (strike, volatility, and time until expiry)
+    /// @param delLiquidity The liquidity to remove
     function borrow(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -56,7 +60,9 @@ library Position {
         position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
     }
 
-    /// @notice Locks `delLiquidity` of liquidity as a float which can be borrowed from.
+    /// @notice Locks `delLiquidity` of liquidity as a float which can be borrowed from
+    /// @param poolId Keccak256 hash of the engine address and pool parameters (strike, volatility, and time until expiry)
+    /// @param delLiquidity The liquidity to remove
     function lend(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,

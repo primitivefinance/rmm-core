@@ -219,7 +219,7 @@ describe('Engine:swap', function () {
 
       beforeEach(async function () {
         ;[deployer, engine, engineSwap] = [this.signers[0], this.contracts.engine, this.contracts.engineSwap] // contracts
-        poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw) // pool id for parameters
+        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw) // pool id for parameters
 
         // state of engine pre-swap
         ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([

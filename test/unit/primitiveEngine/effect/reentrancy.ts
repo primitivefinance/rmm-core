@@ -21,7 +21,7 @@ describe('reentrancy', function () {
   })
 
   beforeEach(async function () {
-    poolId = computePoolId(this.contracts.factory.address, maturity.raw, sigma.raw, strike.raw)
+    poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
   })
 
   describe('when calling deposit in the deposit callback', function () {
@@ -42,9 +42,8 @@ describe('reentrancy', function () {
     })
 
     it('reverts the transaction', async function () {
-      await expect(
-        this.contracts.reentrancyAttacker.allocate(poolId, this.signers[0].address, parseWei('1').raw, empty)
-      ).to.be.reverted
+      await expect(this.contracts.reentrancyAttacker.allocate(poolId, this.signers[0].address, parseWei('1').raw, empty)).to
+        .be.reverted
     })
   })
 
@@ -60,9 +59,7 @@ describe('reentrancy', function () {
     })
 
     it('reverts the transaction', async function () {
-      await expect(
-        this.contracts.reentrancyAttacker.remove(poolId, parseWei('1').raw, empty)
-      ).to.be.reverted
+      await expect(this.contracts.reentrancyAttacker.remove(poolId, parseWei('1').raw, empty)).to.be.reverted
     })
   })
 
@@ -79,9 +76,8 @@ describe('reentrancy', function () {
     })
 
     it('reverts the transaction', async function () {
-      await expect(
-        this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, empty)
-      ).to.be.reverted
+      await expect(this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, empty)).to.be
+        .reverted
     })
   })
 
