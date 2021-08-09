@@ -1,8 +1,8 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { BigNumber, constants, BytesLike } from 'ethers'
 import { parseWei } from 'web3-units'
 
+import expect from '../../../shared/expect'
 import { allocateFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
@@ -34,18 +34,14 @@ describe('allocate', function () {
       it('updates the position if enough risky and stable were deposited', async function () {
         const posId = await this.contracts.engineAllocate.getPosition(poolId)
 
-        await this.contracts.engineAllocate.allocateFromMargin(
-          poolId,
-          this.contracts.engineAllocate.address,
-          parseWei('1').raw,
-          empty
-        )
-
-        expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
-          BigNumber.from('0'),
-          parseWei('1').raw,
-          BigNumber.from('0'),
-        ])
+        await expect(
+          this.contracts.engineAllocate.allocateFromMargin(
+            poolId,
+            this.contracts.engineAllocate.address,
+            parseWei('1').raw,
+            empty
+          )
+        ).to.increasePositionLiquidity(this.contracts.engine, posId, parseWei('1').raw)
       })
 
       it('emits the Allocated event', async function () {
@@ -61,7 +57,7 @@ describe('allocate', function () {
     })
 
     describe('fail cases', function () {
-      it('reverts if not risky or stable are insufficient', async function () {
+      it('reverts if risky or stable margins are insufficient', async function () {
         await expect(
           this.contracts.engineAllocate.allocateFromMargin(
             poolId,
@@ -81,7 +77,7 @@ describe('allocate', function () {
       it('reverts if the deltas are 0', async function () {
         await expect(
           this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', empty)
-        ).to.be.revertedWith('ZeroDeltasError()')
+        ).to.revertWithCustomError('ZeroDeltasError', [])
       })
     })
   })
@@ -91,18 +87,14 @@ describe('allocate', function () {
       it('updates the position if enough risky and stable are provided', async function () {
         const posId = await this.contracts.engineAllocate.getPosition(poolId)
 
-        await this.contracts.engineAllocate.allocateFromExternal(
-          poolId,
-          this.contracts.engineAllocate.address,
-          parseWei('1').raw,
-          empty
-        )
-
-        expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
-          BigNumber.from('0'),
-          parseWei('1').raw,
-          BigNumber.from('0'),
-        ])
+        await expect(
+          this.contracts.engineAllocate.allocateFromExternal(
+            poolId,
+            this.contracts.engineAllocate.address,
+            parseWei('1').raw,
+            empty
+          )
+        ).to.increasePositionLiquidity(this.contracts.engine, posId, parseWei('1').raw)
       })
 
       it('transfers the tokens', async function () {
