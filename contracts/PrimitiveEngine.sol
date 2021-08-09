@@ -24,9 +24,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-// With requires 21.65  Kb
-// Without requires 21.10 Kb
-
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using BlackScholes for int128;
