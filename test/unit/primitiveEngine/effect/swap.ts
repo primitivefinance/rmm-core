@@ -255,6 +255,11 @@ describe('Engine:swap', function () {
 
       for (const testCase of TestCases) {
         it(swapTestCaseDescription(testCase), async function () {
+          const receiver = testCase.fromMargin
+            ? this.signers[testCase.signer ? testCase.signer : 0].address
+            : engineSwap.address
+          const tokenReceived = testCase.riskyForStable ? this.contracts.stable : this.contracts.risky
+          const [preReceiverBalance] = await Promise.all([tokenReceived.balanceOf(receiver)])
           const [reserveRisky, reserveStable, liquidity] = [
             new Wei(preReserves.reserveRisky),
             new Wei(preReserves.reserveStable),
@@ -338,6 +343,7 @@ describe('Engine:swap', function () {
 
           expect(simulated.nextInvariant?.parsed).to.be.closeTo(new Integer64x64(postInvariant).parsed, 1)
           expect(balanceOut).to.be.eq(deltaOut.raw)
+          expect(await tokenReceived.balanceOf(receiver)).to.be.gte(preReceiverBalance.add(deltaOut.raw))
           const postI = new Integer64x64(postInvariant)
           const preI = new Integer64x64(preInvariant)
           expect(postI.parsed >= preI.parsed || postI.parsed - preI.parsed < 1e8).to.be.eq(true)
@@ -346,9 +352,6 @@ describe('Engine:swap', function () {
           } else {
             expect(postSpot).to.be.gte(preSpot)
           }
-
-          // Simulation comparisons
-          //expect(postSpot).to.be.closeTo(simulated.effectivePriceOutStable?.float, 1)
         })
       }
     })

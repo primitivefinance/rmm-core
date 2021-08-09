@@ -149,15 +149,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delStable,
         bytes calldata data
     ) external override lock {
-        uint256 balRisky = balanceRisky();
-        uint256 balStable = balanceStable();
+        (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
         IPrimitiveMarginCallback(msg.sender).depositCallback(delRisky, delStable, data); // receive tokens
 
-        if (delRisky > 0 && balanceRisky() < balRisky + delRisky)
-            revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
-
-        if (delStable > 0 && balanceStable() < balStable + delStable)
-            revert StableBalanceError(balStable + delStable, balanceStable());
+        if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
+        if (balanceStable() < balStable + delStable) revert StableBalanceError(balStable + delStable, balanceStable());
 
         Margin.Data storage margin = margins[owner];
         margin.deposit(delRisky, delStable); // adds to risky and/or stable token balances
@@ -183,13 +179,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
         Reserve.Data storage reserve = reserves[poolId];
+        if (reserve.blockTimestamp == 0) revert UninitializedError();
         (uint256 resLiquidity, uint256 resRisky, uint256 resStable) = (
             reserve.liquidity,
             reserve.reserveRisky,
             reserve.reserveStable
         );
 
-        if (reserve.blockTimestamp == 0) revert UninitializedError();
         delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky tokens to provide
         delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable tokens to provide
         if (delRisky * delStable == 0) revert ZeroDeltasError();
@@ -217,8 +213,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bool toMargin,
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
-        if (delLiquidity == 0) revert ZeroLiquidityError();
-
         Reserve.Data storage reserve = reserves[poolId];
         (uint256 resRisky, uint256 resStable, uint256 resLiquidity) = (
             reserve.reserveRisky,
@@ -227,7 +221,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         );
 
         if (resLiquidity < delLiquidity) revert RemoveLiquidityError(delLiquidity, resLiquidity);
-
         delRisky = (resRisky * delLiquidity) / resLiquidity; // amount of risky to remove
         delStable = (resStable * delLiquidity) / resLiquidity; // amount of stable to remove
         if (delRisky * delStable == 0) revert ZeroDeltasError();
@@ -276,7 +269,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         });
 
         // 1. Update the lastTimestamp, effectively updating the time until expiry
-        settings[details.poolId].lastTimestamp = _blockTimestamp();
+        uint32 timestamp = _blockTimestamp();
+        settings[details.poolId].lastTimestamp = timestamp;
+        emit UpdatedTimestamp(details.poolId, timestamp);
         // 2. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
         int128 invariant = invariantOf(details.poolId);
         Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
@@ -302,36 +297,28 @@ contract PrimitiveEngine is IPrimitiveEngine {
             // avoids stack too deep errors
             uint256 amountOut = deltaOut;
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
-            if (details.fromMargin) {
-                if (details.riskyForStable) {
+            if (details.riskyForStable) {
+                IERC20(stable).safeTransfer(msg.sender, amountOut); // send proceeds, for callback if needed
+                if (details.fromMargin) {
                     margins.withdraw(deltaIn, uint256(0)); // pay for swap
-                    IERC20(stable).safeTransfer(msg.sender, amountOut); // send proceeds
-                    if (balanceStable() < balStable - amountOut)
-                        revert StableBalanceError(balStable - amountOut, balanceStable());
                 } else {
-                    margins.withdraw(uint256(0), deltaIn); // pay for swap
-                    IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds
-                    if (balanceRisky() < balRisky - amountOut)
-                        revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
-                }
-            } else {
-                if (details.riskyForStable) {
                     IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // invoice
                     if (balanceRisky() < balRisky + details.deltaIn)
                         revert RiskyBalanceError(balRisky + details.deltaIn, balanceRisky());
-
-                    IERC20(stable).safeTransfer(msg.sender, amountOut); // send proceeds
-                    if (balanceStable() < balStable - amountOut)
-                        revert RiskyBalanceError(balStable - amountOut, balanceStable());
+                }
+                if (balanceStable() < balStable - amountOut)
+                    revert StableBalanceError(balStable - amountOut, balanceStable());
+            } else {
+                IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds first, for callback if needed
+                if (details.fromMargin) {
+                    margins.withdraw(uint256(0), deltaIn); // pay for swap
                 } else {
                     IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // invoice
                     if (balanceStable() < balStable + details.deltaIn)
                         revert StableBalanceError(balStable + details.deltaIn, balanceStable());
-
-                    IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds
-                    if (balanceRisky() < balRisky - amountOut)
-                        revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
                 }
+                if (balanceRisky() < balRisky - amountOut)
+                    revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
             }
 
             reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
@@ -450,7 +437,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp());
         reserve.repayFloat(delLiquidity);
         // Balances prior to callback/transfers
-        // uint256 preRisky = IERC20(risky).balanceOf(address(this));
         uint256 balStable = balanceStable();
         if (fromMargin) {
             margins.withdraw(0, delStable); // pay stables from margin balance

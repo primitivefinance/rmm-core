@@ -12,6 +12,11 @@ interface IPrimitiveEngineEvents {
     /// @param  maturity    Maturity timestamp of the option of the curve to calibrate to
     event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
 
+    /// @notice Updates a pool's settings with a new timestamp, changing the time until expiry of the option
+    /// @param  poolId Keccak256 hash of the pool's parameters and the factory address
+    /// @param  timestamp New timestamp
+    event UpdatedTimestamp(bytes32 indexed poolId, uint32 timestamp);
+
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
     /// @param  from        Calling `msg.sender`
