@@ -15,7 +15,7 @@ describe('borrow', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineBorrow'],
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
       borrowFragment
     )
   })
@@ -30,12 +30,12 @@ describe('borrow', function () {
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
-        this.contracts.engineLend.address,
+        this.contracts.engineSupply.address,
         parseWei('1000').raw,
         empty
       )
 
-      await this.contracts.engineLend.lend(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
     })
 
     describe('success cases', async function () {

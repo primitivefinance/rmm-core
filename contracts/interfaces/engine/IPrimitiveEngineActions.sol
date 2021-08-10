@@ -5,8 +5,6 @@ pragma solidity 0.8.6;
 /// @author Primitive
 
 interface IPrimitiveEngineActions {
-    // Curve
-
     /// @notice         Initializes a curve with parameters in the `settings` storage mapping in the Engine
     /// @param  strike  Strike price of the option to calibrate to
     /// @param  sigma   Volatility of the option to calibrate to
@@ -32,8 +30,7 @@ interface IPrimitiveEngineActions {
             uint256 delStable
         );
 
-    // Margin
-
+    // ===== Margin ====
     /// @notice Adds risky and/or stable tokens to a `msg.sender`'s internal balance account
     /// @param  recipient   Recipient margin account of the deposited tokens
     /// @param  delRisky    Amount of risky tokens to deposit
@@ -56,8 +53,7 @@ interface IPrimitiveEngineActions {
         uint256 delStable
     ) external;
 
-    // Liquidity
-
+    // ===== Liquidity =====
     /// @notice Allocates risky and stable tokens to a specific curve with `poolId`
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Address to give the allocated position to
@@ -81,8 +77,7 @@ interface IPrimitiveEngineActions {
     /// delStable               Amount of stable tokens received from the burned liquidity
     function remove(bytes32 poolId, uint256 delLiquidity) external returns (uint256 delRisky, uint256 delStable);
 
-    // Swaps
-
+    // ===== Swaps =====
     /// @notice Swaps risky or stable tokens
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  riskyForStable Whether to do a risky to stable token swap, or stable to risky swap
@@ -98,14 +93,13 @@ interface IPrimitiveEngineActions {
         bytes calldata data
     ) external returns (uint256 deltaOut);
 
-    // Lending
-
-    /// @notice Increases the `msg.sender`'s position's float value. Lends liquidity.
+    // ===== Convexity =====
+    /// @notice Increases the `msg.sender`'s position's float value. Supplies liquidity to be borrowed.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity to add to the float
-    function lend(bytes32 poolId, uint256 delLiquidity) external;
+    function supply(bytes32 poolId, uint256 delLiquidity) external;
 
-    /// @notice Reduces the `msg.sender`'s position's float value. Removes loaned liquidity.
+    /// @notice Reduces the `msg.sender`'s position's float value. Removes supplied liquidity.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity to remove from the float
     function claim(bytes32 poolId, uint256 delLiquidity) external;

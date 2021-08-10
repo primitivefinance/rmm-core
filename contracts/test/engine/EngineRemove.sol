@@ -27,7 +27,8 @@ contract EngineRemove {
         uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(poolId, delLiquidity, true, data);
+        data;
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity);
     }
 
     function removeToExternal(
@@ -35,7 +36,9 @@ contract EngineRemove {
         uint256 delLiquidity,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(poolId, delLiquidity, false, data);
+        data;
+        (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(poolId, delLiquidity);
+        IPrimitiveEngine(engine).withdraw(address(this), delRisky, delStable);
     }
 
     function removeCallback(

@@ -16,9 +16,10 @@ import "./libraries/Transfers.sol";
 import "./libraries/Units.sol";
 
 import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveLendingCallback.sol";
+import "./interfaces/callback/IPrimitiveBorrowCallback.sol";
+import "./interfaces/callback/IPrimitiveDepositCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveMarginCallback.sol";
+import "./interfaces/callback/IPrimitiveRepayCallback.sol";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
@@ -159,7 +160,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 balStable;
         if (delRisky > 0) balRisky = balanceRisky();
         if (delStable > 0) balStable = balanceStable();
-        IPrimitiveMarginCallback(msg.sender).depositCallback(delRisky, delStable, data); // receive tokens
+        IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // receive tokens
         if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
         if (balanceStable() < balStable + delStable) revert StableBalanceError(balStable + delStable, balanceStable());
 
@@ -317,14 +318,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
     }
 
-    // ===== Lending =====
+    // ===== Convexity =====
 
     /// @inheritdoc IPrimitiveEngineActions
-    function lend(bytes32 poolId, uint256 delLiquidity) external override lock {
+    function supply(bytes32 poolId, uint256 delLiquidity) external override lock {
         if (delLiquidity == 0) revert ZeroLiquidityError();
-        positions.lend(poolId, delLiquidity); // increase position float by `delLiquidity`
+        positions.supply(poolId, delLiquidity); // increase position float by `delLiquidity`
         reserves[poolId].addFloat(delLiquidity); // increase global float
-        emit Loaned(msg.sender, poolId, delLiquidity);
+        emit Supplied(msg.sender, poolId, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -370,7 +371,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 margins.withdraw(premium, 0); // pay premium from margin risky balance
             } else {
                 // 4. Sell `stable` tokens for `risky` tokens, agnostically, within the callback
-                IPrimitiveLendingCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
+                IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data);
                 // Check balances after position creation
                 if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, balanceRisky());
             }
@@ -422,7 +423,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             // Balances prior to callback/transfers
             uint256 balStable = balanceStable();
             IERC20(risky).safeTransfer(msg.sender, premium); // This is a concerning line of code!
-            IPrimitiveLendingCallback(msg.sender).repayFromExternalCallback(delStable, data);
+            IPrimitiveRepayCallback(msg.sender).repayCallback(delStable, data);
 
             // fails if stable is not paid
             if (balanceStable() < balStable + delStable)

@@ -16,7 +16,7 @@ describe('reentrancy', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['reentrancyAttacker', 'engineCreate', 'engineAllocate', 'engineLend', 'engineBorrow'],
+      ['reentrancyAttacker', 'engineCreate', 'engineAllocate', 'engineSupply', 'engineBorrow'],
       reentrancyFragment
     )
   })
@@ -62,29 +62,6 @@ describe('reentrancy', function () {
     })
   })
 
-  describe('when calling remove in the remove callback', function () {
-    beforeEach(async function () {
-      await this.contracts.engineCreate.create(
-        strike.raw,
-        sigma.raw,
-        maturity.raw,
-        parseWei(delta).raw,
-        delLiquidity.raw,
-        empty
-      )
-      await this.contracts.engineAllocate.allocateFromExternal(
-        poolId,
-        this.contracts.reentrancyAttacker.address,
-        parseWei('10').raw,
-        empty
-      )
-    })
-
-    it('reverts the transaction', async function () {
-      await expect(this.contracts.reentrancyAttacker.remove(poolId, parseWei('1').raw, empty)).to.be.reverted
-    })
-  })
-
   describe('when calling borrow in the borrow callback', function () {
     beforeEach(async function () {
       await this.contracts.engineCreate.create(
@@ -97,11 +74,11 @@ describe('reentrancy', function () {
       )
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
-        this.contracts.engineLend.address,
+        this.contracts.engineSupply.address,
         parseWei('100').raw,
         empty
       )
-      await this.contracts.engineLend.lend(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
     })
 
     it('reverts the transaction', async function () {
@@ -122,11 +99,11 @@ describe('reentrancy', function () {
       )
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
-        this.contracts.engineLend.address,
+        this.contracts.engineSupply.address,
         parseWei('100').raw,
         empty
       )
-      await this.contracts.engineLend.lend(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
       await this.contracts.reentrancyAttacker.borrowWithGoodCallback(
         poolId,
         this.contracts.reentrancyAttacker.address,
