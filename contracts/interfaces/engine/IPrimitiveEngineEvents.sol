@@ -20,24 +20,32 @@ interface IPrimitiveEngineEvents {
     // ===== Margin ====
     /// @notice Added stable and/or risky tokens to a margin accouynt
     /// @param  from        Calling `msg.sender`
-    /// @param  owner       Recipient margin account owner
+    /// @param  recipient   Margin account recieving deposits
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Deposited(address indexed from, address indexed owner, uint256 delRisky, uint256 delStable);
+    event Deposited(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
 
     /// @notice Removes stable and/or risky from a margin account
     /// @param  from        Calling `msg.sender`
+    /// @param  recipient   Address that tokens are sent to
     /// @param  delRisky    Amount of risky tokens withdrawn
     /// @param  delStable   Amount of stable tokens withdrawn
-    event Withdrawn(address indexed from, uint256 delRisky, uint256 delStable);
+    event Withdrawn(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
 
     // ===== Liquidity =====
     /// @notice Adds liquidity of risky and stable tokens to a specified curve `poolId`
     /// @param  from        Calling `msg.sender`
+    /// @param  recipient   Address that controls the position
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Allocated(address indexed from, bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
+    event Allocated(
+        address indexed from,
+        address indexed recipient,
+        bytes32 indexed poolId,
+        uint256 delRisky,
+        uint256 delStable
+    );
 
     /// @notice Adds liquidity of risky and stable tokens to a specified curve `poolId`
     /// @param  from        Calling `msg.sender`
@@ -50,13 +58,13 @@ interface IPrimitiveEngineEvents {
     /// @notice Swaps either risky for stable tokens or stable for risky.
     /// @param  from     Calling `msg.sender`
     /// @param  poolId   Keccak hash of the option parameters of a curve to interact with
-    /// @param  addXRemoveY  If true, a swap from the risky token to the stable token
+    /// @param  riskyForStable  If true, a swap from the risky token to the stable token
     /// @param  deltaIn  Amount of tokens paid
     /// @param  deltaOut Amount of tokens received
     event Swap(
         address indexed from,
         bytes32 indexed poolId,
-        bool indexed addXRemoveY,
+        bool indexed riskyForStable,
         uint256 deltaIn,
         uint256 deltaOut
     );
@@ -83,13 +91,13 @@ interface IPrimitiveEngineEvents {
 
     /// @notice Repays a borrowed position, reduces liquidity shares of position and debt.
     /// @param  from            Calling `msg.sender`
-    /// @param  owner           Owner of the position to repay
+    /// @param  recipient       Owner of the position to repay
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity    Amount of liquidity to pay
     /// @param  premium         Amount of risky profit returned to borrower
     event Repaid(
         address indexed from,
-        address indexed owner,
+        address indexed recipient,
         bytes32 indexed poolId,
         uint256 delLiquidity,
         uint256 premium
