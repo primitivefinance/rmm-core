@@ -226,7 +226,7 @@ describe('Engine:swap', function () {
           this.contracts.risky.balanceOf(engine.address),
           this.contracts.stable.balanceOf(engine.address),
           engine.reserves(poolId),
-          engine.settings(poolId),
+          engine.calibrations(poolId),
           engine.invariantOf(poolId),
         ])
 
@@ -288,7 +288,7 @@ describe('Engine:swap', function () {
             this.contracts.risky.balanceOf(engine.address),
             this.contracts.stable.balanceOf(engine.address),
             engine.reserves(poolId),
-            engine.settings(poolId),
+            engine.calibrations(poolId),
             engine.invariantOf(poolId),
           ])
 

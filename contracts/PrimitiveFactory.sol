@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
-pragma abicoder v2;
 
 /// @title   Primitive Factory
 /// @author  Primitive
@@ -51,7 +50,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///         "It will compute the address from the address of the creating contract,
     ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
     /// @param  factory The address of the deploying smart contract
-    /// @param  risky A risky token address
+    /// @param  risky   A risky token address
     /// @param  stable  A stable token address
     /// @return engine  The engine contract address which was deployed
     function deploy(
