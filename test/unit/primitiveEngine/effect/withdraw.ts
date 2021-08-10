@@ -37,7 +37,7 @@ describe('withdraw', function () {
     it('emits the Withdrawn event', async function () {
       await expect(this.contracts.engineWithdraw.withdraw(parseWei('1000').raw, parseWei('1000').raw))
         .to.emit(this.contracts.engine, 'Withdrawn')
-        .withArgs(this.contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw)
+        .withArgs(this.contracts.engineWithdraw.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
     })
   })
 

@@ -69,7 +69,7 @@ export async function removeFragment(signers: Wallet[], contracts: Contracts): P
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineRemove.address, parseWei('10').raw, empty)
 }
 
-export async function lendFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
+export async function supplyFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, parseWei('10000000').raw)
   await contracts.risky.mint(signers[0].address, parseWei('10000000').raw)
 
@@ -84,7 +84,7 @@ export async function lendFragment(signers: Wallet[], contracts: Contracts): Pro
 
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
 
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('10').raw, empty)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('10').raw, empty)
 }
 
 export async function borrowFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -104,8 +104,8 @@ export async function borrowFragment(signers: Wallet[], contracts: Contracts): P
 
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
 
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
-  await contracts.engineLend.lend(poolId, parseWei('100').raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('100').raw, empty)
+  await contracts.engineSupply.supply(poolId, parseWei('100').raw)
 }
 
 export async function swapFragment(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -144,8 +144,8 @@ export async function repayFragment(signers: Wallet[], contracts: Contracts): Pr
 
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
 
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineLend.address, parseWei('100').raw, empty)
-  await contracts.engineLend.lend(poolId, parseWei('100').raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('100').raw, empty)
+  await contracts.engineSupply.supply(poolId, parseWei('100').raw)
 }
 
 export async function reentrancyFragment(signers: Wallet[], contracts: Contracts): Promise<void> {

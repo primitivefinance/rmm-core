@@ -69,12 +69,12 @@ interface IPrimitiveEngineEvents {
         uint256 deltaOut
     );
 
-    // ===== Lending =====
+    // ===== Convexity =====
     /// @notice Liquidity shares added to the float to be borrowed
     /// @param  from            Calling `msg.sender`
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity    Amount of liquidity shares loaned
-    event Loaned(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
+    /// @param  delLiquidity    Amount of liquidity shares supplied
+    event Supplied(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
 
     /// @notice Liquidity shares removed from the float
     /// @param  from            Calling `msg.sender`
