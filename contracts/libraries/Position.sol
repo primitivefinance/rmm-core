@@ -22,14 +22,14 @@ library Position {
     /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
     /// @dev    Used across all Engines
     /// @param  positions    Mapping of position Ids to Positions
-    /// @param  owner        Controlling address of the position
+    /// @param  account      Controlling address of the position
     /// @param  poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
     function fetch(
         mapping(bytes32 => Data) storage positions,
-        address owner,
+        address account,
         bytes32 poolId
     ) internal view returns (Data storage) {
-        return positions[getPositionId(owner, poolId)];
+        return positions[getPositionId(account, poolId)];
     }
 
     /// @notice Add to the balance of liquidity
@@ -92,11 +92,11 @@ library Position {
         position.debt -= delLiquidity.toUint128();
     }
 
-    /// @notice  Fetches the position Id, which is an encoded `owner` and `poolId`.
-    /// @param   owner      Controlling address of the position
+    /// @notice  Fetches the position Id, which is an encoded `account` and `poolId`.
+    /// @param   account    Controlling address of the position
     /// @param   poolId     Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @return  posId      Keccak hash of the owner and poolId
-    function getPositionId(address owner, bytes32 poolId) internal pure returns (bytes32 posId) {
-        posId = keccak256(abi.encodePacked(owner, poolId));
+    /// @return  posId      Keccak hash of the account and poolId
+    function getPositionId(address account, bytes32 poolId) internal pure returns (bytes32 posId) {
+        posId = keccak256(abi.encodePacked(account, poolId));
     }
 }
