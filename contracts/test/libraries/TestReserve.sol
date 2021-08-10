@@ -98,7 +98,7 @@ contract TestReserve {
         return reserves[resId];
     }
 
-    /// @notice Increases available float to borrow, called when lending
+    /// @notice Increases available float to borrow, called when supplying
     function shouldAddFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
         reserves[resId].addFloat(delLiquidity);
         return reserves[resId];

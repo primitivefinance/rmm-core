@@ -23,7 +23,7 @@ export const EngineEvents = {
   ADDED_BOTH: 'AddedBoth',
   REMOVED_BOTH: 'RemovedBoth',
   SWAP: 'Swap',
-  LOANED: 'Loaned',
+  SUPPLIED: 'Supplied',
   CLAIMED: 'Claimed',
   BORROWED: 'Borrowed',
   REPAID: 'Repaid',
@@ -204,7 +204,7 @@ describe('Engine:swap', function () {
   before('Load swap context', async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineLend', 'engineAllocate', 'testReplicationMath'],
+      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineSupply', 'engineAllocate', 'testReplicationMath'],
       swapFragment
     )
   })

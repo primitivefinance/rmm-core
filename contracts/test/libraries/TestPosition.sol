@@ -77,10 +77,10 @@ contract TestPosition {
     }
 
     /// @notice Increments a position's float
-    function shouldLend(bytes32 poolId, uint256 amount) public {
+    function shouldSupply(bytes32 poolId, uint256 amount) public {
         Position.Data memory position = _shouldFetch(msg.sender, poolId);
         uint128 pre = position.float;
-        positions.lend(poolId, amount);
+        positions.supply(poolId, amount);
         position = _shouldFetch(msg.sender, poolId);
         uint128 post = position.float;
         assert(post - uint128(amount) >= pre);

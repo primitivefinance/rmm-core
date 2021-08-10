@@ -15,7 +15,7 @@ library Reserve {
         uint128 reserveRisky; // reserve for the risky asset
         uint128 reserveStable; // reserve for the stable asset
         uint128 liquidity; // total supply of liquidity
-        uint128 float; // liquidity available for lending
+        uint128 float; // liquidity available for borrowing
         uint128 debt; // liquidity unavailable because it was borrowed
         uint32 blockTimestamp; // last timestamp for updated cumulative reserves
         uint256 cumulativeRisky;
@@ -97,7 +97,7 @@ library Reserve {
         update(reserve, blockTimestamp);
     }
 
-    /// @notice Increases available float to borrow, called when lending
+    /// @notice Increases available float to borrow, called when borrowing
     /// @param reserve      Reserve storage to manipulate
     /// @param delLiquidity Amount of liquidity to add to float
     function addFloat(Data storage reserve, uint256 delLiquidity) internal {

@@ -83,7 +83,7 @@ contract EngineBorrow {
         IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
     }
 
-    function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+    function repayCallback(uint256 delStable, bytes calldata data) external {
         data;
         IERC20(stable).transferFrom(CALLER, msg.sender, delStable);
         IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));

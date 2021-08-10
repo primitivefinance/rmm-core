@@ -43,16 +43,16 @@ describe('testPosition', function () {
       expect((await position.pos()).liquidity).to.be.deep.eq(0) // removed all liquidity
       expect((await position.pos()).debt).to.be.deep.eq(before.debt.add(amount))
     })
-    it('shouldLend', async function () {
+    it('shouldSupply', async function () {
       let amount = parseWei('0.1').raw
-      await position.shouldAllocate(poolId, amount) // allocate so we can lend
-      await position.shouldLend(poolId, amount)
+      await position.shouldAllocate(poolId, amount) // allocate so we can supply
+      await position.shouldSupply(poolId, amount)
       expect((await position.pos()).float).to.be.deep.eq(before.float.add(amount))
     })
     it('shouldClaim', async function () {
       let amount = parseWei('0.1').raw
-      await position.shouldAllocate(poolId, amount) // allocate so we can lend
-      await position.shouldLend(poolId, amount) // lend so we can claim
+      await position.shouldAllocate(poolId, amount) // allocate so we can supply
+      await position.shouldSupply(poolId, amount) // supply so we can claim
       await position.shouldClaim(poolId, amount)
       expect((await position.pos()).float).to.be.deep.eq(before.float) // no chnage since we lent and claimed
     })
