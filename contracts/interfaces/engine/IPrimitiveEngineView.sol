@@ -91,9 +91,9 @@ interface IPrimitiveEngineView {
             uint128 debt
         );
 
-    /// @notice                 Fetchs the margin position of `owner`
-    /// @param  owner           Margin account's owner
+    /// @notice                 Fetchs the margin position of `account`
+    /// @param  account         Margin account's account
     /// @return balanceRisky    Balance of the risky token
     /// balanceStable           Balance of the stable token
-    function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
+    function margins(address account) external view returns (uint128 balanceRisky, uint128 balanceStable);
 }
