@@ -10,11 +10,11 @@ import "./SafeCast.sol";
 library Position {
     using SafeCast for uint256;
 
-    /// @notice Thrown on attempting to lend more liquidity than available
+    /// @notice Thrown on attempting to supply more liquidity than available
     error LiquidityError();
 
     struct Data {
-        uint128 float; // Balance of loaned liquidity
+        uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
         uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
     }
@@ -64,8 +64,8 @@ library Position {
 
     /// @notice Locks `delLiquidity` of liquidity as a float which can be borrowed from
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity The liquidity to lend
-    function lend(
+    /// @param delLiquidity The liquidity to supply
+    function supply(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
         uint256 delLiquidity

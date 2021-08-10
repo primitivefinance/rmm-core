@@ -17,7 +17,7 @@ describe('repay', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineRepay'],
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineRepay'],
       repayFragment
     )
   })

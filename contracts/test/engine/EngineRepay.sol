@@ -97,7 +97,7 @@ contract EngineRepay {
         dontRepay = 1;
     }
 
-    function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+    function repayCallback(uint256 delStable, bytes calldata data) external {
         data;
         if (dontRepay == 0) return;
         IERC20(stable).transferFrom(CALLER, msg.sender, delStable);

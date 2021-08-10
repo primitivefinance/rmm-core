@@ -4,7 +4,7 @@ pragma solidity 0.8.6;
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
 
-contract EngineLend {
+contract EngineSupply {
     address public engine;
     address public risky;
     address public stable;
@@ -22,8 +22,8 @@ contract EngineLend {
         stable = _stable;
     }
 
-    function lend(bytes32 poolId, uint256 dLiquidty) public {
-        IPrimitiveEngine(engine).lend(poolId, dLiquidty);
+    function supply(bytes32 poolId, uint256 dLiquidty) public {
+        IPrimitiveEngine(engine).supply(poolId, dLiquidty);
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
@@ -31,6 +31,6 @@ contract EngineLend {
     }
 
     function name() public pure returns (string memory) {
-        return "EngineLend";
+        return "EngineSupply";
     }
 }

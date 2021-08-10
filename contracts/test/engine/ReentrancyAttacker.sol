@@ -109,7 +109,8 @@ contract ReentrancyAttacker {
     ) public {
         _poolId = poolId;
         _delLiquidity = delLiquidity;
-        IPrimitiveEngine(engine).remove(poolId, delLiquidity, false, data);
+        data;
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity);
     }
 
     function removeCallback(
@@ -119,7 +120,8 @@ contract ReentrancyAttacker {
     ) public {
         delRisky;
         delStable;
-        IPrimitiveEngine(engine).remove(_poolId, _delLiquidity, false, data);
+        data;
+        IPrimitiveEngine(engine).remove(_poolId, _delLiquidity);
     }
 
     function borrow(
@@ -186,7 +188,7 @@ contract ReentrancyAttacker {
         IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
     }
 
-    function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+    function repayCallback(uint256 delStable, bytes calldata data) external {
         delStable;
         IPrimitiveEngine(engine).repay(_poolId, _owner, _delLiquidity, false, data);
     }

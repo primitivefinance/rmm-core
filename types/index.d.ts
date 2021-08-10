@@ -21,7 +21,7 @@ export interface Contracts {
   engineSwap: ContractTypes.EngineSwap
   engineAllocate: ContractTypes.EngineAllocate
   engineRemove: ContractTypes.EngineRemove
-  engineLend: ContractTypes.EngineLend
+  engineSupply: ContractTypes.EngineSupply
   engineBorrow: ContractTypes.EngineBorrow
   engineRepay: ContractTypes.EngineRepay
   badEngineDeposit: ContractTypes.BadEngineDeposit
@@ -75,7 +75,7 @@ type ContractName =
   | 'testBlackScholes'
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
-  | 'engineLend'
+  | 'engineSupply'
   | 'engineBorrow'
   | 'engineRepay'
   | 'badEngineDeposit'
@@ -87,13 +87,13 @@ declare global {
       revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
       increaseMargin(
         engine: ContractTypes.PrimitiveEngine,
-        owner: string,
+        account: string,
         risky: BigNumber,
         stable: BigNumber
       ): AsyncAssertion
       decreaseMargin(
         engine: ContractTypes.PrimitiveEngine,
-        owner: string,
+        account: string,
         risky: BigNumber,
         stable: BigNumber
       ): AsyncAssertion
