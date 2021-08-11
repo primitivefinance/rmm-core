@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers'
+import { Wallet, BigNumber } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
@@ -21,7 +21,7 @@ export interface Contracts {
   engineSwap: ContractTypes.EngineSwap
   engineAllocate: ContractTypes.EngineAllocate
   engineRemove: ContractTypes.EngineRemove
-  engineLend: ContractTypes.EngineLend
+  engineSupply: ContractTypes.EngineSupply
   engineBorrow: ContractTypes.EngineBorrow
   engineRepay: ContractTypes.EngineRepay
   badEngineDeposit: ContractTypes.BadEngineDeposit
@@ -32,7 +32,6 @@ export interface Contracts {
   testReplicationMath: ContractTypes.TestReplicationMath
   testBlackScholes: ContractTypes.TestBlackScholes
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
-  flashBorrower: ContractTypes.FlashBorrower
   reentrancyAttacker: ContractTypes.ReentrancyAttacker
 }
 
@@ -76,9 +75,34 @@ type ContractName =
   | 'testBlackScholes'
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
-  | 'engineLend'
+  | 'engineSupply'
   | 'engineBorrow'
   | 'engineRepay'
   | 'badEngineDeposit'
-  | 'flashBorrower'
   | 'reentrancyAttacker'
+
+declare global {
+  export namespace Chai {
+    interface Assertion {
+      revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
+      increaseMargin(
+        engine: ContractTypes.PrimitiveEngine,
+        account: string,
+        risky: BigNumber,
+        stable: BigNumber
+      ): AsyncAssertion
+      decreaseMargin(
+        engine: ContractTypes.PrimitiveEngine,
+        account: string,
+        risky: BigNumber,
+        stable: BigNumber
+      ): AsyncAssertion
+      increasePositionFloat(engine: ContractTypes.PrimitiveEngine, posId: string, float: BigNumber): AsyncAssertion
+      decreasePositionFloat(engine: ContractTypes.PrimitiveEngine, posId: string, float: BigNumber): AsyncAssertion
+      increasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
+      decreasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
+      increasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
+      decreasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
+    }
+  }
+}

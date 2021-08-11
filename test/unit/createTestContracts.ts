@@ -70,9 +70,9 @@ export default async function createTestContracts(contracts: ContractName[], dep
         loadedContracts.engineRemove = (await deploy('EngineRemove', deployer)) as ContractTypes.EngineRemove
         await initializeTestContract(loadedContracts.engineRemove, loadedContracts)
         break
-      case 'engineLend':
-        loadedContracts.engineLend = (await deploy('EngineLend', deployer)) as ContractTypes.EngineLend
-        await initializeTestContract(loadedContracts.engineLend, loadedContracts)
+      case 'engineSupply':
+        loadedContracts.engineSupply = (await deploy('EngineSupply', deployer)) as ContractTypes.EngineSupply
+        await initializeTestContract(loadedContracts.engineSupply, loadedContracts)
         break
       case 'engineBorrow':
         loadedContracts.engineBorrow = (await deploy('EngineBorrow', deployer)) as ContractTypes.EngineBorrow
@@ -113,9 +113,6 @@ export default async function createTestContracts(contracts: ContractName[], dep
       case 'badEngineDeposit':
         loadedContracts.badEngineDeposit = (await deploy('BadEngineDeposit', deployer)) as ContractTypes.BadEngineDeposit
         await initializeTestContract(loadedContracts.badEngineDeposit, loadedContracts)
-        break
-      case 'flashBorrower':
-        loadedContracts.flashBorrower = (await deploy('FlashBorrower', deployer)) as ContractTypes.FlashBorrower
         break
       case 'reentrancyAttacker':
         loadedContracts.reentrancyAttacker = (await deploy(

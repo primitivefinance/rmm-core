@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
@@ -24,9 +24,7 @@ contract EngineWithdraw {
 
     function withdraw(uint256 delRisky, uint256 delStable) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).withdraw(delRisky, delStable);
-        IERC20(risky).transfer(CALLER, delRisky);
-        IERC20(stable).transfer(CALLER, delStable);
+        IPrimitiveEngine(engine).withdraw(msg.sender, delRisky, delStable);
     }
 
     function name() public pure returns (string memory) {

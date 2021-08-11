@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
 
-contract EngineLend {
+contract EngineSupply {
     address public engine;
     address public risky;
     address public stable;
@@ -22,15 +22,15 @@ contract EngineLend {
         stable = _stable;
     }
 
-    function lend(bytes32 poolId, uint256 dLiquidty) public {
-        IPrimitiveEngine(engine).lend(poolId, dLiquidty);
+    function supply(bytes32 poolId, uint256 dLiquidty) public {
+        IPrimitiveEngine(engine).supply(poolId, dLiquidty);
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
         posid = keccak256(abi.encodePacked(address(this), poolId));
     }
 
-    function name() public view returns (string memory) {
-        return "EngineLend";
+    function name() public pure returns (string memory) {
+        return "EngineSupply";
     }
 }

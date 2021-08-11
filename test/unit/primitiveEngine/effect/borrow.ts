@@ -6,15 +6,16 @@ import { parseWei } from 'web3-units'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
+import { computePoolId } from '../../../shared/utils'
 
-const { strike, sigma, maturity, spot } = config
+const { strike, sigma, maturity } = config
 const empty: BytesLike = constants.HashZero
 
 describe('borrow', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineBorrow'],
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
       borrowFragment
     )
   })
@@ -24,18 +25,19 @@ describe('borrow', function () {
     let deployer: Wallet, engine: PrimitiveEngine, engineBorrow: EngineBorrow
 
     beforeEach(async function () {
-      poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+      poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
       posId = await this.contracts.engineBorrow.getPosition(poolId)
       ;[deployer, engine, engineBorrow] = [this.signers[0], this.contracts.engine, this.contracts.engineBorrow]
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
-        this.contracts.engineLend.address,
+        this.contracts.engineSupply.address,
         parseWei('1000').raw,
         empty
       )
 
-      await this.contracts.engineLend.lend(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
     })
+
     describe('success cases', async function () {
       it('originates one long option position', async function () {
         await engineBorrow.borrow(poolId, engineBorrow.address, parseWei('1').raw, empty)
@@ -60,10 +62,6 @@ describe('borrow', function () {
 
       it('fails to originate 0 long options', async function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, parseWei('0').raw, empty)).to.be.reverted
-      })
-
-      it('fails to originate 1 long option, because premium is above max premium', async function () {
-        await expect(engineBorrow.borrowMaxPremium(poolId, engineBorrow.address, parseWei('1').raw, 0, empty)).to.be.reverted
       })
 
       it('fails to originate 1 long option, because no tokens were paid', async function () {

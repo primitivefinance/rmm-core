@@ -1,5 +1,5 @@
 import { parseWei, Percentage, Time, Wei, toBN } from 'web3-units'
-import { callDelta, premium } from '../shared'
+import { callDelta, callPremium } from '@primitivefinance/v2-math'
 
 /**
  * @notice Calibration Struct; Class representation of each Curve's parameters
@@ -11,6 +11,7 @@ export class Config {
   public readonly maturity: Time
   public readonly lastTimestamp: Time
   public readonly spot: Wei
+  public readonly fee: Percentage
 
   /**
    *
@@ -20,12 +21,20 @@ export class Config {
    * @param lastTimestamp Timestamp in seconds
    * @param spot Value of risky asset in units of riskless asset
    */
-  constructor(strike: number, sigma: number, maturity: number, lastTimestamp: number, spot: number) {
+  constructor(
+    strike: number,
+    sigma: number,
+    maturity: number,
+    lastTimestamp: number,
+    spot: number,
+    fee: Percentage = new Percentage(toBN(0))
+  ) {
     this.strike = parseWei(strike)
     this.sigma = new Percentage(toBN(sigma * Percentage.Mantissa))
     this.maturity = new Time(maturity) // in seconds, because `block.timestamp` is in seconds
     this.lastTimestamp = new Time(lastTimestamp) // in seconds, because `block.timestamp` is in seconds
     this.spot = parseWei(spot)
+    this.fee = fee
   }
 
   /**
@@ -46,7 +55,7 @@ export class Config {
    * @returns Black-Scholes implied premium
    */
   get premium(): number {
-    return premium(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
+    return callPremium(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
   }
 
   /**

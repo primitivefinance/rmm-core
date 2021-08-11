@@ -13,7 +13,7 @@ describe('withdraw', function () {
     loadContext(waffle.provider, ['engineDeposit', 'engineWithdraw'], withdrawFragment)
   })
 
-  describe('when the parameters are valid', function () {
+  describe('success cases', function () {
     it('withdraws from the margin account', async function () {
       await this.contracts.engineWithdraw.withdraw(parseWei('999').raw, parseWei('998').raw)
 
@@ -37,9 +37,11 @@ describe('withdraw', function () {
     it('emits the Withdrawn event', async function () {
       await expect(this.contracts.engineWithdraw.withdraw(parseWei('1000').raw, parseWei('1000').raw))
         .to.emit(this.contracts.engine, 'Withdrawn')
-        .withArgs(this.contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw)
+        .withArgs(this.contracts.engineWithdraw.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
     })
+  })
 
+  describe('fail cases', function () {
     it('reverts when attempting to withdraw more than is in margin', async function () {
       await expect(this.contracts.engineWithdraw.withdraw(constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be
         .reverted

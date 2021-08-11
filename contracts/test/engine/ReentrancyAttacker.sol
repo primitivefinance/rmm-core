@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
@@ -13,7 +13,7 @@ contract ReentrancyAttacker {
     uint256 private _strike;
     uint256 private _sigma;
     uint256 private _maturity;
-    uint256 private _riskyPrice;
+    uint256 private _delta;
     uint256 private _delLiquidity;
     bytes32 private _poolId;
     address private _owner;
@@ -34,7 +34,7 @@ contract ReentrancyAttacker {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 riskyPrice,
+        uint256 delta,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
@@ -43,10 +43,10 @@ contract ReentrancyAttacker {
         _strike = strike;
         _sigma = sigma;
         _maturity = maturity;
-        _riskyPrice = riskyPrice;
+        _delta = delta;
         _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPrice, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta, delLiquidity, data);
     }
 
     function createCallback(
@@ -54,7 +54,9 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).create(_strike, uint64(_sigma), uint32(_maturity), _riskyPrice, _delLiquidity, data);
+        delRisky;
+        delStable;
+        IPrimitiveEngine(engine).create(_strike, uint64(_sigma), uint32(_maturity), _delta, _delLiquidity, data);
     }
 
     function deposit(
@@ -95,6 +97,8 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes calldata data
     ) public {
+        delRisky;
+        delStable;
         IPrimitiveEngine(engine).allocate(_poolId, _owner, _delLiquidity, false, data);
     }
 
@@ -105,7 +109,8 @@ contract ReentrancyAttacker {
     ) public {
         _poolId = poolId;
         _delLiquidity = delLiquidity;
-        IPrimitiveEngine(engine).remove(poolId, delLiquidity, false, data);
+        data;
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity);
     }
 
     function removeCallback(
@@ -113,7 +118,10 @@ contract ReentrancyAttacker {
         uint256 delStable,
         bytes memory data
     ) public {
-        IPrimitiveEngine(engine).remove(_poolId, _delLiquidity, false, data);
+        delRisky;
+        delStable;
+        data;
+        IPrimitiveEngine(engine).remove(_poolId, _delLiquidity);
     }
 
     function borrow(
@@ -128,7 +136,7 @@ contract ReentrancyAttacker {
         _owner = owner;
         _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
     }
 
     function borrowWithGoodCallback(
@@ -144,7 +152,7 @@ contract ReentrancyAttacker {
         _delLiquidity = delLiquidity;
 
         _goodCallback = true;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, type(uint256).max, data);
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
         _goodCallback = false;
     }
 
@@ -160,7 +168,7 @@ contract ReentrancyAttacker {
             IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
             IERC20(stable).transfer(CALLER, delStable);
         } else {
-            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, type(uint256).max, data);
+            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, false, data);
         }
     }
 
@@ -170,14 +178,7 @@ contract ReentrancyAttacker {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
-        )
-    {
+    ) external {
         CALLER = msg.sender;
 
         _poolId = poolId;
@@ -187,7 +188,8 @@ contract ReentrancyAttacker {
         IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
     }
 
-    function repayFromExternalCallback(uint256 delStable, bytes calldata data) external {
+    function repayCallback(uint256 delStable, bytes calldata data) external {
+        delStable;
         IPrimitiveEngine(engine).repay(_poolId, _owner, _delLiquidity, false, data);
     }
 }

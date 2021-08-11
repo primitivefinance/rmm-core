@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
-pragma abicoder v2;
+pragma solidity 0.8.6;
 
 /// @title   Primitive Factory
 /// @author  Primitive
@@ -10,6 +9,12 @@ import "./interfaces/IPrimitiveFactory.sol";
 import "./PrimitiveEngine.sol";
 
 contract PrimitiveFactory is IPrimitiveFactory {
+    /// @notice Thrown when the risky and stable tokens are the same
+    error SameTokenError();
+
+    /// @notice Thrown when the risky or the stable token is 0x0...
+    error ZeroAddressError();
+
     /// @inheritdoc IPrimitiveFactory
     address public override owner;
 
@@ -31,8 +36,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
 
     /// @inheritdoc IPrimitiveFactory
     function deploy(address risky, address stable) external override returns (address engine) {
-        require(risky != stable, "Cannot be same token");
-        require(risky != address(0) && stable != address(0), "Cannot be zero address");
+        if (risky == stable) revert SameTokenError();
+        if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
+
         engine = deploy(address(this), risky, stable);
         getEngine[risky][stable] = engine;
         emit Deployed(msg.sender, risky, stable, engine);
@@ -44,7 +50,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///         "It will compute the address from the address of the creating contract,
     ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
     /// @param  factory The address of the deploying smart contract
-    /// @param  risky A risky token address
+    /// @param  risky   A risky token address
     /// @param  stable  A stable token address
     /// @return engine  The engine contract address which was deployed
     function deploy(

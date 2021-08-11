@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
-/// @title   Black-Scholes Math
+/// @title   Black-Scholes Math Library
 /// @author  Primitive
 
 import "./ABDKMath64x64.sol";

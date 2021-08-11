@@ -1,16 +1,8 @@
 import { Config } from './config'
-import { parseWei, Percentage, toBN, Time, Wei } from 'web3-units'
+import { parseWei, Time, parsePercentage, parseTime } from 'web3-units'
 import { Configs } from '../../types'
 
-function parsePercentage(percent: number): Percentage {
-  return new Percentage(toBN(percent * Percentage.Mantissa))
-}
-
-function parseTime(years: number): Time {
-  return new Time(years * Time.YearInSeconds)
-}
-
-export const DEFAULT_CONFIG: Config = new Config(25, 1, Time.YearInSeconds, 0, 10)
+export const DEFAULT_CONFIG: Config = new Config(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015))
 
 export default function createTestConfigs(
   strikes: number[],
@@ -88,6 +80,22 @@ export function curvesWithSpotPrices(spots: number[]): Config[] {
           DEFAULT_CONFIG.maturity.raw,
           DEFAULT_CONFIG.lastTimestamp.raw,
           spot.float
+        )
+    )
+}
+
+export function curvesWithFees(fees: number[]): Config[] {
+  return fees
+    .map(parsePercentage)
+    .map(
+      (fee) =>
+        new Config(
+          DEFAULT_CONFIG.strike.float,
+          DEFAULT_CONFIG.sigma.float,
+          DEFAULT_CONFIG.maturity.raw,
+          DEFAULT_CONFIG.lastTimestamp.raw,
+          DEFAULT_CONFIG.spot.float,
+          fee
         )
     )
 }

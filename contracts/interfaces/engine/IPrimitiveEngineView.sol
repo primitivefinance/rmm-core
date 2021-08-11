@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 /// @title  The view functions for the Primitive Engine contract
 /// @author Primitive
@@ -67,7 +67,7 @@ interface IPrimitiveEngineView {
     /// sigma           Volatility of the pool
     /// maturity        Timestamp of maturity
     /// lastTimestamp   Last timestamp used to calculate time until expiry, "tau"
-    function settings(bytes32 poolId)
+    function calibrations(bytes32 poolId)
         external
         view
         returns (
@@ -91,19 +91,9 @@ interface IPrimitiveEngineView {
             uint128 debt
         );
 
-    /// @notice                 Fetchs the margin position of `owner`
-    /// @param  owner           Margin account's owner
+    /// @notice                 Fetchs the margin position of `account`
+    /// @param  account         Margin account's account
     /// @return balanceRisky    Balance of the risky token
     /// balanceStable           Balance of the stable token
-    function margins(address owner) external view returns (uint128 balanceRisky, uint128 balanceStable);
-
-    /// @param  strike      Strike price of the pool
-    /// @param  sigma       Volatility of the pool, scaled by Mantissa of 1e4
-    /// @param  maturity    Timestamp of Maturity
-    /// @return             Keccak256 hash of the `calibration` parameters and Engine contract address
-    function getPoolId(
-        uint256 strike,
-        uint64 sigma,
-        uint32 maturity
-    ) external view returns (bytes32);
+    function margins(address account) external view returns (uint128 balanceRisky, uint128 balanceStable);
 }

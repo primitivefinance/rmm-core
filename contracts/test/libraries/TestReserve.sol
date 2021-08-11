@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../libraries/Reserve.sol";
 
@@ -98,7 +98,7 @@ contract TestReserve {
         return reserves[resId];
     }
 
-    /// @notice Increases available float to borrow, called when lending
+    /// @notice Increases available float to borrow, called when supplying
     function shouldAddFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
         reserves[resId].addFloat(delLiquidity);
         return reserves[resId];

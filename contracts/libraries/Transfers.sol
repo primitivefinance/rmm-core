@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../interfaces/IERC20.sol";
 
@@ -14,8 +14,9 @@ library Transfers {
         address to,
         uint256 value
     ) internal returns (bool) {
-        (bool success, bytes memory returnData) =
-            address(token).call(abi.encodeWithSelector(token.transfer.selector, to, value));
+        (bool success, bytes memory returnData) = address(token).call(
+            abi.encodeWithSelector(token.transfer.selector, to, value)
+        );
         require(success && (returnData.length == 0 || abi.decode(returnData, (bool))), "Transfer fail");
         return success;
     }

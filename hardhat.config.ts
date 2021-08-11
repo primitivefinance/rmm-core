@@ -7,30 +7,15 @@ import 'hardhat-gas-reporter'
 import 'solidity-coverage'
 import 'hardhat-contract-sizer'
 import { HardhatUserConfig } from 'hardhat/config'
-import * as dotenv from 'dotenv'
-
-dotenv.config()
-
-const { ARBITRUM_PRIVATE_KEY } = process.env
 
 const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
     },
-    arbitrumTestnet: {
-      accounts: [ARBITRUM_PRIVATE_KEY],
-      url: 'https://rinkeby.arbitrum.io/rpc',
-      chainId: 421611,
-      gasPrice: 0,
-    },
-    arbitrum: {
-      url: 'https://arb1.arbitrum.io/rpc',
-      chainId: 42161,
-    },
   },
   solidity: {
-    version: '0.8.0',
+    version: '0.8.6',
     settings: {
       optimizer: {
         enabled: true,
@@ -44,10 +29,11 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: 'USD',
     gasPrice: 100,
+    enabled: false,
   },
   contractSizer: {
     alphaSort: true,
-    runOnCompile: true,
+    runOnCompile: false,
     disambiguatePaths: true,
   },
   paths: {

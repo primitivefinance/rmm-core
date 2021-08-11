@@ -1,28 +1,29 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
 import { BytesLike, constants } from 'ethers'
-import { parseWei, Percentage } from 'web3-units'
+import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { repayFragment } from '../fragments'
+import { computePoolId } from '../../../shared/utils'
 
 let poolId: BytesLike
 let posId: BytesLike
 
-const { strike, sigma, maturity, lastTimestamp, spot } = config
+const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
 const empty: BytesLike = constants.HashZero
 
 describe('repay', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineLend', 'engineRepay'],
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineRepay'],
       repayFragment
     )
   })
 
   beforeEach(async function () {
-    poolId = await this.contracts.engine.getPoolId(strike.raw, sigma.raw, maturity.raw)
+    poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineRepay.getPosition(poolId)
   })
 
@@ -66,7 +67,13 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, false, empty)
       )
         .to.emit(this.contracts.engine, 'Repaid')
-        .withArgs(this.contracts.engineRepay.address, poolId, parseWei('1').raw)
+        .withArgs(
+          this.contracts.engineRepay.address,
+          this.contracts.engineRepay.address,
+          poolId,
+          parseWei('1').raw,
+          parseWei(delta).raw
+        )
     })
 
     describe('when from margin', function () {
@@ -128,6 +135,15 @@ describe('repay', function () {
       ).to.be.reverted
     })
 
+    it('reverts if repaying another account before maturity', async function () {
+      await this.contracts.engineAllocate.allocateFromExternal(poolId, this.signers[0].address, parseWei('100').raw, empty)
+      await this.contracts.engine.supply(poolId, parseWei('100').raw)
+      await this.contracts.engineRepay.borrow(poolId, this.contracts.engineRepay.address, parseWei('1').raw, empty)
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('100').raw, parseWei('100').raw, empty)
+      await expect(this.contracts.engine.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, true, empty))
+        .to.be.reverted
+    })
+
     describe('when from margin', function () {
       it('reverts if the stable balance of the margin is not sufficient', async function () {
         await expect(
@@ -144,7 +160,7 @@ describe('repay', function () {
             false,
             empty
           )
-        )
+        ).to.be.reverted
       })
     })
   })

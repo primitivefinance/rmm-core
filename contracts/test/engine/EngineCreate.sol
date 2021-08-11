@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.0;
+pragma solidity 0.8.6;
 
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
-
-import "hardhat/console.sol";
-
 import "../../libraries/Position.sol";
 
 contract EngineCreate {
@@ -30,12 +27,12 @@ contract EngineCreate {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 riskyPrice,
+        uint256 delta,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPrice, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta, delLiquidity, data);
     }
 
     function createCallback(
@@ -43,6 +40,7 @@ contract EngineCreate {
         uint256 delStable,
         bytes calldata data
     ) public {
+        data;
         IERC20(risky).transferFrom(CALLER, engine, delRisky);
         IERC20(stable).transferFrom(CALLER, engine, delStable);
     }
