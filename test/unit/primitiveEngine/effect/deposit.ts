@@ -1,16 +1,21 @@
 import { waffle } from 'hardhat'
-import { constants, BytesLike } from 'ethers'
+import { constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import expect from '../../../shared/expect'
-import { depositFragment } from '../fragments'
 import loadContext from '../../context'
+import { Contracts } from '../../../../types'
 
 const empty: BytesLike = constants.HashZero
 
+export async function beforeEachDeposit(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
+}
+
 describe('deposit', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineDeposit', 'badEngineDeposit'], depositFragment)
+    loadContext(waffle.provider, ['engineDeposit', 'badEngineDeposit'], beforeEachDeposit)
   })
 
   describe('success cases', function () {

@@ -2,11 +2,17 @@ import { waffle } from 'hardhat'
 import { expect } from 'chai'
 
 import loadContext from '../../context'
-import { createFragment } from '../fragments'
+import { Contracts } from '../../../../types'
+import { constants, Wallet } from 'ethers'
+
+export async function beforeEachCreate(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, constants.MaxUint256)
+  await contracts.risky.mint(signers[0].address, constants.MaxUint256)
+}
 
 describe('constructor', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate'], createFragment)
+    loadContext(waffle.provider, ['engineCreate'], beforeEachCreate)
   })
 
   describe('when the contract is deployed', function () {

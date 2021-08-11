@@ -1,23 +1,28 @@
 import { waffle } from 'hardhat'
-import { constants, BytesLike } from 'ethers'
+import { constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
-import { reentrancyFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
 import expect from '../../../shared/expect'
+import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, spot, delta } = config
 const empty: BytesLike = constants.HashZero
 const delLiquidity = parseWei(1)
 let poolId: string
 
+export async function beforeEachReentrancy(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('10000').raw)
+}
+
 describe('reentrancy', function () {
   before(async function () {
     loadContext(
       waffle.provider,
       ['reentrancyAttacker', 'engineCreate', 'engineAllocate', 'engineSupply', 'engineBorrow'],
-      reentrancyFragment
+      beforeEachReentrancy
     )
   })
 
