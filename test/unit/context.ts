@@ -4,6 +4,7 @@ import { Wallet } from 'ethers'
 import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
 import createTestConfigs, { DEFAULT_CONFIG } from './createTestConfigs'
+import { batchApproval } from '../shared/utils'
 export { DEFAULT_CONFIG }
 const strikesToTest = [10, 15, 25, 100]
 const sigmasToTest = [0.1, 0.25, 0.5, 0.75, 1, 2]
@@ -28,6 +29,9 @@ export default function loadContext(
       loadedFunctions = createEngineFunctions(contracts, loadedContracts, deployer)
       loadedConfigs = createTestConfigs(strikesToTest, sigmasToTest, maturitiesToTest, spotsToTest)
 
+      const { risky, stable } = loadedContracts
+      const contractAddresses = Object.keys(loadedContracts).map((key) => loadedContracts[key]?.address)
+      await batchApproval(contractAddresses, [risky, stable], signers)
       if (action) await action(signers, loadedContracts)
 
       return { contracts: loadedContracts, functions: loadedFunctions, configs: loadedConfigs }

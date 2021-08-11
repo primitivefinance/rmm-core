@@ -5,10 +5,9 @@ import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'et
 import { MockEngine, EngineSwap } from '../../../../typechain'
 // Context Imports
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { swapFragment } from '../fragments'
 import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
-import { Functions } from '../../../../types'
+import { Functions, Contracts } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
 import { DebugReturn, Pool } from '../../../shared/swapUtils'
 
@@ -200,12 +199,23 @@ function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
 
 const DEBUG_MODE = false
 
+export async function beforeEachSwap(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
+  await contracts.engineDeposit.deposit(contracts.engineSwap.address, parseWei('1000').raw, parseWei('1000').raw, empty)
+  await contracts.engineDeposit.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, empty)
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('99').raw, empty)
+}
+
 describe('Engine:swap', function () {
   before('Load swap context', async function () {
     loadContext(
       waffle.provider,
       ['engineCreate', 'engineSwap', 'engineDeposit', 'engineSupply', 'engineAllocate', 'testReplicationMath'],
-      swapFragment
+      beforeEachSwap
     )
   })
 

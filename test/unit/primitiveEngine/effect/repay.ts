@@ -1,26 +1,39 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BytesLike, constants } from 'ethers'
+import { BytesLike, constants, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { repayFragment } from '../fragments'
+import { Contracts } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
-
-let poolId: BytesLike
-let posId: BytesLike
 
 const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
 const empty: BytesLike = constants.HashZero
+
+export async function beforeEachRepay(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('100000000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('100000000').raw)
+
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, empty)
+
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('100').raw, empty)
+  await contracts.engineSupply.supply(poolId, parseWei('100').raw)
+  await contracts.engineRepay.borrow(poolId, contracts.engineRepay.address, parseWei('1').raw, empty)
+}
 
 describe('repay', function () {
   before(async function () {
     loadContext(
       waffle.provider,
       ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineRepay'],
-      repayFragment
+      beforeEachRepay
     )
   })
+
+  let poolId: BytesLike
+  let posId: BytesLike
 
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
@@ -28,10 +41,6 @@ describe('repay', function () {
   })
 
   describe('success cases', function () {
-    beforeEach(async function () {
-      await this.contracts.engineRepay.borrow(poolId, this.contracts.engineRepay.address, parseWei('1').raw, empty)
-    })
-
     it('reduces the debt of the position', async function () {
       await this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, false, empty)
       const position = await this.contracts.engine.positions(posId)
@@ -130,6 +139,7 @@ describe('repay', function () {
 
   describe('fail cases', function () {
     it('reverts if no debt', async function () {
+      await this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, false, empty)
       await expect(
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, false, empty)
       ).to.be.reverted
