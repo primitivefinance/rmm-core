@@ -135,6 +135,15 @@ describe('repay', function () {
       ).to.be.reverted
     })
 
+    it('reverts if repaying another account before maturity', async function () {
+      await this.contracts.engineAllocate.allocateFromExternal(poolId, this.signers[0].address, parseWei('100').raw, empty)
+      await this.contracts.engine.supply(poolId, parseWei('100').raw)
+      await this.contracts.engineRepay.borrow(poolId, this.contracts.engineRepay.address, parseWei('1').raw, empty)
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('100').raw, parseWei('100').raw, empty)
+      await expect(this.contracts.engine.repay(poolId, this.contracts.engineRepay.address, parseWei('1').raw, true, empty))
+        .to.be.reverted
+    })
+
     describe('when from margin', function () {
       it('reverts if the stable balance of the margin is not sufficient', async function () {
         await expect(
