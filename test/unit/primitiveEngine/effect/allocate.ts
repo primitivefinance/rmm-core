@@ -1,21 +1,30 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, BytesLike } from 'ethers'
+import { BigNumber, constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
-import { allocateFragment } from '../fragments'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
+import { Contracts } from '../../../../types'
 
-const { strike, sigma, maturity } = config
+const { strike, sigma, maturity, lastTimestamp, delta } = config
 const empty: BytesLike = constants.HashZero
-let poolId: string
+
+export async function beforeEachAllocate(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('10000').raw)
+
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, empty)
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, signers[0].address, parseWei('100').raw, empty)
+}
 
 describe('allocate', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], allocateFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate'], beforeEachAllocate)
   })
 
+  let poolId: string
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
   })

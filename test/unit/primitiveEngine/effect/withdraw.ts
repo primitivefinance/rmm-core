@@ -1,16 +1,23 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants } from 'ethers'
+import { constants, Wallet } from 'ethers'
 
 import { parseWei } from 'web3-units'
 
-import { withdrawFragment } from '../fragments'
-
 import loadContext from '../../context'
+import { Contracts } from '../../../../types'
+
+const empty = constants.HashZero
+
+export async function beforeEachWithdraw(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.engineDeposit.deposit(contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw, empty)
+}
 
 describe('withdraw', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineDeposit', 'engineWithdraw'], withdrawFragment)
+    loadContext(waffle.provider, ['engineDeposit', 'engineWithdraw'], beforeEachWithdraw)
   })
 
   describe('success cases', function () {
