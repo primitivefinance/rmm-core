@@ -4,19 +4,31 @@ import { constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { borrowFragment } from '../fragments'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
 import { computePoolId } from '../../../shared/utils'
+import { Contracts } from '../../../../types'
 
-const { strike, sigma, maturity } = config
+const { strike, sigma, maturity, lastTimestamp, delta } = config
 const empty: BytesLike = constants.HashZero
+
+export async function beforeEachBorrow(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('100000000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('100000000').raw)
+
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, empty)
+
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('100').raw, empty)
+  await contracts.engineSupply.supply(poolId, parseWei('100').raw)
+}
 
 describe('borrow', function () {
   before(async function () {
     loadContext(
       waffle.provider,
       ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
-      borrowFragment
+      beforeEachBorrow
     )
   })
 

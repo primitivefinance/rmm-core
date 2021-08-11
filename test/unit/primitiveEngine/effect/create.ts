@@ -1,22 +1,27 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { constants, BytesLike, BigNumber } from 'ethers'
+import { constants, BytesLike, BigNumber, Wallet } from 'ethers'
 import { parseWei, Wei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { createFragment } from '../fragments'
 import { computePoolId } from '../../../shared/utils'
 import { Config } from '../../config'
+import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
 const empty: BytesLike = constants.HashZero
-let poolId: string
+
+export async function beforeEachCreate(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, constants.MaxUint256)
+  await contracts.risky.mint(signers[0].address, constants.MaxUint256)
+}
 
 describe('create', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'testPosition'], createFragment)
+    loadContext(waffle.provider, ['engineCreate', 'testPosition'], beforeEachCreate)
   })
 
+  let poolId: string
   let delLiquidity = parseWei(0)
 
   beforeEach(async function () {

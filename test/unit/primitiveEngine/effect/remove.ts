@@ -1,23 +1,34 @@
 import { waffle } from 'hardhat'
 import { expect } from 'chai'
-import { BigNumber, constants, BytesLike } from 'ethers'
+import { BigNumber, constants, BytesLike, Wallet } from 'ethers'
 
 import { parseWei } from 'web3-units'
-import { removeFragment } from '../fragments'
 import { computePoolId } from '../../../shared/utils'
+import { Contracts } from '../../../../types'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-const { strike, sigma, maturity } = config
+const { strike, sigma, maturity, lastTimestamp, delta } = config
 
 const delLiquidity = parseWei('1')
 const empty: BytesLike = constants.HashZero
-let poolId: string
-let posId: string
+
+export async function beforeEachRemove(signers: Wallet[], contracts: Contracts): Promise<void> {
+  await contracts.stable.mint(signers[0].address, parseWei('10000000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('10000000').raw)
+
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineRemove.address, parseWei('10').raw, empty)
+}
 
 describe('remove', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], removeFragment)
+    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], beforeEachRemove)
   })
+  let poolId: string
+  let posId: string
 
   describe('when removing to margin', function () {
     beforeEach(async function () {
