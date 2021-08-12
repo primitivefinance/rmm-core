@@ -1,13 +1,13 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
-import { BigNumber, constants, Wallet } from 'ethers'
+import { constants, Wallet } from 'ethers'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
 import { Contracts } from '../../../../types'
 
-const { strike, sigma, maturity, lastTimestamp, delta } = config
+const { strike, sigma, maturity, delta } = config
 const { HashZero } = constants
 
 export async function beforeEachSupply(signers: Wallet[], contracts: Contracts): Promise<void> {
@@ -31,14 +31,20 @@ describe('supply', function () {
   })
 
   describe('success cases', function () {
-    it('adds 1 liquidity share to float', async function () {
+    it('res.addFloat: adds 1 liquidity share to reserve float', async function () {
       await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increaseReserveFloat(
         this.contracts.engine,
         poolId,
         one.raw
       )
+    })
 
-      expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([one.raw, parseWei('10').raw, BigNumber.from('0')])
+    it('pos.supply: adds 1 liquidity share to position float', async function () {
+      await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increasePositionFloat(
+        this.contracts.engine,
+        posId,
+        one.raw
+      )
     })
   })
 
