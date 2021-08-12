@@ -5,7 +5,7 @@ import { callDelta, callPremium } from '@primitivefinance/v2-math'
  * @notice Calibration Struct; Class representation of each Curve's parameters
  * @dev    Call options only.
  */
-export class Config {
+export class Calibration {
   public readonly strike: Wei
   public readonly sigma: Percentage
   public readonly maturity: Time

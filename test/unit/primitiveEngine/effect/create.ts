@@ -4,8 +4,7 @@ import { constants, BytesLike, BigNumber, Wallet } from 'ethers'
 import { parseWei, Wei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { computePoolId } from '../../../shared/utils'
-import { Config } from '../../config'
+import { computePoolId, Calibration } from '../../../shared'
 import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
@@ -108,7 +107,7 @@ describe('create', function () {
     })
 
     it('reverts if strike is 0', async function () {
-      let fig = new Config(0, sigma.float, maturity.seconds, 1, spot.float)
+      let fig = new Calibration(0, sigma.float, maturity.seconds, 1, spot.float)
       await expect(
         this.contracts.engine.create(
           fig.strike.raw,
@@ -122,13 +121,13 @@ describe('create', function () {
     })
 
     /* it('reverts if sigma is 0', async function () {
-      let fig = new Config(strike.float, 0, maturity.years, 1, spot.float)
+      let fig = new Calibration(strike.float, 0, maturity.years, 1, spot.float)
       await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw), delLiquidity.raw, empty).to
         .reverted
     }) */
 
     it('reverts if maturity is 0', async function () {
-      let fig = new Config(strike.float, sigma.float, 0, 1, spot.float)
+      let fig = new Calibration(strike.float, sigma.float, 0, 1, spot.float)
       await expect(
         this.contracts.engine.create(
           fig.strike.raw,
@@ -149,7 +148,7 @@ describe('create', function () {
       // additionally, skew the pool to be 99% risky by making it a deep OTM option, this will cause
       // the expected reserve stable to be close to 0 (but not 0),
       // which will cause our delStable to be calculated as 0, which it should not be
-      let fig = new Config(100, sigma.float, maturity.seconds, 1, spot.float)
+      let fig = new Calibration(100, sigma.float, maturity.seconds, 1, spot.float)
       let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
       await this.contracts.engineCreate.create(
         fig.strike.raw,
