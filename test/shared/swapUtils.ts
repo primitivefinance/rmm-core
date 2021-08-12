@@ -1,13 +1,6 @@
-import { utils, BigNumber } from 'ethers'
 import { Wei, Percentage, Time, Integer64x64, parseInt64x64, parseWei, toBN } from 'web3-units'
 import { quantilePrime, std_n_pdf, std_n_cdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
-const { keccak256, solidityPack } = utils
-
-export function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
-  const salt = utils.solidityKeccak256(['bytes'], [utils.defaultAbiCoder.encode(['address', 'address'], [risky, stable])])
-  return utils.getCreate2Address(factory, salt, utils.keccak256(bytecode))
-}
 
 export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
   return new Pool(

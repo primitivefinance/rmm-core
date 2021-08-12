@@ -1,7 +1,6 @@
 import { createFixtureLoader, MockProvider } from 'ethereum-waffle'
-import { Contracts, Functions, Mocks, ContractName, Configs } from '../../types'
+import { Contracts, ContractName, Configs } from '../../types'
 import { Wallet } from 'ethers'
-import createEngineFunctions from './createEngineFunctions'
 import createTestContracts from './createTestContracts'
 import createTestConfigs, { DEFAULT_CONFIG } from './createTestConfigs'
 import { batchApproval } from '../shared/utils'
@@ -22,11 +21,9 @@ export default function loadContext(
     const loadedFixture = await loadFixture(async function (signers: Wallet[]) {
       const [deployer] = signers
       let loadedContracts: Contracts = {} as Contracts
-      let loadedFunctions: Functions = {} as Functions
       let loadedConfigs: Configs = {} as Configs
 
       loadedContracts = await createTestContracts(contracts, deployer)
-      loadedFunctions = createEngineFunctions(contracts, loadedContracts, deployer)
       loadedConfigs = createTestConfigs(strikesToTest, sigmasToTest, maturitiesToTest, spotsToTest)
 
       const { risky, stable } = loadedContracts
@@ -34,18 +31,15 @@ export default function loadContext(
       await batchApproval(contractAddresses, [risky, stable], signers)
       if (action) await action(signers, loadedContracts)
 
-      return { contracts: loadedContracts, functions: loadedFunctions, configs: loadedConfigs }
+      return { contracts: loadedContracts, configs: loadedConfigs }
     })
 
     this.configs = {} as Configs
     this.contracts = {} as Contracts
-    this.functions = {} as Functions
-    this.mocks = {} as Mocks
     this.signers = provider.getWallets()
     this.deployer = this.signers[0]
 
     Object.assign(this.configs, loadedFixture.configs) // enables us to have dynamic config fixtures
     Object.assign(this.contracts, loadedFixture.contracts)
-    Object.assign(this.functions, loadedFixture.functions)
   })
 }
