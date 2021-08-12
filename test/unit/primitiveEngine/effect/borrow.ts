@@ -44,13 +44,91 @@ describe('borrow', function () {
     })
 
     describe('success cases', async function () {
-      it('originates one long option position', async function () {
+      it('pos.borrow: increases position debt', async function () {
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.increasePositionDebt(
+          engine,
+          posId,
+          one.raw
+        )
+        expect(await engine.positions(posId)).to.be.deep.eq([parseWei('0').raw, parseWei('0').raw, one.raw])
+      })
+      it('res.borrowFloat: increases reserve debt', async function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.increaseReserveDebt(
           engine,
           poolId,
           one.raw
         )
-        expect(await engine.positions(posId)).to.be.deep.eq([parseWei('0').raw, parseWei('0').raw, one.raw])
+      })
+
+      it('res.borrowFloat: decreases reserve float', async function () {
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.decreaseReserveFloat(
+          engine,
+          poolId,
+          one.raw
+        )
+      })
+
+      it('res.remove: decreases reserve liquidity', async function () {
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.decreaseReserveLiquidity(
+          engine,
+          poolId,
+          one.raw
+        )
+      })
+
+      it('res.remove: decreases reserve risky', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delRisky = one.raw.mul(res.reserveRisky).div(res.liquidity)
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.decreaseReserveRisky(
+          engine,
+          poolId,
+          delRisky
+        )
+      })
+
+      it('res.remove: decreases reserve stable', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delStable = one.raw.mul(res.reserveStable).div(res.liquidity)
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.decreaseReserveStable(
+          engine,
+          poolId,
+          delStable
+        )
+      })
+
+      it('borrows using margin', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delRisky = one.raw.mul(res.reserveRisky).div(res.liquidity)
+        const delStable = one.raw.mul(res.reserveStable).div(res.liquidity)
+        const premium = one.raw.sub(delRisky)
+        await this.contracts.engineDeposit.deposit(engineBorrow.address, premium, delStable, HashZero)
+        await expect(engineBorrow.borrowWithMargin(poolId, engineBorrow.address, one.raw, HashZero)).to.decreaseMargin(
+          engine,
+          engineBorrow.address,
+          premium,
+          delStable.mul(-1)
+        )
+      })
+
+      it('msg.sender recieves stable tokens from removed liquidity', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delStable = one.raw.mul(res.reserveStable).div(res.liquidity)
+        await expect(() => engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.changeTokenBalances(
+          this.contracts.stable,
+          [this.signers[0]],
+          [delStable]
+        )
+      })
+
+      it('engine recieves risky token premium', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delRisky = one.raw.mul(res.reserveRisky).div(res.liquidity)
+        const premium = one.raw.sub(delRisky)
+        await expect(() => engineBorrow.borrow(poolId, engineBorrow.address, one.raw, HashZero)).to.changeTokenBalances(
+          this.contracts.risky,
+          [this.contracts.engine],
+          [premium]
+        )
       })
 
       it('repays a long option position, earning the proceeds', async function () {
@@ -65,16 +143,18 @@ describe('borrow', function () {
     })
 
     describe('fail cases', async function () {
+      it('reverts if borrow amount is 0', async function () {
+        await expect(engineBorrow.borrow(poolId, engineBorrow.address, parseWei('0').raw, HashZero)).to.be.reverted
+      })
       it('fails to originate more long option positions than are allocated to float', async function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, parseWei('2000').raw, HashZero)).to.be.reverted
       })
-
-      it('fails to originate 0 long options', async function () {
-        await expect(engineBorrow.borrow(poolId, engineBorrow.address, parseWei('0').raw, HashZero)).to.be.reverted
-      })
-
       it('fails to originate 1 long option, because no tokens were paid', async function () {
         await expect(engineBorrow.borrowWithoutPaying(poolId, engineBorrow.address, one.raw, HashZero)).to.be.reverted
+      })
+
+      it('fails to borrow from margin because not enough premium', async function () {
+        await expect(engineBorrow.borrowWithMargin(poolId, engineBorrow.address, one.raw, HashZero)).to.be.reverted
       })
     })
   })
