@@ -15,7 +15,7 @@ const precision = {
 
 describe('testBlackScholes', function () {
   before(async function () {
-    loadContext(waffle.provider, ['testBlackScholes'], async () => {})
+    loadContext(waffle.provider, ['testBlackScholes'])
   })
 
   describe('blackScholes', function () {

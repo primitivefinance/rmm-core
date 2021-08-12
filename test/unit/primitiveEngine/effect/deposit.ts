@@ -5,8 +5,7 @@ import { parseWei } from 'web3-units'
 import expect from '../../../shared/expect'
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'
-
-const empty: BytesLike = constants.HashZero
+const { HashZero } = constants
 
 export async function beforeEachDeposit(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
@@ -21,7 +20,7 @@ describe('deposit', function () {
   describe('success cases', function () {
     it('adds to the user margin account', async function () {
       await expect(
-        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
+        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, HashZero)
       ).to.increaseMargin(this.contracts.engine, this.signers[0].address, parseWei('1001').raw, parseWei('999').raw)
     })
 
@@ -31,7 +30,7 @@ describe('deposit', function () {
           this.contracts.engineDeposit.address,
           parseWei('101').raw,
           parseWei('100').raw,
-          empty
+          HashZero
         )
       ).to.increaseMargin(
         this.contracts.engine,
@@ -50,7 +49,7 @@ describe('deposit', function () {
       const riskyBalance = await this.contracts.risky.balanceOf(this.contracts.engine.address)
       const stableBalance = await this.contracts.stable.balanceOf(this.contracts.engine.address)
 
-      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('500').raw, parseWei('250').raw, empty)
+      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('500').raw, parseWei('250').raw, HashZero)
 
       expect(await this.contracts.risky.balanceOf(this.contracts.engine.address)).to.equal(
         riskyBalance.add(parseWei('500').raw)
@@ -62,8 +61,18 @@ describe('deposit', function () {
     })
 
     it('increases the previous margin when called another time', async function () {
-      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, empty)
-      await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('999').raw, parseWei('1001').raw, empty)
+      await this.contracts.engineDeposit.deposit(
+        this.signers[0].address,
+        parseWei('1001').raw,
+        parseWei('999').raw,
+        HashZero
+      )
+      await this.contracts.engineDeposit.deposit(
+        this.signers[0].address,
+        parseWei('999').raw,
+        parseWei('1001').raw,
+        HashZero
+      )
 
       const margin = await this.contracts.engine.margins(this.signers[0].address)
 
@@ -73,7 +82,7 @@ describe('deposit', function () {
 
     it('emits the Deposited event', async function () {
       await expect(
-        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw, empty)
+        this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
       )
         .to.emit(this.contracts.engine, 'Deposited')
         .withArgs(this.contracts.engineDeposit.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
@@ -87,7 +96,7 @@ describe('deposit', function () {
           this.contracts.engineDeposit.address,
           constants.MaxUint256.div(2),
           constants.MaxUint256.div(2),
-          empty
+          HashZero
         )
       ).to.be.reverted
     })
@@ -98,7 +107,7 @@ describe('deposit', function () {
           this.signers[0].address,
           parseWei('1000').raw,
           parseWei('1000').raw,
-          empty,
+          HashZero,
           0
         )
       ).to.revertWithCustomError('StableBalanceError', [parseWei('1000').raw.toString(), '0'])
@@ -110,7 +119,7 @@ describe('deposit', function () {
           this.signers[0].address,
           parseWei('1000').raw,
           parseWei('1000').raw,
-          empty,
+          HashZero,
           1
         )
       ).to.revertWithCustomError('RiskyBalanceError', [parseWei('1000').raw.toString(), '0'])
@@ -122,7 +131,7 @@ describe('deposit', function () {
           this.signers[0].address,
           parseWei('1000').raw,
           parseWei('1000').raw,
-          empty,
+          HashZero,
           2
         )
       ).to.revertWithCustomError('RiskyBalanceError', [parseWei('1000').raw.toString(), '0'])

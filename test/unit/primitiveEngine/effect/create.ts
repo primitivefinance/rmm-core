@@ -1,7 +1,7 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
-import { constants, BytesLike, BigNumber, Wallet } from 'ethers'
-import { parseWei, Wei } from 'web3-units'
+import expect from '../../../shared/expect'
+import { constants, BytesLike, Wallet } from 'ethers'
+import { parseWei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId, Calibration } from '../../../shared'
@@ -73,18 +73,11 @@ describe('create', function () {
       expect(reserve.blockTimestamp).to.equal(timestamp)
     })
 
-    it('updates the calibration struct', async function () {
-      await this.contracts.engineCreate.create(
-        strike.raw,
-        sigma.raw,
-        maturity.raw,
-        parseWei(delta).raw,
-        delLiquidity.raw,
-        empty
-      )
+    it('initializes the calibration struct & mints liquidity', async function () {
+      await expect(
+        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+      ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
       const calibrations = await this.contracts.engine.calibrations(poolId)
-
-      // TODO: Improve this test
       expect(calibrations.lastTimestamp).to.not.equal(0)
     })
   })
@@ -120,12 +113,6 @@ describe('create', function () {
       ).to.reverted
     })
 
-    /* it('reverts if sigma is 0', async function () {
-      let fig = new Calibration(strike.float, 0, maturity.years, 1, spot.float)
-      await expect(this.contracts.engine.create(fig.strike.raw, fig.sigma.raw, fig.maturity.raw, parseWei(fig.delta).raw), delLiquidity.raw, empty).to
-        .reverted
-    }) */
-
     it('reverts if maturity is 0', async function () {
       let fig = new Calibration(strike.float, sigma.float, 0, 1, spot.float)
       await expect(
@@ -141,13 +128,6 @@ describe('create', function () {
     })
 
     it('reverts if the actual delta amounts are 0', async function () {
-      // the amounts of tokens to transfer in are calculated from:
-      // calculated Risky * deltaLiquidity / 1e18
-      // therefore, if risk*delLiquidity < 1e18, delRisky would be 0. But this wouldn't cause a revert
-      // must pass in > 1000 liquidity, since its subtracted from `allocate` call
-      // additionally, skew the pool to be 99% risky by making it a deep OTM option, this will cause
-      // the expected reserve stable to be close to 0 (but not 0),
-      // which will cause our delStable to be calculated as 0, which it should not be
       let fig = new Calibration(100, sigma.float, maturity.seconds, 1, spot.float)
       let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
       await this.contracts.engineCreate.create(

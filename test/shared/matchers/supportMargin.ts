@@ -6,13 +6,13 @@ import { PrimitiveEngine } from '../../../typechain'
 export default function supportMargin(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod(
     'increaseMargin',
-    async function (this: any, engine: PrimitiveEngine, account: string, risky: BigNumber, stable: BigNumber) {
+    async function (this: any, engine: PrimitiveEngine, account: string, delRisky: BigNumber, delStable: BigNumber) {
       const oldMargin = await engine.margins(account)
       await this._obj
       const newMargin = await engine.margins(account)
 
-      const expectedRisky = oldMargin.balanceRisky.add(risky)
-      const expectedStable = oldMargin.balanceStable.add(stable)
+      const expectedRisky = oldMargin.balanceRisky.add(delRisky)
+      const expectedStable = oldMargin.balanceStable.add(delStable)
 
       this.assert(
         newMargin.balanceRisky.eq(expectedRisky),
@@ -34,13 +34,13 @@ export default function supportMargin(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseMargin',
-    async function (this: any, engine: PrimitiveEngine, account: string, risky: BigNumber, stable: BigNumber) {
+    async function (this: any, engine: PrimitiveEngine, account: string, delRisky: BigNumber, delStable: BigNumber) {
       const oldMargin = await engine.margins(account)
       await this._obj
       const newMargin = await engine.margins(account)
 
-      const expectedRisky = oldMargin.balanceRisky.sub(risky)
-      const expectedStable = oldMargin.balanceStable.sub(stable)
+      const expectedRisky = oldMargin.balanceRisky.sub(delRisky)
+      const expectedStable = oldMargin.balanceStable.sub(delStable)
 
       this.assert(
         newMargin.balanceRisky.eq(expectedRisky),

@@ -1,5 +1,5 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
+import expect from '../../../shared/expect'
 import { BigNumber, constants, BytesLike, Wallet } from 'ethers'
 
 import { parseWei } from 'web3-units'
@@ -8,25 +8,20 @@ import { Contracts } from '../../../../types'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 const { strike, sigma, maturity, lastTimestamp, delta } = config
-
-const delLiquidity = parseWei('1')
-const empty: BytesLike = constants.HashZero
+const { HashZero } = constants
 
 export async function beforeEachRemove(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, parseWei('10000000').raw)
   await contracts.risky.mint(signers[0].address, parseWei('10000000').raw)
-
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
-
-  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineRemove.address, parseWei('10').raw, empty)
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('10').raw, HashZero)
 }
 
 describe('remove', function () {
   before(async function () {
     loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove'], beforeEachRemove)
   })
+
+  const delLiquidity = parseWei('1')
   let poolId: string
   let posId: string
 
@@ -38,7 +33,7 @@ describe('remove', function () {
 
     describe('success cases', function () {
       it('updates the margin', async function () {
-        await this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, empty)
+        await this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, HashZero)
 
         const res = await this.contracts.engine.reserves(poolId)
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
@@ -50,7 +45,9 @@ describe('remove', function () {
       })
 
       it('updates the position', async function () {
-        await this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, empty)
+        await expect(
+          this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, HashZero)
+        ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
 
         expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
           BigNumber.from('0'),
@@ -64,7 +61,11 @@ describe('remove', function () {
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-        await this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, empty)
+        await expect(this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, HashZero)).to.decreaseReserveRisky(
+          this.contracts.engine,
+          poolId,
+          delRisky.raw
+        )
 
         const updatedRes = await this.contracts.engine.reserves(poolId)
         expect(updatedRes.liquidity).to.equal(res.liquidity.sub(delLiquidity.raw))
@@ -77,7 +78,7 @@ describe('remove', function () {
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-        await expect(this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, empty))
+        await expect(this.contracts.engineRemove.removeToMargin(poolId, delLiquidity.raw, HashZero))
           .to.emit(this.contracts.engine, 'Removed')
           .withArgs(this.contracts.engineRemove.address, poolId, delRisky.raw, delStable.raw)
       })
@@ -85,11 +86,11 @@ describe('remove', function () {
 
     describe('fail cases', function () {
       it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToMargin(poolId, 0, empty)).to.be.reverted
+        await expect(this.contracts.engineRemove.removeToMargin(poolId, 0, HashZero)).to.be.reverted
       })
 
       it('reverts if required amount is too big', async function () {
-        await expect(this.contracts.engineRemove.removeToMargin(poolId, parseWei('11').raw, empty)).to.be.reverted
+        await expect(this.contracts.engineRemove.removeToMargin(poolId, parseWei('11').raw, HashZero)).to.be.reverted
       })
     })
   })
@@ -102,7 +103,9 @@ describe('remove', function () {
 
     describe('success cases', function () {
       it('transfers the tokens', async function () {
-        await this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty)
+        await expect(
+          this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, HashZero)
+        ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
 
         const res = await this.contracts.engine.reserves(poolId)
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
@@ -114,7 +117,9 @@ describe('remove', function () {
       })
 
       it('updates the position', async function () {
-        await this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty)
+        await expect(
+          this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, HashZero)
+        ).to.decreasePositionLiquidity(this.contracts.engine, posId, delLiquidity.raw)
 
         expect(await this.contracts.engine.positions(posId)).to.be.deep.eq([
           BigNumber.from('0'),
@@ -128,7 +133,9 @@ describe('remove', function () {
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-        await this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty)
+        await expect(
+          this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, HashZero)
+        ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
 
         const updatedRes = await this.contracts.engine.reserves(poolId)
         expect(updatedRes.liquidity).to.equal(res.liquidity.sub(delLiquidity.raw))
@@ -141,7 +148,7 @@ describe('remove', function () {
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-        await expect(this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, empty))
+        await expect(this.contracts.engineRemove.removeToExternal(poolId, delLiquidity.raw, HashZero))
           .to.emit(this.contracts.engine, 'Removed')
           .withArgs(this.contracts.engineRemove.address, poolId, delRisky.raw, delStable.raw)
       })
@@ -149,11 +156,11 @@ describe('remove', function () {
 
     describe('fail cases', function () {
       it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToExternal(poolId, 0, empty)).to.be.reverted
+        await expect(this.contracts.engineRemove.removeToExternal(poolId, 0, HashZero)).to.be.reverted
       })
 
       it('reverts if required amount is too big', async function () {
-        await expect(this.contracts.engineRemove.removeToExternal(poolId, parseWei('11').raw, empty)).to.be.reverted
+        await expect(this.contracts.engineRemove.removeToExternal(poolId, parseWei('11').raw, HashZero)).to.be.reverted
       })
     })
   })

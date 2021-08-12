@@ -1,5 +1,5 @@
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
+import expect from '../../../shared/expect'
 
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'

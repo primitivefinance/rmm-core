@@ -8,9 +8,7 @@ import expect from '../../../shared/expect'
 import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, spot, delta } = config
-const empty: BytesLike = constants.HashZero
-const delLiquidity = parseWei(1)
-let poolId: string
+const { HashZero } = constants
 
 export async function beforeEachReentrancy(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
@@ -26,6 +24,8 @@ describe('reentrancy', function () {
     )
   })
 
+  const delLiquidity = parseWei(1)
+  let poolId: string
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
   })
@@ -38,13 +38,13 @@ describe('reentrancy', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
     })
 
     it('reverts the transaction', async function () {
       await expect(
-        this.contracts.reentrancyAttacker.deposit(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, empty)
+        this.contracts.reentrancyAttacker.deposit(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, HashZero)
       ).to.be.reverted
     })
   })
@@ -57,13 +57,13 @@ describe('reentrancy', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
     })
 
     it('reverts the transaction', async function () {
-      await expect(this.contracts.reentrancyAttacker.allocate(poolId, this.signers[0].address, parseWei('1').raw, empty)).to
-        .be.reverted
+      await expect(this.contracts.reentrancyAttacker.allocate(poolId, this.signers[0].address, parseWei('1').raw, HashZero))
+        .to.be.reverted
     })
   })
 
@@ -75,20 +75,20 @@ describe('reentrancy', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineSupply.address,
         parseWei('100').raw,
-        empty
+        HashZero
       )
       await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
     })
 
     it('reverts the transaction', async function () {
-      await expect(this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, empty)).to.be
-        .reverted
+      await expect(this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, HashZero)).to
+        .be.reverted
     })
   })
 
@@ -100,20 +100,20 @@ describe('reentrancy', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
       await this.contracts.engineAllocate.allocateFromExternal(
         poolId,
         this.contracts.engineSupply.address,
         parseWei('100').raw,
-        empty
+        HashZero
       )
       await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
       await this.contracts.reentrancyAttacker.borrowWithGoodCallback(
         poolId,
         this.contracts.reentrancyAttacker.address,
         parseWei('1').raw,
-        empty
+        HashZero
       )
     })
 
@@ -124,7 +124,7 @@ describe('reentrancy', function () {
           this.contracts.reentrancyAttacker.address,
           parseWei('1').raw,
           false,
-          empty
+          HashZero
         )
       ).to.be.reverted
     })
