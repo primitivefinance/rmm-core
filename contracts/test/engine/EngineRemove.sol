@@ -38,18 +38,7 @@ contract EngineRemove {
     ) public {
         data;
         (uint256 delRisky, uint256 delStable) = IPrimitiveEngine(engine).remove(poolId, delLiquidity);
-        IPrimitiveEngine(engine).withdraw(address(this), delRisky, delStable);
-    }
-
-    function removeCallback(
-        uint256 delRisky,
-        uint256 delStable,
-        bytes memory data
-    ) public pure {
-        delRisky;
-        delStable;
-        data;
-        return;
+        IPrimitiveEngine(engine).withdraw(msg.sender, delRisky, delStable);
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
