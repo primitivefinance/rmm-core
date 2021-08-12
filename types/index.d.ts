@@ -1,14 +1,7 @@
 import { Wallet, BigNumber } from 'ethers'
 import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
-import { DepositFunction, SwapFunction } from '../test/unit/createEngineFunctions'
-import { Config } from '../test/unit/config'
-
-export interface Functions {
-  depositFunction: DepositFunction
-  swapXForY: SwapFunction
-  swapYForX: SwapFunction
-}
+import { Calibration } from '../test/shared/calibration'
 
 export interface Contracts {
   engine: ContractTypes.MockEngine
@@ -35,27 +28,18 @@ export interface Contracts {
   reentrancyAttacker: ContractTypes.ReentrancyAttacker
 }
 
-export interface Mocks {
-  risky: MockContract
-  stable: MockContract
-  engine: MockContract
-  factory: MockContract
-}
-
 export interface Configs {
-  all: Config[]
-  strikes: Config[]
-  sigmas: Config[]
-  maturities: Config[]
-  spots: Config[]
+  all: Calibration[]
+  strikes: Calibration[]
+  sigmas: Calibration[]
+  maturities: Calibration[]
+  spots: Calibration[]
 }
 
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
     contracts: Contracts
-    functions: Functions
-    mocks: Mocks
     configs: Configs
   }
 }

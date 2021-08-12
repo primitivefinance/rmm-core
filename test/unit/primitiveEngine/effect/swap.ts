@@ -7,7 +7,7 @@ import { MockEngine, EngineSwap } from '../../../../typechain'
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
-import { Functions, Contracts } from '../../../../types'
+import { Contracts } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
 import { DebugReturn, Pool } from '../../../shared/swapUtils'
 
@@ -164,27 +164,15 @@ const TestPools: PoolState[] = [
 async function doSwap(
   signers: Wallet[],
   engine: MockEngine,
+  engineSwap: EngineSwap,
   poolId: BytesLike,
-  testCase: SwapTestCase,
-  functions: Functions
+  testCase: SwapTestCase
 ): Promise<ContractTransaction> {
-  let swap: ContractTransaction
+  const { riskyForStable, fromMargin, deltaIn } = testCase
   const signerIndex = testCase.signer ? testCase.signer : 0
   const signer = signers[signerIndex]
-  if (testCase.riskyForStable) {
-    if (testCase.fromMargin) {
-      swap = await engine.connect(signer).swap(poolId, true, testCase.deltaIn.raw, true, empty)
-    } else {
-      swap = await functions.swapXForY(signer, poolId, true, testCase.deltaIn.raw, testCase.fromMargin)
-    }
-  } else {
-    if (testCase.fromMargin) {
-      swap = await engine.connect(signer).swap(poolId, false, testCase.deltaIn.raw, true, empty)
-    } else {
-      swap = await functions.swapYForX(signer, poolId, false, testCase.deltaIn.raw, testCase.fromMargin)
-    }
-  }
-  return swap
+  const target = testCase.fromMargin ? engine : engineSwap
+  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, empty)
 }
 
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
@@ -285,7 +273,7 @@ describe('Engine:swap', function () {
           // Simulate the swap from the test case
           const simulated = simulateSwap(pool, testCase)
           // Execute the swap in the contract
-          const tx = doSwap(this.signers, engine, poolId, testCase, this.functions)
+          const tx = doSwap(this.signers, engine, engineSwap, poolId, testCase)
           try {
             await tx
           } catch (error) {
