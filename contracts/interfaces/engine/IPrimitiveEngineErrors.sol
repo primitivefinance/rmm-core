@@ -27,7 +27,7 @@ interface IPrimitiveEngineErrors {
     /// @param actual The actual stable balance
     error StableBalanceError(uint256 expected, uint256 actual);
 
-    /// @notice Thrown when a pool's maturity timestamp has been passed by a buffer of 120s.
+    /// @notice Thrown when a pool's maturity timestamp has been passed by a buffer of 120s
     error PoolExpiredError();
 
     /// @notice Thrown when the pool does not exist

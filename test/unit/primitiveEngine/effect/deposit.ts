@@ -8,8 +8,8 @@ import { Contracts } from '../../../../types'
 const { HashZero } = constants
 
 export async function beforeEachDeposit(signers: Wallet[], contracts: Contracts): Promise<void> {
-  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
+  await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
+  await contracts.risky.mint(signers[0].address, parseWei('10000').raw)
 }
 
 describe('deposit', function () {
@@ -104,7 +104,7 @@ describe('deposit', function () {
     it('reverts when the callback did not transfer the stable', async function () {
       await expect(
         this.contracts.badEngineDeposit.deposit(
-          this.signers[0].address,
+          this.contracts.engineDeposit.address,
           parseWei('1000').raw,
           parseWei('1000').raw,
           HashZero,
