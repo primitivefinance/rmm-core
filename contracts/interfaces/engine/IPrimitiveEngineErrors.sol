@@ -14,6 +14,9 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when a pool already exists
     error PoolDuplicateError();
 
+    /// @notice Thrown when timestamp is > than maturity
+    error PoolExpiredError();
+
     /// @notice Thrown when the parameters of a new pool are invalid
     error CalibrationError(uint256 delRisky, uint256 delStable);
 

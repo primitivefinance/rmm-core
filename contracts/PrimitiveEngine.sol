@@ -254,6 +254,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         // 1. Update the lastTimestamp, effectively updating the time until expiry
         uint32 timestamp = _blockTimestamp();
+        if (timestamp > calibrations[details.poolId].maturity + 120) revert PoolExpiredError();
         calibrations[details.poolId].lastTimestamp = timestamp;
         emit UpdatedTimestamp(details.poolId, timestamp);
         // 2. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
@@ -305,7 +306,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
             }
 
-            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
+            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, timestamp);
             int128 nextInvariant = invariantOf(details.poolId);
             if (invariant > nextInvariant && nextInvariant.sub(invariant) >= Units.MANTISSA_INT)
                 revert InvariantError(invariant, nextInvariant);
@@ -427,7 +428,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
-        uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
+        uint256 tau;
+        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
         reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, cal.strike, cal.sigma, tau);
     }
 
@@ -440,7 +442,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
-        uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
+        uint256 tau;
+        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp; // invariantOf() will use this same tau
         reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau);
     }
 
@@ -452,12 +455,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration memory cal = calibrations[poolId];
         uint256 reserveRisky = (res.reserveRisky * 1e18) / res.liquidity; // risky per 1 liquidity
         uint256 reserveStable = (res.reserveStable * 1e18) / res.liquidity; // stable per 1 liquidity
-        invariant = ReplicationMath.calcInvariant(
-            reserveRisky,
-            reserveStable,
-            cal.strike,
-            cal.sigma,
-            (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
-        );
+        uint256 tau;
+        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp;
+        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, cal.strike, cal.sigma, tau);
     }
 }
