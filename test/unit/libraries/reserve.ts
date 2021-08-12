@@ -1,6 +1,6 @@
 import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
-import { BigNumber, BytesLike } from 'ethers'
+import { BigNumber, BytesLike, constants } from 'ethers'
 import { parseWei } from 'web3-units'
 import { TestReserve } from '../../../typechain'
 import loadContext from '../context'
@@ -125,6 +125,16 @@ describe('testReserve', function () {
       await reserve.shouldRepayFloat(resId, delLiquidity) // repay the borrowed float
       expect((await reserve.res()).float).to.be.deep.eq(before.float) // no changes because we add then sub
       expect((await reserve.res()).debt).to.be.deep.eq(before.debt) // no changes because...
+    })
+
+    it('should overflow on update', async function () {
+      const max = constants.MaxUint256.sub(1)
+      await reserve.update(resId, max, max, max, 1)
+      await reserve.step(100000)
+      await expect(reserve.shouldUpdate(resId)).to.not.be.reverted
+      expect((await reserve.res()).cumulativeLiquidity.lt(max)).to.be.eq(true)
+      expect((await reserve.res()).cumulativeRisky.lt(max)).to.be.eq(true)
+      expect((await reserve.res()).cumulativeStable.lt(max)).to.be.eq(true)
     })
   })
 })
