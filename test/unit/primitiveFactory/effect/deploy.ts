@@ -1,5 +1,5 @@
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import loadContext from '../../context'
@@ -7,11 +7,11 @@ import { deployMockContract } from 'ethereum-waffle'
 import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
 import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
-import { computeEngineAddress } from '../../../shared/utils'
+import { computeEngineAddress } from '../../../shared'
 
 describe('deploy', function () {
   before(async function () {
-    loadContext(waffle.provider, ['factoryDeploy'], async () => {})
+    loadContext(waffle.provider, ['factoryDeploy'])
   })
 
   describe('when the parameters are valid', function () {
