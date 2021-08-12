@@ -1,8 +1,8 @@
-import { waffle } from 'hardhat'
 import expect from '../../../shared/expect'
-import { BigNumber, constants, BytesLike, Wallet } from 'ethers'
-
+import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
+import { BigNumber, constants, Wallet } from 'ethers'
+
 import { computePoolId } from '../../../shared/utils'
 import { Contracts } from '../../../../types'
 

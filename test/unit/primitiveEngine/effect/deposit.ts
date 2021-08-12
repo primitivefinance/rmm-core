@@ -1,8 +1,8 @@
-import { waffle } from 'hardhat'
-import { constants, BytesLike, Wallet } from 'ethers'
-import { parseWei } from 'web3-units'
-
 import expect from '../../../shared/expect'
+import { waffle } from 'hardhat'
+import { parseWei } from 'web3-units'
+import { constants, Wallet } from 'ethers'
+
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'
 const { HashZero } = constants

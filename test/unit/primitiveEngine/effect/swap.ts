@@ -2,14 +2,13 @@ import expect from '../../../shared/expect'
 import { assert } from 'chai'
 import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
-import { MockEngine, EngineSwap } from '../../../../typechain'
-import loadContext, { DEFAULT_CONFIG as calibration } from '../../context'
 import { Wei, Time, parseWei, toBN, Integer64x64, parsePercentage, Percentage } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
+
 import { Contracts } from '../../../../types'
-import { computePoolId } from '../../../shared/utils'
-import { DebugReturn, Pool } from '../../../shared/swapUtils'
-import { Calibration } from '../../../shared'
+import { MockEngine, EngineSwap } from '../../../../typechain'
+import loadContext, { DEFAULT_CONFIG as calibration } from '../../context'
+import { Calibration, DebugReturn, Pool, computePoolId } from '../../../shared'
 const { HashZero } = constants
 
 const onError = (error: any, revertReason: string | undefined) => {

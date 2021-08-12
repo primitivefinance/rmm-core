@@ -1,7 +1,7 @@
-import { waffle } from 'hardhat'
 import expect from '../../../shared/expect'
-import { BigNumber, constants, Wallet } from 'ethers'
+import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
+import { BigNumber, constants, Wallet } from 'ethers'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'

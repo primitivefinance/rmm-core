@@ -1,6 +1,5 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-
 import loadContext from '../../context'
 
 describe('owner', async function () {

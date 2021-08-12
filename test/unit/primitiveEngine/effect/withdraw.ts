@@ -1,8 +1,7 @@
-import { waffle } from 'hardhat'
 import expect from '../../../shared/expect'
-import { constants, Wallet } from 'ethers'
-
+import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
+import { constants, Wallet } from 'ethers'
 
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'
