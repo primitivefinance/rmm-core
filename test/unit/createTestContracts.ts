@@ -1,8 +1,8 @@
 import hre, { ethers } from 'hardhat'
 import { Wallet, Contract } from 'ethers'
-import { Contracts, ContractName } from '../../types'
 import { deployContract } from 'ethereum-waffle'
 import * as ContractTypes from '../../typechain'
+import { Contracts, ContractName } from '../../types'
 import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
 type BaseContracts = {
