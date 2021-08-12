@@ -14,7 +14,7 @@ const precision = {
 
 describe('testCumulativeNormalDistribution', function () {
   before(async function () {
-    loadContext(waffle.provider, ['testCumulativeNormalDistribution'], async () => {})
+    loadContext(waffle.provider, ['testCumulativeNormalDistribution'])
   })
 
   describe('cumulative', function () {

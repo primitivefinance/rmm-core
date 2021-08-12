@@ -1,36 +1,16 @@
-// Standard Imports
-import { expect, assert } from 'chai'
+import expect from '../../../shared/expect'
+import { assert } from 'chai'
 import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
 import { MockEngine, EngineSwap } from '../../../../typechain'
-// Context Imports
-import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { Wei, Time, parseWei, toBN, Integer64x64 } from 'web3-units'
+import loadContext, { DEFAULT_CONFIG as calibration } from '../../context'
+import { Wei, Time, parseWei, toBN, Integer64x64, parsePercentage, Percentage } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Contracts } from '../../../../types'
 import { computePoolId } from '../../../shared/utils'
 import { DebugReturn, Pool } from '../../../shared/swapUtils'
-
-export const ERC20Events = {
-  EXCEEDS_BALANCE: 'ERC20: transfer amount exceeds balance',
-}
-export const EngineEvents = {
-  DEPOSITED: 'Deposited',
-  WITHDRAWN: 'Withdrawn',
-  CREATE: 'Create',
-  UPDATE: 'Update',
-  ADDED_BOTH: 'AddedBoth',
-  REMOVED_BOTH: 'RemovedBoth',
-  SWAP: 'Swap',
-  SUPPLIED: 'Supplied',
-  CLAIMED: 'Claimed',
-  BORROWED: 'Borrowed',
-  REPAID: 'Repaid',
-}
-
-// Constants
-const { strike, sigma, maturity, lastTimestamp, delta, fee } = config
-const empty: BytesLike = constants.HashZero
+import { Calibration } from '../../../shared'
+const { HashZero } = constants
 
 const onError = (error: any, revertReason: string | undefined) => {
   const shouldRevert = typeof revertReason != undefined
@@ -60,13 +40,14 @@ const onError = (error: any, revertReason: string | undefined) => {
 
 function swapTestCaseDescription(testCase: SwapTestCase): string {
   const signer = testCase.signer ? `signer[${testCase.signer}]` : 'signer[0]'
-  const payee = testCase.fromMargin ? `from ${signer} Margin account` : 'from Callee Balance'
+  const { riskyForStable, deltaIn, fromMargin } = testCase
+  const payee = fromMargin ? `from ${signer} Margin account` : 'from Callee Balance'
   const caseType = testCase.revertMsg ? 'fail case: ' : 'success case: '
   const revert = testCase.revertMsg ? ` reverted with ${testCase.revertMsg}` : ''
-  if (testCase.riskyForStable) {
-    return caseType + `swapping ${testCase.deltaIn} riskyIn for stableOut ${payee}` + revert
+  if (riskyForStable) {
+    return caseType + `swapping ${deltaIn} riskyIn for stableOut ${payee}` + revert
   } else {
-    return caseType + `swapping ${testCase.deltaIn} stableIn for riskyOut ${payee}` + revert
+    return caseType + `swapping ${deltaIn} stableIn for riskyOut ${payee}` + revert
   }
 }
 
@@ -146,19 +127,42 @@ const TestCases: SwapTestCase[] = [...SuccessCases, ...FailCases]
 
 interface PoolState {
   description: string
-  strike: number
-  sigma: number
-  maturity: number
-  lastTimestamp: number
+  calibration: Calibration
+}
+
+const calibrations: any = {
+  ['expired']: new Calibration(10, 1, Time.YearInSeconds, Time.YearInSeconds + 1, 10),
+  ['itm']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5),
+  ['otm']: new Calibration(5, 1, Time.YearInSeconds + 1, 1, 10),
+  ['highfee']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, parsePercentage(0.1)),
+  ['feeless']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, new Percentage(toBN(0))),
 }
 const TestPools: PoolState[] = [
   {
     description: `standard pool`,
-    strike: strike.float,
-    sigma: sigma.float,
-    maturity: maturity.raw,
-    lastTimestamp: lastTimestamp.raw,
+    calibration: calibration,
   },
+  /*
+  {
+    description: `expired pool`,
+    calibration: calibrations.expired,
+  },
+   {
+    description: `in the money pool`,
+    calibration: calibrations.itm,
+  },
+  {
+    description: `out of the money pool`,
+    calibration: calibrations.otm,
+  },
+  {
+    description: `high fee pool`,
+    calibration: calibrations.highfee,
+  },
+  {
+    description: `feeless pool`,
+    calibration: calibrations.feeless,
+  }, */
 ]
 
 async function doSwap(
@@ -172,17 +176,13 @@ async function doSwap(
   const signerIndex = testCase.signer ? testCase.signer : 0
   const signer = signers[signerIndex]
   const target = testCase.fromMargin ? engine : engineSwap
-  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, empty)
+  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, HashZero)
 }
 
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
-  const riskyForStable = testCase.riskyForStable
-  const deltaIn = testCase.deltaIn
-  if (riskyForStable) {
-    return pool.swapAmountInRisky(deltaIn)
-  } else {
-    return pool.swapAmountInStable(deltaIn)
-  }
+  const { riskyForStable, deltaIn } = testCase
+  if (riskyForStable) return pool.swapAmountInRisky(deltaIn)
+  else return pool.swapAmountInStable(deltaIn)
 }
 
 const DEBUG_MODE = false
@@ -190,21 +190,26 @@ const DEBUG_MODE = false
 export async function beforeEachSwap(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
   await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.engineDeposit.deposit(contracts.engineAllocate.address, parseWei('1000').raw, parseWei('1000').raw, empty)
-  await contracts.engineDeposit.deposit(contracts.engineSwap.address, parseWei('1000').raw, parseWei('1000').raw, empty)
-  await contracts.engineDeposit.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, empty)
-  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, empty)
-  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineAllocate.address, parseWei('99').raw, empty)
+  await contracts.engineDeposit.deposit(
+    contracts.engineAllocate.address,
+    parseWei('1000').raw,
+    parseWei('1000').raw,
+    HashZero
+  )
+  await contracts.engineDeposit.deposit(contracts.engineSwap.address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
+  await contracts.engineDeposit.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, HashZero)
 }
 
 describe('Engine:swap', function () {
   before('Load swap context', async function () {
-    loadContext(
-      waffle.provider,
-      ['engineCreate', 'engineSwap', 'engineDeposit', 'engineSupply', 'engineAllocate', 'testReplicationMath'],
-      beforeEachSwap
-    )
+    loadContext(waffle.provider, [
+      'engineCreate',
+      'engineSwap',
+      'engineDeposit',
+      'engineSupply',
+      'engineAllocate',
+      'testReplicationMath',
+    ])
   })
 
   for (const poolState of TestPools) {
@@ -214,8 +219,18 @@ describe('Engine:swap', function () {
       let engine: MockEngine, engineSwap: EngineSwap
       let preBalanceRisky: BigNumber, preBalanceStable: BigNumber, preReserves: any, preSettings: any, preSpot: number
       let preInvariant: BigNumber
+      const { strike, sigma, maturity, lastTimestamp, delta, fee } = poolState.calibration
 
       beforeEach(async function () {
+        await beforeEachSwap(this.signers, this.contracts)
+        await this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          parseWei('100').raw,
+          HashZero
+        )
         ;[deployer, engine, engineSwap] = [this.signers[0], this.contracts.engine, this.contracts.engineSwap] // contracts
         poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw) // pool id for parameters
 
@@ -231,8 +246,8 @@ describe('Engine:swap', function () {
         // spot price of pool pre-swap
         preSpot = getSpotPrice(
           new Wei(preReserves.reserveRisky).float / new Wei(preReserves.liquidity).float,
-          config.strike.float,
-          config.sigma.float,
+          calibration.strike.float,
+          calibration.sigma.float,
           new Time(preSettings.maturity - preSettings.lastTimestamp).years
         )
 
@@ -270,10 +285,15 @@ describe('Engine:swap', function () {
            invariant: ${pool.invariant.parsed}
           `)
 
+          const tx = doSwap(this.signers, engine, engineSwap, poolId, testCase)
+          // if expired
+          if (maturity.raw <= lastTimestamp.raw) {
+            await expect(tx).to.be.reverted
+            return
+          }
           // Simulate the swap from the test case
           const simulated = simulateSwap(pool, testCase)
           // Execute the swap in the contract
-          const tx = doSwap(this.signers, engine, engineSwap, poolId, testCase)
           try {
             await tx
           } catch (error) {
@@ -317,20 +337,22 @@ describe('Engine:swap', function () {
 
           const deltaOut = testCase.riskyForStable ? reserveStable.sub(postStable) : reserveRisky.sub(postRisky)
 
-          await expect(tx)
-            .to.emit(engine, EngineEvents.SWAP)
-            .withArgs(
-              testCase.fromMargin ? deployer.address : engineSwap.address,
-              poolId,
-              testCase.riskyForStable,
-              testCase.deltaIn.raw,
-              deltaOut.raw
-            )
+          if (maturity.raw > lastTimestamp.raw)
+            await expect(tx)
+              .to.emit(engine, 'Swap')
+              .withArgs(
+                testCase.fromMargin ? deployer.address : engineSwap.address,
+                poolId,
+                testCase.riskyForStable,
+                testCase.deltaIn.raw,
+                deltaOut.raw
+              )
+          else await expect(tx).to.be.reverted
 
           const postSpot = getSpotPrice(
             postRisky.float / postLiquidity.float,
-            config.strike.float,
-            config.sigma.float,
+            calibration.strike.float,
+            calibration.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 
@@ -344,9 +366,6 @@ describe('Engine:swap', function () {
           } else {
             expect(postSpot).to.be.gte(preSpot)
           }
-
-          // Simulation comparisons
-          //expect(postSpot).to.be.closeTo(simulated.effectivePriceOutStable?.float, 1)
         })
       }
     })
