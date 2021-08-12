@@ -6,7 +6,7 @@ import loadContext from '../context'
 
 describe('testMargin', function () {
   before(async function () {
-    loadContext(waffle.provider, ['testMargin'], async () => {})
+    loadContext(waffle.provider, ['testMargin'])
   })
 
   describe('margin', function () {
