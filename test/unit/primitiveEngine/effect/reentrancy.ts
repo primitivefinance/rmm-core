@@ -1,10 +1,10 @@
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-import { constants, BytesLike, Wallet } from 'ethers'
 import { parseWei } from 'web3-units'
+import { constants, Wallet } from 'ethers'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId } from '../../../shared/utils'
-import expect from '../../../shared/expect'
 import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, spot, delta } = config

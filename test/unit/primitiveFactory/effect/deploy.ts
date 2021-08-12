@@ -7,7 +7,7 @@ import { deployMockContract } from 'ethereum-waffle'
 import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
 import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
-import { computeEngineAddress } from '../../../shared/utils'
+import { computeEngineAddress } from '../../../shared'
 
 describe('deploy', function () {
   before(async function () {

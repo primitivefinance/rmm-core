@@ -1,4 +1,4 @@
-import { expect } from 'chai'
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import loadContext from '../../context'
 
