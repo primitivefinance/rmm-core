@@ -1,5 +1,4 @@
 import { Wallet, BigNumber } from 'ethers'
-import { MockContract } from 'ethereum-waffle'
 import * as ContractTypes from '../typechain'
 import { Calibration } from '../test/shared/calibration'
 

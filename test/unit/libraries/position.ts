@@ -1,5 +1,5 @@
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { TestPosition } from '../../../typechain'
 import { parseWei } from 'web3-units'
 import { utils, BytesLike } from 'ethers'

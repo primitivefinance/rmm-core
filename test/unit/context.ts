@@ -1,10 +1,10 @@
-import { createFixtureLoader, MockProvider } from 'ethereum-waffle'
-import { Contracts, ContractName, Configs } from '../../types'
 import { Wallet } from 'ethers'
-import createTestContracts from './createTestContracts'
-import { batchApproval } from '../shared/utils'
-import { Calibration } from '../shared'
 import { Time, parsePercentage } from 'web3-units'
+import { createFixtureLoader, MockProvider } from 'ethereum-waffle'
+import createTestContracts from './createTestContracts'
+import { Contracts, ContractName, Configs } from '../../types'
+import { batchApproval, Calibration } from '../shared'
+
 export const DEFAULT_CONFIG: Calibration = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015))
 
 export default function loadContext(
