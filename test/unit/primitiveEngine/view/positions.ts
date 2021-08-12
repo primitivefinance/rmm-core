@@ -5,7 +5,7 @@ import loadContext from '../../context'
 
 describe('position', function () {
   before(async function () {
-    loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [])
   })
 
   it('returns 0 for all fields when the position is uninitialized', async function () {

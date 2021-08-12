@@ -5,7 +5,7 @@ import loadContext from '../../context'
 
 describe('margins', function () {
   before(async function () {
-    loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [])
   })
 
   it('returns 0 for all fields when the margin account is uninitialized', async function () {

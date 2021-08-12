@@ -4,7 +4,7 @@ import loadContext from '../../context'
 
 describe('owner', function () {
   before(async function () {
-    loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [])
   })
 
   it('returns the deployer of the contract as the owner', async function () {

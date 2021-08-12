@@ -5,7 +5,7 @@ import loadContext from '../../context'
 
 describe('reserves', function () {
   before(async function () {
-    loadContext(waffle.provider, [], async function () {})
+    loadContext(waffle.provider, [])
   })
 
   it('returns 0 for all fields when the pool is uninitialized', async function () {
