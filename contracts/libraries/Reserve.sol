@@ -28,10 +28,13 @@ library Reserve {
     /// @param  blockTimestamp  Checkpoint timestamp of update
     function update(Data storage res, uint32 blockTimestamp) internal {
         uint32 deltaTime = blockTimestamp - res.blockTimestamp;
+        // overflow is desired
         if (deltaTime > 0) {
-            res.cumulativeRisky += res.reserveRisky * deltaTime;
-            res.cumulativeStable += res.reserveStable * deltaTime;
-            res.cumulativeLiquidity += res.liquidity * deltaTime;
+            unchecked {
+                res.cumulativeRisky += res.reserveRisky * deltaTime;
+                res.cumulativeStable += res.reserveStable * deltaTime;
+                res.cumulativeLiquidity += res.liquidity * deltaTime;
+            }
         }
         res.blockTimestamp = blockTimestamp;
     }
