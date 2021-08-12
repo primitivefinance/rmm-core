@@ -69,8 +69,8 @@ describe('create', function () {
 
       const reserve = await this.contracts.engine.reserves(poolId)
 
-      // TODO: Check RX1 and RY2
-
+      expect(reserve.reserveRisky).to.not.equal(0)
+      expect(reserve.reserveStable).to.not.equal(0)
       expect(reserve.liquidity).to.equal(parseWei(1).raw)
       expect(reserve.float).to.equal(0)
       expect(reserve.debt).to.equal(0)
