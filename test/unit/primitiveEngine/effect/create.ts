@@ -1,11 +1,12 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
-import { constants, BytesLike, Wallet } from 'ethers'
+import { constants, BytesLike, Wallet, BigNumber } from 'ethers'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
-import { computePoolId, Calibration } from '../../../shared'
+import { computePoolId, Calibration, computePositionId } from '../../../shared'
 import { Contracts } from '../../../../types'
+import { getStableGivenRisky } from '@primitivefinance/v2-math'
 
 const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
 const { HashZero } = constants
@@ -20,11 +21,12 @@ describe('create', function () {
     loadContext(waffle.provider, ['engineCreate', 'testPosition'], beforeEachCreate)
   })
 
-  let poolId: string
+  let poolId: string, posId: string
   let delLiquidity = parseWei(0)
 
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+    posId = computePositionId(this.contracts.engineCreate.address, poolId)
     delLiquidity = parseWei(1)
   })
 
@@ -38,6 +40,76 @@ describe('create', function () {
         delLiquidity.raw,
         HashZero
       )
+    })
+
+    it('res.allocate: increases reserve liquidity', async function () {
+      await expect(
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
+    })
+
+    it('res.allocate: increases reserve risky', async function () {
+      const delRisky = parseWei(1 - delta)
+      await expect(
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.increaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
+    })
+
+    it('res.allocate: increases reserve stable', async function () {
+      const delRisky = parseWei(1 - delta)
+      const delStable = parseWei(
+        getStableGivenRisky(delRisky.float, strike.float, sigma.float, maturity.sub(lastTimestamp).years)
+      )
+      await expect(
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.increaseReserveStable(this.contracts.engine, poolId, delStable.raw)
+    })
+
+    it('res.allocate: update block timestamp', async function () {
+      await expect(
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
+    })
+
+    it('pos.allocate: increase liquidity & burn 1000 wei from position', async function () {
+      await expect(
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.increasePositionLiquidity(this.contracts.engine, posId, delLiquidity.sub(1000).raw)
     })
 
     it('emits the Created event', async function () {
@@ -80,7 +152,7 @@ describe('create', function () {
       expect(reserve.blockTimestamp).to.equal(timestamp)
     })
 
-    it('initializes the calibration struct & mints liquidity', async function () {
+    it('initializes the calibration struct', async function () {
       await expect(
         this.contracts.engineCreate.create(
           strike.raw,
@@ -148,6 +220,20 @@ describe('create', function () {
       ).to.reverted
     })
 
+    it('reverts if pool is expired (maturity is less than current block timestamp)', async function () {
+      let fig = new Calibration(strike.float, sigma.float, +(await this.contracts.engine.time()) + 1, 1, spot.float)
+      await expect(
+        this.contracts.engine.create(
+          fig.strike.raw,
+          fig.sigma.raw,
+          fig.maturity.raw,
+          parseWei(fig.delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.reverted
+    })
+
     it('reverts if the actual delta amounts are 0', async function () {
       let fig = new Calibration(100, sigma.float, maturity.seconds, 1, spot.float)
       let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
@@ -161,6 +247,19 @@ describe('create', function () {
       )
       const res = await this.contracts.engine.reserves(pid)
       expect(res.reserveStable.isZero()).to.eq(false)
+    })
+
+    it('reverts if strike is greater than uint128', async function () {
+      await expect(
+        this.contracts.engineCreate.create(
+          BigNumber.from(2).pow(128).add(1),
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
+      ).to.reverted
     })
   })
 })
