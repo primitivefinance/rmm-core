@@ -84,9 +84,8 @@ describe('allocate', function () {
       })
 
       it('reverts if the deltas are 0', async function () {
-        await expect(
-          this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)
-        ).to.revertWithCustomError('ZeroDeltasError', [])
+        await expect(this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)).to
+          .reverted
       })
     })
   })
