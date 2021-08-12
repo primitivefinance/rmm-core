@@ -1,5 +1,5 @@
-import { waffle } from 'hardhat'
 import expect from '../../shared/expect'
+import { waffle } from 'hardhat'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
 import { Integer64x64, parseInt64x64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
@@ -75,7 +75,7 @@ describe('testReplicationMath', function () {
   const loadFixture = createFixtureLoader(waffle.provider.getWallets(), waffle.provider)
   let fixture: TestStepFixture
   before(async function () {
-    loadContext(waffle.provider, ['testReplicationMath', 'testCumulativeNormalDistribution'], async () => {})
+    loadContext(waffle.provider, ['testReplicationMath', 'testCumulativeNormalDistribution'])
     fixture = await loadFixture(testStepFixture)
   })
 
@@ -107,8 +107,6 @@ describe('testReplicationMath', function () {
         let expected = config.sigma.float * Math.sqrt(tau.years)
         let step1 = new Integer64x64(await fixture.getStableGivenRisky.step1(config.sigma.raw, tau.raw))
         expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
-        // fix: matchers
-        //expect(step1.raw).to.be.closeTo(toBN(expected).mul(Integer64x64.Denominator), precision.integer)
       })
 
       it('step2: get the stable reserves per 1 unit of liquidity', async function () {
@@ -118,8 +116,7 @@ describe('testReplicationMath', function () {
       })
 
       it('step3: calculate phi = CDF^-1( 1 - riskyReserve )', async function () {
-        let reserve = reserveRisky.mul(parseWei(1)).div(liquidity) //await fixture.getStableGivenRisky.step2(reserveRisky.raw)
-        let invariant = 0
+        let reserve = reserveRisky.mul(parseWei(1)).div(liquidity)
         let inside = 1 - reserve.float
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF
@@ -185,8 +182,6 @@ describe('testReplicationMath', function () {
         let expected = config.sigma.float * Math.sqrt(tau.years)
         let step1 = new Integer64x64(await fixture.getRiskyGivenStable.step1(config.sigma.raw, tau.raw))
         expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
-        // fix: matchers
-        //expect(step1.raw).to.be.closeTo(toBN(expected).mul(Integer64x64.Denominator), precision.integer)
       })
 
       it('step2: get the stable reserves per 1 unit of liquidity', async function () {

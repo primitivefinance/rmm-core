@@ -1,5 +1,5 @@
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { BigNumber, BytesLike } from 'ethers'
 import { parseWei } from 'web3-units'
 import { TestReserve } from '../../../typechain'
@@ -7,7 +7,7 @@ import loadContext from '../context'
 
 describe('testReserve', function () {
   before(async function () {
-    loadContext(waffle.provider, ['testReserve'], async () => {})
+    loadContext(waffle.provider, ['testReserve'])
   })
 
   describe('reserve', function () {

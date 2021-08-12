@@ -1,9 +1,9 @@
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
+import { constants, Wallet } from 'ethers'
 
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'
-import { constants, Wallet } from 'ethers'
 
 export async function beforeEachCreate(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, constants.MaxUint256)

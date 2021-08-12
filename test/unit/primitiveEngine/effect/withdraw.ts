@@ -1,18 +1,22 @@
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
-import { constants, Wallet } from 'ethers'
-
 import { parseWei } from 'web3-units'
+import { constants, Wallet } from 'ethers'
 
 import loadContext from '../../context'
 import { Contracts } from '../../../../types'
 
-const empty = constants.HashZero
+const { HashZero } = constants
 
 export async function beforeEachWithdraw(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
   await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.engineDeposit.deposit(contracts.engineWithdraw.address, parseWei('1000').raw, parseWei('1000').raw, empty)
+  await contracts.engineDeposit.deposit(
+    contracts.engineWithdraw.address,
+    parseWei('1000').raw,
+    parseWei('1000').raw,
+    HashZero
+  )
 }
 
 describe('withdraw', function () {
@@ -22,7 +26,13 @@ describe('withdraw', function () {
 
   describe('success cases', function () {
     it('withdraws from the margin account', async function () {
-      await this.contracts.engineWithdraw.withdraw(parseWei('999').raw, parseWei('998').raw)
+      const [delRisky, delStable] = [parseWei('999'), parseWei('998')]
+      await expect(this.contracts.engineWithdraw.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        this.contracts.engine,
+        this.contracts.engineWithdraw.address,
+        delRisky.raw,
+        delStable.raw
+      )
 
       const margin = await this.contracts.engine.margins(this.contracts.engineWithdraw.address)
 

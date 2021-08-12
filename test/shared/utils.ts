@@ -1,5 +1,4 @@
-import { utils, BigNumber } from 'ethers'
-
+import { utils, BigNumber, constants } from 'ethers'
 const { keccak256, solidityPack } = utils
 
 export function computePoolId(
@@ -16,9 +15,6 @@ export function computeEngineAddress(factory: string, risky: string, stable: str
   return utils.getCreate2Address(factory, salt, utils.keccak256(bytecode))
 }
 
-import { parseEther } from 'ethers/lib/utils'
-const MAX_UINT = parseEther('10000000000000000000000000000000000000')
-
 /**
  *
  * @param arrayOfAddresses Spenders to approve
@@ -26,8 +22,6 @@ const MAX_UINT = parseEther('10000000000000000000000000000000000000')
  * @param arrayOfSigners Account owners to be approved
  */
 export async function batchApproval(arrayOfAddresses, arrayOfTokens, arrayOfSigners) {
-  let calls: any[] = []
-
   // for each contract
   for (let c = 0; c < arrayOfAddresses.length; c++) {
     let address = arrayOfAddresses[c]
@@ -37,13 +31,8 @@ export async function batchApproval(arrayOfAddresses, arrayOfTokens, arrayOfSign
       // for each owner
       for (let u = 0; u < arrayOfSigners.length; u++) {
         let signer = arrayOfSigners[u]
-        let allowance = await token.allowance(signer.address, address)
-        if (allowance < MAX_UINT) {
-          calls.push(token.connect(signer).approve(address, MAX_UINT))
-        }
+        await token.connect(signer).approve(address, constants.MaxUint256)
       }
     }
   }
-
-  await Promise.all(calls)
 }

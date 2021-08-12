@@ -1,5 +1,5 @@
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
 import { parseWei, Integer64x64, Wei } from 'web3-units'
 import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
@@ -14,7 +14,7 @@ const precision = {
 
 describe('testCumulativeNormalDistribution', function () {
   before(async function () {
-    loadContext(waffle.provider, ['testCumulativeNormalDistribution'], async () => {})
+    loadContext(waffle.provider, ['testCumulativeNormalDistribution'])
   })
 
   describe('cumulative', function () {
