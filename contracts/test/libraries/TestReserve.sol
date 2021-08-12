@@ -121,4 +121,18 @@ contract TestReserve {
         reserves[resId].repayFloat(delLiquidity);
         return reserves[resId];
     }
+
+    function update(
+        bytes32 resId,
+        uint256 risky,
+        uint256 stable,
+        uint256 liquidity,
+        uint32 blockTimestamp
+    ) public returns (Reserve.Data memory) {
+        reserves[resId].cumulativeRisky = risky;
+        reserves[resId].cumulativeStable = stable;
+        reserves[resId].cumulativeLiquidity = liquidity;
+        reserves[resId].blockTimestamp = blockTimestamp;
+        return reserves[resId];
+    }
 }
