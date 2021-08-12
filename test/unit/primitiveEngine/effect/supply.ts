@@ -13,14 +13,9 @@ const { HashZero } = constants
 export async function beforeEachSupply(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, parseWei('10000000').raw)
   await contracts.risky.mint(signers[0].address, parseWei('10000000').raw)
-  await contracts.engineCreate.create(
-    strike.raw,
-    sigma.raw,
-    maturity.raw,
-    parseWei(delta).raw,
-    parseWei('1000').raw,
-    HashZero
-  )
+  await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, HashZero)
+  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('10').raw, HashZero)
 }
 
 describe('supply', function () {

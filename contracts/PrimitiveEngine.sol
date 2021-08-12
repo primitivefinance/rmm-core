@@ -141,7 +141,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         calibrations[poolId] = cal; // initialize calibration
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, timestamp); // mint liquidity
-        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // give liquidity to `msg.sender`, burn 1000 wei
+        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // burn 1000 wei
         emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
