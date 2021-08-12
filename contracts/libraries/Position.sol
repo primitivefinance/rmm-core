@@ -3,7 +3,7 @@ pragma solidity 0.8.6;
 
 /// @notice  Position Library
 /// @author  Primitive
-/// @dev     Generalized position data structure for any engine
+/// @dev     Data structure for any Engine Position
 
 import "./SafeCast.sol";
 
@@ -34,7 +34,6 @@ library Position {
 
     /// @notice Add to the balance of liquidity
     function allocate(Data storage position, uint256 delLiquidity) internal {
-        require(position.debt == 0, "Debt");
         position.liquidity += delLiquidity.toUint128();
     }
 
