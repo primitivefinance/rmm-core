@@ -1,14 +1,14 @@
-import { waffle } from 'hardhat'
 import expect from '../../../shared/expect'
-import { constants, BytesLike, Wallet } from 'ethers'
+import { waffle } from 'hardhat'
 import { parseWei } from 'web3-units'
+import { constants, BytesLike, Wallet } from 'ethers'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId, Calibration } from '../../../shared'
 import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, lastTimestamp, spot, delta } = config
-const empty: BytesLike = constants.HashZero
+const { HashZero } = constants
 
 export async function beforeEachCreate(signers: Wallet[], contracts: Contracts): Promise<void> {
   await contracts.stable.mint(signers[0].address, constants.MaxUint256)
@@ -36,13 +36,20 @@ describe('create', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
     })
 
     it('emits the Created event', async function () {
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
       )
         .to.emit(this.contracts.engine, 'Created')
         .withArgs(this.contracts.engineCreate.address, strike.raw, sigma.raw, maturity.raw)
@@ -55,7 +62,7 @@ describe('create', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
       await tx.wait()
       const timestamp = lastTimestamp.raw
@@ -75,7 +82,14 @@ describe('create', function () {
 
     it('initializes the calibration struct & mints liquidity', async function () {
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
       ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
       const calibrations = await this.contracts.engine.calibrations(poolId)
       expect(calibrations.lastTimestamp).to.not.equal(0)
@@ -92,10 +106,17 @@ describe('create', function () {
         maturity.raw,
         parseWei(delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
       await expect(
-        this.contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, empty)
+        this.contracts.engineCreate.create(
+          strike.raw,
+          sigma.raw,
+          maturity.raw,
+          parseWei(delta).raw,
+          delLiquidity.raw,
+          HashZero
+        )
       ).to.be.revertedWith('PoolDuplicateError()')
     })
 
@@ -108,7 +129,7 @@ describe('create', function () {
           fig.maturity.raw,
           parseWei(fig.delta).raw,
           delLiquidity.raw,
-          empty
+          HashZero
         )
       ).to.reverted
     })
@@ -122,7 +143,7 @@ describe('create', function () {
           fig.maturity.raw,
           parseWei(fig.delta).raw,
           delLiquidity.raw,
-          empty
+          HashZero
         )
       ).to.reverted
     })
@@ -136,7 +157,7 @@ describe('create', function () {
         maturity.raw,
         parseWei(fig.delta).raw,
         delLiquidity.raw,
-        empty
+        HashZero
       )
       const res = await this.contracts.engine.reserves(pid)
       expect(res.reserveStable.isZero()).to.eq(false)
