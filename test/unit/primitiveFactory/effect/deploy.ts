@@ -1,5 +1,5 @@
+import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { constants } from 'ethers'
 
 import loadContext from '../../context'
@@ -11,7 +11,7 @@ import { computeEngineAddress } from '../../../shared/utils'
 
 describe('deploy', function () {
   before(async function () {
-    loadContext(waffle.provider, ['factoryDeploy'], async () => {})
+    loadContext(waffle.provider, ['factoryDeploy'])
   })
 
   describe('when the parameters are valid', function () {

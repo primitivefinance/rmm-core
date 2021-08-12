@@ -1,5 +1,5 @@
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
-import { expect } from 'chai'
 import { TestBlackScholes } from '../../../typechain'
 import { Integer64x64, Wei } from 'web3-units'
 import loadContext, { DEFAULT_CONFIG as config } from '../context'
