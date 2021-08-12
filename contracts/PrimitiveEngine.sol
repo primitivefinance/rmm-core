@@ -305,7 +305,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
             }
 
-            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, _blockTimestamp());
+            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, timestamp);
             int128 nextInvariant = invariantOf(details.poolId);
             if (invariant > nextInvariant && nextInvariant.sub(invariant) >= Units.MANTISSA_INT)
                 revert InvariantError(invariant, nextInvariant);
@@ -452,12 +452,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration memory cal = calibrations[poolId];
         uint256 reserveRisky = (res.reserveRisky * 1e18) / res.liquidity; // risky per 1 liquidity
         uint256 reserveStable = (res.reserveStable * 1e18) / res.liquidity; // stable per 1 liquidity
+        uint256 tau = cal.maturity > cal.lastTimestamp ? cal.maturity - cal.lastTimestamp : 0;
         invariant = ReplicationMath.calcInvariant(
             reserveRisky,
             reserveStable,
             cal.strike,
             cal.sigma,
-            (cal.maturity - cal.lastTimestamp) // maturity timestamp less last lastTimestamp = time until expiry
+            tau // time until expiry
         );
     }
 }
