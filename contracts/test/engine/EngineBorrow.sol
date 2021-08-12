@@ -35,6 +35,17 @@ contract EngineBorrow {
         IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
     }
 
+    function borrowWithMargin(
+        bytes32 poolId,
+        address owner,
+        uint256 delLiquidity,
+        bytes calldata data
+    ) public {
+        owner;
+        CALLER = msg.sender;
+        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, true, data);
+    }
+
     function borrowMaxPremium(
         bytes32 poolId,
         address owner,
