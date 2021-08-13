@@ -83,7 +83,7 @@ describe('reentrancy', function () {
         parseWei('100').raw,
         HashZero
       )
-      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').mul(8).div(10).raw)
     })
 
     it('reverts the transaction', async function () {
@@ -108,7 +108,7 @@ describe('reentrancy', function () {
         parseWei('100').raw,
         HashZero
       )
-      await this.contracts.engineSupply.supply(poolId, parseWei('100').raw)
+      await this.contracts.engineSupply.supply(poolId, parseWei('100').mul(8).div(10).raw)
       await this.contracts.reentrancyAttacker.borrowWithGoodCallback(
         poolId,
         this.contracts.reentrancyAttacker.address,

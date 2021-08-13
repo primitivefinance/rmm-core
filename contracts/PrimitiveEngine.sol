@@ -352,8 +352,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
         Reserve.Data storage reserve = reserves[poolId];
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky from removed liquidity
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable from removed liquidity
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky from removing
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable from removing
         // 0. Update position of `msg.sender` by increasing `delLiquidity` units of debt
         positions.borrow(poolId, delLiquidity);
         // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
@@ -369,7 +369,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             IERC20(stable).safeTransfer(msg.sender, delStable); // transfer stable tokens to use in callback
-            IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // agnostic payment
+            IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // agnostic
 
             if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, balanceRisky());
             if (balanceStable() < balStable - delStable)
@@ -404,8 +404,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         positions.fetch(account, poolId).repay(delLiquidity); // decrease debt of Position
 
         Reserve.Data storage reserve = reserves[poolId];
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to allocate delLiquidity
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to allocate delLiquidity
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to allocate
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to allocate
         premium = delLiquidity - delRisky; // amount of excess risky, used to pay for stable side
 
         if (fromMargin) {
