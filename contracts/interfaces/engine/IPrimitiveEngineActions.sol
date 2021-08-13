@@ -109,13 +109,21 @@ interface IPrimitiveEngineActions {
     /// @param  delLiquidity    Amount of liquidity to borrow and add as debt
     /// @param  fromMargin      Use margin risky balance to pay premium?
     /// @param  data            Arbitrary data that is passed to the borrowCallback function
-    /// @return premium         Price paid to open position
+    /// @return delRisky        Amount of risky tokens removed from liquidity borrowed
+    /// delStable               Amount of stable tokens removed from liquidity borrowed
+    /// premium                 Price paid to open position
     function borrow(
         bytes32 poolId,
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256 premium);
+    )
+        external
+        returns (
+            uint256 delRisky,
+            uint256 delStable,
+            uint256 premium
+        );
 
     /// @notice Reduces the `msg.sender`'s position's liquidity value and also reduces the same to the debt value.
     /// @param  poolId          Keccak hash of the option parameters of a curve to interact with
@@ -125,7 +133,7 @@ interface IPrimitiveEngineActions {
     /// @param  data            Arbitrary data that is passed to the repayCallback function
     /// @return delRisky        Amount of risky tokens allocated as liquidity to pay debt
     /// delStable               Amount of stable tokens allocated as liquidity to pay debt
-    /// premium                 Amount of risky tokens paid to the `recipient`'s margin account
+    /// premium                 Price paid to the `recipient`'s margin account
     function repay(
         bytes32 poolId,
         address recipient,
