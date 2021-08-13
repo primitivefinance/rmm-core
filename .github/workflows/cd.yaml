@@ -22,6 +22,8 @@ jobs:
           node-version: 12
 
       - name: Install Dependencies
+        env:
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
         run: yarn install --frozen-lockfile
 
       - name: Compile Contracts
