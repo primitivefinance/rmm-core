@@ -3,6 +3,7 @@ pragma solidity 0.8.6;
 
 /// @title   Primitive Factory
 /// @author  Primitive
+/// @notice  No access controls are available to owner
 /// @dev     Deploy new PrimitiveEngine contracts
 
 import "./interfaces/IPrimitiveFactory.sol";
@@ -44,15 +45,16 @@ contract PrimitiveFactory is IPrimitiveFactory {
         emit Deployed(msg.sender, risky, stable, engine);
     }
 
-    /// @notice Deploys an engine contract with a `salt`.
-    /// @dev    The Engine contract should have no constructor args, because this affects the deployed address
-    ///         From solidity docs:
-    ///         "It will compute the address from the address of the creating contract,
-    ///         the given salt value, the (creation) bytecode of the created contract and the constructor arguments."
-    /// @param  factory The address of the deploying smart contract
-    /// @param  risky   A risky token address
-    /// @param  stable  A stable token address
-    /// @return engine  The engine contract address which was deployed
+    /// @notice         Deploys an engine contract with a `salt`.
+    /// @dev            Engine contract should have no constructor args, because this affects the deployed address
+    ///                 From solidity docs:
+    ///                 "It will compute the address from the address of the creating contract,
+    ///                 the given salt value, the (creation) bytecode of the created contract,
+    ///                 and the constructor arguments."
+    /// @param  factory Address of the deploying smart contract
+    /// @param  risky   Risky token address, underlying token
+    /// @param  stable  Stable token address, quote token
+    /// @return engine  Engine contract address which was deployed
     function deploy(
         address factory,
         address risky,
