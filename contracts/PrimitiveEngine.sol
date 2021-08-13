@@ -252,18 +252,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
             fromMargin: fromMargin
         });
 
-        // 1. Update the lastTimestamp, effectively updating the time until expiry
+        // 0. Update the lastTimestamp, effectively updating the time until expiry
         uint32 timestamp = _blockTimestamp();
         if (timestamp > calibrations[details.poolId].maturity + 120) revert PoolExpiredError();
         calibrations[details.poolId].lastTimestamp = timestamp;
         emit UpdatedTimestamp(details.poolId, timestamp);
-        // 2. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
+        // 1. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
         int128 invariant = invariantOf(details.poolId);
         Reserve.Data storage reserve = reserves[details.poolId]; // gas savings
         (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
 
-        // 3. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
-        // 4. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
+        // 2. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
+        // 3. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swap out amount
         if (details.riskyForStable) {
             uint256 nextRisky = ((resRisky + ((details.deltaIn * 9985) / 1e4)) * 1e18) / reserve.liquidity;
             uint256 nextStable = ((getStableGivenRisky(details.poolId, nextRisky).parseUnits() * reserve.liquidity) /
@@ -338,13 +338,22 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external override lock returns (uint256 premium) {
+    )
+        external
+        override
+        lock
+        returns (
+            uint256 delRisky,
+            uint256 delStable,
+            uint256 premium
+        )
+    {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
         Reserve.Data storage reserve = reserves[poolId];
-        uint256 delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky asset
-        uint256 delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable asset
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky asset
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable asset
         // 0. Update position of `msg.sender` by increasing `delLiquidity` units of debt
         positions.borrow(poolId, delLiquidity);
         // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
