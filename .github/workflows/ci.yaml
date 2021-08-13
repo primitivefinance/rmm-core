@@ -24,7 +24,7 @@ jobs:
 
       - name: Install Dependencies
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: yarn install
 
       - name: Lint
