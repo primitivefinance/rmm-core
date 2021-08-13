@@ -18,9 +18,13 @@ export async function beforeEachSupply(signers: Wallet[], contracts: Contracts):
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('10').raw, HashZero)
 }
 
-describe('supply', function () {
+describe('claim', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply'], beforeEachSupply)
+    loadContext(
+      waffle.provider,
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
+      beforeEachSupply
+    )
   })
 
   let poolId, posId: string
@@ -28,19 +32,20 @@ describe('supply', function () {
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineSupply.getPosition(poolId)
+    await this.contracts.engineSupply.supply(poolId, one.raw)
   })
 
   describe('success cases', function () {
-    it('res.addFloat: adds 1 liquidity share to reserve float', async function () {
-      await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increaseReserveFloat(
+    it('res.removeFloat: removes 1 liquidity share from reserve float', async function () {
+      await expect(this.contracts.engineSupply.claim(poolId, one.raw)).to.decreaseReserveFloat(
         this.contracts.engine,
         poolId,
         one.raw
       )
     })
 
-    it('pos.supply: adds 1 liquidity share to position float', async function () {
-      await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increasePositionFloat(
+    it('pos.claim: removes 1 liquidity share from position float', async function () {
+      await expect(this.contracts.engineSupply.claim(poolId, one.raw)).to.decreasePositionFloat(
         this.contracts.engine,
         posId,
         one.raw
@@ -49,12 +54,16 @@ describe('supply', function () {
   })
 
   describe('fail cases', function () {
-    it('fails to add 0 liquidity', async function () {
-      await expect(this.contracts.engineSupply.supply(poolId, parseWei('0').raw)).to.be.revertedWith('LiquidityError()')
+    it('fails to remove 0 liquidity', async function () {
+      await expect(this.contracts.engineSupply.claim(poolId, parseWei('0').raw)).to.be.revertedWith('LiquidityError()')
     })
 
-    it('fails to add more to float than is available in the position liquidity', async function () {
-      await expect(this.contracts.engineSupply.supply(poolId, parseWei('20').raw)).to.be.reverted
+    it('fails to remove more to float than is available in the position liquidity', async function () {
+      await expect(this.contracts.engineSupply.claim(poolId, parseWei('20').raw)).to.be.reverted
+    })
+    it('fails to remove more to float than is available in the __GLOBAL FLOAT__', async function () {
+      await this.contracts.engineBorrow.borrow(poolId, this.contracts.engineBorrow.address, one.raw, HashZero)
+      await expect(this.contracts.engineSupply.claim(poolId, one.raw)).to.be.reverted
     })
   })
 })
