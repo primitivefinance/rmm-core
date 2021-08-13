@@ -1,51 +1,50 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-/// @title  The view functions for the Primitive Engine contract
+/// @title  View functions of the Primitive Engine contract
 /// @author Primitive
 
 interface IPrimitiveEngineView {
     // ===== View =====
-
-    /// @notice Fetches expected stable token reserves using risky reserve balance
-    /// @param  poolId        Keccak256 hash of strike price, volatility, and maturity timestamp
-    /// @param  reserveRisky  Current reserve of risky tokens
+    /// @notice             Fetches expected stable token reserves using risky reserve balance
+    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @param  reserveRisky Current reserve of risky tokens
     /// @return reserveStable Expected stable token reserve
     function getStableGivenRisky(bytes32 poolId, uint256 reserveRisky) external view returns (int128 reserveStable);
 
-    /// @notice Fetches expected risky token reserves using stable reserve balance
-    /// @param  poolId        Keccak256 hash of strike price, volatility, and maturity timestamp
+    /// @notice             Fetches expected risky token reserves using stable reserve balance
+    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
     /// @param  reserveStable Current reserve of stable tokens
-    /// @return reserveRisky  Expected risky token reserve
+    /// @return reserveRisky Expected risky token reserve
     function getRiskyGivenStable(bytes32 poolId, uint256 reserveStable) external view returns (int128 reserveRisky);
 
-    /// @notice Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
-    /// @param  poolId The pool id to get the invariant of
-    /// invariant
-    function invariantOf(bytes32 poolId) external view returns (int128);
+    /// @notice             Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
+    /// @param  poolId      Pool id to get the invariant of
+    /// @return invariant   Invariant of `poolId`
+    function invariantOf(bytes32 poolId) external view returns (int128 invariant);
 
     // ===== Immutables =====
-    //// The factory address which deployed this engine contract
+    //// Factory address which deployed this engine contract
     function factory() external view returns (address);
 
-    //// The risky token address
+    //// Risky token address
     function risky() external view returns (address);
 
-    /// The stable token address
+    /// Stable token address
     function stable() external view returns (address);
 
-    // ===== Pool States =====
+    // ===== Pool State =====
     /// @notice             Fetches the global reserve state for a pool with `poolId`
-    /// @param poolId       Pool id keccak256 hash of strike price, volatility, and maturity timestamp
-    /// @return             reserveRisky risky balance
-    /// reserveStable       risk free balance
-    /// liquidity           total liquidity shares
-    /// float               liquidity shares available to be borrowed
-    /// debt                total borrow liquidity shares
-    /// blockTimestamp      unix timestamp when the cumulative reserve values were last updated
-    /// cumulativeRisky     tracks cumulative risky reserves overtime
-    /// cumulativeStable    tracks cumulative stable reserves overtime
-    /// cumulativeLiquidity tracks cumulative liquidity factor overtime
+    /// @param poolId       Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @return             reserveRisky Risky token balance in the reserve
+    /// reserveStable       Stable token balance in the reserve
+    /// liquidity           Total supply of liquidity for the curve
+    /// float               Total supply of liquidity supplied to be borrowed
+    /// debt                Total supply of liquidity borrowed
+    /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
+    /// cumulativeRisky     Cumulative sum of risky token reserves
+    /// cumulativeStable    Cumulative sum of stable token reserves
+    /// cumulativeLiquidity Cumulative sum of total supply of liquidity
     function reserves(bytes32 poolId)
         external
         view
@@ -61,12 +60,12 @@ interface IPrimitiveEngineView {
             uint256 cumulativeLiquidity
         );
 
-    /// @notice Fetches Calibrated and initialized pool's parameters
-    /// @param  poolId  Pool id to fetch the parameters of
-    /// @return strike  Strike price of the pool
-    /// sigma           Volatility of the pool
-    /// maturity        Timestamp of maturity
-    /// lastTimestamp   Last timestamp used to calculate time until expiry, "tau"
+    /// @notice             Fetches `Calibration` pool parameters
+    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @return strike      Strike price of the pool
+    /// sigma               Volatility of the pool
+    /// maturity            Timestamp of maturity
+    /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
     function calibrations(bytes32 poolId)
         external
         view
@@ -77,11 +76,11 @@ interface IPrimitiveEngineView {
             uint32 lastTimestamp
         );
 
-    /// @notice Fetches Position data struct using a position id
-    /// @param  posId   Position id
-    /// @return float   Liquidity shares that are marked for loans
-    /// liquidity       Liquidity shares in the position
-    /// debt            Liquidity shares in debt, must be repaid, also equal to risky balance of position
+    /// @notice             Fetches Position data struct using a position id
+    /// @param  posId       Keccak256 hash of owner address and poolId
+    /// @return float       Liquidity that is supplied to be borrowed
+    /// liquidity           Liquidity in the position
+    /// debt                Borrowed liquidity debt, must be repaid, also equal to risky balance of position
     function positions(bytes32 posId)
         external
         view
@@ -92,7 +91,7 @@ interface IPrimitiveEngineView {
         );
 
     /// @notice                 Fetchs the margin position of `account`
-    /// @param  account         Margin account's account
+    /// @param  account         Margin account to fetch
     /// @return balanceRisky    Balance of the risky token
     /// balanceStable           Balance of the stable token
     function margins(address account) external view returns (uint128 balanceRisky, uint128 balanceStable);
