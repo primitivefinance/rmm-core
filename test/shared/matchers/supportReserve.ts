@@ -14,9 +14,8 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       const newReserve = await engine.reserves(poolId)
 
       const expectedReserveRisky = oldReserve.reserveRisky.add(amount)
-
       this.assert(
-        newReserve.reserveRisky.eq(expectedReserveRisky),
+        newReserve.reserveRisky.eq(expectedReserveRisky) || newReserve.reserveRisky.sub(expectedReserveRisky).lt(1000),
         `Expected ${expectedReserveRisky} to be ${newReserve.reserveRisky}`,
         `Expected ${expectedReserveRisky} NOT to be ${newReserve.reserveRisky}`,
         expectedReserveRisky,
@@ -56,7 +55,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       const expectedReserveStable = oldReserve.reserveStable.add(amount)
 
       this.assert(
-        newReserve.reserveStable.eq(expectedReserveStable),
+        newReserve.reserveStable.eq(expectedReserveStable) || newReserve.reserveStable.sub(expectedReserveStable).lt(1000),
         `Expected ${expectedReserveStable} to be ${newReserve.reserveStable}`,
         `Expected ${expectedReserveStable} NOT to be ${newReserve.reserveStable}`,
         expectedReserveStable,

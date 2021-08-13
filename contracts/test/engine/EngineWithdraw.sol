@@ -27,6 +27,15 @@ contract EngineWithdraw {
         IPrimitiveEngine(engine).withdraw(msg.sender, delRisky, delStable);
     }
 
+    function withdrawToRecipient(
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) public {
+        CALLER = msg.sender;
+        IPrimitiveEngine(engine).withdraw(recipient, delRisky, delStable);
+    }
+
     function name() public pure returns (string memory) {
         return "EngineWithdraw";
     }

@@ -25,7 +25,27 @@ describe('withdraw', function () {
   })
 
   describe('success cases', function () {
-    it('withdraws from the margin account', async function () {
+    it('withdraws from stable tokens from margin', async function () {
+      const [delRisky, delStable] = [parseWei('0'), parseWei('998')]
+      await expect(this.contracts.engineWithdraw.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        this.contracts.engine,
+        this.contracts.engineWithdraw.address,
+        delRisky.raw,
+        delStable.raw
+      )
+    })
+
+    it('withdraws from risky tokens from margin', async function () {
+      const [delRisky, delStable] = [parseWei('998'), parseWei('0')]
+      await expect(this.contracts.engineWithdraw.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        this.contracts.engine,
+        this.contracts.engineWithdraw.address,
+        delRisky.raw,
+        delStable.raw
+      )
+    })
+
+    it('withdraws both tokens from the margin account', async function () {
       const [delRisky, delStable] = [parseWei('999'), parseWei('998')]
       await expect(this.contracts.engineWithdraw.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
         this.contracts.engine,
@@ -40,7 +60,7 @@ describe('withdraw', function () {
       expect(margin.balanceStable).to.equal(parseWei('2').raw)
     })
 
-    it('transfers the tokens', async function () {
+    it('transfers both the tokens to msg.sender of withdraw', async function () {
       const riskyBalance = await this.contracts.risky.balanceOf(this.signers[0].address)
       const stableBalance = await this.contracts.stable.balanceOf(this.signers[0].address)
 
@@ -49,6 +69,19 @@ describe('withdraw', function () {
       expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(riskyBalance.add(parseWei('500').raw))
 
       expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(stableBalance.add(parseWei('250').raw))
+    })
+
+    it('transfers both the tokens to another recipient', async function () {
+      const riskyBalance = await this.contracts.risky.balanceOf(this.signers[2].address)
+      const stableBalance = await this.contracts.stable.balanceOf(this.signers[2].address)
+
+      const recipient = this.signers[2]
+      await expect(() =>
+        this.contracts.engineWithdraw.withdrawToRecipient(recipient.address, parseWei('500').raw, parseWei('250').raw)
+      ).to.changeTokenBalances(this.contracts.risky, [recipient], [parseWei('500').raw])
+
+      expect(await this.contracts.risky.balanceOf(recipient.address)).to.equal(riskyBalance.add(parseWei('500').raw))
+      expect(await this.contracts.stable.balanceOf(recipient.address)).to.equal(stableBalance.add(parseWei('250').raw))
     })
 
     it('emits the Withdrawn event', async function () {
