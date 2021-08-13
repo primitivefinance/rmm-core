@@ -12,6 +12,8 @@ This repository has a bug bounty through Immunefi. Details are on their website 
 
 The contract documentation is hosted here: [Primitive Docs](https://docs.primitive.finance)
 
+To be updated.
+
 # Contracts
 
 This repository has two contracts: PrimitiveFactory and PrimitiveEngine
