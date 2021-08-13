@@ -21,10 +21,13 @@ jobs:
         with:
           node-version: 12
 
-      - name: Install Dependencies
+      # Skip post-install scripts here, as a malicious
+      # script could steal NODE_AUTH_TOKEN.
+      - run: yarn install --ignore-scripts --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-        run: yarn install --frozen-lockfile
+      # `npm rebuild` will run all those post-install scripts for us.
+      - run: yarn rebuild && yarn run prepare --if-present
 
       - name: Compile Contracts
         env:
