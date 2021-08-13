@@ -22,8 +22,12 @@ contract EngineSupply {
         stable = _stable;
     }
 
-    function supply(bytes32 poolId, uint256 dLiquidty) public {
-        IPrimitiveEngine(engine).supply(poolId, dLiquidty);
+    function supply(bytes32 poolId, uint256 dLiquidity) public {
+        IPrimitiveEngine(engine).supply(poolId, dLiquidity);
+    }
+
+    function claim(bytes32 poolId, uint256 dLiquidity) public {
+        IPrimitiveEngine(engine).claim(poolId, dLiquidity);
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {

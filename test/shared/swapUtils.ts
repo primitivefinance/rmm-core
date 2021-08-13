@@ -164,7 +164,11 @@ export class Pool {
     const stable = this.reserveStable.float / this.liquidity.float
     let invariant = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
     invariant = Math.floor(invariant * Math.pow(10, 18))
-    this.invariant = new Integer64x64(toBN(invariant).mul(Integer64x64.Denominator).div(parseWei(1).raw))
+    this.invariant = new Integer64x64(
+      toBN(invariant === NaN ? 0 : invariant)
+        .mul(Integer64x64.Denominator)
+        .div(parseWei(1).raw)
+    )
     return this.invariant
   }
 
