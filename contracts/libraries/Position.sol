@@ -19,11 +19,10 @@ library Position {
         uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
     }
 
-    /// @notice An Engine's mapping of position Ids to Data structs can be used to fetch any position.
-    /// @dev    Used across all Engines
-    /// @param  positions    Mapping of position Ids to Positions
-    /// @param  account      Controlling address of the position
-    /// @param  poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
+    /// @notice             An Engine's mapping of position Ids to Position.Data structs can be used to fetch any Position
+    /// @param  positions   Mapping of position Ids to Positions
+    /// @param  account     Controlling address of the Position
+    /// @param  poolId      Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
     function fetch(
         mapping(bytes32 => Data) storage positions,
         address account,
@@ -37,9 +36,9 @@ library Position {
         position.liquidity += delLiquidity.toUint128();
     }
 
-    /// @notice Decrease the balance of liquidity
+    /// @notice             Decrease the balance of liquidity of the `msg.sender`'s Position
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity The liquidity to remove
+    /// @param delLiquidity Amount of liquidity to remove
     function remove(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -49,9 +48,9 @@ library Position {
         position.liquidity -= delLiquidity.toUint128();
     }
 
-    /// @notice Adds a debt balance of `delLiquidity` to `position`
+    /// @notice             Increases debt balance of Position
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity The liquidity to borrow
+    /// @param delLiquidity Amount of liquidity to borrow
     function borrow(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -61,9 +60,9 @@ library Position {
         position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
     }
 
-    /// @notice Locks `delLiquidity` of liquidity as a float which can be borrowed from
+    /// @notice             Supplies liquidity in float, locking it until claimed
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity The liquidity to supply
+    /// @param delLiquidity Amount of liquidity to supply
     function supply(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -74,9 +73,9 @@ library Position {
         if (position.float > position.liquidity) revert LiquidityError();
     }
 
-    /// @notice Unlocks `delLiquidity` of liquidity by reducing float
+    /// @notice             Removes liquidity from float, unlocking it
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity The liquidity to claim
+    /// @param delLiquidity Amount of liquidity to claim
     function claim(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
@@ -86,12 +85,14 @@ library Position {
         position.float -= delLiquidity.toUint128();
     }
 
-    /// @notice Reduces `delLiquidity` of position.debt
+    /// @notice             Reduces Position debt
+    /// @param position     Position in state to manipulate
+    /// @param delLiquidity Amount of debt to reduce from the Position
     function repay(Data storage position, uint256 delLiquidity) internal {
         position.debt -= delLiquidity.toUint128();
     }
 
-    /// @notice  Fetches the position Id, which is an encoded `account` and `poolId`.
+    /// @notice             Fetches the position Id
     /// @param   account    Controlling address of the position
     /// @param   poolId     Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
     /// @return  posId      Keccak hash of the account and poolId
