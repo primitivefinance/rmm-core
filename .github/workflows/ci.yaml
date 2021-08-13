@@ -19,11 +19,12 @@ jobs:
       - name: Set Up Node
         uses: actions/setup-node@v2-beta
         with:
-          node-version: 12
+          node-version: '14.x'
+          always-auth: true
 
       - name: Install Dependencies
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: yarn install --frozen-lockfile
 
       - name: Lint
