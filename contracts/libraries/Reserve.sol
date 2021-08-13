@@ -10,6 +10,9 @@ import "./SafeCast.sol";
 library Reserve {
     using SafeCast for uint256;
 
+    /// @notice Thrown on attempting to supply more liquidity than is allowed
+    error LiquidityError();
+
     struct Data {
         uint128 reserveRisky; // reserve of the risky asset
         uint128 reserveStable; // reserve of the stable asset
@@ -104,6 +107,7 @@ library Reserve {
     /// @param delLiquidity     Amount of liquidity to add to float
     function addFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
+        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
     }
 
     /// @notice                 Reduces available float, called when claiming

@@ -10,9 +10,6 @@ import "./SafeCast.sol";
 library Position {
     using SafeCast for uint256;
 
-    /// @notice Thrown on attempting to supply more liquidity than available
-    error LiquidityError();
-
     struct Data {
         uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
@@ -70,7 +67,7 @@ library Position {
     ) internal returns (Data storage position) {
         position = fetch(positions, msg.sender, poolId);
         position.float += delLiquidity.toUint128();
-        if (position.float > position.liquidity) revert LiquidityError();
+        position.liquidity -= delLiquidity.toUint128();
     }
 
     /// @notice             Removes liquidity from float, unlocking it
@@ -83,6 +80,7 @@ library Position {
     ) internal returns (Data storage position) {
         position = fetch(positions, msg.sender, poolId);
         position.float -= delLiquidity.toUint128();
+        position.liquidity += delLiquidity.toUint128();
     }
 
     /// @notice             Reduces Position debt

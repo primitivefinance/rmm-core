@@ -16,8 +16,9 @@ export async function beforeEachRepay(signers: Wallet[], contracts: Contracts): 
   await contracts.risky.mint(signers[0].address, parseWei('100000000').raw)
   await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, HashZero)
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('100').raw, HashZero)
-  await contracts.engineSupply.supply(poolId, parseWei('100').raw)
+  const initLiquidity = parseWei('100')
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, initLiquidity.raw, HashZero)
+  await contracts.engineSupply.supply(poolId, initLiquidity.mul(8).div(10).raw)
   await contracts.engineRepay.borrow(poolId, contracts.engineRepay.address, parseWei('1').raw, HashZero)
 }
 
@@ -206,7 +207,7 @@ describe('repay', function () {
           HashZero
         )
         // have the engineSupply contract supply the lp shares
-        await this.contracts.engineSupply.supply(expiredPoolId, parseWei('100').raw)
+        await this.contracts.engineSupply.supply(expiredPoolId, parseWei('100').mul(8).div(10).raw)
         // have the engineBorrow borrow the lp shares
         await this.contracts.engineBorrow.borrow(
           expiredPoolId,
@@ -255,7 +256,7 @@ describe('repay', function () {
         parseWei('100').raw,
         HashZero
       )
-      await this.contracts.engine.supply(poolId, parseWei('100').raw)
+      await this.contracts.engine.supply(poolId, parseWei('100').mul(8).div(10).raw)
       await this.contracts.engineRepay.borrow(poolId, this.contracts.engineRepay.address, one.raw, HashZero)
       await this.contracts.engineDeposit.deposit(this.signers[0].address, parseWei('100').raw, parseWei('100').raw, HashZero)
       await expect(this.contracts.engine.repay(poolId, this.contracts.engineRepay.address, one.raw, true, HashZero)).to.be
