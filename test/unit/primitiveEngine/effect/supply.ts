@@ -56,5 +56,17 @@ describe('supply', function () {
     it('fails to add more to float than is available in the position liquidity', async function () {
       await expect(this.contracts.engineSupply.supply(poolId, parseWei('20').raw)).to.be.reverted
     })
+
+    it('fails to remove liquidity after supplying it to float', async function () {
+      let pos = await this.contracts.engine.positions(posId)
+      const amt = pos.liquidity.mul(8).div(10)
+      await this.contracts.engineSupply.supply(poolId, amt)
+      await expect(this.contracts.engineSupply.remove(poolId, amt, HashZero)).to.be.reverted
+    })
+
+    it('fails to add liquidity to float above liquidity factor of 80%', async function () {
+      let pos = await this.contracts.engine.positions(posId)
+      await expect(this.contracts.engineSupply.supply(poolId, pos.liquidity)).to.be.revertedWith('LiquidityError()')
+    })
   })
 })
