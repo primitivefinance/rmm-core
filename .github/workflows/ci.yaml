@@ -25,7 +25,7 @@ jobs:
       - name: Install Dependencies
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: yarn install --frozen-lockfile
+        run: yarn install
 
       - name: Lint
         uses: wearerequired/lint-action@v1
