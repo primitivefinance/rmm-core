@@ -4,11 +4,11 @@ pragma solidity 0.8.6;
 import "../interfaces/IERC20.sol";
 
 library Transfers {
-    /// @notice Performs an ERC20 `transfer` call and checks return data
-    /// @param  token   The ERC20 token to transfer
-    /// @param  to      The recipient of the ERC20 token
-    /// @param  value   The amount of ERC20 to transfer
-    /// @return Whether or not the call was successful
+    /// @notice         Performs an ERC20 `transfer` call and checks return data
+    /// @param  token   ERC20 token to transfer
+    /// @param  to      Recipient of the ERC20 token
+    /// @param  value   Amount of ERC20 to transfer
+    /// @return         Whether or not the call was successful
     function safeTransfer(
         IERC20 token,
         address to,
