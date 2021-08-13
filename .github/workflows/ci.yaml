@@ -22,16 +22,10 @@ jobs:
           node-version: '14.x'
           always-auth: true
 
-      # Skip post-install scripts here, as a malicious
-      # script could steal NODE_AUTH_TOKEN.
-      - run: yarn install --ignore-scripts --frozen-lockfile
+      - run: yarn install --ignore-scripts
         env:
           REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
-      # `npm rebuild` will run all those post-install scripts for us.
-      - run: yarn rebuild && yarn run prepare --if-present
-        env:
-          REGISTRY_TOKEN: ''
 
       - name: Lint
         uses: wearerequired/lint-action@v1
