@@ -30,6 +30,15 @@ contract EngineSupply {
         IPrimitiveEngine(engine).claim(poolId, dLiquidity);
     }
 
+    function remove(
+        bytes32 poolId,
+        uint256 delLiquidity,
+        bytes memory data
+    ) public {
+        data;
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity);
+    }
+
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
         posid = keccak256(abi.encodePacked(address(this), poolId));
     }
