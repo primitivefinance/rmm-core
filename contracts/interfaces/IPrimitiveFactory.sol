@@ -5,24 +5,23 @@ pragma solidity 0.8.6;
 /// @author  Primitive
 
 interface IPrimitiveFactory {
-    /// @notice Created a new engine contract!
-    /// @param  from    Calling `msg.sender`
-    /// @param  risky   Risky token
-    /// @param  stable  Stable token
+    /// @notice         Created a new engine contract!
+    /// @param  from    Calling `msg.sender` of deploy
+    /// @param  risky   Risky token of Engine to deploy
+    /// @param  stable  Stable token of Engine to deploy
     /// @param  engine  Deployed engine address
     event Deployed(address indexed from, address indexed risky, address indexed stable, address engine);
 
-    /// @notice Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
-    /// @param  risky   Risky token address, not a stable asset! But what is?
-    /// @param  stable  Stable token address, like Dai or Fei or Rai. If your stablecoin isn't 3 letters I'm not using it
+    /// @notice         Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
+    /// @param  risky   Risky token, the underlying token
+    /// @param  stable  Stable token, the quote token
     function deploy(address risky, address stable) external returns (address engine);
 
     // ===== View =====
-
-    /// @notice Transiently set so the Engine can set immutable variables without constructor args
+    /// @notice         Called within Engine constructor so Engine can set immutable variables without constructor args
     /// @return factory Smart contract deploying the Engine contract
-    /// risky   Risky token
-    /// stable  Stable token
+    /// risky           Risky token
+    /// stable          Stable token
     function args()
         external
         view
@@ -32,12 +31,13 @@ interface IPrimitiveFactory {
             address stable
         );
 
-    /// @notice Fetches engine address of a token pair
-    /// @param risky   Risky token, like WETH
-    /// @param stable  Stable token, like RAI
-    /// @return engine Engine address for a risky and stable token
+    /// @notice         Fetches engine address of a token pair
+    /// @param risky    Risky token, the underlying token
+    /// @param stable   Stable token, the quote token
+    /// @return engine  Engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);
 
-    /// @return Controlling address of this factory contract
+    /// @notice         Owner does not have any access controls to wield
+    /// @return         Controlling address of this factory contract
     function owner() external view returns (address);
 }
