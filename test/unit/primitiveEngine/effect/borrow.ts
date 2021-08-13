@@ -1,11 +1,11 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { parseWei } from 'web3-units'
+import { parseWei, toBN } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
-import { computePoolId } from '../../../shared/utils'
+import { computePoolId, computePositionId } from '../../../shared/utils'
 import { Contracts } from '../../../../types'
 
 const { strike, sigma, maturity, lastTimestamp, delta } = config
@@ -18,9 +18,9 @@ export async function beforeEachBorrow(signers: Wallet[], contracts: Contracts):
   await contracts.engineCreate.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, HashZero)
 
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-
-  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, parseWei('1000').raw, HashZero)
-  await contracts.engineSupply.supply(poolId, parseWei('1000').raw)
+  const initLiquidity = parseWei('1000')
+  await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, initLiquidity.raw, HashZero)
+  await contracts.engineSupply.supply(poolId, initLiquidity.mul(8).div(10).raw)
 }
 
 describe('borrow', function () {
