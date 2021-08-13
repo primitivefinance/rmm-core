@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: 12
 
+      - name: Set Up Config
+        run: npm config set '//npm.pkg.github.com/:_authToken' "${REGISTRY_TOKEN}"
+
       - name: Install Dependencies
         env:
           REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
