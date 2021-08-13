@@ -25,17 +25,20 @@ jobs:
       # script could steal NODE_AUTH_TOKEN.
       - run: yarn install --ignore-scripts --frozen-lockfile
         env:
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
       # `npm rebuild` will run all those post-install scripts for us.
       - run: yarn rebuild && yarn run prepare --if-present
 
       - name: Compile Contracts
         env:
+          REGISTRY_TOKEN: ''
           ARBITRIUM_PRIVATE_KEY: ${{ secrets.ARBITRIUM_PRIVATE_KEY }}
         run: yarn compile
 
       - name: Semantic Release
         env:
+          REGISTRY_TOKEN: ''
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           NPM_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
