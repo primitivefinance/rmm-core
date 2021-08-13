@@ -101,9 +101,6 @@ export default async function createTestContracts(contracts: ContractName[], dep
           deployer
         )) as ContractTypes.TestReplicationMath
         break
-      case 'testBlackScholes':
-        loadedContracts.testBlackScholes = (await deploy('TestBlackScholes', deployer)) as ContractTypes.TestBlackScholes
-        break
       case 'testCumulativeNormalDistribution':
         loadedContracts.testCumulativeNormalDistribution = (await deploy(
           'TestCumulativeNormalDistribution',

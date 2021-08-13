@@ -22,7 +22,6 @@ export interface Contracts {
   testMargin: ContractTypes.TestMargin
   testPosition: ContractTypes.TestPosition
   testReplicationMath: ContractTypes.TestReplicationMath
-  testBlackScholes: ContractTypes.TestBlackScholes
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
   reentrancyAttacker: ContractTypes.ReentrancyAttacker
 }
@@ -55,7 +54,6 @@ type ContractName =
   | 'testMargin'
   | 'testPosition'
   | 'testReplicationMath'
-  | 'testBlackScholes'
   | 'testCumulativeNormalDistribution'
   | 'engineRemove'
   | 'engineSupply'
