@@ -2,6 +2,8 @@
 
 This repository is for the core contracts of the Primitive V2 protocol. These are low-level contracts which are designed to be interacted primarily through other smart contracts.
 
+The low-level contracts are missing importants checks that should be implemented by higher level contracts. Keep this in mind when interacting with them.
+
 # Bug Bounty
 
 This repository has a bug bounty through Immunefi. Details are on their website [https://immunefi.com/bounty/primitive](https://immunefi.com/bounty/primitive/).
