@@ -11,7 +11,7 @@ import "./CumulativeNormalDistribution.sol";
 import "./Units.sol";
 
 library ReplicationMath {
-    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
+    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64
     using CumulativeNormalDistribution for int128;
     using Units for int128;
     using Units for uint256;
@@ -25,17 +25,17 @@ library ReplicationMath {
     /// @return  vol    Volatility * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
         int128 sqrtTau = tau.toYears().sqrt();
-        vol = sigma.fromUInt().mul(sqrtTau).div(Units.PERCENTAGE_INT); // scales down to decimals
+        vol = sigma.fromUInt().mul(sqrtTau).div(Units.PERCENTAGE_INT); // scales down from Mantissa
     }
 
-    /// @notice  Uses reserveRisky and invariant to calculate reserveStable
-    /// @dev     Calculates 1 unit of reserves, which means it must be scaled by liquidity
+    /// @notice                 Uses reserveRisky and invariant to calculate reserveStable
+    /// @dev                    Calculates only 1 unit of reserves
     /// @param   invariantLast  Previous invariant with the same `tau` input as the parameter `tau`
-    /// @param   reserveRisky Pool's risky reserves per unit of liquidity
-    /// @param   strike Price point at which portfolio is 100% composed of stable tokens
-    /// @param   sigma Volatility of the Pool, multiplied by Percentage.Mantissa = 1e4
-    /// @param   tau Time until expiry in seconds
-    /// @return  reserveStable = K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
+    /// @param   reserveRisky   Pool's risky reserves per unit of liquidity, 0 <= x <= 1
+    /// @param   strike         Price point at which portfolio is 100% composed of stable tokens
+    /// @param   sigma          Volatility of the Pool
+    /// @param   tau            Time until expiry in seconds
+    /// @return  reserveStable  = K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
     function getStableGivenRisky(
         int128 invariantLast,
         uint256 reserveRisky,
@@ -51,14 +51,14 @@ library ReplicationMath {
         reserveStable = K.mul(input.getCDF()).add(invariantLast);
     }
 
-    /// @notice  Uses reserveStable and invariant to calculate reserveRisky
-    /// @dev     Calculates 1 unit of reserves, which means it must be scaled by liquidity
+    /// @notice                 Uses reserveStable and invariant to calculate reserveRisky
+    /// @dev                    Calculates 1 unit of reserves
     /// @param   invariantLast  Previous invariant with the same `tau` input as the parameter `tau`
-    /// @param   reserveStable Pool's stable reserves per unit of liquidity
-    /// @param   strike Price point at which portfolio is 100% composed of stable tokens
-    /// @param   sigma Volatility of the Pool, multiplied by Percentage.Mantissa = 1e4
-    /// @param   tau Time until expiry in seconds
-    /// @return  reserveRisky = 1 - CDF(CDF^-1((reserveStable - invariantLast)/K) + sigma*sqrt(tau))
+    /// @param   reserveStable  Pool's stable reserves per unit of liquidity, 0 <= x <= strike
+    /// @param   strike         Price point at which portfolio is 100% composed of stable tokens
+    /// @param   sigma          Volatility of the Pool
+    /// @param   tau            Time until expiry in seconds
+    /// @return  reserveRisky   = 1 - CDF(CDF^-1((reserveStable - invariantLast)/K) + sigma*sqrt(tau))
     function getRiskyGivenStable(
         int128 invariantLast,
         uint256 reserveStable,
@@ -74,10 +74,11 @@ library ReplicationMath {
         reserveRisky = ONE_INT.sub(input.getCDF());
     }
 
-    /// @dev     Calculates 1 unit of invariant, which means it must be scaled by liquidity
-    /// @param   reserveRisky Pool's risky reserves per unit of liquidity
-    /// @param   reserveStable Pool's stable reserves per unit of liquidity
-    /// @return  invariant = reserveStable - K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(tau))
+    /// @notice                 Calculates 1 unit of invariant
+    /// @dev                    Only defined for 1 unit of replication
+    /// @param   reserveRisky   Pool's risky reserves per unit of liquidity, 0 <= x <= 1
+    /// @param   reserveStable  Pool's stable reserves per unit of liquidity, 0 <= x <= strike
+    /// @return  invariant      = reserveStable - K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(tau))
     function calcInvariant(
         uint256 reserveRisky,
         uint256 reserveStable,
