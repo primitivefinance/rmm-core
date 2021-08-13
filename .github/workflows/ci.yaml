@@ -22,13 +22,8 @@ jobs:
           node-version: '14.x'
           always-auth: true
 
-      - name: Set Up Config
-        run: npm config set '//npm.pkg.github.com/:_authToken' "${REGISTRY_TOKEN}"
-
       - name: Install Dependencies
         env:
-          GITHUB_TOKEN: ${{ secrets.PACKAGE_PAT }}
-          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           NODE_AUTH_TOKEN: ${{ secrets.PACKAGE_PAT }}
         run: yarn install
 
