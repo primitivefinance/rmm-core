@@ -5,32 +5,32 @@ pragma solidity 0.8.6;
 /// @author Primitive
 
 interface IPrimitiveEngineErrors {
-    /// @notice Thrown when a callback function calls the engine again
+    /// @notice Thrown when a callback function calls the engine __again__
     error LockedError();
 
-    /// @notice Thrown when the actual balance is less than the expected balance
+    /// @notice Thrown when the balanceOf function is not successful and doesn't return data
     error BalanceError();
 
-    /// @notice Thrown when a pool already exists
+    /// @notice Thrown when a pool with poolId already exists
     error PoolDuplicateError();
 
-    /// @notice Thrown when timestamp is > than maturity
+    /// @notice Thrown when calling `create` with a maturity that is less than the current block.timestamp
     error PoolExpiredError();
 
-    /// @notice Thrown when the parameters of a new pool are invalid
+    /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
     error CalibrationError(uint256 delRisky, uint256 delStable);
 
-    /// @notice Thrown when the actual risky balance is less than the actual balance
-    /// @param expected The expected risky balance
-    /// @param actual The actual risky balance
+    /// @notice         Thrown when the expected risky balance is less than the actual balance
+    /// @param expected Expected risky balance
+    /// @param actual   Actual risky balance
     error RiskyBalanceError(uint256 expected, uint256 actual);
 
-    /// @notice Thrown when the actual stable balance is less than the actual balance
-    /// @param expected The expected stable balance
-    /// @param actual The actual stable balance
+    /// @notice         Thrown when the expected stable balance is less than the actual balance
+    /// @param expected Expected stable balance
+    /// @param actual   Actual stable balance
     error StableBalanceError(uint256 expected, uint256 actual);
 
-    /// @notice Thrown when the pool does not exist
+    /// @notice Thrown when the pool with poolId has not been created
     error UninitializedError();
 
     /// @notice Thrown when the risky or stable amount is 0
@@ -45,8 +45,8 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when the deltaOut parameter is 0
     error DeltaOutError();
 
-    /// @notice Thrown when the invariant is invalid
-    /// @param  invariant Pre-swap invariant updated with new tau
-    /// @param  nextInvariant Post-swap invariant
+    /// @notice                 Thrown when the invariant check fails
+    /// @param  invariant       Pre-swap invariant updated with new tau
+    /// @param  nextInvariant   Post-swap invariant
     error InvariantError(int128 invariant, int128 nextInvariant);
 }
