@@ -337,6 +337,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 poolId,
         uint256 delLiquidity,
         bool fromMargin,
+        bool riskyCollateral,
         bytes calldata data
     )
         external
@@ -351,29 +352,49 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
+        uint256 strike = uint256(calibrations[poolId].strike);
         Reserve.Data storage reserve = reserves[poolId];
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky from removing
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable from removing
         // 0. Update position of `msg.sender` by increasing `delLiquidity` units of debt
-        positions.borrow(poolId, delLiquidity);
+        positions.borrow(
+            poolId,
+            delLiquidity,
+            riskyCollateral ? delLiquidity : 0,
+            riskyCollateral ? 0 : delLiquidity * strike
+        );
         // 1. Borrow `delLiquidity`: Reduce global reserve float, increase global debt
         reserve.borrowFloat(delLiquidity);
         // 2. Remove liquidity: Releases `risky` and `stable` tokens from curve
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
         // 3. Calculate amount of risky tokens needed to match amount of liquidity borrowed
-        premium = delLiquidity - delRisky; // premium that must be paid
         // 4. Pay the premium
-        if (fromMargin) {
-            margins.withdraw(premium, 0); // pay premium from margin risky balance
-            margins[msg.sender].deposit(0, delStable); // deposit stable tokens from removed liquidity
-        } else {
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
-            IERC20(stable).safeTransfer(msg.sender, delStable); // transfer stable tokens to use in callback
-            IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // agnostic
+        (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
+        if (riskyCollateral) {
+            premium = delLiquidity - delRisky; // premium that must be paid in risky tokens
+            if (fromMargin) {
+                margins.withdraw(premium, 0); // pay premium from margin risky balance
+                margins[msg.sender].deposit(0, delStable); // deposit stable tokens from removed liquidity
+            } else {
+                IERC20(stable).safeTransfer(msg.sender, delStable); // transfer stable tokens to use in callback
+                IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // agnostic
 
-            if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, balanceRisky());
-            if (balanceStable() < balStable - delStable)
-                revert StableBalanceError(balStable - delStable, balanceStable());
+                if (balanceRisky() < balRisky + premium) revert RiskyBalanceError(balRisky + premium, balanceRisky());
+                if (balanceStable() < balStable - delStable)
+                    revert StableBalanceError(balStable - delStable, balanceStable());
+            }
+        } else {
+            premium = delLiquidity * strike - delStable; // premium in stable tokens
+            if (fromMargin) {
+                margins.withdraw(0, premium); // pay premium from margin stable balance
+                margins[msg.sender].deposit(delRisky, 0); // deposit risky tokens from removed liquidity
+            } else {
+                IERC20(risky).safeTransfer(msg.sender, delRisky); // transfer risky tokens to use in callback
+                IPrimitiveBorrowCallback(msg.sender).borrowCallback(delLiquidity, delRisky, delStable, data); // agnostic
+                if (balanceStable() < balStable + premium)
+                    revert StableBalanceError(balStable + premium, balanceStable());
+                if (balanceRisky() < balRisky - delRisky) revert RiskyBalanceError(balRisky - delRisky, balanceRisky());
+            }
         }
 
         emit Borrowed(msg.sender, poolId, delLiquidity, premium);
@@ -387,6 +408,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         address recipient,
         uint256 delLiquidity,
         bool fromMargin,
+        bool riskyCollateral,
         bytes calldata data
     )
         external
@@ -399,26 +421,46 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         uint32 timestamp = _blockTimestamp();
+        uint256 strike = uint256(calibrations[poolId].strike);
         bool expired = timestamp >= calibrations[poolId].maturity;
         address account = expired ? recipient : msg.sender; // allows repayment of any position after expiry
-        positions.fetch(account, poolId).repay(delLiquidity); // decrease debt of Position
+        positions.fetch(account, poolId).repay(
+            delLiquidity,
+            riskyCollateral ? delLiquidity : 0,
+            riskyCollateral ? 0 : delLiquidity * strike
+        ); // decrease debt of Position
 
         Reserve.Data storage reserve = reserves[poolId];
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to allocate
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to allocate
-        premium = delLiquidity - delRisky; // amount of excess risky, used to pay for stable side
+        (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
 
-        if (fromMargin) {
-            margins.withdraw(0, delStable); // pay stables from margin balance
-            margins[account].deposit(premium, 0); // send remainder `premium` of risky to margin
+        if (riskyCollateral) {
+            premium = delLiquidity - delRisky; // amount of excess risky, used to pay for stable side
+            if (fromMargin) {
+                margins.withdraw(0, delStable); // pay stables from margin balance
+                margins[account].deposit(premium, 0); // send remainder `premium` of risky to margin
+            } else {
+                IERC20(risky).safeTransfer(msg.sender, premium); // proceeds transferred out optimistically
+                IPrimitiveRepayCallback(msg.sender).repayCallback(delStable, data); // agnostic payment of delStable
+
+                if (balanceRisky() < balRisky - premium) revert RiskyBalanceError(balRisky - premium, balanceRisky());
+                if (balanceStable() < balStable + delStable)
+                    revert StableBalanceError(balStable + delStable, balanceStable());
+            }
         } else {
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
-            IERC20(risky).safeTransfer(msg.sender, premium); // proceeds transferred out optimistically
-            IPrimitiveRepayCallback(msg.sender).repayCallback(delStable, data); // agnostic payment of delStable
+            premium = delLiquidity * strike - delStable; // amount of excess stable, used to pay for risky side
+            if (fromMargin) {
+                margins.withdraw(delRisky, 0); // pay risky from margin balance
+                margins[account].deposit(0, premium); // send remainder `premium` of stable to margin
+            } else {
+                IERC20(stable).safeTransfer(msg.sender, premium); // proceeds transferred out optimistically
+                IPrimitiveRepayCallback(msg.sender).repayCallback(delStable, data); // agnostic payment of delStable
 
-            if (balanceRisky() < balRisky - premium) revert RiskyBalanceError(balRisky - premium, balanceRisky());
-            if (balanceStable() < balStable + delStable)
-                revert StableBalanceError(balStable + delStable, balanceStable());
+                if (balanceStable() < balStable - premium)
+                    revert StableBalanceError(balStable - premium, balanceStable());
+                if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
+            }
         }
 
         reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase: risky, stable, and liquidity
