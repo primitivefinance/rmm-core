@@ -14,6 +14,8 @@ library Position {
         uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
         uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
+        uint128 riskyCollateral;
+        uint128 stableCollateral;
     }
 
     /// @notice             An Engine's mapping of position Ids to Position.Data structs can be used to fetch any Position
@@ -51,10 +53,14 @@ library Position {
     function borrow(
         mapping(bytes32 => Data) storage positions,
         bytes32 poolId,
-        uint256 delLiquidity
+        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable
     ) internal returns (Data storage position) {
         position = fetch(positions, msg.sender, poolId);
         position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
+        if (delRisky > 0) position.riskyCollateral += delRisky.toUint128(); // add the debt post position manipulation
+        if (delStable > 0) position.stableCollateral += delStable.toUint128(); // add the debt post position manipulation
     }
 
     /// @notice             Supplies liquidity in float, locking it until claimed
@@ -86,8 +92,15 @@ library Position {
     /// @notice             Reduces Position debt
     /// @param position     Position in state to manipulate
     /// @param delLiquidity Amount of debt to reduce from the Position
-    function repay(Data storage position, uint256 delLiquidity) internal {
+    function repay(
+        Data storage position,
+        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable
+    ) internal {
         position.debt -= delLiquidity.toUint128();
+        if (delRisky > 0) position.riskyCollateral -= delRisky.toUint128(); // add the debt post position manipulation
+        if (delStable > 0) position.stableCollateral -= delStable.toUint128(); // add the debt post position manipulation
     }
 
     /// @notice             Fetches the position Id
