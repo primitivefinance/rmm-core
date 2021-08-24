@@ -100,7 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
-    function updateLastTimestamp(bytes32 poolId) external virtual returns (uint32 lastTimestamp) {
+    function updateLastTimestamp(bytes32 poolId) external override returns (uint32 lastTimestamp) {
         lastTimestamp = _updateLastTimestamp(poolId);
     }
 
@@ -247,6 +247,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 deltaIn;
         bool riskyForStable;
         bool fromMargin;
+        uint32 timestamp;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -263,13 +264,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
             poolId: poolId,
             deltaIn: deltaIn,
             riskyForStable: riskyForStable,
-            fromMargin: fromMargin
+            fromMargin: fromMargin,
+            timestamp: _blockTimestamp() // current block.timestamp, used in reserve cumulative reserve
         });
 
         // 0. Important: Update the lastTimestamp, effectively updating the time until expiry of the option
-        uint32 timestamp = _blockTimestamp(); // current block.timestamp, used in reserve cumulative reserve
         uint32 lastTimestamp = _updateLastTimestamp(details.poolId); // the pool's actual timestamp, after being updated
-        if (timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow the final swaps to occur
+        if (details.timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow the final swaps to occur
+
         // 1. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
         int128 invariant = invariantOf(details.poolId);
         Reserve.Data storage reserve = reserves[details.poolId];
@@ -319,7 +321,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
             }
 
-            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, timestamp);
+            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, details.timestamp);
             int128 nextInvariant = invariantOf(details.poolId); // 4. Important: do invariant check
             if (invariant > nextInvariant && nextInvariant.sub(invariant) >= Units.MANTISSA_INT)
                 revert InvariantError(invariant, nextInvariant);
