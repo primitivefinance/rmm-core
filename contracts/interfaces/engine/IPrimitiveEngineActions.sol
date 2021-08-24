@@ -109,15 +109,18 @@ interface IPrimitiveEngineActions {
     /// @notice             Borrows liquidity and removes it, adding a debt
     /// @dev                Increases the `msg.sender`'s position's liquidity value and adds the same to the debt
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity to borrow and add as debt
+    /// @param riskyCollateral  Amount of risky to hold as collateral, for risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable to hold as collateral, for stable / K = units of debt, K = strike
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
     /// @return delRisky    Amount of risky tokens removed from liquidity borrowed
     /// delStable           Amount of stable tokens removed from liquidity borrowed
-    /// premium             Price paid to open position
+    /// riskyDeficit        Price paid in risky to open position
+    /// stableDeficit       Price paid in stable to open position
     function borrow(
         bytes32 poolId,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
     )
@@ -125,30 +128,26 @@ interface IPrimitiveEngineActions {
         returns (
             uint256 delRisky,
             uint256 delStable,
-            uint256 premium
+            uint256 riskyDeficit,
+            uint256 stableDeficit
         );
 
     /// @notice             Pays back liquidity share debt by allocating liquidity
     /// @dev                Reduces the `msg.sender`'s position's liquidity value and reduces the same to the debt value
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Position recipient to grant the borrowed liquidity shares
-    /// @param  delLiquidity Amount of liquidity to borrow and add as debt
+    /// @param  riskyToLiquidate  Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param  stableToLiquidate Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return delRisky    Amount of risky tokens allocated as liquidity to pay debt
-    /// delStable           Amount of stable tokens allocated as liquidity to pay debt
-    /// premium             Price paid to the `recipient`'s margin account
+    /// @return riskyAmount        Price paid in risky to the `recipient`'s margin account
+    /// stableAmount       Price paid in stable to the `recipient`'s margin account
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 delLiquidity,
+        uint256 riskyToLiquidate,
+        uint256 stableToLiquidate,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
-        );
+    ) external returns (int256 riskyAmount, int256 stableAmount);
 }

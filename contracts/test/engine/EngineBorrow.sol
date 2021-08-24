@@ -11,6 +11,7 @@ contract EngineBorrow {
     address public CALLER;
 
     uint256 public dontPay = 1;
+    uint256 public dontRepay = 1;
 
     constructor() {}
 
@@ -27,77 +28,103 @@ contract EngineBorrow {
     function borrow(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
     }
 
     function borrowWithMargin(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, true, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, true, data);
     }
 
     function borrowMaxPremium(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
     }
 
     function borrowWithoutPaying(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
         dontPay = 0;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
         dontPay = 1;
     }
 
     function borrowCallback(
-        uint256 delLiquidity,
-        uint256 delRisky,
-        uint256 delStable,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) public {
         data;
-        uint256 riskyNeeded = delLiquidity - delRisky;
         if (dontPay == 0) return;
-        IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
-        IERC20(stable).transfer(CALLER, delStable);
+        IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
+        IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
+        IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
+        IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
     }
 
     function repay(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyToLiquidate,
+        uint256 stableToLiquidate,
         bool fromMargin,
         bytes calldata data
     ) external {
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
+        IPrimitiveEngine(engine).repay(poolId, owner, riskyToLiquidate, stableToLiquidate, fromMargin, data);
     }
 
-    function repayCallback(uint256 delStable, bytes calldata data) external {
+    function repayWithoutRepaying(
+        bytes32 poolId,
+        address owner,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
+        bool fromMargin,
+        bytes calldata data
+    ) external {
+        CALLER = msg.sender;
+        dontRepay = 0;
+        IPrimitiveEngine(engine).repay(poolId, owner, riskyCollateral, stableCollateral, fromMargin, data);
+        dontRepay = 1;
+    }
+
+    function repayCallback(
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
+        bytes calldata data
+    ) external {
         data;
-        IERC20(stable).transferFrom(CALLER, msg.sender, delStable);
+        if (dontRepay == 0) return;
+        IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
+        IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
         IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
+        IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {

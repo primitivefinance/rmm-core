@@ -13,9 +13,8 @@ library Position {
     struct Data {
         uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
-        /* uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position */
-        uint128 riskyCollateral;
-        uint128 stableCollateral;
+        uint128 riskyCollateral; // For every 1 risky collateral, 1 liquidity debt
+        uint128 stableCollateral; // For every K stable collateral (K = strike), 1 liquidity debt
     }
 
     /// @notice             An Engine's mapping of position Ids to Position.Data structs can be used to fetch any Position
@@ -47,22 +46,6 @@ library Position {
         position.liquidity -= delLiquidity.toUint128();
     }
 
-    /// @notice             Increases debt balance of Position
-    /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity Amount of liquidity to borrow
-    function borrow(
-        mapping(bytes32 => Data) storage positions,
-        bytes32 poolId,
-        uint256 delLiquidity,
-        uint256 delRisky,
-        uint256 delStable
-    ) internal returns (Data storage position) {
-        position = fetch(positions, msg.sender, poolId);
-        position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
-        if (delRisky > 0) position.riskyCollateral += delRisky.toUint128(); // add the debt post position manipulation
-        if (delStable > 0) position.stableCollateral += delStable.toUint128(); // add the debt post position manipulation
-    }
-
     /// @notice             Supplies liquidity in float, locking it until claimed
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
     /// @param delLiquidity Amount of liquidity to supply
@@ -89,18 +72,32 @@ library Position {
         position.liquidity += delLiquidity.toUint128();
     }
 
+    /// @notice             Increases debt balance of Position
+    /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
+    /// @param riskyCollateral  Amount of risky to hold as collateral, for risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable to hold as collateral, for stable / K = units of debt, K = strike
+    function borrow(
+        mapping(bytes32 => Data) storage positions,
+        bytes32 poolId,
+        uint256 riskyCollateral,
+        uint256 stableCollateral
+    ) internal returns (Data storage position) {
+        position = fetch(positions, msg.sender, poolId);
+        if (riskyCollateral > 0) position.riskyCollateral += riskyCollateral.toUint128(); // add the debt post position manipulation
+        if (stableCollateral > 0) position.stableCollateral += stableCollateral.toUint128(); // add the debt post position manipulation
+    }
+
     /// @notice             Reduces Position debt
     /// @param position     Position in state to manipulate
-    /// @param delLiquidity Amount of debt to reduce from the Position
+    /// @param riskyCollateral  Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable collateral to liquidate by repaying, for stable / K = units of debt, K = strike
     function repay(
         Data storage position,
-        uint256 delLiquidity,
-        uint256 delRisky,
-        uint256 delStable
+        uint256 riskyCollateral,
+        uint256 stableCollateral
     ) internal {
-        position.debt -= delLiquidity.toUint128();
-        if (delRisky > 0) position.riskyCollateral -= delRisky.toUint128(); // add the debt post position manipulation
-        if (delStable > 0) position.stableCollateral -= delStable.toUint128(); // add the debt post position manipulation
+        if (riskyCollateral > 0) position.riskyCollateral -= riskyCollateral.toUint128(); // add the debt post position manipulation
+        if (stableCollateral > 0) position.stableCollateral -= stableCollateral.toUint128(); // add the debt post position manipulation
     }
 
     /// @notice             Fetches the position Id

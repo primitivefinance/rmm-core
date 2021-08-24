@@ -15,6 +15,10 @@ contract ReentrancyAttacker {
     uint256 private _maturity;
     uint256 private _delta;
     uint256 private _delLiquidity;
+    uint256 private _riskyCollateral;
+    uint256 private _stableCollateral;
+    uint256 private _riskyDeficit;
+    uint256 private _stableDeficit;
     bytes32 private _poolId;
     address private _owner;
 
@@ -127,55 +131,57 @@ contract ReentrancyAttacker {
     function borrow(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
 
         _poolId = poolId;
         _owner = owner;
-        _delLiquidity = delLiquidity;
+        _riskyCollateral = riskyCollateral;
+        _stableCollateral = stableCollateral;
 
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
     }
 
     function borrowWithGoodCallback(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
 
         _poolId = poolId;
         _owner = owner;
-        _delLiquidity = delLiquidity;
+        _riskyCollateral = riskyCollateral;
+        _stableCollateral = stableCollateral;
 
         _goodCallback = true;
-        IPrimitiveEngine(engine).borrow(poolId, delLiquidity, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
         _goodCallback = false;
     }
 
     function borrowCallback(
-        uint256 delLiquidity,
-        uint256 delRisky,
-        uint256 delStable,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) public {
-        uint256 riskyNeeded = delLiquidity - delRisky;
-
         if (_goodCallback) {
-            IERC20(risky).transferFrom(CALLER, msg.sender, riskyNeeded);
-            IERC20(stable).transfer(CALLER, delStable);
+            IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
+            IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
         } else {
-            IPrimitiveEngine(engine).borrow(_poolId, _delLiquidity, false, data);
+            IPrimitiveEngine(engine).borrow(_poolId, _riskyCollateral, _stableCollateral, false, data);
         }
     }
 
     function repay(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 riskyToLiquidate,
+        uint256 stableToLiquidate,
         bool fromMargin,
         bytes calldata data
     ) external {
@@ -183,13 +189,17 @@ contract ReentrancyAttacker {
 
         _poolId = poolId;
         _owner = owner;
-        _delLiquidity = delLiquidity;
 
-        IPrimitiveEngine(engine).repay(poolId, owner, delLiquidity, fromMargin, data);
+        IPrimitiveEngine(engine).repay(poolId, owner, riskyToLiquidate, stableToLiquidate, fromMargin, data);
     }
 
-    function repayCallback(uint256 delStable, bytes calldata data) external {
-        delStable;
-        IPrimitiveEngine(engine).repay(_poolId, _owner, _delLiquidity, false, data);
+    function repayCallback(
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
+        bytes calldata data
+    ) external {
+        riskyDeficit;
+        stableDeficit;
+        IPrimitiveEngine(engine).repay(_poolId, _owner, riskyDeficit, stableDeficit, false, data);
     }
 }
