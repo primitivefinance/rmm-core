@@ -100,6 +100,20 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @inheritdoc IPrimitiveEngineActions
+    function updateLastTimestamp(bytes32 poolId) external virtual returns (uint32 lastTimestamp) {
+        lastTimestamp = _updateLastTimestamp(poolId);
+    }
+
+    /// @return lastTimestamp of the pool, used in calculating the time until expiry
+    function _updateLastTimestamp(bytes32 poolId) internal virtual returns (uint32 lastTimestamp) {
+        lastTimestamp = _blockTimestamp();
+        uint32 maturity = calibrations[poolId].maturity;
+        if (lastTimestamp > maturity) lastTimestamp = maturity; // if expired, set to the maturity
+        calibrations[poolId].lastTimestamp = lastTimestamp;
+        emit UpdatedTimestamp(poolId, lastTimestamp);
+    }
+
+    /// @inheritdoc IPrimitiveEngineActions
     function create(
         uint256 strike,
         uint64 sigma,
@@ -253,10 +267,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         });
 
         // 0. Important: Update the lastTimestamp, effectively updating the time until expiry of the option
-        uint32 timestamp = _blockTimestamp();
-        if (timestamp > calibrations[details.poolId].maturity + 120) revert PoolExpiredError();
-        calibrations[details.poolId].lastTimestamp = timestamp;
-        emit UpdatedTimestamp(details.poolId, timestamp);
+        uint32 timestamp = _blockTimestamp(); // current block.timestamp, used in reserve cumulative reserve
+        uint32 lastTimestamp = _updateLastTimestamp(details.poolId); // the pool's actual timestamp, after being updated
+        if (timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow the final swaps to occur
         // 1. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
         int128 invariant = invariantOf(details.poolId);
         Reserve.Data storage reserve = reserves[details.poolId];
