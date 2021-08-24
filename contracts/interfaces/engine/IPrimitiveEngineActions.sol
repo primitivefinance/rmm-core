@@ -113,9 +113,7 @@ interface IPrimitiveEngineActions {
     /// @param stableCollateral Amount of stable to hold as collateral, for stable / K = units of debt, K = strike
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
-    /// @return delRisky    Amount of risky tokens removed from liquidity borrowed
-    /// delStable           Amount of stable tokens removed from liquidity borrowed
-    /// riskyDeficit        Price paid in risky to open position
+    /// @return riskyDeficit        Price paid in risky to open position
     /// stableDeficit       Price paid in stable to open position
     function borrow(
         bytes32 poolId,
@@ -123,14 +121,7 @@ interface IPrimitiveEngineActions {
         uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
-    )
-        external
-        returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 riskyDeficit,
-            uint256 stableDeficit
-        );
+    ) external returns (uint256 riskyDeficit, uint256 stableDeficit);
 
     /// @notice             Pays back liquidity share debt by allocating liquidity
     /// @dev                Reduces the `msg.sender`'s position's liquidity value and reduces the same to the debt value
