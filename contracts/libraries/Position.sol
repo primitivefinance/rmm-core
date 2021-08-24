@@ -13,7 +13,7 @@ library Position {
     struct Data {
         uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
-        uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
+        /* uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position */
         uint128 riskyCollateral;
         uint128 stableCollateral;
     }
