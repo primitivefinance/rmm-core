@@ -93,13 +93,13 @@ interface IPrimitiveEngineEvents {
     /// @param  from        Calling `msg.sender`
     /// @param  recipient   Owner of the position to repay
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity to pay
-    /// @param  premium     Amount of risky tokens returned to borrower
+    /// @param  riskyAmount Amount of risky tokens that was sent (negative) or requested (positive)
+    /// @param  stableAmount Amount of stable tokens that was sent (negative) or requested (positive)
     event Repaid(
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
-        uint256 delLiquidity,
-        uint256 premium
+        int256 riskyAmount,
+        int256 stableAmount
     );
 }
