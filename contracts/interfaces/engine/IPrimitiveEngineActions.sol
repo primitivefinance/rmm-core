@@ -140,8 +140,8 @@ interface IPrimitiveEngineActions {
     /// @param  stableToLiquidate Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return riskyAmount        Price paid in risky to the `recipient`'s margin account
-    /// stableAmount       Price paid in stable to the `recipient`'s margin account
+    /// @return riskyDeficit        Price paid in risky to the `recipient`'s margin account
+    /// stableDeficit       Price paid in stable to the `recipient`'s margin account
     function repay(
         bytes32 poolId,
         address recipient,
@@ -149,5 +149,5 @@ interface IPrimitiveEngineActions {
         uint256 stableToLiquidate,
         bool fromMargin,
         bytes calldata data
-    ) external returns (int256 riskyAmount, int256 stableAmount);
+    ) external returns (uint256 riskyDeficit, uint256 stableDeficit);
 }
