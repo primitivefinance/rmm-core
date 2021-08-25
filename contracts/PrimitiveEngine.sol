@@ -367,7 +367,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (riskyDeficit < 0) IERC20(risky).safeTransfer(msg.sender, uint256(-riskyDeficit)); // pay excess
             if (stableDeficit < 0) IERC20(stable).safeTransfer(msg.sender, uint256(-stableDeficit)); // pay excess
 
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // balance ref
+            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveBorrowCallback(msg.sender).borrowCallback(riskyDeficit, stableDeficit, data); // request deficits
 
             if (balanceRisky() < balRisky + uint256(riskyDeficit))
@@ -376,7 +376,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 revert StableBalanceError(balStable + uint256(stableDeficit), balanceStable());
         }
 
-        emit Borrowed(msg.sender, poolId, uint256(riskyDeficit), uint256(stableDeficit));
+        emit Borrowed(msg.sender, poolId, riskyDeficit, stableDeficit);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -388,7 +388,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 stableOut,
         bool fromMargin,
         bytes calldata data
-    ) external override lock returns (uint256 riskyIn, uint256 stableIn) {
+    ) external override lock returns (int256 riskyDeficit, int256 stableDeficit) {
         Calibration memory cal = calibrations[poolId];
         uint32 timestamp = _blockTimestamp();
         address account = msg.sender;
@@ -407,39 +407,30 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint256 delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky required to allocate
             uint256 delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable required to allocate
 
-            // calculate the differences between tokens to needed to allocate and amount of collateral to withdraw
-            if (riskyOut > delRisky) riskyOut = riskyOut - delRisky; // excess risky to send out
-            if (delRisky > riskyOut) {
-                riskyIn = delRisky - riskyOut;
-                riskyOut = 0;
-            } // deficit risky to request in
-            if (stableOut > delStable) stableOut = stableOut - delStable; // excess stable to send out
-            if (delStable > stableOut) {
-                stableIn = delStable - stableOut;
-                stableOut = 0;
-            } // deficit stable to request in
+            riskyDeficit = int256(delRisky) - int256(riskyOut); // a negative value is an excess that is paid out
+            stableDeficit = int256(delStable) - int256(stableOut); // a positive value is a deficit that must be paid
 
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase: risky, stable, and liquidity
         }
 
         if (fromMargin) {
-            margins.withdraw(riskyIn, stableIn);
-            margins[recipient].deposit(riskyOut, stableOut); // send remainder of risky to margin
+            margins.withdraw(uint256(riskyDeficit), uint256(stableDeficit));
+            margins[recipient].deposit(uint256(-riskyDeficit), uint256(-stableDeficit)); // send remainder of risky to margin
         } else {
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
-            if (riskyOut > 0) IERC20(risky).safeTransfer(recipient, riskyOut); // pay out excess
-            if (stableOut > 0) IERC20(stable).safeTransfer(recipient, stableOut); // pay out excess
+            if (riskyDeficit < 0) IERC20(risky).safeTransfer(recipient, uint256(-riskyDeficit)); // pay out excess
+            if (stableDeficit < 0) IERC20(stable).safeTransfer(recipient, uint256(-stableDeficit)); // pay out excess
 
-            IPrimitiveRepayCallback(msg.sender).repayCallback(riskyIn, stableIn, data); // request deficits
+            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
+            IPrimitiveRepayCallback(msg.sender).repayCallback(riskyDeficit, stableDeficit, data); // request deficits
 
-            if (balanceRisky() < balRisky + riskyIn - riskyOut)
-                revert RiskyBalanceError(balRisky + riskyIn - riskyOut, balanceRisky());
-            if (balanceStable() < balStable + stableIn - stableOut)
-                revert StableBalanceError(balStable + stableIn - stableOut, balanceStable());
+            if (balanceRisky() < balRisky + uint256(riskyDeficit))
+                revert RiskyBalanceError(balRisky + uint256(riskyDeficit), balanceRisky());
+            if (balanceStable() < balStable + uint256(stableDeficit))
+                revert StableBalanceError(balStable + uint256(stableDeficit), balanceStable());
         }
 
-        emit Repaid(msg.sender, recipient, poolId, riskyIn, stableIn);
+        emit Repaid(msg.sender, recipient, poolId, riskyDeficit, stableDeficit);
     }
 
     // ===== Swap and Liquidity Math =====
