@@ -113,15 +113,15 @@ interface IPrimitiveEngineActions {
     /// @param stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt, K = strike
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
-    /// @return riskyDeficit        Price paid in risky to open position
-    /// stableDeficit       Price paid in stable to open position
+    /// @return riskyAmount        Price paid in risky to open position
+    /// stableAmount       Price paid in stable to open position
     function borrow(
         bytes32 poolId,
         uint256 riskyCollateral,
         uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256 riskyDeficit, uint256 stableDeficit);
+    ) external returns (int256 riskyAmount, int256 stableAmount);
 
     /// @notice             Pays back liquidity share debt by allocating liquidity
     /// @dev                Reduces the `msg.sender`'s position's liquidity value and reduces the same to the debt value
@@ -131,8 +131,8 @@ interface IPrimitiveEngineActions {
     /// @param  stableOut   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return riskyIn        Price paid in risky to the `recipient`'s margin account
-    /// riskyOut       Price paid in stable to the `recipient`'s margin account
+    /// @return riskyDeficit        Price paid in risky to the `recipient`'s margin account
+    /// stableDeficit       Price paid in stable to the `recipient`'s margin account
     function repay(
         bytes32 poolId,
         address recipient,
@@ -140,5 +140,5 @@ interface IPrimitiveEngineActions {
         uint256 stableOut,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256 riskyIn, uint256 stableInt);
+    ) external returns (uint256 riskyDeficit, uint256 stableDeficit);
 }
