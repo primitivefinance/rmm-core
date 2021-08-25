@@ -85,9 +85,9 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient   Owner of the position which receives liquidity shares
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity shares borrowed, and added as debt
-    /// @param  premium     Amount of risky added from margin or external transfer
-    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity, uint256 premium);
+    /// @param  riskyDeficit  Amount of risky tokens that was requested as payment
+    /// @param  stableDeficit Amount of stable tokens that was requested as payment
+    event Borrowed(address indexed recipient, bytes32 indexed poolId, int256 riskyDeficit, int256 stableDeficit);
 
     /// @notice             Repays a borrowed position, reduces liquidity shares of position and debt
     /// @param  from        Calling `msg.sender`
@@ -99,7 +99,7 @@ interface IPrimitiveEngineEvents {
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
-        uint256 riskyDeficit,
-        uint256 stableDeficit
+        int256 riskyDeficit,
+        int256 stableDeficit
     );
 }
