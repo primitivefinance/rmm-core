@@ -343,20 +343,26 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
         if (riskyCollateral * stableCollateral == 0) revert ZeroLiquidityError();
 
-        positions.borrow(poolId, riskyCollateral, stableCollateral); // incr. risky and stable collateral in position
+        positions.borrow(poolId, riskyCollateral, stableCollateral); // incr. collateral that backs the debt
 
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
             uint256 strike = uint256(calibrations[poolId].strike);
-            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / strike;
+            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / strike; // total debt incurred
             uint256 delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky from removing
             uint256 delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable from removing
 
             if (delRisky > riskyCollateral) riskyCollateral = delRisky - riskyCollateral;
-            if (riskyCollateral > delRisky) riskyDeficit = riskyCollateral - delRisky;
+            if (riskyCollateral > delRisky) {
+                riskyDeficit = riskyCollateral - delRisky;
+                riskyCollateral = 0;
+            }
             if (delStable > stableCollateral) stableCollateral = delStable - stableCollateral;
-            if (stableCollateral > delStable) stableDeficit = stableCollateral - delStable;
+            if (stableCollateral > delStable) {
+                stableDeficit = stableCollateral - delStable;
+                stableCollateral = 0;
+            }
 
             reserve.borrowFloat(delLiquidity); // decr. global float, incr. global debt,
             reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // remove liquidity
@@ -411,9 +417,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             // calculate the differences between tokens to needed to allocate and amount of collateral to withdraw
             if (riskyOut > delRisky) riskyOut = riskyOut - delRisky; // excess risky to send out
-            if (delRisky > riskyOut) riskyIn = delRisky - riskyOut; // deficit risky to request in
+            if (delRisky > riskyOut) {
+                riskyIn = delRisky - riskyOut;
+                riskyOut = 0;
+            } // deficit risky to request in
             if (stableOut > delStable) stableOut = stableOut - delStable; // excess stable to send out
-            if (delStable > stableOut) stableIn = delStable - stableOut; // deficit stable to request in
+            if (delStable > stableOut) {
+                stableIn = delStable - stableOut;
+                stableOut = 0;
+            } // deficit stable to request in
 
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase: risky, stable, and liquidity

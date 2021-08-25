@@ -109,8 +109,8 @@ interface IPrimitiveEngineActions {
     /// @notice             Borrows liquidity and removes it, adding a debt
     /// @dev                Increases the `msg.sender`'s position's liquidity value and adds the same to the debt
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param riskyCollateral  Amount of risky to hold as collateral, for risky / 1 = units of debt
-    /// @param stableCollateral Amount of stable to hold as collateral, for stable / K = units of debt, K = strike
+    /// @param riskyCollateral  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt, K = strike
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
     /// @return riskyDeficit        Price paid in risky to open position
@@ -127,18 +127,18 @@ interface IPrimitiveEngineActions {
     /// @dev                Reduces the `msg.sender`'s position's liquidity value and reduces the same to the debt value
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Position recipient to grant the borrowed liquidity shares
-    /// @param  riskyToLiquidate  Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
-    /// @param  stableToLiquidate Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
+    /// @param  riskyOut    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param  stableOut   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return riskyDeficit        Price paid in risky to the `recipient`'s margin account
-    /// stableDeficit       Price paid in stable to the `recipient`'s margin account
+    /// @return riskyIn        Price paid in risky to the `recipient`'s margin account
+    /// riskyOut       Price paid in stable to the `recipient`'s margin account
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 riskyToLiquidate,
-        uint256 stableToLiquidate,
+        uint256 riskyOut,
+        uint256 stableOut,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256 riskyDeficit, uint256 stableDeficit);
+    ) external returns (uint256 riskyIn, uint256 stableInt);
 }
