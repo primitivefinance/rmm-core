@@ -341,7 +341,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (int256 riskyDeficit, int256 stableDeficit) {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
-        if (riskyCollateral * stableCollateral == 0) revert ZeroLiquidityError();
+        if (riskyCollateral == 0 && stableCollateral == 0) revert ZeroLiquidityError();
 
         positions.borrow(poolId, riskyCollateral, stableCollateral);
 
