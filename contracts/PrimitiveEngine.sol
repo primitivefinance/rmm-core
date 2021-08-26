@@ -388,7 +388,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 revert StableBalanceError(balStable + stableDeficit, balanceStable());
         }
 
-        emit Borrowed(msg.sender, poolId, riskyDeficit, stableDeficit);
+        emit Borrowed(
+            msg.sender,
+            poolId,
+            riskyCollateral,
+            stableCollateral,
+            riskyDeficit,
+            riskySurplus,
+            stableDeficit,
+            stableSurplus
+        );
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -451,7 +460,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 revert StableBalanceError(balStable + stableDeficit, balanceStable());
         }
 
-        emit Repaid(msg.sender, recipient, poolId, riskyDeficit, stableDeficit);
+        emit Repaid(
+            msg.sender,
+            recipient,
+            poolId,
+            riskyCollateral,
+            stableCollateral,
+            riskyDeficit,
+            riskySurplus,
+            stableDeficit,
+            stableSurplus
+        );
     }
 
     // ===== Swap and Liquidity Math =====
