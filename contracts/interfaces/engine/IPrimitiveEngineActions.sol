@@ -113,15 +113,24 @@ interface IPrimitiveEngineActions {
     /// @param  stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
-    /// @return riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// stableDeficit           Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
+    /// @return riskyDeficit    Amount of risky tokens requested to Engine
+    /// riskySurplus            Amount of risky tokens paid to user
+    /// stableDeficit           Amount of stable tokens requested to Engine
+    /// stableSurplus           Amount of stable tokens paid to user
     function borrow(
         bytes32 poolId,
         uint256 riskyCollateral,
         uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
-    ) external returns (int256 riskyDeficit, int256 stableDeficit);
+    )
+        external
+        returns (
+            uint256 riskyDeficit,
+            uint256 riskySurplus,
+            uint256 stableDeficit,
+            uint256 stableSurplus
+        );
 
     /// @notice             Pays back liquidity share debt by allocating liquidity
     /// @dev                Important: If the pool is expired, any position can be repaid to the position owner
@@ -131,8 +140,10 @@ interface IPrimitiveEngineActions {
     /// @param  stableCollateral   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// stableDeficit           Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
+    /// @return riskyDeficit    Amount of risky tokens requested to Engine
+    /// riskySurplus            Amount of risky tokens paid to user
+    /// stableDeficit           Amount of stable tokens requested to Engine
+    /// stableSurplus           Amount of stable tokens paid to user
     function repay(
         bytes32 poolId,
         address recipient,
@@ -140,5 +151,12 @@ interface IPrimitiveEngineActions {
         uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
-    ) external returns (int256 riskyDeficit, int256 stableDeficit);
+    )
+        external
+        returns (
+            uint256 riskyDeficit,
+            uint256 riskySurplus,
+            uint256 stableDeficit,
+            uint256 stableSurplus
+        );
 }

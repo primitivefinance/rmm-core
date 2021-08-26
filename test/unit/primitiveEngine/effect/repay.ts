@@ -126,7 +126,7 @@ describe('repay', function () {
           this.contracts.engineRepay.address,
           this.contracts.engineRepay.address,
           poolId,
-          parseWei(delta).mul(-1).raw,
+          '0',
           one.mul(res.reserveStable).div(res.liquidity).raw
         )
     })
@@ -225,23 +225,26 @@ describe('repay', function () {
         await this.contracts.engineDeposit.deposit(this.contracts.engineRepay.address, 0, parseWei('400').raw, HashZero)
 
         const oldReserve = await this.contracts.engine.reserves(expiredPoolId)
+        const delRisky = one.mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
         const delStable = one.mul(oldReserve.reserveStable).div(oldReserve.liquidity)
+        const premium = one.sub(delRisky)
 
         await expect(
           this.contracts.engineRepay.repay(expiredPoolId, this.contracts.engineBorrow.address, one.raw, '0', true, HashZero)
-        ).to.decreaseMargin(this.contracts.engine, this.contracts.engineRepay.address, toBN(0), delStable.raw)
+        ).to.decreaseMargin(this.contracts.engine, this.contracts.engineRepay.address, premium.mul(-1).raw, delStable.raw)
       })
 
-      it('repay engineBorrow borrow position, called by engineRepay: increases risky in margin for engineBorrow', async function () {
+      it('repay engineBorrow borrow position, called by engineRepay: increases risky in margin for engineRepay', async function () {
         await this.contracts.engineDeposit.deposit(this.contracts.engineRepay.address, 0, parseWei('400').raw, HashZero)
 
         const oldReserve = await this.contracts.engine.reserves(expiredPoolId)
+        const delStable = one.mul(oldReserve.reserveStable).div(oldReserve.liquidity)
         const delRisky = one.mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
         const premium = one.sub(delRisky)
 
         await expect(
           this.contracts.engineRepay.repay(expiredPoolId, this.contracts.engineBorrow.address, one.raw, '0', true, HashZero)
-        ).to.increaseMargin(this.contracts.engine, this.contracts.engineBorrow.address, premium.raw, toBN(0))
+        ).to.increaseMargin(this.contracts.engine, this.contracts.engineRepay.address, premium.raw, delStable.mul(-1).raw)
       })
     })
   })

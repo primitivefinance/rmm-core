@@ -6,12 +6,12 @@ pragma solidity 0.8.6;
 
 interface IPrimitiveRepayCallback {
     /// @notice                 Triggered when repaying liquidity to an Engine
-    /// @param  riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// @param  stableDeficit   Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
     /// @param  data            Calldata passed on repay function call
     function repayCallback(
-        int256 riskyDeficit,
-        int256 stableDeficit,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) external;
 }

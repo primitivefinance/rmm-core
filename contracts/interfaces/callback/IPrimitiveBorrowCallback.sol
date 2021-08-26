@@ -6,12 +6,12 @@ pragma solidity 0.8.6;
 
 interface IPrimitiveBorrowCallback {
     /// @notice                 Triggered when borrowing liquidity from an Engine
-    /// @param  riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// @param  stableDeficit   Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
     /// @param  data            Calldata passed on borrow function call
     function borrowCallback(
-        int256 riskyDeficit,
-        int256 stableDeficit,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) external;
 }

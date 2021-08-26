@@ -165,15 +165,15 @@ contract ReentrancyAttacker {
     }
 
     function borrowCallback(
-        int256 riskyDeficit,
-        int256 stableDeficit,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) public {
         if (_goodCallback) {
-            if (riskyDeficit > 0) IERC20(risky).transferFrom(CALLER, msg.sender, uint256(riskyDeficit));
-            if (stableDeficit > 0) IERC20(stable).transferFrom(CALLER, msg.sender, uint256(stableDeficit));
-            if (riskyDeficit < 0) IERC20(risky).transfer(CALLER, uint256(-riskyDeficit));
-            if (stableDeficit < 0) IERC20(stable).transfer(CALLER, uint256(-stableDeficit));
+            if (riskyDeficit > 0) IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
+            if (stableDeficit > 0) IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
+            IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
+            IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
         } else {
             IPrimitiveEngine(engine).borrow(_poolId, _riskyCollateral, _stableCollateral, false, data);
         }
@@ -196,12 +196,12 @@ contract ReentrancyAttacker {
     }
 
     function repayCallback(
-        int256 riskyDeficit,
-        int256 stableDeficit,
+        uint256 riskyDeficit,
+        uint256 stableDeficit,
         bytes calldata data
     ) external {
         riskyDeficit;
         stableDeficit;
-        IPrimitiveEngine(engine).repay(_poolId, _owner, uint256(riskyDeficit), uint256(stableDeficit), false, data);
+        IPrimitiveEngine(engine).repay(_poolId, _owner, riskyDeficit, stableDeficit, false, data);
     }
 }

@@ -85,21 +85,21 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient   Owner of the position which receives liquidity shares
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// @param  stableDeficit   Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
-    event Borrowed(address indexed recipient, bytes32 indexed poolId, int256 riskyDeficit, int256 stableDeficit);
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
+    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 riskyDeficit, uint256 stableDeficit);
 
     /// @notice             Repays a borrowed position, reduces liquidity shares of position and debt
     /// @param  from        Calling `msg.sender`
     /// @param  recipient   Owner of the position to repay
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyDeficit    Amount of risky tokens requested (positive) to Engine, or paid (negative) to user
-    /// @param  stableDeficit   Amount of stable tokens requested (positive) to Engine, or paid (negative) to user
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
     event Repaid(
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
-        int256 riskyDeficit,
-        int256 stableDeficit
+        uint256 riskyDeficit,
+        uint256 stableDeficit
     );
 }
