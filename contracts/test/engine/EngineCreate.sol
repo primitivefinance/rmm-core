@@ -51,7 +51,8 @@ contract EngineCreate {
         returns (
             uint128 float,
             uint128 liquidity,
-            uint128 debt
+            uint128 riskyCollateral,
+            uint128 stableCollateral
         )
     {
         return IPrimitiveEngine(engine).positions(keccak256(abi.encodePacked(address(this), pid)));

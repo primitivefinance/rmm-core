@@ -80,14 +80,16 @@ interface IPrimitiveEngineView {
     /// @param  posId       Keccak256 hash of owner address and poolId
     /// @return float       Liquidity that is supplied to be borrowed
     /// liquidity           Liquidity in the position
-    /// debt                Borrowed liquidity debt, must be repaid, also equal to risky balance of position
+    /// riskyCollateral     For every 1 risky collateral, 1 liquidity debt
+    /// stableCollateral    For every K stable collateral (K = strike), 1 liquidity debt
     function positions(bytes32 posId)
         external
         view
         returns (
             uint128 float,
             uint128 liquidity,
-            uint128 debt
+            uint128 riskyCollateral,
+            uint128 stableCollateral
         );
 
     /// @notice                 Fetchs the margin position of `account`
