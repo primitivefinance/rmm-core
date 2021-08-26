@@ -423,7 +423,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         {
             // position scope
             bytes32 id = poolId;
-            bool expired = _blockTimestamp() >= cal.maturity;
+            bool expired = _blockTimestamp() >= cal.maturity + 86400;
             address account = expired ? recipient : msg.sender;
             positions.fetch(account, id).repay(riskyCollateral, stableCollateral); // increase: risky/stableCollateral
         }
