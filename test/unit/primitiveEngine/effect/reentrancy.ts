@@ -87,8 +87,9 @@ describe('reentrancy', function () {
     })
 
     it('reverts the transaction', async function () {
-      await expect(this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, HashZero)).to
-        .be.reverted
+      await expect(
+        this.contracts.reentrancyAttacker.borrow(poolId, this.signers[0].address, parseWei('1').raw, '0', HashZero)
+      ).to.be.reverted
     })
   })
 
@@ -113,6 +114,7 @@ describe('reentrancy', function () {
         poolId,
         this.contracts.reentrancyAttacker.address,
         parseWei('1').raw,
+        '0',
         HashZero
       )
     })
@@ -123,6 +125,7 @@ describe('reentrancy', function () {
           poolId,
           this.contracts.reentrancyAttacker.address,
           parseWei('1').raw,
+          '0',
           false,
           HashZero
         )

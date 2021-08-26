@@ -4,7 +4,9 @@ pragma solidity 0.8.6;
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
 
-contract EngineBorrow {
+import "hardhat/console.sol";
+
+contract EngineRepay {
     address public engine;
     address public risky;
     address public stable;
@@ -76,16 +78,16 @@ contract EngineBorrow {
     }
 
     function borrowCallback(
-        uint256 riskyDeficit,
-        uint256 stableDeficit,
+        int256 riskyDeficit,
+        int256 stableDeficit,
         bytes calldata data
     ) public {
         data;
         if (dontPay == 0) return;
-        IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
-        IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
-        IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
-        IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
+        if (riskyDeficit > 0) IERC20(risky).transferFrom(CALLER, msg.sender, uint256(riskyDeficit));
+        if (stableDeficit > 0) IERC20(stable).transferFrom(CALLER, msg.sender, uint256(stableDeficit));
+        if (riskyDeficit < 0) IERC20(risky).transfer(CALLER, uint256(-riskyDeficit));
+        if (stableDeficit < 0) IERC20(stable).transfer(CALLER, uint256(-stableDeficit));
     }
 
     function repay(
@@ -115,16 +117,16 @@ contract EngineBorrow {
     }
 
     function repayCallback(
-        uint256 riskyDeficit,
-        uint256 stableDeficit,
+        int256 riskyDeficit,
+        int256 stableDeficit,
         bytes calldata data
     ) external {
         data;
         if (dontRepay == 0) return;
-        IERC20(stable).transferFrom(CALLER, msg.sender, stableDeficit);
-        IERC20(risky).transferFrom(CALLER, msg.sender, riskyDeficit);
-        IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
-        IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
+        if (riskyDeficit > 0) IERC20(risky).transferFrom(CALLER, msg.sender, uint256(riskyDeficit));
+        if (stableDeficit > 0) IERC20(stable).transferFrom(CALLER, msg.sender, uint256(stableDeficit));
+        if (riskyDeficit < 0) IERC20(risky).transfer(CALLER, uint256(-riskyDeficit));
+        if (stableDeficit < 0) IERC20(stable).transfer(CALLER, uint256(-stableDeficit));
     }
 
     function getPosition(bytes32 poolId) public view returns (bytes32 posid) {
@@ -132,6 +134,6 @@ contract EngineBorrow {
     }
 
     function name() public pure returns (string memory) {
-        return "EngineRepay";
+        return "EngineBorrow";
     }
 }

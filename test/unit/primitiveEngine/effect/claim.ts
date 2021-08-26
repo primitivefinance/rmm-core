@@ -62,7 +62,7 @@ describe('claim', function () {
       await expect(this.contracts.engineSupply.claim(poolId, parseWei('20').raw)).to.be.reverted
     })
     it('fails to remove more to float than is available in the __GLOBAL FLOAT__', async function () {
-      await this.contracts.engineBorrow.borrow(poolId, this.contracts.engineBorrow.address, one.raw, HashZero)
+      await this.contracts.engineBorrow.borrow(poolId, this.contracts.engineBorrow.address, one.raw, '0', HashZero)
       await expect(this.contracts.engineSupply.claim(poolId, one.raw)).to.be.reverted
     })
   })
