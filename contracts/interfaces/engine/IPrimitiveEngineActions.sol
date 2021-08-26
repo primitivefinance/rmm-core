@@ -5,6 +5,11 @@ pragma solidity 0.8.6;
 /// @author Primitive
 
 interface IPrimitiveEngineActions {
+    /// @notice             Updates the time until expiry of the option by setting its last timestamp value
+    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @return lastTimestamp Timestamp loaded into the state of the pool's Calibration.lastTimestamp
+    function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
+
     /// @notice             Initializes a curve with parameters in the `settings` storage mapping in the Engine
     /// @param  strike      Strike price of the option to calibrate to
     /// @param  sigma       Volatility of the option to calibrate to
@@ -109,46 +114,54 @@ interface IPrimitiveEngineActions {
     /// @notice             Borrows liquidity and removes it, adding a debt
     /// @dev                Increases the `msg.sender`'s position's liquidity value and adds the same to the debt
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity to borrow and add as debt
+    /// @param  riskyCollateral  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
+    /// @param  stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
-    /// @return delRisky    Amount of risky tokens removed from liquidity borrowed
-    /// delStable           Amount of stable tokens removed from liquidity borrowed
-    /// premium             Price paid to open position
+    /// @return riskyDeficit    Amount of risky tokens requested to Engine
+    /// riskySurplus            Amount of risky tokens paid to user
+    /// stableDeficit           Amount of stable tokens requested to Engine
+    /// stableSurplus           Amount of stable tokens paid to user
     function borrow(
         bytes32 poolId,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
     )
         external
         returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
+            uint256 riskyDeficit,
+            uint256 riskySurplus,
+            uint256 stableDeficit,
+            uint256 stableSurplus
         );
 
     /// @notice             Pays back liquidity share debt by allocating liquidity
-    /// @dev                Reduces the `msg.sender`'s position's liquidity value and reduces the same to the debt value
+    /// @dev                Important: If the pool is expired, any position can be repaid to the position owner
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Position recipient to grant the borrowed liquidity shares
-    /// @param  delLiquidity Amount of liquidity to borrow and add as debt
+    /// @param  riskyCollateral    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param  stableCollateral   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
-    /// @return delRisky    Amount of risky tokens allocated as liquidity to pay debt
-    /// delStable           Amount of stable tokens allocated as liquidity to pay debt
-    /// premium             Price paid to the `recipient`'s margin account
+    /// @return riskyDeficit    Amount of risky tokens requested to Engine
+    /// riskySurplus            Amount of risky tokens paid to user
+    /// stableDeficit           Amount of stable tokens requested to Engine
+    /// stableSurplus           Amount of stable tokens paid to user
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 delLiquidity,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
         bool fromMargin,
         bytes calldata data
     )
         external
         returns (
-            uint256 delRisky,
-            uint256 delStable,
-            uint256 premium
+            uint256 riskyDeficit,
+            uint256 riskySurplus,
+            uint256 stableDeficit,
+            uint256 stableSurplus
         );
 }

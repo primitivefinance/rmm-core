@@ -39,9 +39,10 @@ describe('testPosition', function () {
       let amount = parseWei('0.1').raw
       await position.shouldRemove(poolId, (await position.pos()).liquidity) // remove all liq so we can borrow
       expect((await position.pos()).liquidity).to.be.eq(0) // liq must be 0 to borrow
-      await position.shouldBorrow(poolId, amount)
+      await position.shouldBorrow(poolId, amount, amount)
       expect((await position.pos()).liquidity).to.be.deep.eq(0) // removed all liquidity
-      expect((await position.pos()).debt).to.be.deep.eq(before.debt.add(amount))
+      expect((await position.pos()).riskyCollateral).to.be.deep.eq(before.riskyCollateral.add(amount))
+      expect((await position.pos()).stableCollateral).to.be.deep.eq(before.stableCollateral.add(amount))
     })
     it('shouldSupply', async function () {
       let amount = parseWei('0.1').raw
@@ -59,10 +60,11 @@ describe('testPosition', function () {
     it('shouldRepay', async function () {
       let amount = parseWei('0.1').raw
       await position.shouldRemove(poolId, (await position.pos()).liquidity) // remove all liq so we can borrow
-      await position.shouldBorrow(poolId, amount)
-      await position.shouldRepay(poolId, amount) // borrow from this account so we can repay
+      await position.shouldBorrow(poolId, amount, amount)
+      await position.shouldRepay(poolId, amount, amount) // borrow from this account so we can repay
       expect((await position.pos()).liquidity).to.be.deep.eq(0)
-      expect((await position.pos()).debt).to.be.deep.eq(before.debt) // no change
+      expect((await position.pos()).riskyCollateral).to.be.deep.eq(before.riskyCollateral) // no change
+      expect((await position.pos()).stableCollateral).to.be.deep.eq(before.stableCollateral) // no change
     })
     it('shouldGetPositionId', async function () {
       expect(await position.shouldGetPositionId(this.signers[0].address, poolId)).to.be.deep.eq(
