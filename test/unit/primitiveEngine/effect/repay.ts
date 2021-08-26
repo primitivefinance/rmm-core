@@ -179,6 +179,8 @@ describe('repay', function () {
 
     it('emits the Repaid event', async function () {
       const res = await this.contracts.engine.reserves(poolId)
+      const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
+      const delStable = one.mul(res.reserveStable).div(res.liquidity)
       await expect(
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, one.raw, '0', false, HashZero)
       )
@@ -187,8 +189,12 @@ describe('repay', function () {
           this.contracts.engineRepay.address,
           this.contracts.engineRepay.address,
           poolId,
+          one.raw,
           '0',
-          one.mul(res.reserveStable).div(res.liquidity).raw
+          '0', // riskyDeficit
+          one.sub(delRisky).raw, // riskySurplus
+          delStable.raw, // stableDeficit
+          '0' // stableSurplus
         )
     })
 

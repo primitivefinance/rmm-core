@@ -236,6 +236,24 @@ describe('borrow', function () {
         ).to.changeTokenBalances(this.contracts.stable, [deployer], [stableSurplus])
         expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0)])
       })
+
+      it('emits the Borrowed event', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
+        const delStable = one.mul(res.reserveStable).div(res.liquidity)
+        await expect(this.contracts.engineBorrow.borrow(poolId, this.contracts.engineBorrow.address, one.raw, '0', HashZero))
+          .to.emit(this.contracts.engine, 'Borrowed')
+          .withArgs(
+            this.contracts.engineBorrow.address,
+            poolId,
+            one.raw,
+            '0',
+            one.sub(delRisky).raw, // riskyDeficit
+            '0', // riskySurplus
+            '0', // stableDeficit
+            delStable.raw // stableSurplus
+          )
+      })
     })
 
     describe('fail cases', async function () {
