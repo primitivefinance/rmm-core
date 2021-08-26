@@ -29,6 +29,8 @@ jobs:
 
       - name: Lint
         uses: wearerequired/lint-action@v1
+        env:
+          REGISTRY_TOKEN: ''
         with:
           github_token: ${{ secrets.github_token }}
           prettier: true
