@@ -287,7 +287,8 @@ describe('repay', function () {
           HashZero
         )
         expiredPoolId = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
-        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1)
+        const gracePeriod = 60 * 60 * 24
+        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
         // give liquidity to engineSupply contract
         await this.contracts.engineAllocate.allocateFromExternal(
           expiredPoolId,
