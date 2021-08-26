@@ -361,19 +361,24 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         if (fromMargin) {
-            margins.withdraw(uint256(riskyDeficit), uint256(stableDeficit)); // receive deficits
-            margins[msg.sender].deposit(uint256(-riskyDeficit), uint256(-stableDeficit)); // send surpluses
+            margins.withdraw(
+                riskyDeficit > 0 ? uint256(riskyDeficit) : 0,
+                stableDeficit > 0 ? uint256(stableDeficit) : 0
+            ); // receive deficits
+            margins[msg.sender].deposit(
+                riskyDeficit < 0 ? uint256(-riskyDeficit) : 0,
+                stableDeficit < 0 ? uint256(-stableDeficit) : 0
+            ); // send surpluses
         } else {
             if (riskyDeficit < 0) IERC20(risky).safeTransfer(msg.sender, uint256(-riskyDeficit)); // send surpluses
             if (stableDeficit < 0) IERC20(stable).safeTransfer(msg.sender, uint256(-stableDeficit)); // send surpluses
 
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveBorrowCallback(msg.sender).borrowCallback(riskyDeficit, stableDeficit, data); // request deficits
-
-            if (balanceRisky() < balRisky + uint256(riskyDeficit))
-                revert RiskyBalanceError(balRisky + uint256(riskyDeficit), balanceRisky());
-            if (balanceStable() < balStable + uint256(stableDeficit))
-                revert StableBalanceError(balStable + uint256(stableDeficit), balanceStable());
+            uint256 postRisky = riskyDeficit > 0 ? balRisky + uint256(riskyDeficit) : balRisky;
+            uint256 postStable = stableDeficit > 0 ? balStable + uint256(stableDeficit) : balStable;
+            if (balanceRisky() < postRisky) revert RiskyBalanceError(postRisky, balanceRisky());
+            if (balanceStable() < postStable) revert StableBalanceError(postStable, balanceStable());
         }
 
         emit Borrowed(msg.sender, poolId, riskyDeficit, stableDeficit);
@@ -414,19 +419,24 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         if (fromMargin) {
-            margins.withdraw(uint256(riskyDeficit), uint256(stableDeficit)); // receive deficits
-            margins[recipient].deposit(uint256(-riskyDeficit), uint256(-stableDeficit)); // send surpluses
+            margins.withdraw(
+                riskyDeficit > 0 ? uint256(riskyDeficit) : 0,
+                stableDeficit > 0 ? uint256(stableDeficit) : 0
+            ); // receive deficits
+            margins[recipient].deposit(
+                riskyDeficit < 0 ? uint256(-riskyDeficit) : 0,
+                stableDeficit < 0 ? uint256(-stableDeficit) : 0
+            ); // send surpluses
         } else {
             if (riskyDeficit < 0) IERC20(risky).safeTransfer(recipient, uint256(-riskyDeficit)); // send surpluses
             if (stableDeficit < 0) IERC20(stable).safeTransfer(recipient, uint256(-stableDeficit)); // send surpluses
 
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveRepayCallback(msg.sender).repayCallback(riskyDeficit, stableDeficit, data); // request deficits
-
-            if (balanceRisky() < balRisky + uint256(riskyDeficit))
-                revert RiskyBalanceError(balRisky + uint256(riskyDeficit), balanceRisky());
-            if (balanceStable() < balStable + uint256(stableDeficit))
-                revert StableBalanceError(balStable + uint256(stableDeficit), balanceStable());
+            uint256 postRisky = riskyDeficit > 0 ? balRisky + uint256(riskyDeficit) : balRisky;
+            uint256 postStable = stableDeficit > 0 ? balStable + uint256(stableDeficit) : balStable;
+            if (balanceRisky() < postRisky) revert RiskyBalanceError(postRisky, balanceRisky());
+            if (balanceStable() < postStable) revert StableBalanceError(postStable, balanceStable());
         }
 
         emit Repaid(msg.sender, recipient, poolId, riskyDeficit, stableDeficit);
