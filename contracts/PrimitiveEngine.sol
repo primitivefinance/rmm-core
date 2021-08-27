@@ -305,7 +305,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             invariantAfter = invariantOf(details.poolId);
-            if (invariant > invariantAfter && invariant.sub(invariantAfter) >= Units.MANTISSA_INT)
+            if (invariant > invariantAfter && invariant.sub(invariantAfter) >= int128(184467441000000000))
                 revert InvariantError(invariant, invariantAfter);
         }
 
