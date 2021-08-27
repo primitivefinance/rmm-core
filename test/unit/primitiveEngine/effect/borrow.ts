@@ -248,11 +248,14 @@ describe('borrow', function () {
           await engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
-          const riskyDeficit = one.sub(delRisky)
+          const riskySurplus = one
+            .sub(delRisky)
+            .mul(1e4 + 5)
+            .div(1e4)
 
           await expect(() =>
             engineBorrow.repay(poolId, engineBorrow.address, one.raw, '0', false, HashZero)
-          ).to.changeTokenBalances(this.contracts.risky, [deployer], [riskyDeficit.raw])
+          ).to.changeTokenBalances(this.contracts.risky, [deployer], [riskySurplus.raw])
           expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0)])
         })
 
@@ -261,11 +264,14 @@ describe('borrow', function () {
           await engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = one.mul(res.reserveStable).div(res.liquidity)
-          const stableDeficit = stableCollateral.sub(delStable)
+          const stableSurplus = stableCollateral
+            .sub(delStable)
+            .mul(1e4 + 5)
+            .div(1e4)
 
           await expect(() =>
             engineBorrow.repay(poolId, engineBorrow.address, '0', stableCollateral.raw, false, HashZero)
-          ).to.changeTokenBalances(this.contracts.stable, [deployer], [stableDeficit.raw])
+          ).to.changeTokenBalances(this.contracts.stable, [deployer], [stableSurplus.raw])
           expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0)])
         })
       })
