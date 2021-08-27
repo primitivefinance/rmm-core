@@ -467,6 +467,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (delStable > stableCollateral) stableDeficit = delStable - stableCollateral;
             else stableSurplus = stableCollateral - delStable;
 
+            uint256 feeRisky = (riskySurplus * 5) / 1e4;
+            uint256 feeStable = (stableSurplus * 5) / 1e4;
+            riskySurplus += feeRisky;
+            stableSurplus += feeStable;
+
+            reserve.subFee(feeRisky, feeStable);
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase: risky, stable, liquidity
         }
