@@ -41,6 +41,8 @@ interface IPrimitiveEngineView {
     /// liquidity           Total supply of liquidity for the curve
     /// float               Total supply of liquidity supplied to be borrowed
     /// debt                Total supply of liquidity borrowed
+    /// feeRisky
+    /// feeStable
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
     /// cumulativeRisky     Cumulative sum of risky token reserves
     /// cumulativeStable    Cumulative sum of stable token reserves
@@ -54,6 +56,8 @@ interface IPrimitiveEngineView {
             uint128 liquidity,
             uint128 float,
             uint128 debt,
+            uint128 feeRisky,
+            uint128 feeStable,
             uint32 blockTimestamp,
             uint256 cumulativeRisky,
             uint256 cumulativeStable,
