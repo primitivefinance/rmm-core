@@ -82,8 +82,18 @@ declare global {
       decreasePositionFloat(engine: ContractTypes.PrimitiveEngine, posId: string, float: BigNumber): AsyncAssertion
       increasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
       decreasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
-      increasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
-      decreasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
+      increasePositionDebt(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        riskyCollateral: BigNumber,
+        stableCollateral: BigNumber
+      ): AsyncAssertion
+      decreasePositionDebt(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        riskyCollateral: BigNumber,
+        stableCollateral: BigNumber
+      ): AsyncAssertion
       increaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveStable(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
