@@ -19,6 +19,8 @@ library Reserve {
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
         uint128 debt; // liquidity unavailable because it was borrowed
+        uint128 feeRisky;
+        uint128 feeStable;
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 cumulativeRisky; // cumulative sum of risky reserves
         uint256 cumulativeStable; // cumulative sum of stable reserves
@@ -131,5 +133,28 @@ library Reserve {
     function repayFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
         reserve.debt -= delLiquidity.toUint128();
+    }
+
+    /// @notice                 Increases the extra fees from positive invariants and borrows
+    function addFee(
+        Data storage reserve,
+        uint256 feeRisky,
+        uint256 feeStable
+    ) internal {
+        // overflow can happen, fees should be withdrawn
+        unchecked {
+            reserve.feeRisky += feeRisky.toUint128();
+            reserve.feeStable += feeStable.toUint128();
+        }
+    }
+
+    /// @notice                 Decreases extra fees in reserve
+    function subFee(
+        Data storage reserve,
+        uint256 feeRisky,
+        uint256 feeStable
+    ) internal {
+        reserve.feeRisky -= feeRisky.toUint128();
+        reserve.feeStable -= feeStable.toUint128();
     }
 }

@@ -42,6 +42,8 @@ contract TestReserve {
             liquidity: uint128(2e18),
             float: uint128(1e18), // the LP shares available to be borrowed on a given poolId
             debt: 0, // the LP shares borrowed from the float
+            feeRisky: 0,
+            feeStable: 0,
             blockTimestamp: uint32(timestamp_),
             cumulativeRisky: 0,
             cumulativeStable: 0,
@@ -133,6 +135,27 @@ contract TestReserve {
         reserves[resId].cumulativeStable = stable;
         reserves[resId].cumulativeLiquidity = liquidity;
         reserves[resId].blockTimestamp = blockTimestamp;
+        return reserves[resId];
+    }
+
+    /// @notice Increases excess fees generated from swapping or borrowing
+    /// @dev    Will overflow
+    function shouldAddFee(
+        bytes32 resId,
+        uint256 feeRisky,
+        uint256 feeStable
+    ) public returns (Reserve.Data memory) {
+        reserves[resId].addFee(feeRisky, feeStable);
+        return reserves[resId];
+    }
+
+    /// @notice Decreases excess fees generated from swapping or borrowing
+    function shouldSubFee(
+        bytes32 resId,
+        uint256 feeRisky,
+        uint256 feeStable
+    ) public returns (Reserve.Data memory) {
+        reserves[resId].subFee(feeRisky, feeStable);
         return reserves[resId];
     }
 }

@@ -234,11 +234,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[poolId];
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky tokens to remove
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable tokens to remove
+        uint256 feeRisky = (delLiquidity * reserve.feeRisky) / reserve.liquidity;
+        uint256 feeStable = (delLiquidity * reserve.feeStable) / reserve.liquidity;
         if (delRisky * delStable == 0) revert ZeroDeltasError();
 
         positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
-        margins[msg.sender].deposit(delRisky, delStable); // increase margin balance of msg.sender
+        margins[msg.sender].deposit(delRisky + feeRisky, delStable + feeStable); // increase margin of msg.sender
         emit Removed(msg.sender, poolId, delRisky, delStable);
     }
 
@@ -265,68 +267,73 @@ contract PrimitiveEngine is IPrimitiveEngine {
             deltaIn: deltaIn,
             riskyForStable: riskyForStable,
             fromMargin: fromMargin,
-            timestamp: _blockTimestamp() // current block.timestamp, used in reserve cumulative reserve
+            timestamp: _blockTimestamp()
         });
 
-        // 0. Important: Update the lastTimestamp, effectively updating the time until expiry of the option
-        uint32 lastTimestamp = _updateLastTimestamp(details.poolId); // the pool's actual timestamp, after being updated
-        if (details.timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow the final swaps to occur
+        uint32 lastTimestamp = _updateLastTimestamp(details.poolId); // the pool's timestamp, after being updated
+        if (details.timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow final swaps
+        int128 invariant = invariantOf(details.poolId); // stored in memory to perform the invariant check
 
-        // 1. Calculate invariant using the new time until expiry, tau = maturity - lastTimestamp
-        int128 invariant = invariantOf(details.poolId);
-        Reserve.Data storage reserve = reserves[details.poolId];
-        (uint256 resRisky, uint256 resStable) = (reserve.reserveRisky, reserve.reserveStable);
+        {
+            // reserve scope
+            Calibration memory cal = calibrations[details.poolId];
+            Reserve.Data storage reserve = reserves[details.poolId];
+            bool swapInRisky = details.riskyForStable;
+            uint256 fee = (details.deltaIn * 15) / 1e4;
+            uint256 deltaInWithFee = details.deltaIn - fee;
+            uint256 riskyAfter; // per liquidity
+            uint256 stableAfter; // per liquidity
 
-        // 2. Calculate swapOut token reserve using new invariant + new time until expiry + new swapIn reserve
-        // 3. Calculate difference of old swapOut token reserve and new swapOut token reserve to get swapOut amount
-        if (details.riskyForStable) {
-            uint256 nextRisky = ((resRisky + ((details.deltaIn * 9985) / 1e4)) * 1e18) / reserve.liquidity;
-            uint256 nextStable = ((getStableGivenRisky(details.poolId, nextRisky).parseUnits() * reserve.liquidity) /
-                1e18);
-            deltaOut = resStable - nextStable;
-        } else {
-            uint256 nextStable = ((resStable + ((details.deltaIn * 9985) / 1e4)) * 1e18) / reserve.liquidity;
-            uint256 nextRisky = (getRiskyGivenStable(details.poolId, nextStable).parseUnits() * reserve.liquidity) /
-                1e18;
-            deltaOut = resRisky - nextRisky;
+            if (swapInRisky) {
+                riskyAfter = ((reserve.reserveRisky + deltaInWithFee) * 1e18) / reserve.liquidity;
+                stableAfter = getStableGivenRisky(details.poolId, riskyAfter).parseUnits();
+                deltaOut = reserve.reserveStable - (stableAfter * reserve.liquidity) / 1e18;
+            } else {
+                stableAfter = ((reserve.reserveStable + deltaInWithFee) * 1e18) / reserve.liquidity;
+                riskyAfter = getRiskyGivenStable(details.poolId, stableAfter).parseUnits();
+                deltaOut = reserve.reserveRisky - (riskyAfter * reserve.liquidity) / 1e18;
+            }
+
+            uint256 tau = cal.maturity - cal.lastTimestamp;
+            int128 invariantAfter = ReplicationMath.calcInvariant(riskyAfter, stableAfter, cal.strike, cal.sigma, tau);
+
+            if (invariantAfter > 0) {
+                reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
+                reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
+            } else {
+                reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
+            }
+
+            invariantAfter = invariantOf(details.poolId);
+            if (invariant > invariantAfter && invariant.sub(invariantAfter) >= Units.MANTISSA_INT)
+                revert InvariantError(invariant, invariantAfter);
         }
 
         if (deltaOut == 0) revert DeltaOutError();
 
-        {
-            // avoids stack too deep errors
-            uint256 amountOut = deltaOut;
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
-            if (details.riskyForStable) {
-                IERC20(stable).safeTransfer(msg.sender, amountOut); // send proceeds, for callback if needed
-                if (details.fromMargin) {
-                    margins.withdraw(deltaIn, 0); // pay for swap
-                } else {
-                    IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic payment
-                    if (balanceRisky() < balRisky + details.deltaIn)
-                        revert RiskyBalanceError(balRisky + details.deltaIn, balanceRisky());
-                }
-                if (balanceStable() < balStable - amountOut)
-                    revert StableBalanceError(balStable - amountOut, balanceStable());
+        if (details.riskyForStable) {
+            IERC20(stable).safeTransfer(msg.sender, deltaOut); // send proceeds, for callback if needed
+            if (details.fromMargin) {
+                margins.withdraw(deltaIn, 0); // pay for swap
             } else {
-                IERC20(risky).safeTransfer(msg.sender, amountOut); // send proceeds first, for callback if needed
-                if (details.fromMargin) {
-                    margins.withdraw(0, deltaIn); // pay for swap
-                } else {
-                    IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic payment
-                    if (balanceStable() < balStable + details.deltaIn)
-                        revert StableBalanceError(balStable + details.deltaIn, balanceStable());
-                }
-                if (balanceRisky() < balRisky - amountOut)
-                    revert RiskyBalanceError(balRisky - amountOut, balanceRisky());
+                uint256 balRisky = balanceRisky();
+                IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic payment
+                if (balanceRisky() < balRisky + details.deltaIn)
+                    revert RiskyBalanceError(balRisky + details.deltaIn, balanceRisky());
             }
-
-            reserve.swap(details.riskyForStable, details.deltaIn, amountOut, details.timestamp);
-            int128 nextInvariant = invariantOf(details.poolId); // 4. Important: do invariant check
-            if (invariant > nextInvariant && nextInvariant.sub(invariant) >= Units.MANTISSA_INT)
-                revert InvariantError(invariant, nextInvariant);
-            emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, amountOut);
+        } else {
+            IERC20(risky).safeTransfer(msg.sender, deltaOut); // send proceeds first, for callback if needed
+            if (details.fromMargin) {
+                margins.withdraw(0, deltaIn); // pay for swap
+            } else {
+                uint256 balStable = balanceStable();
+                IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic payment
+                if (balanceStable() < balStable + details.deltaIn)
+                    revert StableBalanceError(balStable + details.deltaIn, balanceStable());
+            }
         }
+
+        emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
     }
 
     // ===== Convexity =====
@@ -499,8 +506,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
-        uint256 tau;
-        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
+        uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
         reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, cal.strike, cal.sigma, tau);
     }
 
@@ -513,8 +519,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
-        uint256 tau;
-        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
+        uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
         reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau);
     }
 
@@ -526,8 +531,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration memory cal = calibrations[poolId];
         uint256 reserveRisky = (res.reserveRisky * 1e18) / res.liquidity; // risky per 1 liquidity
         uint256 reserveStable = (res.reserveStable * 1e18) / res.liquidity; // stable per 1 liquidity
-        uint256 tau;
-        if (cal.maturity > cal.lastTimestamp) tau = cal.maturity - cal.lastTimestamp;
+        uint256 tau = cal.maturity - cal.lastTimestamp;
         invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, cal.strike, cal.sigma, tau);
     }
 }
