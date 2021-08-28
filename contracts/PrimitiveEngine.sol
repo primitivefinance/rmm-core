@@ -205,6 +205,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[poolId];
 
         if (reserve.blockTimestamp == 0) revert UninitializedError();
+        if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky tokens to provide
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable tokens to provide
         if (delRisky * delStable == 0) revert ZeroDeltasError();
@@ -374,6 +375,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
         if (riskyCollateral == 0 && stableCollateral == 0) revert ZeroLiquidityError();
+        if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
 
         positions.borrow(poolId, riskyCollateral, stableCollateral);
 
