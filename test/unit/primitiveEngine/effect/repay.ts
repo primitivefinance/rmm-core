@@ -297,7 +297,6 @@ describe('repay', function () {
         )
         expiredPoolId = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
         const gracePeriod = 60 * 60 * 24
-        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
         // give liquidity to engineSupply contract
         await this.contracts.engineAllocate.allocateFromExternal(
           expiredPoolId,
@@ -315,6 +314,7 @@ describe('repay', function () {
           stableCollateral.raw,
           HashZero
         )
+        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
       })
 
       it('repay engineBorrow`s riskyCollateral position, receive riskySurplus and pay stable deficit', async function () {
