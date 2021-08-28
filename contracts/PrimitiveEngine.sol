@@ -280,6 +280,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Calibration memory cal = calibrations[details.poolId];
             Reserve.Data storage reserve = reserves[details.poolId];
             bool swapInRisky = details.riskyForStable;
+            uint256 tau = cal.maturity - cal.lastTimestamp;
             uint256 fee = (details.deltaIn * 15) / 1e4;
             uint256 deltaInWithFee = details.deltaIn - fee;
             uint256 riskyAfter; // per liquidity
@@ -287,15 +288,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             if (swapInRisky) {
                 riskyAfter = ((reserve.reserveRisky + deltaInWithFee) * 1e18) / reserve.liquidity;
-                stableAfter = getStableGivenRisky(details.poolId, riskyAfter).parseUnits();
+                stableAfter = invariant.getStableGivenRisky(riskyAfter, cal.strike, cal.sigma, tau).parseUnits();
                 deltaOut = reserve.reserveStable - (stableAfter * reserve.liquidity) / 1e18;
             } else {
                 stableAfter = ((reserve.reserveStable + deltaInWithFee) * 1e18) / reserve.liquidity;
-                riskyAfter = getRiskyGivenStable(details.poolId, stableAfter).parseUnits();
+                riskyAfter = invariant.getRiskyGivenStable(stableAfter, cal.strike, cal.sigma, tau).parseUnits();
                 deltaOut = reserve.reserveRisky - (riskyAfter * reserve.liquidity) / 1e18;
             }
 
-            uint256 tau = cal.maturity - cal.lastTimestamp;
             int128 invariantAfter = ReplicationMath.calcInvariant(riskyAfter, stableAfter, cal.strike, cal.sigma, tau);
 
             if (invariantAfter > 0) {
