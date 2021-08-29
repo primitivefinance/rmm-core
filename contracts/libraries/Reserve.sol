@@ -101,6 +101,7 @@ library Reserve {
         reserve.reserveRisky -= delRisky.toUint128();
         reserve.reserveStable -= delStable.toUint128();
         reserve.liquidity -= delLiquidity.toUint128();
+        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
         update(reserve, blockTimestamp);
     }
 
