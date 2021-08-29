@@ -157,4 +157,13 @@ library Reserve {
         reserve.feeRisky -= feeRisky.toUint128();
         reserve.feeStable -= feeStable.toUint128();
     }
+
+    function getAmounts(Data memory reserve, uint256 delLiquidity)
+        internal
+        pure
+        returns (uint256 delRisky, uint256 delStable)
+    {
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+    }
 }
