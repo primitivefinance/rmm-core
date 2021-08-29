@@ -136,12 +136,15 @@ library Reserve {
     }
 
     /// @notice                 Increases the extra fees from positive invariants and borrows
+    /// @dev                    Handled in an unchecked statement to allow overflows
+    /// @param reserve          Reserve in storage to manipulate
+    /// @param feeRisky         Amount of absolute fees in risky token to add
+    /// @param feeStable        Amount of absolute fees in stable token to add
     function addFee(
         Data storage reserve,
         uint256 feeRisky,
         uint256 feeStable
     ) internal {
-        // overflow can happen, fees should be withdrawn
         unchecked {
             reserve.feeRisky += feeRisky.toUint128();
             reserve.feeStable += feeStable.toUint128();
@@ -149,6 +152,9 @@ library Reserve {
     }
 
     /// @notice                 Decreases extra fees in reserve
+    /// @param reserve          Reserve in storage to manipulate
+    /// @param feeRisky         Amount of absolute fees in risky token to remove
+    /// @param feeStable        Amount of absolute fees in stable token to remove
     function subFee(
         Data storage reserve,
         uint256 feeRisky,
@@ -156,5 +162,19 @@ library Reserve {
     ) internal {
         reserve.feeRisky -= feeRisky.toUint128();
         reserve.feeStable -= feeStable.toUint128();
+    }
+
+    /// @notice                 Calculates risky and stable token amounts of `delLiquidity`
+    /// @param reserve          Reserve in memory to use reserves and liquidity of
+    /// @param delLiquidity     Amount of liquidity to fetch underlying tokens of
+    /// @return delRisky        Amount of risky tokens controlled by `delLiquidity`
+    /// delStable               Amount of stable tokens controlled by `delLiquidity`
+    function getAmounts(Data memory reserve, uint256 delLiquidity)
+        internal
+        pure
+        returns (uint256 delRisky, uint256 delStable)
+    {
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
     }
 }

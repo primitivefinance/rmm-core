@@ -132,7 +132,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity));
+
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
+
         uint32 timestamp = _blockTimestamp();
         Calibration memory cal = Calibration({
             strike: strike.toUint128(),
@@ -146,6 +148,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         delStable = ReplicationMath.getStableGivenRisky(0, delRisky, cal.strike, cal.sigma, tau).parseUnits();
         delRisky = (delRisky * delLiquidity) / 1e18;
         delStable = (delStable * delLiquidity) / 1e18;
+
         if (delRisky * delStable == 0) revert CalibrationError(delRisky, delStable);
 
         (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
@@ -206,8 +209,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky tokens to provide
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable tokens to provide
+
+        (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
         if (delRisky * delStable == 0) revert ZeroDeltasError();
 
         if (fromMargin) {
@@ -233,10 +236,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
         returns (uint256 delRisky, uint256 delStable)
     {
         Reserve.Data storage reserve = reserves[poolId];
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // amount of risky tokens to remove
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // amount of stable tokens to remove
+        (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
         uint256 feeRisky = (delLiquidity * reserve.feeRisky) / reserve.liquidity;
         uint256 feeStable = (delLiquidity * reserve.feeStable) / reserve.liquidity;
+
         if (delRisky * delStable == 0) revert ZeroDeltasError();
 
         positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
@@ -384,8 +387,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Reserve.Data storage reserve = reserves[poolId];
             uint256 strike = uint256(calibrations[poolId].strike);
             uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / strike; // total debt incurred
-            uint256 delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // risky tokens from remove
-            uint256 delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // stable tokens from remove
+            (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
 
             if (riskyCollateral > delRisky) riskyDeficit = riskyCollateral - delRisky;
             else riskySurplus = delRisky - riskyCollateral;
@@ -461,8 +463,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
             uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / uint256(cal.strike); // Debt sum
-            uint256 delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity; // risky tokens to allocate
-            uint256 delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity; // stable tokens allocate
+            (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
 
             if (delRisky > riskyCollateral) riskyDeficit = delRisky - riskyCollateral;
             else riskySurplus = riskyCollateral - delRisky;
@@ -476,7 +477,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             reserve.subFee(feeRisky, feeStable);
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
-            reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase: risky, stable, liquidity
+            reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
         }
 
         if (fromMargin) {
@@ -520,7 +521,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
-        reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, cal.strike, cal.sigma, tau);
+        reserveStable = invariantLast.getStableGivenRisky(reserveRisky, cal.strike, cal.sigma, tau);
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -533,18 +534,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Calibration memory cal = calibrations[poolId];
         int128 invariantLast = invariantOf(poolId);
         uint256 tau = cal.maturity - cal.lastTimestamp; // invariantOf() uses this
-        reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, cal.strike, cal.sigma, tau);
+        reserveRisky = invariantLast.getRiskyGivenStable(reserveStable, cal.strike, cal.sigma, tau);
     }
 
     // ===== View =====
 
     /// @inheritdoc IPrimitiveEngineView
     function invariantOf(bytes32 poolId) public view override returns (int128 invariant) {
-        Reserve.Data memory res = reserves[poolId];
+        Reserve.Data memory reserve = reserves[poolId];
         Calibration memory cal = calibrations[poolId];
-        uint256 reserveRisky = (res.reserveRisky * 1e18) / res.liquidity; // risky per 1 liquidity
-        uint256 reserveStable = (res.reserveStable * 1e18) / res.liquidity; // stable per 1 liquidity
         uint256 tau = cal.maturity - cal.lastTimestamp;
+        (uint256 reserveRisky, uint256 reserveStable) = reserve.getAmounts(1e18); // reserves per 1 liquidity
         invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, cal.strike, cal.sigma, tau);
     }
 }
