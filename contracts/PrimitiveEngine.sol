@@ -223,7 +223,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 revert StableBalanceError(balStable + delStable, balanceStable());
         }
 
-        positions.fetch(recipient, poolId).allocate(delLiquidity); // increase position liquidity
+        Position.Data memory position = positions.fetch(recipient, poolId);
+        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
+            reserve.feeRiskyGrowth,
+            reserve.feeStableGrowth
+        );
+        margin[msg.sender].deposit(feeRisky, feeStable);
+        position.allocate(delLiquidity); // increase position liquidity
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
     }
@@ -237,10 +243,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Reserve.Data storage reserve = reserves[poolId];
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
-        uint256 feeRisky = (delLiquidity * reserve.feeRisky) / reserve.liquidity;
-        uint256 feeStable = (delLiquidity * reserve.feeStable) / reserve.liquidity;
 
         if (delRisky * delStable == 0) revert ZeroDeltasError();
+
+        Position.Data memory position = positions.fetch(recipient, poolId);
+        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
+            reserve.feeRiskyGrowth,
+            reserve.feeStableGrowth
+        );
 
         positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
@@ -475,7 +485,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             riskySurplus += feeRisky;
             stableSurplus += feeStable;
 
-            reserve.subFee(feeRisky, feeStable);
+            //reserve.subFee(feeRisky, feeStable);
+            positions.fetch(account, id).updateFeeGrowth(reserve.feeRiskyGrowth, reserve.feeStableGrowth);
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
         }
