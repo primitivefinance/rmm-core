@@ -31,7 +31,9 @@ contract TestPosition {
             float: 0,
             liquidity: uint128(liquidity), // init with {liquidity} units of liquidity
             riskyCollateral: 0,
-            stableCollateral: 0
+            stableCollateral: 0,
+            feeRiskyGrowthLast: 0,
+            feeStableGrowthLast: 0
         });
 
         Position.Data memory position = positions.fetch(msg.sender, poolId);

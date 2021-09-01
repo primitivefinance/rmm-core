@@ -113,8 +113,10 @@ library Position {
         uint256 feeRiskyGrowth,
         uint256 feeStableGrowth
     ) internal returns (uint256 feeRisky, uint256 feeStable) {
-        feeRisky = ((feeRiskyGrowth - position.feeRiskyGrowthLast) * position.liquidity) / 1e18;
-        feeStable = ((feeStableGrowth - position.feeStableGrowthLast) * position.liquidity) / 1e18;
+        if (feeRiskyGrowth > position.feeRiskyGrowthLast)
+            feeRisky = ((feeRiskyGrowth - position.feeRiskyGrowthLast) * position.liquidity) / 1e18;
+        if (feeStableGrowth > position.feeStableGrowthLast)
+            feeStable = ((feeStableGrowth - position.feeStableGrowthLast) * position.liquidity) / 1e18;
         position.feeRiskyGrowthLast = feeRiskyGrowth;
         position.feeStableGrowthLast = feeStableGrowth;
     }

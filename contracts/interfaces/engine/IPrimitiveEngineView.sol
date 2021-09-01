@@ -41,8 +41,8 @@ interface IPrimitiveEngineView {
     /// liquidity           Total supply of liquidity for the curve
     /// float               Total supply of liquidity supplied to be borrowed
     /// debt                Total supply of liquidity borrowed
-    /// feeRisky
-    /// feeStable
+    /// feeRiskyGrowth
+    /// feeStableGrowth
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
     /// cumulativeRisky     Cumulative sum of risky token reserves
     /// cumulativeStable    Cumulative sum of stable token reserves
@@ -56,8 +56,8 @@ interface IPrimitiveEngineView {
             uint128 liquidity,
             uint128 float,
             uint128 debt,
-            uint128 feeRisky,
-            uint128 feeStable,
+            uint256 feeRiskyGrowth,
+            uint256 feeStableGrowth,
             uint32 blockTimestamp,
             uint256 cumulativeRisky,
             uint256 cumulativeStable,
@@ -93,7 +93,9 @@ interface IPrimitiveEngineView {
             uint128 float,
             uint128 liquidity,
             uint128 riskyCollateral,
-            uint128 stableCollateral
+            uint128 stableCollateral,
+            uint256 feeRiskyGrowthLast,
+            uint256 feeStableGrowthLast
         );
 
     /// @notice                 Fetchs the margin position of `account`
