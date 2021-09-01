@@ -19,8 +19,8 @@ library Reserve {
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
         uint128 debt; // liquidity unavailable because it was borrowed
-        uint256 feeRiskyGrowth;
-        uint256 feeStableGrowth;
+        uint256 feeRiskyGrowth; // all time risky fees paid per float
+        uint256 feeStableGrowth; // // all time stable fees paid per float
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 cumulativeRisky; // cumulative sum of risky reserves
         uint256 cumulativeStable; // cumulative sum of stable reserves
