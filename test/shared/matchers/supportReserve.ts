@@ -203,6 +203,45 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
     }
   )
 
+  // fees
+  Assertion.addMethod(
+    'increaseReserveFeeRiskyGrowth',
+    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+      const oldReserve = await engine.reserves(poolId)
+      await this._obj
+      const newReserve = await engine.reserves(poolId)
+
+      const expectedGrowth = oldReserve.feeRiskyGrowth.add(amount)
+
+      this.assert(
+        newReserve.feeRiskyGrowth.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newReserve.feeRiskyGrowth}`,
+        `Expected ${expectedGrowth} NOT to be ${newReserve.feeRiskyGrowth}`,
+        expectedGrowth,
+        newReserve.feeRiskyGrowth
+      )
+    }
+  )
+
+  Assertion.addMethod(
+    'increaseReserveFeeStableGrowth',
+    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+      const oldReserve = await engine.reserves(poolId)
+      await this._obj
+      const newReserve = await engine.reserves(poolId)
+
+      const expectedGrowth = oldReserve.feeStableGrowth.add(amount)
+
+      this.assert(
+        newReserve.feeStableGrowth.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newReserve.feeStableGrowth}`,
+        `Expected ${expectedGrowth} NOT to be ${newReserve.feeStableGrowth}`,
+        expectedGrowth,
+        newReserve.feeStableGrowth
+      )
+    }
+  )
+
   // BlockTimestamp
 
   Assertion.addMethod(
