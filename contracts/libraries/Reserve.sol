@@ -146,8 +146,8 @@ library Reserve {
         uint256 feeRisky,
         uint256 feeStable
     ) internal {
-        reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.liquidity;
-        reserve.feeStableGrowth += (feeStable * 1e18) / reserve.liquidity;
+        reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+        reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
     }
 
     /// @notice                 Decreases extra fees in reserve

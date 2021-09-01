@@ -140,24 +140,89 @@ describe('borrow', function () {
         ).to.decreaseReserveStable(engine, poolId, delStable)
       })
 
+      it('res.feeRiskyGrowth: increases risky from fees', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const delLiquidity = one
+        const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity).raw
+        const riskyDeficit = one.sub(delRisky)
+        const fee = riskyDeficit.mul(30).div(1e4)
+        const float = res.float
+        const feeRiskyGrowth = fee.mul(parseWei(1).raw).div(float)
+        await expect(
+          engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero)
+        ).to.increaseReserveFeeRiskyGrowth(this.contracts.engine, poolId, feeRiskyGrowth.raw)
+      })
+
+      it('res.feeStableGrowth: increases stable from fees', async function () {
+        const res = await this.contracts.engine.reserves(poolId)
+        const stableCollateral = strike
+        const delLiquidity = stableCollateral.mul(1e18).div(strike)
+        const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity).raw
+        const stableDeficit = stableCollateral.sub(delStable)
+        const fee = stableDeficit.mul(30).div(1e4)
+        const float = res.float
+        const feeStableGrowth = fee.mul(parseWei(1).raw).div(float)
+        await expect(
+          engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+        ).to.increaseReserveFeeStableGrowth(engine, poolId, feeStableGrowth.raw)
+      })
+
       describe('from margin', function () {
         it('borrows riskyCollateral using margin', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
           const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
-          const riskyDeficit = one
-            .sub(delRisky)
-            .mul(1e4 + 30)
-            .div(1e4).raw
+          const riskyDeficit = one.sub(delRisky)
+          const fee = riskyDeficit.mul(30).div(1e4)
+          const float = res.float
+          const feeRiskyGrowth = fee.mul(parseWei(1).raw).div(float)
           await this.contracts.engineDeposit.deposit(
             engineBorrow.address,
-            riskyDeficit.mul(1e4 + 30).div(1e4),
+            riskyDeficit.add(fee).raw,
             delStable.div(1e4),
             HashZero
           )
           await expect(
             engineBorrow.borrowWithMargin(poolId, engineBorrow.address, one.raw, '0', HashZero)
-          ).to.decreaseMargin(engine, engineBorrow.address, riskyDeficit, delStable.mul(-1))
+          ).to.decreaseMargin(engine, engineBorrow.address, riskyDeficit.add(fee).raw, delStable.mul(-1))
+          let resAfter = await this.contracts.engine.reserves(poolId)
+          await expect(resAfter.feeRiskyGrowth).to.be.eq(feeRiskyGrowth.raw)
+        })
+
+        it('increases fee growth on risky from borrow', async function () {
+          const res = await this.contracts.engine.reserves(poolId)
+          const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
+          const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
+          const riskyDeficit = one.sub(delRisky)
+          const fee = riskyDeficit.mul(30).div(1e4)
+          const float = res.float
+          const feeRiskyGrowth = fee.mul(parseWei(1).raw).div(float)
+          await this.contracts.engineDeposit.deposit(
+            engineBorrow.address,
+            riskyDeficit.add(fee).raw,
+            delStable.div(1e4),
+            HashZero
+          )
+
+          await expect(
+            engineBorrow.borrowWithMargin(poolId, engineBorrow.address, one.raw, '0', HashZero)
+          ).to.increaseReserveFeeRiskyGrowth(this.contracts.engine, poolId, feeRiskyGrowth.raw)
+        })
+
+        it('increases fee growth on stable from borrow', async function () {
+          const res = await this.contracts.engine.reserves(poolId)
+          const stableCollateral = strike
+          const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
+          const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
+          const stableDeficit = stableCollateral.sub(delStable)
+          const fee = stableDeficit.mul(30).div(1e4)
+          const float = res.float
+          const feeStableGrowth = fee.mul(parseWei(1).raw).div(float)
+          await this.contracts.engineDeposit.deposit(engineBorrow.address, delRisky, stableDeficit.add(fee).raw, HashZero)
+
+          await expect(
+            engineBorrow.borrowWithMargin(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+          ).to.increaseReserveFeeStableGrowth(this.contracts.engine, poolId, feeStableGrowth.raw)
         })
 
         it('borrows stableCollateral using margin', async function () {
