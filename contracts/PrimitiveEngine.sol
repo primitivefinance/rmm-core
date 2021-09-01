@@ -301,7 +301,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             if (invariantAfter > int128(2**64)) {
                 reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
-                reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
+                if (reserve.float > 0) reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
             } else {
                 reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
             }
