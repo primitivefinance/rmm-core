@@ -137,7 +137,7 @@ library Reserve {
     }
 
     /// @notice                 Increases the extra fees from positive invariants and borrows
-    /// @dev                    Fee growth per liquidity so overflows are less likely
+    /// @dev                    Overflow possible. These are checkpoints, not absolute fees
     /// @param reserve          Reserve in storage to manipulate
     /// @param feeRisky         Amount of absolute fees in risky token to add
     /// @param feeStable        Amount of absolute fees in stable token to add
@@ -146,21 +146,10 @@ library Reserve {
         uint256 feeRisky,
         uint256 feeStable
     ) internal {
-        reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
-        reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
-    }
-
-    /// @notice                 Decreases extra fees in reserve
-    /// @param reserve          Reserve in storage to manipulate
-    /// @param feeRisky         Amount of absolute fees in risky token to remove
-    /// @param feeStable        Amount of absolute fees in stable token to remove
-    function subFee(
-        Data storage reserve,
-        uint256 feeRisky,
-        uint256 feeStable
-    ) internal {
-        reserve.feeRiskyGrowth -= feeRisky.toUint128();
-        reserve.feeStableGrowth -= feeStable.toUint128();
+        unchecked {
+            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+            reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
+        }
     }
 
     /// @notice                 Calculates risky and stable token amounts of `delLiquidity`
