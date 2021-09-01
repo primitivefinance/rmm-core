@@ -53,7 +53,7 @@ describe('borrow', function () {
           one.raw,
           toBN('0')
         )
-        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, toBN('0')])
+        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, toBN('0'), toBN(0), toBN(0)])
       })
 
       it('pos.borrow: increases position stableCollateral', async function () {
@@ -63,14 +63,14 @@ describe('borrow', function () {
           toBN('0'),
           strike.raw
         )
-        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN('0'), strike.raw])
+        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN('0'), strike.raw, toBN(0), toBN(0)])
       })
 
       it('pos.borrow: increases position risky & stable collateral', async function () {
         await expect(
           engineBorrow.borrow(poolId, engineBorrow.address, one.raw, strike.raw, HashZero)
         ).to.increasePositionDebt(engine, posId, one.raw, strike.raw)
-        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, strike.raw])
+        expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, strike.raw, toBN(0), toBN(0)])
       })
 
       it('res.borrowFloat: increases reserve debt', async function () {
@@ -246,144 +246,16 @@ describe('borrow', function () {
       })
 
       describe('borrows then repays, losing the fee paid in borrow', function () {
-        it.only('repays a long option position with risky collateral, earning the proceeds', async function () {
-          const cal = new Calibration(11, 1, 2, 1, 10, parsePercentage(0.003))
-          const tempPool = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-          const [Alice, Bob] = this.signers
-          await this.contracts.risky.mint(Bob.address, parseWei('10').raw)
-          await this.contracts.stable.mint(Bob.address, parseWei('100').raw)
-          // create a new option pool and provide 2 liquidity to it
-          await this.contracts.engineCreate.create(
-            cal.strike.raw,
-            cal.sigma.raw,
-            cal.maturity.raw,
-            cal.delta,
-            parseWei('1').raw,
-            HashZero
-          )
-
-          const target = this.contracts.engineRemove
-
-          let resPrev = await this.contracts.engine.reserves(tempPool)
-
-          let preRisky = await this.contracts.risky.balanceOf(Alice.address)
-          let preStable = await this.contracts.stable.balanceOf(Alice.address)
-          let engineRisky = await this.contracts.risky.balanceOf(this.contracts.engine.address)
-          let engineStable = await this.contracts.stable.balanceOf(this.contracts.engine.address)
-          await this.contracts.engineAllocate.allocateFromExternal(
-            tempPool,
-            this.contracts.engineRemove.address,
-            parseWei('2').raw,
-            HashZero
-          )
-
-          let postRisky = await this.contracts.risky.balanceOf(Alice.address)
-          let postStable = await this.contracts.stable.balanceOf(Alice.address)
-
-          const riskyPaid = preRisky.sub(postRisky)
-          const stablePaid = preStable.sub(postStable)
-          // someone else borrows 1 liquidity, and collateralizes with 1 risky
-          preRisky = await this.contracts.risky.balanceOf(Bob.address)
-          preStable = await this.contracts.stable.balanceOf(Bob.address)
-          await engineBorrow.connect(Bob).borrow(tempPool, engineBorrow.address, one.raw, '0', HashZero) // spends premium
-          postRisky = await this.contracts.risky.balanceOf(Bob.address)
-          postStable = await this.contracts.stable.balanceOf(Bob.address)
-
-          const riskyPaidBob = preRisky.sub(postRisky)
-          const stablePaidBob = preStable.sub(postStable)
-
-          let res = await this.contracts.engine.reserves(tempPool)
-          Object.keys(res).map((val) => {
-            if (val == 'feeRiskyGrowth') {
-              console.log(val)
-              log(res[val])
-            }
-          })
-
-          preRisky = await this.contracts.risky.balanceOf(Bob.address)
-          preStable = await this.contracts.stable.balanceOf(Bob.address)
-          await engineBorrow.connect(Bob).repay(tempPool, Bob.address, one.raw, '0', false, HashZero) // spends premium
-          postRisky = await this.contracts.risky.balanceOf(Bob.address)
-          postStable = await this.contracts.stable.balanceOf(Bob.address)
-          console.log('got past repay')
-
-          const riskyPaidBobRepay = preRisky.sub(postRisky)
-          const stablePaidBobRepay = preStable.sub(postStable)
-
-          // Alice withdraws 1 lp after its been repaid
-          preRisky = await this.contracts.risky.balanceOf(Alice.address)
-          preStable = await this.contracts.stable.balanceOf(Alice.address)
-          await this.contracts.engineRemove.connect(Alice).removeToExternal(tempPool, parseWei('2').raw, HashZero)
-          postRisky = await this.contracts.risky.balanceOf(Alice.address)
-          postStable = await this.contracts.stable.balanceOf(Alice.address)
-
-          const riskyRemovedAlice = preRisky.sub(postRisky).mul(-1)
-          const stableRemovedAlice = preStable.sub(postStable).mul(-1)
-
-          const riskyDelta = riskyRemovedAlice.sub(riskyPaid)
-          const stableDelta = stableRemovedAlice.sub(stablePaid)
-
-          res = await this.contracts.engine.reserves(tempPool)
-          Object.keys(res).map((val) => {
-            console.log(val)
-            log(toBN(res[val].toString()).sub(resPrev[val].toString()))
-            //if (val == 'feeRiskyGrowth') {
-            //  log(res[val])
-            //}
-          })
-
-          let engineRiskyAfter = await this.contracts.risky.balanceOf(this.contracts.engine.address)
-          let engineStableAfter = await this.contracts.stable.balanceOf(this.contracts.engine.address)
-          let erdelta = engineRiskyAfter.sub(engineRisky)
-          let esdelta = engineStableAfter.sub(engineStable)
-          console.log('deltas of engine')
-          log(erdelta)
-          log(esdelta)
-
-          const absFee = res.feeRiskyGrowth.mul(res.liquidity).div(one.raw)
-          log(absFee)
-
-          function log(val) {
-            console.log(formatEther(val).toString())
-          }
-
-          log(riskyPaid)
-          log(stablePaid)
-          log(riskyPaidBob)
-          log(stablePaidBob)
-          log(riskyPaidBobRepay)
-          log(stablePaidBobRepay)
-          log(riskyRemovedAlice)
-          log(stableRemovedAlice)
-          log(riskyDelta)
-          log(stableDelta)
-
-          /* const res = await this.contracts.engine.reserves(poolId)
-          const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
-          const riskySurplus = one
-            .sub(delRisky)
-            .mul(1e4 + 5)
-            .div(1e4)
-
-          await expect(() =>
-            engineBorrow.repay(poolId, engineBorrow.address, one.raw, '0', false, HashZero)
-          ).to.changeTokenBalances(this.contracts.risky, [deployer], [riskySurplus.raw])
-          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0), toBN(0), toBN(0)]) */
-        })
-
         it('repays a long option position with risky collateral, earning the proceeds', async function () {
           await engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
-          const riskySurplus = one
-            .sub(delRisky)
-            .mul(1e4 + 5)
-            .div(1e4)
+          const riskySurplus = one.sub(delRisky)
 
           await expect(() =>
             engineBorrow.repay(poolId, engineBorrow.address, one.raw, '0', false, HashZero)
           ).to.changeTokenBalances(this.contracts.risky, [deployer], [riskySurplus.raw])
-          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0)])
+          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0), toBN(0), toBN(0)])
         })
 
         it('repays a long option position with stable collateral, earning the proceeds', async function () {
@@ -391,15 +263,12 @@ describe('borrow', function () {
           await engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = one.mul(res.reserveStable).div(res.liquidity)
-          const stableSurplus = stableCollateral
-            .sub(delStable)
-            .mul(1e4 + 5)
-            .div(1e4)
+          const stableSurplus = stableCollateral.sub(delStable)
 
           await expect(() =>
             engineBorrow.repay(poolId, engineBorrow.address, '0', stableCollateral.raw, false, HashZero)
           ).to.changeTokenBalances(this.contracts.stable, [deployer], [stableSurplus.raw])
-          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0)])
+          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0), toBN(0), toBN(0)])
         })
       })
 
