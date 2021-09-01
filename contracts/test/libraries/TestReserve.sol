@@ -148,14 +148,4 @@ contract TestReserve {
         reserves[resId].addFee(feeRisky, feeStable);
         return reserves[resId];
     }
-
-    /// @notice Decreases excess fees generated from swapping or borrowing
-    function shouldSubFee(
-        bytes32 resId,
-        uint256 feeRisky,
-        uint256 feeStable
-    ) public returns (Reserve.Data memory) {
-        reserves[resId].subFee(feeRisky, feeStable);
-        return reserves[resId];
-    }
 }

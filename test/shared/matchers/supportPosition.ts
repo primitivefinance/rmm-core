@@ -153,39 +153,39 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
   )
 
   Assertion.addMethod(
-    'increasePositionFeeRiskyGrowth',
+    'increasePositionFeeRiskyGrowthLast',
     async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
-      const oldReserve = await engine.positions(posId)
+      const oldPosition = await engine.positions(posId)
       await this._obj
-      const newReserve = await engine.positions(posId)
+      const newPosition = await engine.positions(posId)
 
-      const expectedGrowth = oldReserve.feeRiskyGrowthLast.add(amount)
+      const expectedGrowth = oldPosition.feeRiskyGrowthLast.add(amount)
 
       this.assert(
-        newReserve.feeRiskyGrowthLast.eq(expectedGrowth),
-        `Expected ${expectedGrowth} to be ${newReserve.feeRiskyGrowthLast}`,
-        `Expected ${expectedGrowth} NOT to be ${newReserve.feeRiskyGrowthLast}`,
+        newPosition.feeRiskyGrowthLast.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newPosition.feeRiskyGrowthLast}`,
+        `Expected ${expectedGrowth} NOT to be ${newPosition.feeRiskyGrowthLast}`,
         expectedGrowth,
-        newReserve.feeRiskyGrowthLast
+        newPosition.feeRiskyGrowthLast
       )
     }
   )
 
   Assertion.addMethod(
-    'increasePositionFeeStableGrowth',
+    'increasePositionFeeStableGrowthLast',
     async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
-      const oldReserve = await engine.positions(posId)
+      const oldPosition = await engine.positions(posId)
       await this._obj
-      const newReserve = await engine.positions(posId)
+      const newPosition = await engine.positions(posId)
 
-      const expectedGrowth = oldReserve.feeStableGrowthLast.add(amount)
+      const expectedGrowth = oldPosition.feeStableGrowthLast.add(amount)
 
       this.assert(
-        newReserve.feeStableGrowthLast.eq(expectedGrowth),
-        `Expected ${expectedGrowth} to be ${newReserve.feeStableGrowthLast}`,
-        `Expected ${expectedGrowth} NOT to be ${newReserve.feeStableGrowthLast}`,
+        newPosition.feeStableGrowthLast.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newPosition.feeStableGrowthLast}`,
+        `Expected ${expectedGrowth} NOT to be ${newPosition.feeStableGrowthLast}`,
         expectedGrowth,
-        newReserve.feeStableGrowthLast
+        newPosition.feeStableGrowthLast
       )
     }
   )

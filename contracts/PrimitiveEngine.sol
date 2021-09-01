@@ -299,7 +299,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             int128 invariantAfter = ReplicationMath.calcInvariant(riskyAfter, stableAfter, cal.strike, cal.sigma, tau);
 
-            if (invariantAfter > 0) {
+            if (invariantAfter > int128(2**64)) {
                 reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
                 reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
             } else {
@@ -349,6 +349,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             reserve.feeRiskyGrowth,
             reserve.feeStableGrowth
         );
+
         margins[msg.sender].deposit(feeRisky, feeStable);
         positions.supply(poolId, delLiquidity); // increase position float by `delLiquidity`
         reserve.addFloat(delLiquidity); // increase global float
@@ -364,6 +365,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             reserve.feeRiskyGrowth,
             reserve.feeStableGrowth
         );
+
         margins[msg.sender].deposit(feeRisky, feeStable); // increase margin of msg.sender
         positions.claim(poolId, delLiquidity); // reduce float by `delLiquidity`
         reserve.removeFloat(delLiquidity); // reduce global float
