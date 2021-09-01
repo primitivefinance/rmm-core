@@ -1,7 +1,7 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { parsePercentage, parseWei, toBN } from 'web3-units'
+import { parsePercentage, parseWei, toBN, Wei } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
@@ -248,6 +248,7 @@ describe('borrow', function () {
       describe('borrows then repays, losing the fee paid in borrow', function () {
         it.only('repays a long option position with risky collateral, earning the proceeds', async function () {
           const cal = new Calibration(11, 1, 2, 1, 10, parsePercentage(0.003))
+          const tempPool = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
           const [Alice, Bob] = this.signers
           await this.contracts.risky.mint(Bob.address, parseWei('10').raw)
           await this.contracts.stable.mint(Bob.address, parseWei('100').raw)
@@ -263,9 +264,12 @@ describe('borrow', function () {
 
           const target = this.contracts.engineRemove
 
-          let preRisky = await this.contracts.risky.balanceOf(target.address)
-          let preStable = await this.contracts.stable.balanceOf(target.address)
-          const tempPool = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+          let resPrev = await this.contracts.engine.reserves(tempPool)
+
+          let preRisky = await this.contracts.risky.balanceOf(Alice.address)
+          let preStable = await this.contracts.stable.balanceOf(Alice.address)
+          let engineRisky = await this.contracts.risky.balanceOf(this.contracts.engine.address)
+          let engineStable = await this.contracts.stable.balanceOf(this.contracts.engine.address)
           await this.contracts.engineAllocate.allocateFromExternal(
             tempPool,
             this.contracts.engineRemove.address,
@@ -273,8 +277,9 @@ describe('borrow', function () {
             HashZero
           )
 
-          let postRisky = await this.contracts.risky.balanceOf(target.address)
-          let postStable = await this.contracts.stable.balanceOf(target.address)
+          let postRisky = await this.contracts.risky.balanceOf(Alice.address)
+          let postStable = await this.contracts.stable.balanceOf(Alice.address)
+
           const riskyPaid = preRisky.sub(postRisky)
           const stablePaid = preStable.sub(postStable)
           // someone else borrows 1 liquidity, and collateralizes with 1 risky
@@ -287,6 +292,14 @@ describe('borrow', function () {
           const riskyPaidBob = preRisky.sub(postRisky)
           const stablePaidBob = preStable.sub(postStable)
 
+          let res = await this.contracts.engine.reserves(tempPool)
+          Object.keys(res).map((val) => {
+            if (val == 'feeRiskyGrowth') {
+              console.log(val)
+              log(res[val])
+            }
+          })
+
           preRisky = await this.contracts.risky.balanceOf(Bob.address)
           preStable = await this.contracts.stable.balanceOf(Bob.address)
           await engineBorrow.connect(Bob).repay(tempPool, Bob.address, one.raw, '0', false, HashZero) // spends premium
@@ -298,14 +311,37 @@ describe('borrow', function () {
           const stablePaidBobRepay = preStable.sub(postStable)
 
           // Alice withdraws 1 lp after its been repaid
-          preRisky = await this.contracts.risky.balanceOf(target.address)
-          preStable = await this.contracts.stable.balanceOf(target.address)
-          await this.contracts.engineRemove.connect(Alice).removeToExternal(tempPool, one.raw, HashZero)
-          postRisky = await this.contracts.risky.balanceOf(target.address)
-          postStable = await this.contracts.stable.balanceOf(target.address)
+          preRisky = await this.contracts.risky.balanceOf(Alice.address)
+          preStable = await this.contracts.stable.balanceOf(Alice.address)
+          await this.contracts.engineRemove.connect(Alice).removeToExternal(tempPool, parseWei('2').raw, HashZero)
+          postRisky = await this.contracts.risky.balanceOf(Alice.address)
+          postStable = await this.contracts.stable.balanceOf(Alice.address)
 
           const riskyRemovedAlice = preRisky.sub(postRisky).mul(-1)
           const stableRemovedAlice = preStable.sub(postStable).mul(-1)
+
+          const riskyDelta = riskyRemovedAlice.sub(riskyPaid)
+          const stableDelta = stableRemovedAlice.sub(stablePaid)
+
+          res = await this.contracts.engine.reserves(tempPool)
+          Object.keys(res).map((val) => {
+            console.log(val)
+            log(toBN(res[val].toString()).sub(resPrev[val].toString()))
+            //if (val == 'feeRiskyGrowth') {
+            //  log(res[val])
+            //}
+          })
+
+          let engineRiskyAfter = await this.contracts.risky.balanceOf(this.contracts.engine.address)
+          let engineStableAfter = await this.contracts.stable.balanceOf(this.contracts.engine.address)
+          let erdelta = engineRiskyAfter.sub(engineRisky)
+          let esdelta = engineStableAfter.sub(engineStable)
+          console.log('deltas of engine')
+          log(erdelta)
+          log(esdelta)
+
+          const absFee = res.feeRiskyGrowth.mul(res.liquidity).div(one.raw)
+          log(absFee)
 
           function log(val) {
             console.log(formatEther(val).toString())
@@ -319,6 +355,8 @@ describe('borrow', function () {
           log(stablePaidBobRepay)
           log(riskyRemovedAlice)
           log(stableRemovedAlice)
+          log(riskyDelta)
+          log(stableDelta)
 
           /* const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
