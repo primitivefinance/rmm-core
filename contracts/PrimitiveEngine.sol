@@ -24,6 +24,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using ReplicationMath for int128;
@@ -223,12 +225,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 revert StableBalanceError(balStable + delStable, balanceStable());
         }
 
-        Position.Data memory position = positions.fetch(recipient, poolId);
+        Position.Data storage position = positions.fetch(recipient, poolId);
         (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
             reserve.feeRiskyGrowth,
             reserve.feeStableGrowth
         );
-        margin[msg.sender].deposit(feeRisky, feeStable);
+        margins[msg.sender].deposit(feeRisky, feeStable);
         position.allocate(delLiquidity); // increase position liquidity
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
@@ -246,7 +248,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         if (delRisky * delStable == 0) revert ZeroDeltasError();
 
-        Position.Data memory position = positions.fetch(recipient, poolId);
+        Position.Data storage position = positions.fetch(msg.sender, poolId);
         (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
             reserve.feeRiskyGrowth,
             reserve.feeStableGrowth
@@ -474,7 +476,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Reserve.Data storage reserve = reserves[poolId];
             uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / uint256(cal.strike); // Debt sum
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
-
+            console.log(delRisky, delStable);
             if (delRisky > riskyCollateral) riskyDeficit = delRisky - riskyCollateral;
             else riskySurplus = riskyCollateral - delRisky;
             if (delStable > stableCollateral) stableDeficit = delStable - stableCollateral;
@@ -486,9 +488,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
             stableSurplus += feeStable;
 
             //reserve.subFee(feeRisky, feeStable);
-            positions.fetch(account, id).updateFeeGrowth(reserve.feeRiskyGrowth, reserve.feeStableGrowth);
-            reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
-            reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
+            //positions.fetch(account, id).updateFeeGrowth(reserve.feeRiskyGrowth, reserve.feeStableGrowth);
+            //reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
+            //reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
         }
 
         if (fromMargin) {
@@ -497,7 +499,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             if (riskySurplus > 0) IERC20(risky).safeTransfer(msg.sender, riskySurplus); // send surpluses
             if (stableSurplus > 0) IERC20(stable).safeTransfer(msg.sender, stableSurplus); // send surpluses
-
+            console.log(riskyDeficit, stableDeficit);
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveRepayCallback(msg.sender).repayCallback(riskyDeficit, stableDeficit, data); // request deficits
 
@@ -506,6 +508,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (balanceStable() < balStable + stableDeficit)
                 revert StableBalanceError(balStable + stableDeficit, balanceStable());
         }
+
+        console.log("got to end");
 
         emit Repaid(
             msg.sender,

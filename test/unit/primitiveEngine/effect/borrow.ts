@@ -1,12 +1,14 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { parseWei, toBN } from 'web3-units'
+import { parsePercentage, parseWei, toBN } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { EngineBorrow, PrimitiveEngine } from '../../../../typechain'
 import { computePoolId, computePositionId } from '../../../shared/utils'
 import { Contracts } from '../../../../types'
+import { Calibration } from '../../../shared'
+import { formatEther } from 'ethers/lib/utils'
 
 const { strike, sigma, maturity, lastTimestamp, delta } = config
 const { HashZero } = constants
@@ -27,7 +29,7 @@ describe('borrow', function () {
   before(async function () {
     loadContext(
       waffle.provider,
-      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineRemove', 'engineSupply', 'engineBorrow'],
       beforeEachBorrow
     )
   })
@@ -244,6 +246,93 @@ describe('borrow', function () {
       })
 
       describe('borrows then repays, losing the fee paid in borrow', function () {
+        it.only('repays a long option position with risky collateral, earning the proceeds', async function () {
+          const cal = new Calibration(11, 1, 2, 1, 10, parsePercentage(0.003))
+          const [Alice, Bob] = this.signers
+          await this.contracts.risky.mint(Bob.address, parseWei('10').raw)
+          await this.contracts.stable.mint(Bob.address, parseWei('100').raw)
+          // create a new option pool and provide 2 liquidity to it
+          await this.contracts.engineCreate.create(
+            cal.strike.raw,
+            cal.sigma.raw,
+            cal.maturity.raw,
+            cal.delta,
+            parseWei('1').raw,
+            HashZero
+          )
+
+          const target = this.contracts.engineRemove
+
+          let preRisky = await this.contracts.risky.balanceOf(target.address)
+          let preStable = await this.contracts.stable.balanceOf(target.address)
+          const tempPool = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+          await this.contracts.engineAllocate.allocateFromExternal(
+            tempPool,
+            this.contracts.engineRemove.address,
+            parseWei('2').raw,
+            HashZero
+          )
+
+          let postRisky = await this.contracts.risky.balanceOf(target.address)
+          let postStable = await this.contracts.stable.balanceOf(target.address)
+          const riskyPaid = preRisky.sub(postRisky)
+          const stablePaid = preStable.sub(postStable)
+          // someone else borrows 1 liquidity, and collateralizes with 1 risky
+          preRisky = await this.contracts.risky.balanceOf(Bob.address)
+          preStable = await this.contracts.stable.balanceOf(Bob.address)
+          await engineBorrow.connect(Bob).borrow(tempPool, engineBorrow.address, one.raw, '0', HashZero) // spends premium
+          postRisky = await this.contracts.risky.balanceOf(Bob.address)
+          postStable = await this.contracts.stable.balanceOf(Bob.address)
+
+          const riskyPaidBob = preRisky.sub(postRisky)
+          const stablePaidBob = preStable.sub(postStable)
+
+          preRisky = await this.contracts.risky.balanceOf(Bob.address)
+          preStable = await this.contracts.stable.balanceOf(Bob.address)
+          await engineBorrow.connect(Bob).repay(tempPool, Bob.address, one.raw, '0', false, HashZero) // spends premium
+          postRisky = await this.contracts.risky.balanceOf(Bob.address)
+          postStable = await this.contracts.stable.balanceOf(Bob.address)
+          console.log('got past repay')
+
+          const riskyPaidBobRepay = preRisky.sub(postRisky)
+          const stablePaidBobRepay = preStable.sub(postStable)
+
+          // Alice withdraws 1 lp after its been repaid
+          preRisky = await this.contracts.risky.balanceOf(target.address)
+          preStable = await this.contracts.stable.balanceOf(target.address)
+          await this.contracts.engineRemove.connect(Alice).removeToExternal(tempPool, one.raw, HashZero)
+          postRisky = await this.contracts.risky.balanceOf(target.address)
+          postStable = await this.contracts.stable.balanceOf(target.address)
+
+          const riskyRemovedAlice = preRisky.sub(postRisky).mul(-1)
+          const stableRemovedAlice = preStable.sub(postStable).mul(-1)
+
+          function log(val) {
+            console.log(formatEther(val).toString())
+          }
+
+          log(riskyPaid)
+          log(stablePaid)
+          log(riskyPaidBob)
+          log(stablePaidBob)
+          log(riskyPaidBobRepay)
+          log(stablePaidBobRepay)
+          log(riskyRemovedAlice)
+          log(stableRemovedAlice)
+
+          /* const res = await this.contracts.engine.reserves(poolId)
+          const delRisky = one.mul(res.reserveRisky).div(res.liquidity)
+          const riskySurplus = one
+            .sub(delRisky)
+            .mul(1e4 + 5)
+            .div(1e4)
+
+          await expect(() =>
+            engineBorrow.repay(poolId, engineBorrow.address, one.raw, '0', false, HashZero)
+          ).to.changeTokenBalances(this.contracts.risky, [deployer], [riskySurplus.raw])
+          expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0), toBN(0), toBN(0)]) */
+        })
+
         it('repays a long option position with risky collateral, earning the proceeds', async function () {
           await engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)

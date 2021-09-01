@@ -42,8 +42,8 @@ contract TestReserve {
             liquidity: uint128(2e18),
             float: uint128(1e18), // the LP shares available to be borrowed on a given poolId
             debt: 0, // the LP shares borrowed from the float
-            feeRisky: 0,
-            feeStable: 0,
+            feeRiskyGrowth: 0,
+            feeStableGrowth: 0,
             blockTimestamp: uint32(timestamp_),
             cumulativeRisky: 0,
             cumulativeStable: 0,
