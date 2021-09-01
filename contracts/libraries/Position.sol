@@ -103,6 +103,7 @@ library Position {
     }
 
     /// @notice                 Updates the position fee growth and returns fee amounts accrued
+    /// @dev                    Next checkpoint can be overflowed
     /// @param position         Position in memory to use fee checkpoint and float of
     /// @param feeRiskyGrowth   Amount of global risky fee growth, per float, in the reserve
     /// @param feeStableGrowth  Amount of global stable fee growth, per float, in the reserve
@@ -113,8 +114,13 @@ library Position {
         uint256 feeRiskyGrowth,
         uint256 feeStableGrowth
     ) internal returns (uint256 feeRisky, uint256 feeStable) {
-        feeRisky = ((feeRiskyGrowth - position.feeRiskyGrowthLast) * position.float) / 1e18;
-        feeStable = ((feeStableGrowth - position.feeStableGrowthLast) * position.float) / 1e18;
+        // these values act as checkpoints which can overflow, we only care about the delta
+        unchecked {
+            feeRisky = feeRiskyGrowth - position.feeRiskyGrowthLast;
+            feeStable = feeStableGrowth - position.feeStableGrowthLast;
+        }
+        feeRisky = (feeRisky * position.float) / 1e18; // absolute risky fees of the position
+        feeStable = (feeStable * position.float) / 1e18; // absolute stable fees of the position
         position.feeRiskyGrowthLast = feeRiskyGrowth;
         position.feeStableGrowthLast = feeStableGrowth;
     }
