@@ -237,14 +237,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         Reserve.Data storage reserve = reserves[poolId];
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
-        uint256 feeRisky = (delLiquidity * reserve.feeRisky) / reserve.liquidity;
-        uint256 feeStable = (delLiquidity * reserve.feeStable) / reserve.liquidity;
 
         if (delRisky * delStable == 0) revert ZeroDeltasError();
 
         positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
-        margins[msg.sender].deposit(delRisky + feeRisky, delStable + feeStable); // increase margin of msg.sender
+        margins[msg.sender].deposit(delRisky, delStable); // increase margin of msg.sender
         emit Removed(msg.sender, poolId, delRisky, delStable);
     }
 
@@ -303,7 +301,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             if (invariantAfter > 0) {
                 reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
-                reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
+                if (reserve.float > 0) reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
             } else {
                 reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
             }
@@ -345,16 +343,32 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function supply(bytes32 poolId, uint256 delLiquidity) external override lock {
         if (delLiquidity == 0) revert ZeroLiquidityError();
+        Reserve.Data storage reserve = reserves[poolId];
+        Position.Data storage position = positions.fetch(msg.sender, poolId);
+        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
+            reserve.feeRiskyGrowth,
+            reserve.feeStableGrowth
+        );
+
+        margins[msg.sender].deposit(feeRisky, feeStable);
         positions.supply(poolId, delLiquidity); // increase position float by `delLiquidity`
-        reserves[poolId].addFloat(delLiquidity); // increase global float
+        reserve.addFloat(delLiquidity); // increase global float
         emit Supplied(msg.sender, poolId, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
     function claim(bytes32 poolId, uint256 delLiquidity) external override lock {
         if (delLiquidity == 0) revert ZeroLiquidityError();
+        Reserve.Data storage reserve = reserves[poolId];
+        Position.Data storage position = positions.fetch(msg.sender, poolId);
+        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
+            reserve.feeRiskyGrowth,
+            reserve.feeStableGrowth
+        );
+
+        margins[msg.sender].deposit(feeRisky, feeStable); // increase margin of msg.sender
         positions.claim(poolId, delLiquidity); // reduce float by `delLiquidity`
-        reserves[poolId].removeFloat(delLiquidity); // reduce global float
+        reserve.removeFloat(delLiquidity); // reduce global float
         emit Claimed(msg.sender, poolId, delLiquidity);
     }
 
@@ -470,12 +484,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (delStable > stableCollateral) stableDeficit = delStable - stableCollateral;
             else stableSurplus = stableCollateral - delStable;
 
-            uint256 feeRisky = (riskySurplus * 5) / 1e4;
-            uint256 feeStable = (stableSurplus * 5) / 1e4;
-            riskySurplus += feeRisky;
-            stableSurplus += feeStable;
-
-            reserve.subFee(feeRisky, feeStable);
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
         }

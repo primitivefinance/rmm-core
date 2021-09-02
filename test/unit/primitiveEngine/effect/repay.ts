@@ -192,10 +192,7 @@ describe('repay', function () {
           one.raw,
           '0',
           '0', // riskyDeficit
-          one
-            .sub(delRisky)
-            .mul(1e4 + 5)
-            .div(1e4).raw, // riskySurplus
+          one.sub(delRisky).raw, // riskySurplus
           delStable.raw, // stableDeficit
           '0' // stableSurplus
         )
@@ -208,10 +205,8 @@ describe('repay', function () {
         const oldReserve = await this.contracts.engine.reserves(poolId)
         const delRisky = one.mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
         const delStable = one.mul(oldReserve.reserveStable).div(oldReserve.liquidity)
-        const premium = one
-          .sub(delRisky)
-          .mul(1e4 + 5)
-          .div(1e4)
+        const premium = one.sub(delRisky)
+
         const margin = await this.contracts.engine.margins(this.contracts.engineRepay.address)
 
         await expect(
@@ -232,10 +227,7 @@ describe('repay', function () {
         const oldReserve = await this.contracts.engine.reserves(poolId)
         // div delLiquidity by 2 because we are only liquidating 1 riskyCollateral = 1 unit of debt
         const delRisky = delLiquidity.div(2).mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
-        const riskySurplus = riskyCollateral
-          .sub(delRisky)
-          .mul(1e4 + 5)
-          .div(1e4)
+        const riskySurplus = riskyCollateral.sub(delRisky)
 
         await expect(() =>
           this.contracts.engineRepay.repay(
@@ -332,8 +324,8 @@ describe('repay', function () {
         if (riskyCollateral.gt(delRisky)) stableSurplus = stableCollateral.sub(delStable)
         else stableDeficit = delStable.sub(stableCollateral)
 
-        riskySurplus = riskySurplus.mul(1e4 + 5).div(1e4)
-        stableSurplus = stableSurplus.mul(1e4 + 5).div(1e4)
+        riskySurplus = riskySurplus
+        stableSurplus = stableSurplus
 
         await this.contracts.engineDeposit.deposit(this.contracts.engineRepay.address, 0, stableDeficit.raw, HashZero)
         await expect(
