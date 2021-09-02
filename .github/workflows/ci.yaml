@@ -20,13 +20,16 @@ jobs:
         uses: actions/setup-node@v2-beta
         with:
           node-version: '14.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@primitivefinance'
           always-auth: true
 
-      - name: Setup NPM
+      - name: Authenticate with GitHub package registry
         env:
           REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
-        run: npm config set '//npm.pkg.github.com/:_authToken' "${REGISTRY_TOKEN}"
+        run: echo "//npm.pkg.github.com:_authToken=${{ secrets.REGISTRY_TOKEN }}" >
+          ~/.npmrc
 
       - run: yarn install --ignore-scripts
         env:
