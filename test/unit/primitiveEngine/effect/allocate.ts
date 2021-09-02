@@ -1,7 +1,7 @@
 import expect from '../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { parseWei } from 'web3-units'
+import { parseWei, Time } from 'web3-units'
 
 import loadContext, { DEFAULT_CONFIG as config } from '../../context'
 import { computePoolId, computePositionId } from '../../../shared/utils'
@@ -151,6 +151,13 @@ describe('allocate', function () {
       it('reverts if the deltas are 0', async function () {
         await expect(this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)).to
           .reverted
+      })
+
+      it('reverts if pool is expired', async function () {
+        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1)
+        await expect(
+          this.contracts.engineAllocate.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)
+        ).to.revertedWith('PoolExpiredError()')
       })
     })
   })

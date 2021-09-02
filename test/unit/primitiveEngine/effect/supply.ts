@@ -20,7 +20,11 @@ export async function beforeEachSupply(signers: Wallet[], contracts: Contracts):
 
 describe('supply', function () {
   before(async function () {
-    loadContext(waffle.provider, ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply'], beforeEachSupply)
+    loadContext(
+      waffle.provider,
+      ['engineCreate', 'engineDeposit', 'engineAllocate', 'engineSupply', 'engineBorrow'],
+      beforeEachSupply
+    )
   })
 
   let poolId, posId: string
@@ -45,6 +49,66 @@ describe('supply', function () {
         posId,
         one.raw
       )
+    })
+
+    describe('supply after borrow revenue', function () {
+      it('pos.supply: adds 1 liquidity after borrow fee risky revenue has accrued', async function () {
+        // supply first
+        await this.contracts.engineSupply.supply(poolId, parseWei('2').raw)
+        // calculate the expected borrow fees
+        const res = await this.contracts.engine.reserves(poolId)
+        const delLiquidity = one
+        const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
+        const riskyDeficit = delLiquidity.sub(delRisky)
+        const fee = riskyDeficit.mul(30).div(1e4)
+        const feeRiskyGrowth = fee.mul(one).div(res.float)
+        // borrow the position, generating revenue
+        await this.contracts.engineBorrow.borrow(poolId, this.contracts.engineSupply.address, one.raw, '0', HashZero)
+        // repay the position to release the float
+        await this.contracts.engineBorrow.repay(poolId, this.contracts.engineSupply.address, one.raw, '0', false, HashZero)
+        // claim the float back, withdrawing the generated borrow fees
+        await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increasePositionFeeRiskyGrowthLast(
+          this.contracts.engine,
+          posId,
+          feeRiskyGrowth.raw
+        )
+      })
+
+      it('pos.supply: adds 1 liquidity after borrow fee stable revenue has accrued', async function () {
+        // supply first
+        await this.contracts.engineSupply.supply(poolId, parseWei('2').raw)
+        // calculate the expected borrow fees
+        const res = await this.contracts.engine.reserves(poolId)
+        const stableCollateral = strike
+        const delLiquidity = stableCollateral.mul(one).div(strike)
+        const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
+        const stableDeficit = stableCollateral.sub(delStable)
+        const fee = stableDeficit.mul(30).div(1e4)
+        const feeStableGrowth = fee.mul(one).div(res.float)
+        // borrow the position, generating revenue
+        await this.contracts.engineBorrow.borrow(
+          poolId,
+          this.contracts.engineSupply.address,
+          '0',
+          stableCollateral.raw,
+          HashZero
+        )
+        // repay the position to release the float
+        await this.contracts.engineBorrow.repay(
+          poolId,
+          this.contracts.engineSupply.address,
+          '0',
+          stableCollateral.raw,
+          false,
+          HashZero
+        )
+        // claim the float back, withdrawing the generated borrow fees
+        await expect(this.contracts.engineSupply.supply(poolId, one.raw)).to.increasePositionFeeStableGrowthLast(
+          this.contracts.engine,
+          posId,
+          feeStableGrowth.raw
+        )
+      })
     })
   })
 

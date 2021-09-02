@@ -113,8 +113,8 @@ describe('remove', function () {
     })
 
     describe('fail cases', function () {
-      it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToMargin(poolId, 0, HashZero)).to.be.reverted
+      it('reverts if value pool does not exist', async function () {
+        await expect(this.contracts.engineRemove.removeToMargin(HashZero, 0, HashZero)).to.be.reverted
       })
 
       it('reverts if desired liquidity to remove is more than position liquidity', async function () {
@@ -207,8 +207,8 @@ describe('remove', function () {
     })
 
     describe('fail cases', function () {
-      it('reverts if value is 0', async function () {
-        await expect(this.contracts.engineRemove.removeToExternal(poolId, 0, HashZero)).to.be.reverted
+      it('reverts if value pool does not exist', async function () {
+        await expect(this.contracts.engineRemove.removeToExternal(HashZero, 0, HashZero)).to.be.reverted
       })
 
       it('reverts if remove amount is greater than position liquidity', async function () {
