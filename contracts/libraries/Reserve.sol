@@ -101,7 +101,7 @@ library Reserve {
         reserve.reserveRisky -= delRisky.toUint128();
         reserve.reserveStable -= delStable.toUint128();
         reserve.liquidity -= delLiquidity.toUint128();
-        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
+        checkUtilization(reserve);
         update(reserve, blockTimestamp);
     }
 
@@ -110,7 +110,7 @@ library Reserve {
     /// @param delLiquidity     Amount of liquidity to add to float
     function addFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
-        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
+        checkUtilization(reserve);
     }
 
     /// @notice                 Reduces available float, called when claiming
@@ -164,5 +164,11 @@ library Reserve {
     {
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+    }
+
+    /// @notice                 Reverts if the outstanding float is > 80% of liquidity
+    /// @param reserve          Reserve to check
+    function checkUtilization(Data memory reserve) internal pure {
+        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
     }
 }
