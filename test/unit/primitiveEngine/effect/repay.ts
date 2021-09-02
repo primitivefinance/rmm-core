@@ -18,7 +18,7 @@ export async function beforeEachRepay(signers: Wallet[], contracts: Contracts): 
   const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
   const initLiquidity = parseWei('100')
   await contracts.engineAllocate.allocateFromExternal(poolId, contracts.engineSupply.address, initLiquidity.raw, HashZero)
-  await contracts.engineSupply.supply(poolId, initLiquidity.mul(8).div(10).raw)
+  await contracts.engineSupply.supply(poolId, initLiquidity.mul(5).div(10).raw)
   await contracts.engineRepay.borrow(poolId, contracts.engineRepay.address, parseWei('1').raw, strike.raw, HashZero)
 }
 
@@ -206,6 +206,7 @@ describe('repay', function () {
         const delRisky = one.mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
         const delStable = one.mul(oldReserve.reserveStable).div(oldReserve.liquidity)
         const premium = one.sub(delRisky)
+
         const margin = await this.contracts.engine.margins(this.contracts.engineRepay.address)
 
         await expect(
@@ -288,7 +289,6 @@ describe('repay', function () {
         )
         expiredPoolId = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
         const gracePeriod = 60 * 60 * 24
-        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
         // give liquidity to engineSupply contract
         await this.contracts.engineAllocate.allocateFromExternal(
           expiredPoolId,
@@ -297,7 +297,7 @@ describe('repay', function () {
           HashZero
         )
         // have the engineSupply contract supply the lp shares
-        await this.contracts.engineSupply.supply(expiredPoolId, parseWei('100').mul(8).div(10).raw)
+        await this.contracts.engineSupply.supply(expiredPoolId, parseWei('100').mul(5).div(10).raw)
         // have the engineBorrow borrow the lp shares
         await this.contracts.engineBorrow.borrow(
           expiredPoolId,
@@ -306,6 +306,7 @@ describe('repay', function () {
           stableCollateral.raw,
           HashZero
         )
+        await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
       })
 
       it('repay engineBorrow`s riskyCollateral position, receive riskySurplus and pay stable deficit', async function () {
@@ -322,6 +323,9 @@ describe('repay', function () {
         else riskyDeficit = delRisky.sub(riskyCollateral)
         if (riskyCollateral.gt(delRisky)) stableSurplus = stableCollateral.sub(delStable)
         else stableDeficit = delStable.sub(stableCollateral)
+
+        riskySurplus = riskySurplus
+        stableSurplus = stableSurplus
 
         await this.contracts.engineDeposit.deposit(this.contracts.engineRepay.address, 0, stableDeficit.raw, HashZero)
         await expect(

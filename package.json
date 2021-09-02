@@ -24,6 +24,7 @@
     "typechain"
   ],
   "scripts": {
+    "typechain": "hardhat typechain",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "test": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
