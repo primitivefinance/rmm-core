@@ -22,6 +22,12 @@ jobs:
           node-version: '14.x'
           always-auth: true
 
+      - name: Setup NPM
+        env:
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
+          ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
+        run: npm config set '//npm.pkg.github.com/:_authToken' "${REGISTRY_TOKEN}"
+
       - run: yarn install --ignore-scripts
         env:
           REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
