@@ -19,15 +19,16 @@ library Reserve {
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
         uint128 debt; // liquidity unavailable because it was borrowed
+        uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 feeRiskyGrowth; // all time risky fees paid per float
         uint256 feeStableGrowth; // // all time stable fees paid per float
-        uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 cumulativeRisky; // cumulative sum of risky reserves
         uint256 cumulativeStable; // cumulative sum of stable reserves
         uint256 cumulativeLiquidity; // cumulative sum of total liquidity supply
     }
 
     /// @notice                 Adds to the cumulative reserves
+    /// @dev                    Overflow is desired on the cumulative values
     /// @param  res             Reserve storage to update
     /// @param  blockTimestamp  Checkpoint timestamp of update
     function update(Data storage res, uint32 blockTimestamp) internal {
@@ -56,6 +57,7 @@ library Reserve {
         uint256 deltaOut,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         if (riskyForStable) {
             reserve.reserveRisky += deltaIn.toUint128();
             reserve.reserveStable -= deltaOut.toUint128();
@@ -63,7 +65,6 @@ library Reserve {
             reserve.reserveRisky -= deltaOut.toUint128();
             reserve.reserveStable += deltaIn.toUint128();
         }
-        update(reserve, blockTimestamp);
     }
 
     /// @notice                 Add to both reserves and total supply of liquidity
@@ -79,10 +80,10 @@ library Reserve {
         uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         reserve.reserveRisky += delRisky.toUint128();
         reserve.reserveStable += delStable.toUint128();
         reserve.liquidity += delLiquidity.toUint128();
-        update(reserve, blockTimestamp);
     }
 
     /// @notice                 Remove from both reserves and total supply of liquidity
@@ -98,11 +99,11 @@ library Reserve {
         uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         reserve.reserveRisky -= delRisky.toUint128();
         reserve.reserveStable -= delStable.toUint128();
         reserve.liquidity -= delLiquidity.toUint128();
         checkUtilization(reserve);
-        update(reserve, blockTimestamp);
     }
 
     /// @notice                 Increases available float to borrow, called when supplying
