@@ -19,8 +19,8 @@ library Reserve {
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
         uint128 debt; // liquidity unavailable because it was borrowed
-        uint128 feeRisky;
-        uint128 feeStable;
+        uint256 feeRiskyGrowth; // all time risky fees paid per float
+        uint256 feeStableGrowth; // // all time stable fees paid per float
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 cumulativeRisky; // cumulative sum of risky reserves
         uint256 cumulativeStable; // cumulative sum of stable reserves
@@ -137,7 +137,7 @@ library Reserve {
     }
 
     /// @notice                 Increases the extra fees from positive invariants and borrows
-    /// @dev                    Handled in an unchecked statement to allow overflows
+    /// @dev                    Overflow possible. These are checkpoints, not absolute fees
     /// @param reserve          Reserve in storage to manipulate
     /// @param feeRisky         Amount of absolute fees in risky token to add
     /// @param feeStable        Amount of absolute fees in stable token to add
@@ -147,22 +147,9 @@ library Reserve {
         uint256 feeStable
     ) internal {
         unchecked {
-            reserve.feeRisky += feeRisky.toUint128();
-            reserve.feeStable += feeStable.toUint128();
+            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+            reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
         }
-    }
-
-    /// @notice                 Decreases extra fees in reserve
-    /// @param reserve          Reserve in storage to manipulate
-    /// @param feeRisky         Amount of absolute fees in risky token to remove
-    /// @param feeStable        Amount of absolute fees in stable token to remove
-    function subFee(
-        Data storage reserve,
-        uint256 feeRisky,
-        uint256 feeStable
-    ) internal {
-        reserve.feeRisky -= feeRisky.toUint128();
-        reserve.feeStable -= feeStable.toUint128();
     }
 
     /// @notice                 Calculates risky and stable token amounts of `delLiquidity`
