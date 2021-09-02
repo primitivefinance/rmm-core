@@ -127,7 +127,7 @@ describe('create', function () {
         .withArgs(this.contracts.engineCreate.address, strike.raw, sigma.raw, maturity.raw)
     })
 
-    it('updates the reserves of the engine', async function () {
+    it('updates the reserves of the engine with create, but not cumulative reserves', async function () {
       const tx = await this.contracts.engineCreate.create(
         strike.raw,
         sigma.raw,
@@ -146,9 +146,9 @@ describe('create', function () {
       expect(reserve.liquidity).to.equal(parseWei(1).raw)
       expect(reserve.float).to.equal(0)
       expect(reserve.debt).to.equal(0)
-      expect(reserve.cumulativeLiquidity).to.not.equal(0)
-      expect(reserve.cumulativeRisky).to.not.equal(0)
-      expect(reserve.cumulativeStable).to.not.equal(0)
+      expect(reserve.cumulativeLiquidity).to.equal(0)
+      expect(reserve.cumulativeRisky).to.equal(0)
+      expect(reserve.cumulativeStable).to.equal(0)
       expect(reserve.blockTimestamp).to.equal(timestamp)
     })
 
