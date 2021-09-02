@@ -299,7 +299,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
             int128 invariantAfter = ReplicationMath.calcInvariant(riskyAfter, stableAfter, cal.strike, cal.sigma, tau);
 
-            if (invariantAfter > int128(2**64)) {
+            if (invariantAfter > 0) {
                 reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
                 if (reserve.float > 0) reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
             } else {
