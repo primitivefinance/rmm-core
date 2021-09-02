@@ -106,10 +106,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @return lastTimestamp of the pool, used in calculating the time until expiry
     function _updateLastTimestamp(bytes32 poolId) internal virtual returns (uint32 lastTimestamp) {
+        Calibration storage cal = calibrations[poolId];
+        if (cal.lastTimestamp == 0) revert UninitializedError();
         lastTimestamp = _blockTimestamp();
-        uint32 maturity = calibrations[poolId].maturity;
+        uint32 maturity = cal.maturity;
         if (lastTimestamp > maturity) lastTimestamp = maturity; // if expired, set to the maturity
-        calibrations[poolId].lastTimestamp = lastTimestamp;
+        cal.lastTimestamp = lastTimestamp;
         emit UpdatedTimestamp(poolId, lastTimestamp);
     }
 
@@ -206,7 +208,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
         Reserve.Data storage reserve = reserves[poolId];
-
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
 
@@ -236,9 +237,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         returns (uint256 delRisky, uint256 delStable)
     {
         Reserve.Data storage reserve = reserves[poolId];
+        if (reserve.blockTimestamp == 0) revert UninitializedError();
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
-
-        if (delRisky * delStable == 0) revert ZeroDeltasError();
 
         positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
@@ -342,6 +342,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function supply(bytes32 poolId, uint256 delLiquidity) external override lock {
+        if (calibrations[poolId].lastTimestamp == 0) revert UninitializedError();
         if (delLiquidity == 0) revert ZeroLiquidityError();
         Reserve.Data storage reserve = reserves[poolId];
         Position.Data storage position = positions.fetch(msg.sender, poolId);
@@ -358,6 +359,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function claim(bytes32 poolId, uint256 delLiquidity) external override lock {
+        if (calibrations[poolId].lastTimestamp == 0) revert UninitializedError();
         if (delLiquidity == 0) revert ZeroLiquidityError();
         Reserve.Data storage reserve = reserves[poolId];
         Position.Data storage position = positions.fetch(msg.sender, poolId);
@@ -391,15 +393,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
+        Calibration memory cal = calibrations[poolId];
+        if (cal.lastTimestamp == 0) revert UninitializedError();
         if (riskyCollateral == 0 && stableCollateral == 0) revert ZeroLiquidityError();
-        if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
+        if (_blockTimestamp() > cal.maturity) revert PoolExpiredError();
 
         positions.borrow(poolId, riskyCollateral, stableCollateral);
 
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
-            uint256 strike = uint256(calibrations[poolId].strike);
+            uint256 strike = uint256(cal.strike);
             uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / strike; // total debt incurred
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
 
@@ -465,6 +469,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         Calibration memory cal = calibrations[poolId];
+        if (cal.lastTimestamp == 0) revert UninitializedError();
+
         {
             // position scope
             bytes32 id = poolId;
