@@ -165,4 +165,10 @@ library Reserve {
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
     }
+
+    /// @notice                 Reverts if the outstanding float is > 80% of liquidity
+    /// @param reserve          Reserve to check
+    function checkUtilization(Data memory reserve) internal pure {
+        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
+    }
 }
