@@ -36,14 +36,14 @@ interface IPrimitiveEngineView {
     // ===== Pool State =====
     /// @notice             Fetches the global reserve state for a pool with `poolId`
     /// @param poolId       Keccak256 hash of engine, strike price, volatility, and maturity timestamp
-    /// @return             reserveRisky Risky token balance in the reserve
+    /// @return reserveRisky Risky token balance in the reserve
     /// reserveStable       Stable token balance in the reserve
     /// liquidity           Total supply of liquidity for the curve
     /// float               Total supply of liquidity supplied to be borrowed
     /// debt                Total supply of liquidity borrowed
-    /// feeRiskyGrowth
-    /// feeStableGrowth
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
+    /// feeRiskyGrowth      All time risky fees accumulated per float
+    /// feeStableGrowth     All time stable fees accumulated per float
     /// cumulativeRisky     Cumulative sum of risky token reserves
     /// cumulativeStable    Cumulative sum of stable token reserves
     /// cumulativeLiquidity Cumulative sum of total supply of liquidity
@@ -56,9 +56,9 @@ interface IPrimitiveEngineView {
             uint128 liquidity,
             uint128 float,
             uint128 debt,
+            uint32 blockTimestamp,
             uint256 feeRiskyGrowth,
             uint256 feeStableGrowth,
-            uint32 blockTimestamp,
             uint256 cumulativeRisky,
             uint256 cumulativeStable,
             uint256 cumulativeLiquidity
