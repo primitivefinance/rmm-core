@@ -46,6 +46,8 @@ describe('testReserve', function () {
         before.float,
         before.debt,
         before.blockTimestamp + timestep,
+        before.feeRiskyGrowth,
+        before.feeStableGrowth,
         cumulativeRisky,
         cumulativeStable,
         cumulativeLiquidity,
@@ -63,6 +65,8 @@ describe('testReserve', function () {
         before.float,
         before.debt,
         before.blockTimestamp,
+        before.feeRiskyGrowth,
+        before.feeStableGrowth,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
@@ -81,6 +85,8 @@ describe('testReserve', function () {
         before.float,
         before.debt,
         before.blockTimestamp,
+        before.feeRiskyGrowth,
+        before.feeStableGrowth,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
@@ -98,6 +104,8 @@ describe('testReserve', function () {
         before.float,
         before.debt,
         before.blockTimestamp,
+        before.feeRiskyGrowth,
+        before.feeStableGrowth,
         before.cumulativeRisky,
         before.cumulativeStable,
         before.cumulativeLiquidity,
@@ -135,6 +143,21 @@ describe('testReserve', function () {
       expect((await reserve.res()).cumulativeLiquidity.lt(max)).to.be.eq(true)
       expect((await reserve.res()).cumulativeRisky.lt(max)).to.be.eq(true)
       expect((await reserve.res()).cumulativeStable.lt(max)).to.be.eq(true)
+    })
+
+    it('should addFee', async function () {
+      const amt = parseWei('0.1').raw
+      await expect(reserve.shouldAddFee(resId, amt, amt)).to.not.be.reverted
+      expect((await reserve.res()).feeRiskyGrowth).to.be.deep.eq(before.feeRiskyGrowth.add(amt))
+      expect((await reserve.res()).feeStableGrowth).to.be.deep.eq(before.feeStableGrowth.add(amt))
+    })
+
+    it('should overflow on addFee', async function () {
+      const max = BigNumber.from(2).pow(256).sub(1)
+      await reserve.shouldAddFee(resId, 10, 10)
+      await expect(reserve.shouldAddFee(resId, max, max)).to.not.be.reverted
+      expect((await reserve.res()).feeRiskyGrowth.lt(max)).to.be.eq(true)
+      expect((await reserve.res()).feeStableGrowth.lt(max)).to.be.eq(true)
     })
   })
 })

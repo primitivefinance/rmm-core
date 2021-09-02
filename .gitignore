@@ -6,7 +6,6 @@ typechain/
 # dotenv environment variables file
 .env
 .env.test
-.npmrc
 
 dist
 

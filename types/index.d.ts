@@ -82,8 +82,28 @@ declare global {
       decreasePositionFloat(engine: ContractTypes.PrimitiveEngine, posId: string, float: BigNumber): AsyncAssertion
       increasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
       decreasePositionLiquidity(engine: ContractTypes.PrimitiveEngine, posId: string, liquidity: BigNumber): AsyncAssertion
-      increasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
-      decreasePositionDebt(engine: ContractTypes.PrimitiveEngine, posId: string, debt: BigNumber): AsyncAssertion
+      increasePositionDebt(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        riskyCollateral: BigNumber,
+        stableCollateral: BigNumber
+      ): AsyncAssertion
+      decreasePositionDebt(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        riskyCollateral: BigNumber,
+        stableCollateral: BigNumber
+      ): AsyncAssertion
+      increasePositionFeeRiskyGrowthLast(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        amount: BigNumber
+      ): AsyncAssertion
+      increasePositionFeeStableGrowthLast(
+        engine: ContractTypes.PrimitiveEngine,
+        posId: string,
+        amount: BigNumber
+      ): AsyncAssertion
       increaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveRisky(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveStable(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
@@ -94,6 +114,12 @@ declare global {
       decreaseReserveFloat(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveFeeRiskyGrowth(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveFeeStableGrowth(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber
+      ): AsyncAssertion
       updateReserveBlockTimestamp(
         engine: ContractTypes.PrimitiveEngine,
         poolId: string,
