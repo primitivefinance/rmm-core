@@ -93,6 +93,18 @@ contract PrimitiveEngine is IPrimitiveEngine {
         return abi.decode(data, (uint256));
     }
 
+    /// @notice Revert if expected do not exceed current balances
+    function checkRiskyBalance(uint256 expectedRisky) private view {
+        uint256 actualRisky = balanceRisky();
+        if (actualRisky < expectedRisky) revert RiskyBalanceError(expectedRisky, actualRisky);
+    }
+
+    /// @notice Revert if expected do not exceed current balances
+    function checkStableBalance(uint256 expectedStable) private view {
+        uint256 actualStable = balanceStable();
+        if (actualStable < expectedStable) revert StableBalanceError(expectedStable, actualStable);
+    }
+
     /// @return blockTimestamp casted as a uint32
     function _blockTimestamp() internal view virtual returns (uint32 blockTimestamp) {
         // solhint-disable-next-line
@@ -155,8 +167,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
         IPrimitiveCreateCallback(msg.sender).createCallback(delRisky, delStable, data);
-        if (balanceRisky() < delRisky + balRisky) revert RiskyBalanceError(delRisky + balRisky, balanceRisky());
-        if (balanceStable() < delStable + balStable) revert StableBalanceError(delStable + balStable, balanceStable());
+        checkRiskyBalance(balRisky + delRisky);
+        checkStableBalance(balStable + delStable);
 
         calibrations[poolId] = cal; // initialize calibration
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, timestamp); // provide liquidity
@@ -178,8 +190,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (delRisky > 0) balRisky = balanceRisky();
         if (delStable > 0) balStable = balanceStable();
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
-        if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
-        if (balanceStable() < balStable + delStable) revert StableBalanceError(balStable + delStable, balanceStable());
+        checkRiskyBalance(balRisky + delRisky);
+        checkStableBalance(balStable + delStable);
 
         margins[recipient].deposit(delRisky, delStable); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, recipient, delRisky, delStable);
@@ -219,9 +231,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         } else {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             IPrimitiveLiquidityCallback(msg.sender).allocateCallback(delRisky, delStable, data); // agnostic payment
-            if (balanceRisky() < balRisky + delRisky) revert RiskyBalanceError(balRisky + delRisky, balanceRisky());
-            if (balanceStable() < balStable + delStable)
-                revert StableBalanceError(balStable + delStable, balanceStable());
+            checkRiskyBalance(balRisky + delRisky);
+            checkStableBalance(balStable + delStable);
         }
 
         positions.fetch(recipient, poolId).allocate(delLiquidity); // increase position liquidity
@@ -320,8 +331,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             } else {
                 uint256 balRisky = balanceRisky();
                 IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic payment
-                if (balanceRisky() < balRisky + details.deltaIn)
-                    revert RiskyBalanceError(balRisky + details.deltaIn, balanceRisky());
+                checkRiskyBalance(balRisky + details.deltaIn);
             }
         } else {
             IERC20(risky).safeTransfer(msg.sender, deltaOut); // send proceeds first, for callback if needed
@@ -330,8 +340,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             } else {
                 uint256 balStable = balanceStable();
                 IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic payment
-                if (balanceStable() < balStable + details.deltaIn)
-                    revert StableBalanceError(balStable + details.deltaIn, balanceStable());
+                checkStableBalance(balStable + details.deltaIn);
             }
         }
 
@@ -403,8 +412,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
-            uint256 strike = uint256(cal.strike);
-            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / strike; // total debt incurred
+            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / uint256(cal.strike); // debt sum
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts from removing
 
             if (riskyCollateral > delRisky) riskyDeficit = riskyCollateral - delRisky;
@@ -431,10 +439,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveBorrowCallback(msg.sender).borrowCallback(riskyDeficit, stableDeficit, data); // request deficits
 
-            if (balanceRisky() < balRisky + riskyDeficit)
-                revert RiskyBalanceError(balRisky + riskyDeficit, balanceRisky());
-            if (balanceStable() < balStable + stableDeficit)
-                revert StableBalanceError(balStable + stableDeficit, balanceStable());
+            checkRiskyBalance(balRisky + riskyDeficit);
+            checkStableBalance(balStable + stableDeficit);
         }
 
         emit Borrowed(
@@ -482,7 +488,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
-            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / uint256(cal.strike); // Debt sum
+            uint256 delLiquidity = riskyCollateral + (stableCollateral * 1e18) / uint256(cal.strike); // debt sum
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
 
             if (delRisky > riskyCollateral) riskyDeficit = delRisky - riskyCollateral;
@@ -504,10 +510,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
             IPrimitiveRepayCallback(msg.sender).repayCallback(riskyDeficit, stableDeficit, data); // request deficits
 
-            if (balanceRisky() < balRisky + riskyDeficit)
-                revert RiskyBalanceError(balRisky + riskyDeficit, balanceRisky());
-            if (balanceStable() < balStable + stableDeficit)
-                revert StableBalanceError(balStable + stableDeficit, balanceStable());
+            checkRiskyBalance(balRisky + riskyDeficit);
+            checkStableBalance(balStable + stableDeficit);
         }
 
         emit Repaid(
