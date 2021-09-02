@@ -134,6 +134,7 @@ library Reserve {
     function repayFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
         reserve.debt -= delLiquidity.toUint128();
+        checkUtilization(reserve);
     }
 
     /// @notice                 Increases the extra fees from positive invariants and borrows
