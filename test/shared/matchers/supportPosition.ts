@@ -151,4 +151,42 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
       )
     }
   )
+
+  Assertion.addMethod(
+    'increasePositionFeeRiskyGrowthLast',
+    async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
+      const oldPosition = await engine.positions(posId)
+      await this._obj
+      const newPosition = await engine.positions(posId)
+
+      const expectedGrowth = oldPosition.feeRiskyGrowthLast.add(amount)
+
+      this.assert(
+        newPosition.feeRiskyGrowthLast.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newPosition.feeRiskyGrowthLast}`,
+        `Expected ${expectedGrowth} NOT to be ${newPosition.feeRiskyGrowthLast}`,
+        expectedGrowth,
+        newPosition.feeRiskyGrowthLast
+      )
+    }
+  )
+
+  Assertion.addMethod(
+    'increasePositionFeeStableGrowthLast',
+    async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
+      const oldPosition = await engine.positions(posId)
+      await this._obj
+      const newPosition = await engine.positions(posId)
+
+      const expectedGrowth = oldPosition.feeStableGrowthLast.add(amount)
+
+      this.assert(
+        newPosition.feeStableGrowthLast.eq(expectedGrowth),
+        `Expected ${expectedGrowth} to be ${newPosition.feeStableGrowthLast}`,
+        `Expected ${expectedGrowth} NOT to be ${newPosition.feeStableGrowthLast}`,
+        expectedGrowth,
+        newPosition.feeStableGrowthLast
+      )
+    }
+  )
 }

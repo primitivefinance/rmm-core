@@ -20,7 +20,16 @@ jobs:
         uses: actions/setup-node@v2-beta
         with:
           node-version: '14.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@primitivefinance'
           always-auth: true
+
+      - name: Authenticate with GitHub package registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
+          ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
+        run: echo "//npm.pkg.github.com:_authToken=${{ secrets.REGISTRY_TOKEN }}" >
+          ~/.npmrc
 
       - run: yarn install --ignore-scripts
         env:
@@ -30,7 +39,7 @@ jobs:
       - name: Lint
         uses: wearerequired/lint-action@v1
         env:
-          REGISTRY_TOKEN: ''
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
         with:
           github_token: ${{ secrets.github_token }}
           prettier: true
@@ -38,8 +47,14 @@ jobs:
           continue_on_error: true
           prettier_extensions: 'css,html,js,json,jsx,md,sass,scss,ts,tsx,vue,yaml,yml,sol'
 
+      - name: Typechain
+        env:
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
+          ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
+        run: yarn typechain
+
       - name: Test
         env:
-          REGISTRY_TOKEN: ''
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           ARBITRUM_PRIVATE_KEY: ${{ secrets.MOCK_PRIVATE_KEY }}
         run: yarn test
