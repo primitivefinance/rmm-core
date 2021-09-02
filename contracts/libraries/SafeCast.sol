@@ -10,7 +10,7 @@ library SafeCast {
     }
 
     /// @notice reverts if x > type(uint64).max
-    function toUint64(uint256 x) internal pure returns (uint128 z) {
+    function toUint64(uint256 x) internal pure returns (uint64 z) {
         require((z = uint64(x)) == x);
     }
 }
