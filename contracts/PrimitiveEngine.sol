@@ -152,7 +152,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 timestamp = _blockTimestamp();
         Calibration memory cal = Calibration({
             strike: strike.toUint128(),
-            sigma: sigma,
+            sigma: sigma.toUint64(),
             maturity: maturity,
             lastTimestamp: timestamp
         });
