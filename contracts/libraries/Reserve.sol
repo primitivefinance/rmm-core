@@ -19,15 +19,16 @@ library Reserve {
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
         uint128 debt; // liquidity unavailable because it was borrowed
-        uint128 feeRisky;
-        uint128 feeStable;
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
+        uint256 feeRiskyGrowth; // all time risky fees paid per float
+        uint256 feeStableGrowth; // // all time stable fees paid per float
         uint256 cumulativeRisky; // cumulative sum of risky reserves
         uint256 cumulativeStable; // cumulative sum of stable reserves
         uint256 cumulativeLiquidity; // cumulative sum of total liquidity supply
     }
 
     /// @notice                 Adds to the cumulative reserves
+    /// @dev                    Overflow is desired on the cumulative values
     /// @param  res             Reserve storage to update
     /// @param  blockTimestamp  Checkpoint timestamp of update
     function update(Data storage res, uint32 blockTimestamp) internal {
@@ -56,6 +57,7 @@ library Reserve {
         uint256 deltaOut,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         if (riskyForStable) {
             reserve.reserveRisky += deltaIn.toUint128();
             reserve.reserveStable -= deltaOut.toUint128();
@@ -63,7 +65,6 @@ library Reserve {
             reserve.reserveRisky -= deltaOut.toUint128();
             reserve.reserveStable += deltaIn.toUint128();
         }
-        update(reserve, blockTimestamp);
     }
 
     /// @notice                 Add to both reserves and total supply of liquidity
@@ -79,10 +80,10 @@ library Reserve {
         uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         reserve.reserveRisky += delRisky.toUint128();
         reserve.reserveStable += delStable.toUint128();
         reserve.liquidity += delLiquidity.toUint128();
-        update(reserve, blockTimestamp);
     }
 
     /// @notice                 Remove from both reserves and total supply of liquidity
@@ -98,10 +99,11 @@ library Reserve {
         uint256 delLiquidity,
         uint32 blockTimestamp
     ) internal {
+        update(reserve, blockTimestamp);
         reserve.reserveRisky -= delRisky.toUint128();
         reserve.reserveStable -= delStable.toUint128();
         reserve.liquidity -= delLiquidity.toUint128();
-        update(reserve, blockTimestamp);
+        checkUtilization(reserve);
     }
 
     /// @notice                 Increases available float to borrow, called when supplying
@@ -109,7 +111,7 @@ library Reserve {
     /// @param delLiquidity     Amount of liquidity to add to float
     function addFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
-        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
+        checkUtilization(reserve);
     }
 
     /// @notice                 Reduces available float, called when claiming
@@ -133,28 +135,42 @@ library Reserve {
     function repayFloat(Data storage reserve, uint256 delLiquidity) internal {
         reserve.float += delLiquidity.toUint128();
         reserve.debt -= delLiquidity.toUint128();
+        checkUtilization(reserve);
     }
 
     /// @notice                 Increases the extra fees from positive invariants and borrows
+    /// @dev                    Overflow possible. These are checkpoints, not absolute fees
+    /// @param reserve          Reserve in storage to manipulate
+    /// @param feeRisky         Amount of absolute fees in risky token to add
+    /// @param feeStable        Amount of absolute fees in stable token to add
     function addFee(
         Data storage reserve,
         uint256 feeRisky,
         uint256 feeStable
     ) internal {
-        // overflow can happen, fees should be withdrawn
         unchecked {
-            reserve.feeRisky += feeRisky.toUint128();
-            reserve.feeStable += feeStable.toUint128();
+            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+            reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
         }
     }
 
-    /// @notice                 Decreases extra fees in reserve
-    function subFee(
-        Data storage reserve,
-        uint256 feeRisky,
-        uint256 feeStable
-    ) internal {
-        reserve.feeRisky -= feeRisky.toUint128();
-        reserve.feeStable -= feeStable.toUint128();
+    /// @notice                 Calculates risky and stable token amounts of `delLiquidity`
+    /// @param reserve          Reserve in memory to use reserves and liquidity of
+    /// @param delLiquidity     Amount of liquidity to fetch underlying tokens of
+    /// @return delRisky        Amount of risky tokens controlled by `delLiquidity`
+    /// delStable               Amount of stable tokens controlled by `delLiquidity`
+    function getAmounts(Data memory reserve, uint256 delLiquidity)
+        internal
+        pure
+        returns (uint256 delRisky, uint256 delStable)
+    {
+        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
+        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+    }
+
+    /// @notice                 Reverts if the outstanding float is > 80% of liquidity
+    /// @param reserve          Reserve to check
+    function checkUtilization(Data memory reserve) internal pure {
+        if ((reserve.float * 1000) / reserve.liquidity > 800) revert LiquidityError();
     }
 }
