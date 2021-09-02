@@ -28,7 +28,7 @@ jobs:
 
       - name: Compile Contracts
         env:
-          REGISTRY_TOKEN: ''
+          REGISTRY_TOKEN: ${{ secrets.PACKAGE_PAT }}
           ARBITRIUM_PRIVATE_KEY: ${{ secrets.ARBITRIUM_PRIVATE_KEY }}
         run: yarn compile
 
