@@ -85,21 +85,42 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient   Owner of the position which receives liquidity shares
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity shares borrowed, and added as debt
-    /// @param  premium     Amount of risky added from margin or external transfer
-    event Borrowed(address indexed recipient, bytes32 indexed poolId, uint256 delLiquidity, uint256 premium);
+    /// @param  riskyCollateral Amount of desired risky tokens backing liquidity debt
+    /// @param  stableCollateral Amount of desired stable tokens backing liquidity debt
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  riskySurplus    Amount of risky tokens paid to user
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
+    /// @param  stableSurplus   Amount of stable tokens paid to user
+    event Borrowed(
+        address indexed recipient,
+        bytes32 indexed poolId,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
+        uint256 riskyDeficit,
+        uint256 riskySurplus,
+        uint256 stableDeficit,
+        uint256 stableSurplus
+    );
 
     /// @notice             Repays a borrowed position, reduces liquidity shares of position and debt
     /// @param  from        Calling `msg.sender`
     /// @param  recipient   Owner of the position to repay
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity to pay
-    /// @param  premium     Amount of risky tokens returned to borrower
+    /// @param  riskyCollateral Amount of desired risky tokens backing liquidity debt
+    /// @param  stableCollateral Amount of desired stable tokens backing liquidity debt
+    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
+    /// @param  riskySurplus    Amount of risky tokens paid to user
+    /// @param  stableDeficit   Amount of stable tokens requested to Engine
+    /// @param  stableSurplus   Amount of stable tokens paid to user
     event Repaid(
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
-        uint256 delLiquidity,
-        uint256 premium
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
+        uint256 riskyDeficit,
+        uint256 riskySurplus,
+        uint256 stableDeficit,
+        uint256 stableSurplus
     );
 }

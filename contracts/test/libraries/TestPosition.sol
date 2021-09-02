@@ -30,7 +30,10 @@ contract TestPosition {
         positions[posId] = Position.Data({
             float: 0,
             liquidity: uint128(liquidity), // init with {liquidity} units of liquidity
-            debt: 0
+            riskyCollateral: 0,
+            stableCollateral: 0,
+            feeRiskyGrowthLast: 0,
+            feeStableGrowthLast: 0
         });
 
         Position.Data memory position = positions.fetch(msg.sender, poolId);
@@ -66,16 +69,6 @@ contract TestPosition {
         assert(post + uint128(amount) >= pre);
     }
 
-    /// @notice Increments debt for a position
-    function shouldBorrow(bytes32 poolId, uint256 amount) public {
-        Position.Data memory position = _shouldFetch(msg.sender, poolId);
-        uint128 pre = position.debt;
-        positions.borrow(poolId, amount);
-        position = _shouldFetch(msg.sender, poolId);
-        uint128 post = position.debt;
-        assert(post >= uint128(amount) + pre);
-    }
-
     /// @notice Increments a position's float
     function shouldSupply(bytes32 poolId, uint256 amount) public {
         Position.Data memory position = _shouldFetch(msg.sender, poolId);
@@ -96,14 +89,38 @@ contract TestPosition {
         assert(post + uint128(amount) >= pre);
     }
 
-    /// @notice Decrements a position's debt by reducing its liquidity
-    function shouldRepay(bytes32 poolId, uint256 amount) public {
+    /// @notice Increments debt for a position
+    function shouldBorrow(
+        bytes32 poolId,
+        uint256 riskyCollateral,
+        uint256 stableCollateral
+    ) public {
         Position.Data memory position = _shouldFetch(msg.sender, poolId);
-        uint128 pre = position.debt;
-        positions.fetch(msg.sender, poolId).repay(amount);
+        uint128 preRisky = position.riskyCollateral;
+        uint128 preStable = position.stableCollateral;
+        positions.borrow(poolId, riskyCollateral, stableCollateral);
         position = _shouldFetch(msg.sender, poolId);
-        uint128 debt = position.debt;
-        assert(debt + uint128(amount) >= pre);
+        uint128 postRisky = position.riskyCollateral;
+        uint128 postStable = position.stableCollateral;
+        assert(postRisky >= uint128(riskyCollateral) + preRisky);
+        assert(postStable >= uint128(stableCollateral) + preStable);
+    }
+
+    /// @notice Decrements a position's debt by reducing its liquidity
+    function shouldRepay(
+        bytes32 poolId,
+        uint256 riskyToLiquidate,
+        uint256 stableToLiquidate
+    ) public {
+        Position.Data memory position = _shouldFetch(msg.sender, poolId);
+        uint128 preRisky = position.riskyCollateral;
+        uint128 preStable = position.stableCollateral;
+        positions.fetch(msg.sender, poolId).repay(riskyToLiquidate, stableToLiquidate);
+        position = _shouldFetch(msg.sender, poolId);
+        uint128 riskyCollateral = position.riskyCollateral;
+        uint128 stableCollateral = position.stableCollateral;
+        assert(riskyCollateral + uint128(riskyToLiquidate) >= preRisky);
+        assert(stableCollateral + uint128(stableToLiquidate) >= preStable);
     }
 
     /// @return positionId The keccak256 hash of `where` `owner` and `poolId` is the position id

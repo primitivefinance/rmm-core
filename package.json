@@ -1,6 +1,6 @@
 {
   "name": "@primitivefinance/v2-core",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Primitive V2 core smart contracts",
   "main": "index.js",
   "repository": {

@@ -13,7 +13,10 @@ library Position {
     struct Data {
         uint128 float; // Balance of supplied liquidity
         uint128 liquidity; // Balance of liquidity
-        uint128 debt; // Balance of liquidity debt that must be paid back, also balance of risky in position
+        uint128 riskyCollateral; // For every 1 risky collateral, 1 liquidity debt
+        uint128 stableCollateral; // For every K stable collateral (K is strike price), 1 liquidity debt
+        uint256 feeRiskyGrowthLast; // checkpoint: fee growth per float in risky, to measure fees entitled
+        uint256 feeStableGrowthLast; // checkpoint: fee growth per float in stable, to measure fees entitled
     }
 
     /// @notice             An Engine's mapping of position Ids to Position.Data structs can be used to fetch any Position
@@ -45,18 +48,6 @@ library Position {
         position.liquidity -= delLiquidity.toUint128();
     }
 
-    /// @notice             Increases debt balance of Position
-    /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
-    /// @param delLiquidity Amount of liquidity to borrow
-    function borrow(
-        mapping(bytes32 => Data) storage positions,
-        bytes32 poolId,
-        uint256 delLiquidity
-    ) internal returns (Data storage position) {
-        position = fetch(positions, msg.sender, poolId);
-        position.debt += delLiquidity.toUint128(); // add the debt post position manipulation
-    }
-
     /// @notice             Supplies liquidity in float, locking it until claimed
     /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
     /// @param delLiquidity Amount of liquidity to supply
@@ -83,11 +74,55 @@ library Position {
         position.liquidity += delLiquidity.toUint128();
     }
 
-    /// @notice             Reduces Position debt
+    /// @notice             Increases collateral balances of the Position from increasing liquidity debt
+    /// @param poolId       Keccak256 hash of the engine address and pool parameters (strike, sigma, maturity)
+    /// @param riskyCollateral  Amount of risky to hold as collateral for risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable to hold as collateral for stable / K = units of debt
+    function borrow(
+        mapping(bytes32 => Data) storage positions,
+        bytes32 poolId,
+        uint256 riskyCollateral,
+        uint256 stableCollateral
+    ) internal returns (Data storage position) {
+        position = fetch(positions, msg.sender, poolId);
+        if (riskyCollateral > 0) position.riskyCollateral += riskyCollateral.toUint128();
+        if (stableCollateral > 0) position.stableCollateral += stableCollateral.toUint128();
+    }
+
+    /// @notice             Reduces Position's collateral balance, by reducing liquidity debt
     /// @param position     Position in state to manipulate
-    /// @param delLiquidity Amount of debt to reduce from the Position
-    function repay(Data storage position, uint256 delLiquidity) internal {
-        position.debt -= delLiquidity.toUint128();
+    /// @param riskyCollateral  Amount of risky collateral to liquidate by repaying risky / 1 = units of debt
+    /// @param stableCollateral Amount of stable collateral to liquidate by repaying stable / K = units of debt
+    function repay(
+        Data storage position,
+        uint256 riskyCollateral,
+        uint256 stableCollateral
+    ) internal {
+        if (riskyCollateral > 0) position.riskyCollateral -= riskyCollateral.toUint128();
+        if (stableCollateral > 0) position.stableCollateral -= stableCollateral.toUint128();
+    }
+
+    /// @notice                 Updates the position fee growth and returns fee amounts accrued
+    /// @dev                    Next checkpoint can be overflowed
+    /// @param position         Position in memory to use fee checkpoint and float of
+    /// @param feeRiskyGrowth   Amount of global risky fee growth, per float, in the reserve
+    /// @param feeStableGrowth  Amount of global stable fee growth, per float, in the reserve
+    /// @return feeRisky        Amount of risky fees accrued, to be given to position owner
+    /// feeStable               Amount of stable fees accrued, to be given to position owner
+    function updateFeeGrowth(
+        Data storage position,
+        uint256 feeRiskyGrowth,
+        uint256 feeStableGrowth
+    ) internal returns (uint256 feeRisky, uint256 feeStable) {
+        // these values act as checkpoints which can overflow, we only care about the delta
+        unchecked {
+            feeRisky = feeRiskyGrowth - position.feeRiskyGrowthLast;
+            feeStable = feeStableGrowth - position.feeStableGrowthLast;
+        }
+        feeRisky = (feeRisky * position.float) / 1e18; // absolute risky fees of the position
+        feeStable = (feeStable * position.float) / 1e18; // absolute stable fees of the position
+        position.feeRiskyGrowthLast = feeRiskyGrowth;
+        position.feeStableGrowthLast = feeStableGrowth;
     }
 
     /// @notice             Fetches the position Id
