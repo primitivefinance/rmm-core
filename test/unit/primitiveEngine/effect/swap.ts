@@ -94,12 +94,12 @@ const SuccessCases: SwapTestCase[] = [
   },
   {
     riskyForStable: false,
-    deltaIn: new Wei(toBN(2000)),
+    deltaIn: parseWei('1'),
     fromMargin: true,
   },
   {
     riskyForStable: false,
-    deltaIn: new Wei(toBN(2000)),
+    deltaIn: parseWei('1'),
     fromMargin: false,
   },
 ]
