@@ -210,7 +210,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       await this._obj
       const newReserve = await engine.reserves(poolId)
 
-      const expectedDebt = oldReserve.collateralStable.sub(amount)
+      const expectedDebt = oldReserve.collateralStable.add(amount)
 
       this.assert(
         newReserve.collateralStable.eq(expectedDebt),
