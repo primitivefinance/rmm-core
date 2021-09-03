@@ -400,8 +400,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function borrow(
         bytes32 poolId,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
@@ -418,22 +418,22 @@ contract PrimitiveEngine is IPrimitiveEngine {
         // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
         Calibration memory cal = calibrations[poolId];
         if (cal.lastTimestamp == 0) revert UninitializedError();
-        if (riskyCollateral == 0 && stableCollateral == 0) revert ZeroLiquidityError();
+        if (collateralRisky == 0 && collateralStable == 0) revert ZeroLiquidityError();
         if (_blockTimestamp() > cal.maturity) revert PoolExpiredError();
 
-        positions.borrow(poolId, riskyCollateral, stableCollateral);
+        positions.borrow(poolId, collateralRisky, collateralStable);
 
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
-            uint256 stablePerStrike = (stableCollateral * precisionStable) / uint256(cal.strike);
-            uint256 delLiquidity = riskyCollateral.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
+            uint256 stablePerStrike = (collateralStable * precisionStable) / uint256(cal.strike);
+            uint256 delLiquidity = collateralRisky.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // risky, stable amounts in native precision
 
-            if (riskyCollateral > delRisky) riskyDeficit = riskyCollateral - delRisky;
-            else riskySurplus = delRisky - riskyCollateral;
-            if (stableCollateral > delStable) stableDeficit = stableCollateral - delStable;
-            else stableSurplus = delStable - stableCollateral;
+            if (collateralRisky > delRisky) riskyDeficit = collateralRisky - delRisky;
+            else riskySurplus = delRisky - collateralRisky;
+            if (collateralStable > delStable) stableDeficit = collateralStable - delStable;
+            else stableSurplus = delStable - collateralStable;
             uint256 feeRisky = (riskyDeficit * 30) / 1e4;
             uint256 feeStable = (stableDeficit * 30) / 1e4;
             riskyDeficit += feeRisky;
@@ -461,8 +461,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         emit Borrowed(
             msg.sender,
             poolId,
-            riskyCollateral,
-            stableCollateral,
+            collateralRisky,
+            collateralStable,
             riskyDeficit,
             riskySurplus,
             stableDeficit,
@@ -474,8 +474,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
@@ -497,19 +497,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
             bytes32 id = poolId;
             bool expired = _blockTimestamp() >= cal.maturity + 86400;
             address account = expired ? recipient : msg.sender;
-            positions.fetch(account, id).repay(riskyCollateral, stableCollateral); // increase: risky/stableCollateral
+            positions.fetch(account, id).repay(collateralRisky, collateralStable); // increase: risky/collateralStable
         }
 
         {
             // liquidity scope
             Reserve.Data storage reserve = reserves[poolId];
-            uint256 delLiquidity = riskyCollateral + (stableCollateral * precisionStable) / uint256(cal.strike); // debt sum
+            uint256 delLiquidity = collateralRisky + (collateralStable * precisionStable) / uint256(cal.strike); // debt sum
             (uint256 delRisky, uint256 delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
 
-            if (delRisky > riskyCollateral) riskyDeficit = delRisky - riskyCollateral;
-            else riskySurplus = riskyCollateral - delRisky;
-            if (delStable > stableCollateral) stableDeficit = delStable - stableCollateral;
-            else stableSurplus = stableCollateral - delStable;
+            if (delRisky > collateralRisky) riskyDeficit = delRisky - collateralRisky;
+            else riskySurplus = collateralRisky - delRisky;
+            if (delStable > collateralStable) stableDeficit = delStable - collateralStable;
+            else stableSurplus = collateralStable - delStable;
 
             reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
@@ -533,8 +533,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             msg.sender,
             recipient,
             poolId,
-            riskyCollateral,
-            stableCollateral,
+            collateralRisky,
+            collateralStable,
             riskyDeficit,
             riskySurplus,
             stableDeficit,

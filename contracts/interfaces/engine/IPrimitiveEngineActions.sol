@@ -114,8 +114,8 @@ interface IPrimitiveEngineActions {
     /// @notice             Borrows liquidity and removes it, adding a debt
     /// @dev                Increases the `msg.sender`'s position's liquidity value and adds the same to the debt
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyCollateral  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
-    /// @param  stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
+    /// @param  collateralRisky  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
+    /// @param  collateralStable Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
     /// @return riskyDeficit    Amount of risky tokens requested to Engine
@@ -124,8 +124,8 @@ interface IPrimitiveEngineActions {
     /// stableSurplus           Amount of stable tokens paid to user
     function borrow(
         bytes32 poolId,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
@@ -141,8 +141,8 @@ interface IPrimitiveEngineActions {
     /// @dev                Important: If the pool is expired, any position can be repaid to the position owner
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Position recipient to grant the borrowed liquidity shares
-    /// @param  riskyCollateral    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
-    /// @param  stableCollateral   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
+    /// @param  collateralRisky    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param  collateralStable   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
     /// @return riskyDeficit    Amount of risky tokens requested to Engine
@@ -152,8 +152,8 @@ interface IPrimitiveEngineActions {
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
