@@ -76,10 +76,10 @@ describe('claim', function () {
       it('pos.claim: removes 1 liquidity after borrow fee stable revenue has accrued', async function () {
         const res = await this.contracts.engine.reserves(poolId)
         // calculate the expected borrow fees
-        const stableCollateral = strike
-        const delLiquidity = stableCollateral.mul(one).div(strike)
+        const collateralStable = strike
+        const delLiquidity = collateralStable.mul(one).div(strike)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
-        const stableDeficit = stableCollateral.sub(delStable)
+        const stableDeficit = collateralStable.sub(delStable)
         const fee = stableDeficit.mul(30).div(1e4)
         const feeStableGrowth = fee.mul(one).div(res.float)
         // borrow the position, generating revenue
@@ -87,7 +87,7 @@ describe('claim', function () {
           poolId,
           this.contracts.engineBorrow.address,
           '0',
-          stableCollateral.raw,
+          collateralStable.raw,
           HashZero
         )
         // repay the position to release the float
@@ -95,7 +95,7 @@ describe('claim', function () {
           poolId,
           this.contracts.engineBorrow.address,
           '0',
-          stableCollateral.raw,
+          collateralStable.raw,
           false,
           HashZero
         )

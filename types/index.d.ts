@@ -85,14 +85,14 @@ declare global {
       increasePositionDebt(
         engine: ContractTypes.PrimitiveEngine,
         posId: string,
-        riskyCollateral: BigNumber,
-        stableCollateral: BigNumber
+        collateralRisky: BigNumber,
+        collateralStable: BigNumber
       ): AsyncAssertion
       decreasePositionDebt(
         engine: ContractTypes.PrimitiveEngine,
         posId: string,
-        riskyCollateral: BigNumber,
-        stableCollateral: BigNumber
+        collateralRisky: BigNumber,
+        collateralStable: BigNumber
       ): AsyncAssertion
       increasePositionFeeRiskyGrowthLast(
         engine: ContractTypes.PrimitiveEngine,

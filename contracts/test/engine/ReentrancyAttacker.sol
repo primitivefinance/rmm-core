@@ -15,8 +15,8 @@ contract ReentrancyAttacker {
     uint256 private _maturity;
     uint256 private _delta;
     uint256 private _delLiquidity;
-    uint256 private _riskyCollateral;
-    uint256 private _stableCollateral;
+    uint256 private _collateralRisky;
+    uint256 private _collateralStable;
     uint256 private _riskyDeficit;
     uint256 private _stableDeficit;
     bytes32 private _poolId;
@@ -131,36 +131,36 @@ contract ReentrancyAttacker {
     function borrow(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
 
         _poolId = poolId;
         _owner = owner;
-        _riskyCollateral = riskyCollateral;
-        _stableCollateral = stableCollateral;
+        _collateralRisky = collateralRisky;
+        _collateralStable = collateralStable;
 
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
     }
 
     function borrowWithGoodCallback(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         CALLER = msg.sender;
 
         _poolId = poolId;
         _owner = owner;
-        _riskyCollateral = riskyCollateral;
-        _stableCollateral = stableCollateral;
+        _collateralRisky = collateralRisky;
+        _collateralStable = collateralStable;
 
         _goodCallback = true;
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
         _goodCallback = false;
     }
 
@@ -175,7 +175,7 @@ contract ReentrancyAttacker {
             IERC20(risky).transfer(CALLER, IERC20(risky).balanceOf(address(this)));
             IERC20(stable).transfer(CALLER, IERC20(stable).balanceOf(address(this)));
         } else {
-            IPrimitiveEngine(engine).borrow(_poolId, _riskyCollateral, _stableCollateral, false, data);
+            IPrimitiveEngine(engine).borrow(_poolId, _collateralRisky, _collateralStable, false, data);
         }
     }
 

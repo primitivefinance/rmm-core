@@ -85,8 +85,8 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
     /// @param  recipient   Owner of the position which receives liquidity shares
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyCollateral Amount of desired risky tokens backing liquidity debt
-    /// @param  stableCollateral Amount of desired stable tokens backing liquidity debt
+    /// @param  collateralRisky Amount of desired risky tokens backing liquidity debt
+    /// @param  collateralStable Amount of desired stable tokens backing liquidity debt
     /// @param  riskyDeficit    Amount of risky tokens requested to Engine
     /// @param  riskySurplus    Amount of risky tokens paid to user
     /// @param  stableDeficit   Amount of stable tokens requested to Engine
@@ -94,8 +94,8 @@ interface IPrimitiveEngineEvents {
     event Borrowed(
         address indexed recipient,
         bytes32 indexed poolId,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         uint256 riskyDeficit,
         uint256 riskySurplus,
         uint256 stableDeficit,
@@ -106,8 +106,8 @@ interface IPrimitiveEngineEvents {
     /// @param  from        Calling `msg.sender`
     /// @param  recipient   Owner of the position to repay
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyCollateral Amount of desired risky tokens backing liquidity debt
-    /// @param  stableCollateral Amount of desired stable tokens backing liquidity debt
+    /// @param  collateralRisky Amount of desired risky tokens backing liquidity debt
+    /// @param  collateralStable Amount of desired stable tokens backing liquidity debt
     /// @param  riskyDeficit    Amount of risky tokens requested to Engine
     /// @param  riskySurplus    Amount of risky tokens paid to user
     /// @param  stableDeficit   Amount of stable tokens requested to Engine
@@ -116,8 +116,8 @@ interface IPrimitiveEngineEvents {
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         uint256 riskyDeficit,
         uint256 riskySurplus,
         uint256 stableDeficit,
