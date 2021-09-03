@@ -24,7 +24,7 @@ contract TestCumulativeNormalDistribution {
 
     function icdf(uint256 x) public pure returns (int128 y) {
         //int128 p = 0x4000000000000830; // 0.25
-        int128 p = x.parseUnits();
+        int128 p = x.scaleToX64(1e18);
         y = p.getInverseCDF();
     }
 }

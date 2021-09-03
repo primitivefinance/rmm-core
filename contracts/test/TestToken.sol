@@ -12,7 +12,7 @@ contract TestToken is IERC20 {
 
     string public name;
     string public symbol;
-    uint8 public decimals;
+    uint8 public override decimals;
 
     constructor(
         string memory name_,

@@ -46,7 +46,7 @@ describe('borrow', function () {
     })
 
     describe('success cases', async function () {
-      it('pos.borrow: increases position riskyCollateral', async function () {
+      it('pos.borrow: increases position collateralRisky', async function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero)).to.increasePositionDebt(
           engine,
           posId,
@@ -56,7 +56,7 @@ describe('borrow', function () {
         expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, toBN('0'), toBN(0), toBN(0)])
       })
 
-      it('pos.borrow: increases position stableCollateral', async function () {
+      it('pos.borrow: increases position collateralStable', async function () {
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, '0', strike.raw, HashZero)).to.increasePositionDebt(
           engine,
           posId,
@@ -74,33 +74,33 @@ describe('borrow', function () {
       })
 
       it('res.borrowFloat: increases reserve debt', async function () {
-        const riskyCollateral = one
-        const stableCollateral = strike
-        const delLiquidity = riskyCollateral.add(stableCollateral.mul(1e18).div(strike))
+        const collateralRisky = one
+        const collateralStable = strike
+        const delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, riskyCollateral.raw, stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, collateralRisky.raw, collateralStable.raw, HashZero)
         ).to.increaseReserveDebt(engine, poolId, delLiquidity.raw)
       })
 
       it('res.borrowFloat: decreases reserve float', async function () {
-        const riskyCollateral = one
-        const stableCollateral = strike
-        const delLiquidity = riskyCollateral.add(stableCollateral.mul(1e18).div(strike))
+        const collateralRisky = one
+        const collateralStable = strike
+        const delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, riskyCollateral.raw, stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, collateralRisky.raw, collateralStable.raw, HashZero)
         ).to.decreaseReserveFloat(engine, poolId, delLiquidity.raw)
       })
 
       it('res.remove: decreases reserve liquidity', async function () {
-        const riskyCollateral = one
-        const stableCollateral = strike
-        const delLiquidity = riskyCollateral.add(stableCollateral.mul(1e18).div(strike))
+        const collateralRisky = one
+        const collateralStable = strike
+        const delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, riskyCollateral.raw, stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, collateralRisky.raw, collateralStable.raw, HashZero)
         ).to.decreaseReserveLiquidity(engine, poolId, delLiquidity.raw)
       })
 
-      it('res.remove: decreases reserve risky from riskyCollateral', async function () {
+      it('res.remove: decreases reserve risky from collateralRisky', async function () {
         const res = await this.contracts.engine.reserves(poolId)
         const delRisky = one.raw.mul(res.reserveRisky).div(res.liquidity)
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero)).to.decreaseReserveRisky(
@@ -110,7 +110,7 @@ describe('borrow', function () {
         )
       })
 
-      it('res.remove: decreases reserve stable from riskyCollateral', async function () {
+      it('res.remove: decreases reserve stable from collateralRisky', async function () {
         const res = await this.contracts.engine.reserves(poolId)
         const delStable = one.raw.mul(res.reserveStable).div(res.liquidity)
         await expect(engineBorrow.borrow(poolId, engineBorrow.address, one.raw, '0', HashZero)).to.decreaseReserveStable(
@@ -120,23 +120,23 @@ describe('borrow', function () {
         )
       })
 
-      it('res.remove: decreases reserve risky from stableCollateral', async function () {
+      it('res.remove: decreases reserve risky from collateralStable', async function () {
         const res = await this.contracts.engine.reserves(poolId)
-        const stableCollateral = strike
-        const delLiquidity = stableCollateral.mul(1e18).div(strike)
+        const collateralStable = strike
+        const delLiquidity = collateralStable.mul(1e18).div(strike)
         const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity).raw
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, '0', collateralStable.raw, HashZero)
         ).to.decreaseReserveRisky(engine, poolId, delRisky)
       })
 
-      it('res.remove: decreases reserve stable from stableCollateral', async function () {
+      it('res.remove: decreases reserve stable from collateralStable', async function () {
         const res = await this.contracts.engine.reserves(poolId)
-        const stableCollateral = strike
-        const delLiquidity = stableCollateral.mul(1e18).div(strike)
+        const collateralStable = strike
+        const delLiquidity = collateralStable.mul(1e18).div(strike)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity).raw
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, '0', collateralStable.raw, HashZero)
         ).to.decreaseReserveStable(engine, poolId, delStable)
       })
 
@@ -155,20 +155,20 @@ describe('borrow', function () {
 
       it('res.feeStableGrowth: increases stable from fees', async function () {
         const res = await this.contracts.engine.reserves(poolId)
-        const stableCollateral = strike
-        const delLiquidity = stableCollateral.mul(1e18).div(strike)
+        const collateralStable = strike
+        const delLiquidity = collateralStable.mul(1e18).div(strike)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity).raw
-        const stableDeficit = stableCollateral.sub(delStable)
+        const stableDeficit = collateralStable.sub(delStable)
         const fee = stableDeficit.mul(30).div(1e4)
         const float = res.float
         const feeStableGrowth = fee.mul(parseWei(1).raw).div(float)
         await expect(
-          engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+          engineBorrow.borrow(poolId, engineBorrow.address, '0', collateralStable.raw, HashZero)
         ).to.increaseReserveFeeStableGrowth(engine, poolId, feeStableGrowth.raw)
       })
 
       describe('from margin', function () {
-        it('borrows riskyCollateral using margin', async function () {
+        it('borrows collateralRisky using margin', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
           const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
@@ -211,21 +211,21 @@ describe('borrow', function () {
 
         it('increases fee growth on stable from borrow', async function () {
           const res = await this.contracts.engine.reserves(poolId)
-          const stableCollateral = strike
+          const collateralStable = strike
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
           const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
-          const stableDeficit = stableCollateral.sub(delStable)
+          const stableDeficit = collateralStable.sub(delStable)
           const fee = stableDeficit.mul(30).div(1e4)
           const float = res.float
           const feeStableGrowth = fee.mul(parseWei(1).raw).div(float)
           await this.contracts.engineDeposit.deposit(engineBorrow.address, delRisky, stableDeficit.add(fee).raw, HashZero)
 
           await expect(
-            engineBorrow.borrowWithMargin(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero)
+            engineBorrow.borrowWithMargin(poolId, engineBorrow.address, '0', collateralStable.raw, HashZero)
           ).to.increaseReserveFeeStableGrowth(this.contracts.engine, poolId, feeStableGrowth.raw)
         })
 
-        it('borrows stableCollateral using margin', async function () {
+        it('borrows collateralStable using margin', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = one.mul(res.reserveRisky).div(res.liquidity).raw
           const delStable = one.mul(res.reserveStable).div(res.liquidity).raw
@@ -324,14 +324,14 @@ describe('borrow', function () {
         })
 
         it('repays a long option position with stable collateral, earning the proceeds', async function () {
-          const stableCollateral = strike
-          await engineBorrow.borrow(poolId, engineBorrow.address, '0', stableCollateral.raw, HashZero) // spends premium
+          const collateralStable = strike
+          await engineBorrow.borrow(poolId, engineBorrow.address, '0', collateralStable.raw, HashZero) // spends premium
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = one.mul(res.reserveStable).div(res.liquidity)
-          const stableSurplus = stableCollateral.sub(delStable)
+          const stableSurplus = collateralStable.sub(delStable)
 
           await expect(() =>
-            engineBorrow.repay(poolId, engineBorrow.address, '0', stableCollateral.raw, false, HashZero)
+            engineBorrow.repay(poolId, engineBorrow.address, '0', collateralStable.raw, false, HashZero)
           ).to.changeTokenBalances(this.contracts.stable, [deployer], [stableSurplus.raw])
           expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), toBN(0), toBN(0), toBN(0), toBN(0)])
         })

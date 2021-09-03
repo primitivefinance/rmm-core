@@ -92,29 +92,29 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
       this: any,
       engine: PrimitiveEngine,
       posId: string,
-      riskyCollateral: BigNumber,
-      stableCollateral: BigNumber
+      collateralRisky: BigNumber,
+      collateralStable: BigNumber
     ) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
 
-      const expectedRiskyCollateral = oldPosition.riskyCollateral.add(riskyCollateral)
-      const expectedStableCollateral = oldPosition.stableCollateral.add(stableCollateral)
+      const expectedcollateralRisky = oldPosition.collateralRisky.add(collateralRisky)
+      const expectedcollateralStable = oldPosition.collateralStable.add(collateralStable)
 
       this.assert(
-        newPosition.riskyCollateral.eq(expectedRiskyCollateral),
-        `Expected ${newPosition.riskyCollateral} to be ${expectedRiskyCollateral}`,
-        `Expected ${newPosition.riskyCollateral} NOT to be ${expectedRiskyCollateral}`,
-        expectedRiskyCollateral,
-        newPosition.riskyCollateral
+        newPosition.collateralRisky.eq(expectedcollateralRisky),
+        `Expected ${newPosition.collateralRisky} to be ${expectedcollateralRisky}`,
+        `Expected ${newPosition.collateralRisky} NOT to be ${expectedcollateralRisky}`,
+        expectedcollateralRisky,
+        newPosition.collateralRisky
       )
       this.assert(
-        newPosition.stableCollateral.eq(expectedStableCollateral),
-        `Expected ${newPosition.stableCollateral} to be ${expectedStableCollateral}`,
-        `Expected ${newPosition.stableCollateral} NOT to be ${expectedStableCollateral}`,
-        expectedStableCollateral,
-        newPosition.stableCollateral
+        newPosition.collateralStable.eq(expectedcollateralStable),
+        `Expected ${newPosition.collateralStable} to be ${expectedcollateralStable}`,
+        `Expected ${newPosition.collateralStable} NOT to be ${expectedcollateralStable}`,
+        expectedcollateralStable,
+        newPosition.collateralStable
       )
     }
   )
@@ -125,29 +125,29 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
       this: any,
       engine: PrimitiveEngine,
       posId: string,
-      riskyCollateral: BigNumber,
-      stableCollateral: BigNumber
+      collateralRisky: BigNumber,
+      collateralStable: BigNumber
     ) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
 
-      const expectedRiskyCollateral = oldPosition.riskyCollateral.sub(riskyCollateral)
-      const expectedStableCollateral = oldPosition.stableCollateral.sub(stableCollateral)
+      const expectedcollateralRisky = oldPosition.collateralRisky.sub(collateralRisky)
+      const expectedcollateralStable = oldPosition.collateralStable.sub(collateralStable)
 
       this.assert(
-        newPosition.riskyCollateral.eq(expectedRiskyCollateral),
-        `Expected ${newPosition.riskyCollateral} to be ${expectedRiskyCollateral}`,
-        `Expected ${newPosition.riskyCollateral} NOT to be ${expectedRiskyCollateral}`,
-        expectedRiskyCollateral,
-        newPosition.riskyCollateral
+        newPosition.collateralRisky.eq(expectedcollateralRisky),
+        `Expected ${newPosition.collateralRisky} to be ${expectedcollateralRisky}`,
+        `Expected ${newPosition.collateralRisky} NOT to be ${expectedcollateralRisky}`,
+        expectedcollateralRisky,
+        newPosition.collateralRisky
       )
       this.assert(
-        newPosition.stableCollateral.eq(expectedStableCollateral),
-        `Expected ${newPosition.stableCollateral} to be ${expectedStableCollateral}`,
-        `Expected ${newPosition.stableCollateral} NOT to be ${expectedStableCollateral}`,
-        expectedStableCollateral,
-        newPosition.stableCollateral
+        newPosition.collateralStable.eq(expectedcollateralStable),
+        `Expected ${newPosition.collateralStable} to be ${expectedcollateralStable}`,
+        `Expected ${newPosition.collateralStable} NOT to be ${expectedcollateralStable}`,
+        expectedcollateralStable,
+        newPosition.collateralStable
       )
     }
   )

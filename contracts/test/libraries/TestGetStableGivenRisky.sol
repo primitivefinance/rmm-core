@@ -14,7 +14,7 @@ contract TestGetStableGivenRisky {
     using Units for uint256;
 
     function step0(uint256 strike) public pure returns (int128 K) {
-        K = strike.parseUnits();
+        K = strike.scaleToX64(1e18);
     }
 
     function step1(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
@@ -22,7 +22,7 @@ contract TestGetStableGivenRisky {
     }
 
     function step2(uint256 reserveRisky) public pure returns (int128 reserve) {
-        reserve = reserveRisky.parseUnits();
+        reserve = reserveRisky.scaleToX64(1e18);
     }
 
     function step3(int128 reserve) public pure returns (int128 phi) {
