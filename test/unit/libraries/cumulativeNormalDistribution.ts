@@ -1,7 +1,7 @@
 import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
-import { parseWei, Integer64x64, Wei } from 'web3-units'
+import { parseWei, Integer64x64, Wei, parseInt64x64 } from 'web3-units'
 import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
 import loadContext from '../context'
 
@@ -24,11 +24,24 @@ describe('testCumulativeNormalDistribution', function () {
       cumulative = this.contracts.testCumulativeNormalDistribution
     })
 
-    it('cdf', async function () {
+    it('cdf: positive values', async function () {
       let x = 1
+      let y = 0.5
       let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
+      await expect(await cumulative.cdf(x)).to.not.be.reverted
+      await expect(await cumulative.cdf(y)).to.not.be.reverted
       expect(new Integer64x64(await cumulative.cdf(x)).parsed).to.be.closeTo(cdf, precision.percentage)
     })
+
+    it('cdf: negative values', async function () {
+      let x = -1
+      let y = -0.5
+      let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
+      await expect(await cumulative.cdfX64(parseInt64x64(x).raw)).to.not.be.reverted
+      await expect(await cumulative.cdfX64(parseInt64x64(y).raw)).to.not.be.reverted
+      expect(new Integer64x64(await cumulative.cdf(x)).parsed).to.be.closeTo(cdf, precision.percentage)
+    })
+
     it('icdf', async function () {
       let x = 0.25
       let icdf = inverse_std_n_cdf(x)
