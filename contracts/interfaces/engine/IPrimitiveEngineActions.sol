@@ -3,8 +3,9 @@ pragma solidity 0.8.6;
 
 /// @title  Action functions for the Primitive Engine contract
 /// @author Primitive
-
 interface IPrimitiveEngineActions {
+    // ===== Pool Updates =====
+
     /// @notice             Updates the time until expiry of the option by setting its last timestamp value
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @return lastTimestamp Timestamp loaded into the state of the pool's Calibration.lastTimestamp
@@ -36,6 +37,7 @@ interface IPrimitiveEngineActions {
         );
 
     // ===== Margin ====
+
     /// @notice             Adds risky and/or stable tokens to a `recipient`'s internal balance account
     /// @param  recipient   Recipient margin account of the deposited tokens
     /// @param  delRisky    Amount of risky tokens to deposit
@@ -59,6 +61,7 @@ interface IPrimitiveEngineActions {
     ) external;
 
     // ===== Liquidity =====
+
     /// @notice             Allocates risky and stable tokens to a specific curve with `poolId`
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Address to give the allocated position to
@@ -73,7 +76,7 @@ interface IPrimitiveEngineActions {
         uint256 delLiquidity,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256, uint256);
+    ) external returns (uint256 delRisky, uint256 delStable);
 
     /// @notice             Unallocates risky and stable tokens from a specific curve with `poolId`
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
@@ -99,13 +102,14 @@ interface IPrimitiveEngineActions {
     ) external returns (uint256 deltaOut);
 
     // ===== Convexity =====
-    /// @notice             Supplies liquidity to be borrowed
+
+    /// @notice             Supplies liquidity to be borrowed, deposits fees earned to margin of `msg.sender`
     /// @dev                Increases the `msg.sender`'s position's float value.
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity Amount of liquidity to add to the float
     function supply(bytes32 poolId, uint256 delLiquidity) external;
 
-    /// @notice             Removes supplied liquidity.
+    /// @notice             Removes supplied liquidity, deposits fees earned to margin of `msg.sender`
     /// @dev                Reduces the `msg.sender`'s position's float value.
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  delLiquidity Amount of liquidity to remove from the float
@@ -114,8 +118,8 @@ interface IPrimitiveEngineActions {
     /// @notice             Borrows liquidity and removes it, adding a debt
     /// @dev                Increases the `msg.sender`'s position's liquidity value and adds the same to the debt
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyCollateral  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
-    /// @param  stableCollateral Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
+    /// @param  collateralRisky  Amount of risky collateral backing the liquidity debt, for risky / 1 = units of debt
+    /// @param  collateralStable Amount of stable collateral backing the liquidity debt, for stable / K = units of debt
     /// @param  fromMargin  Use margin risky balance to pay premium?
     /// @param  data        Arbitrary data that is passed to the borrowCallback function
     /// @return riskyDeficit    Amount of risky tokens requested to Engine
@@ -124,8 +128,8 @@ interface IPrimitiveEngineActions {
     /// stableSurplus           Amount of stable tokens paid to user
     function borrow(
         bytes32 poolId,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
@@ -141,8 +145,8 @@ interface IPrimitiveEngineActions {
     /// @dev                Important: If the pool is expired, any position can be repaid to the position owner
     /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
     /// @param  recipient   Position recipient to grant the borrowed liquidity shares
-    /// @param  riskyCollateral    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
-    /// @param  stableCollateral   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
+    /// @param  collateralRisky    Amount of risky collateral to liquidate by repaying, for risky / 1 = units of debt
+    /// @param  collateralStable   Amount of stable collateral to liquidate by repaying, for stable / K = units of debt
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the repayCallback function
     /// @return riskyDeficit    Amount of risky tokens requested to Engine
@@ -152,8 +156,8 @@ interface IPrimitiveEngineActions {
     function repay(
         bytes32 poolId,
         address recipient,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     )
