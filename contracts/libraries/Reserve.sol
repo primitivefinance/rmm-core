@@ -168,6 +168,26 @@ library Reserve {
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
     }
 
+    function getBorrowAmounts(
+        Data memory reserve,
+        uint256 riskyCollateral,
+        uint256 stableCollateral,
+        uint256 precisionRisky,
+        uint256 precisionStable,
+        uint256 strike
+    )
+        internal
+        returns (
+            uint256 delLiquidity,
+            uint256 delRisky,
+            uint256 delStable
+        )
+    {
+        //uint256 stablePerStrike = (stableCollateral * precisionStable) / strike;
+        //uint256 delLiquidity = riskyCollateral.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
+        (delRisky, delStable) = getAmounts(reserve, delLiquidity);
+    }
+
     /// @notice                 Reverts if the outstanding float is > 80% of liquidity
     /// @param reserve          Reserve to check
     function checkUtilization(Data memory reserve) internal pure {

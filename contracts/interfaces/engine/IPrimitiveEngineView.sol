@@ -7,16 +7,22 @@ pragma solidity 0.8.6;
 interface IPrimitiveEngineView {
     // ===== View =====
     /// @notice             Fetches expected stable token reserves using risky reserve balance
-    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
-    /// @param  reserveRisky Current reserve of risky tokens
-    /// @return reserveStable Expected stable token reserve
-    function getStableGivenRisky(bytes32 poolId, uint256 reserveRisky) external view returns (int128 reserveStable);
+    function getStableGivenRisky(
+        int128 invariantLastX64,
+        uint256 riskyPerLiquidity,
+        uint128 strike,
+        uint64 sigma,
+        uint32 tau
+    ) external view returns (uint256 stablePerLiquidity);
 
     /// @notice             Fetches expected risky token reserves using stable reserve balance
-    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
-    /// @param  reserveStable Current reserve of stable tokens
-    /// @return reserveRisky Expected risky token reserve
-    function getRiskyGivenStable(bytes32 poolId, uint256 reserveStable) external view returns (int128 reserveRisky);
+    function getRiskyGivenStable(
+        int128 invariantLastX64,
+        uint256 stablePerLiquidity,
+        uint128 strike,
+        uint64 sigma,
+        uint32 tau
+    ) external view returns (uint256 riskyPerLiquidity);
 
     /// @notice             Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
     /// @param  poolId      Pool id to get the invariant of
@@ -32,6 +38,12 @@ interface IPrimitiveEngineView {
 
     /// Stable token address
     function stable() external view returns (address);
+
+    /// 10**precisionOfRisky, decimals of the risky token
+    function precisionRisky() external view returns (uint256);
+
+    /// 10**precisionOfStable, decimals of the stable token
+    function precisionStable() external view returns (uint256);
 
     // ===== Pool State =====
     /// @notice             Fetches the global reserve state for a pool with `poolId`
