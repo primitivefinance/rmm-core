@@ -17,6 +17,7 @@ describe('reserves', function () {
       BigNumber.from('0'),
       BigNumber.from('0'),
       BigNumber.from('0'),
+      BigNumber.from('0'),
       0,
       BigNumber.from('0'),
       BigNumber.from('0'),

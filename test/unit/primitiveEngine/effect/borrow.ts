@@ -73,13 +73,22 @@ describe('borrow', function () {
         expect(await engine.positions(posId)).to.be.deep.eq([toBN(0), toBN(0), one.raw, strike.raw, toBN(0), toBN(0)])
       })
 
-      it('res.borrowFloat: increases reserve debt', async function () {
+      it('res.borrowFloat: increases reserve collateral risky', async function () {
         const collateralRisky = one
         const collateralStable = strike
         const delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
         await expect(
           engineBorrow.borrow(poolId, engineBorrow.address, collateralRisky.raw, collateralStable.raw, HashZero)
-        ).to.increaseReserveDebt(engine, poolId, delLiquidity.raw)
+        ).to.increaseReserveCollateralRisky(engine, poolId, collateralRisky.raw)
+      })
+
+      it('res.borrowFloat: increases reserve collateral stable', async function () {
+        const collateralRisky = one
+        const collateralStable = strike
+        const delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
+        await expect(
+          engineBorrow.borrow(poolId, engineBorrow.address, collateralRisky.raw, collateralStable.raw, HashZero)
+        ).to.increaseReserveCollateralStable(engine, poolId, collateralStable.raw)
       })
 
       it('res.borrowFloat: decreases reserve float', async function () {

@@ -44,7 +44,8 @@ describe('testReserve', function () {
         before.reserveStable,
         before.liquidity,
         before.float,
-        before.debt,
+        before.collateralRisky,
+        before.collateralStable,
         before.blockTimestamp + timestep,
         before.feeRiskyGrowth,
         before.feeStableGrowth,
@@ -63,7 +64,8 @@ describe('testReserve', function () {
         before.reserveStable.sub(deltaOut),
         before.liquidity,
         before.float,
-        before.debt,
+        before.collateralRisky,
+        before.collateralStable,
         before.blockTimestamp,
         before.feeRiskyGrowth,
         before.feeStableGrowth,
@@ -83,7 +85,8 @@ describe('testReserve', function () {
         before.reserveStable.add(delStable),
         before.liquidity.add(delLiquidity),
         before.float,
-        before.debt,
+        before.collateralRisky,
+        before.collateralStable,
         before.blockTimestamp,
         before.feeRiskyGrowth,
         before.feeStableGrowth,
@@ -102,7 +105,8 @@ describe('testReserve', function () {
         before.reserveStable.sub(delStable),
         before.liquidity.sub(delLiquidity),
         before.float,
-        before.debt,
+        before.collateralRisky,
+        before.collateralStable,
         before.blockTimestamp,
         before.feeRiskyGrowth,
         before.feeStableGrowth,
@@ -123,16 +127,18 @@ describe('testReserve', function () {
     })
     it('shouldBorrowFloat', async function () {
       let delLiquidity = parseWei('0.1').raw
-      await reserve.shouldBorrowFloat(resId, delLiquidity)
+      await reserve.shouldBorrowFloat(resId, delLiquidity, delLiquidity, delLiquidity)
       expect((await reserve.res()).float).to.be.deep.eq(before.float.sub(delLiquidity))
-      expect((await reserve.res()).debt).to.be.deep.eq(before.debt.add(delLiquidity))
+      expect((await reserve.res()).collateralRisky).to.be.deep.eq(before.collateralRisky.add(delLiquidity))
+      expect((await reserve.res()).collateralStable).to.be.deep.eq(before.collateralStable.add(delLiquidity))
     })
     it('shouldRepayFloat', async function () {
       let delLiquidity = parseWei('0.1').raw
-      await reserve.shouldBorrowFloat(resId, delLiquidity) // borrow so we can repay
-      await reserve.shouldRepayFloat(resId, delLiquidity) // repay the borrowed float
+      await reserve.shouldBorrowFloat(resId, delLiquidity, delLiquidity, delLiquidity) // borrow so we can repay
+      await reserve.shouldRepayFloat(resId, delLiquidity, delLiquidity, delLiquidity) // repay the borrowed float
       expect((await reserve.res()).float).to.be.deep.eq(before.float) // no changes because we add then sub
-      expect((await reserve.res()).debt).to.be.deep.eq(before.debt) // no changes because...
+      expect((await reserve.res()).collateralRisky).to.be.deep.eq(before.collateralRisky) // no changes because...
+      expect((await reserve.res()).collateralStable).to.be.deep.eq(before.collateralStable)
     })
 
     it('should overflow on update', async function () {

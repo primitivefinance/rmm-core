@@ -132,7 +132,7 @@ describe('repay', function () {
       expect(newReserve.liquidity).to.equal(oldReserve.liquidity.add(delLiquidity.raw))
     })
 
-    it('res.repayFloat: decreases reserve debt', async function () {
+    it('res.repayFloat: decreases reserve collateral risky', async function () {
       await expect(
         this.contracts.engineRepay.repay(
           poolId,
@@ -142,7 +142,20 @@ describe('repay', function () {
           false,
           HashZero
         )
-      ).to.decreaseReserveDebt(this.contracts.engine, poolId, delLiquidity.raw)
+      ).to.decreaseReserveCollateralRisky(this.contracts.engine, poolId, collateralRisky.raw)
+    })
+
+    it('res.repayFloat: decreases reserve collateral stable', async function () {
+      await expect(
+        this.contracts.engineRepay.repay(
+          poolId,
+          this.contracts.engineRepay.address,
+          collateralRisky.raw,
+          collateralStable.raw,
+          false,
+          HashZero
+        )
+      ).to.decreaseReserveCollateralStable(this.contracts.engine, poolId, collateralStable.raw)
     })
 
     it('res.repayFloat: increases reserve float', async function () {
@@ -174,7 +187,8 @@ describe('repay', function () {
 
       const newReserve = await this.contracts.engine.reserves(poolId)
       expect(newReserve.float).to.equal(oldReserve.float.add(delLiquidity.raw))
-      expect(newReserve.debt).to.equal(oldReserve.debt.sub(delLiquidity.raw))
+      expect(newReserve.collateralRisky).to.equal(oldReserve.collateralRisky.sub(collateralRisky.raw))
+      expect(newReserve.collateralStable).to.equal(oldReserve.collateralStable.sub(collateralStable.raw))
     })
 
     it('emits the Repaid event', async function () {

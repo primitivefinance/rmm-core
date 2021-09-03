@@ -36,7 +36,8 @@ interface IPrimitiveEngineView {
     /// reserveStable       Stable token balance in the reserve
     /// liquidity           Total supply of liquidity for the curve
     /// float               Total supply of liquidity supplied to be borrowed
-    /// debt                Total supply of liquidity borrowed
+    /// collateralRisky     Total risky tokens stored as collateral per 1 liquidity debt
+    /// collateralStable    Total stable tokens stored as collateral, for K stable per 1 liquidity debt
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
     /// feeRiskyGrowth      All time risky fees accumulated per float
     /// feeStableGrowth     All time stable fees accumulated per float
@@ -51,7 +52,8 @@ interface IPrimitiveEngineView {
             uint128 reserveStable,
             uint128 liquidity,
             uint128 float,
-            uint128 debt,
+            uint128 collateralRisky,
+            uint128 collateralStable,
             uint32 blockTimestamp,
             uint256 feeRiskyGrowth,
             uint256 feeStableGrowth,

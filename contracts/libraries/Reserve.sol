@@ -18,7 +18,8 @@ library Reserve {
         uint128 reserveStable; // reserve of the stable asset
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
-        uint128 debt; // liquidity unavailable because it was borrowed
+        uint128 collateralRisky; // amount of risky tokens stored as collateral, where 1 risky = 1 liquidity debt
+        uint128 collateralStable; // amount of stable tokens stored as collateral, where K stable = 1 liquidity debt
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 feeRiskyGrowth; // all time risky fees paid per float
         uint256 feeStableGrowth; // // all time stable fees paid per float
@@ -124,17 +125,29 @@ library Reserve {
     /// @notice                 Reduces float and increases debt of the global reserve, called when borrowing
     /// @param reserve          Reserve storage to manipulate
     /// @param delLiquidity     Amount of liquidity to remove from float and add to debt
-    function borrowFloat(Data storage reserve, uint256 delLiquidity) internal {
+    function borrowFloat(
+        Data storage reserve,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) internal {
         reserve.float -= delLiquidity.toUint128();
-        reserve.debt += delLiquidity.toUint128();
+        reserve.collateralRisky += collateralRisky.toUint128();
+        reserve.collateralStable += collateralStable.toUint128();
     }
 
     /// @notice                 Increases float and reduces debt of the global reserve, called when repaying a borrow
     /// @param reserve          Reserve storage to manipulate
     /// @param delLiquidity     Amount of liquidity to add to float and remove from debt
-    function repayFloat(Data storage reserve, uint256 delLiquidity) internal {
+    function repayFloat(
+        Data storage reserve,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) internal {
         reserve.float += delLiquidity.toUint128();
-        reserve.debt -= delLiquidity.toUint128();
+        reserve.collateralRisky -= collateralRisky.toUint128();
+        reserve.collateralStable -= collateralStable.toUint128();
         checkUtilization(reserve);
     }
 
