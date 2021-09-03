@@ -348,8 +348,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
 
             invariantAfter = invariantOf(details.poolId);
-            if (invariantX64 > invariantAfter && invariantX64.sub(invariantAfter) >= int128(184467441000000000))
-                revert InvariantError(invariantX64, invariantAfter);
+            if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
         }
 
         if (deltaOut == 0) revert DeltaOutError();
