@@ -198,8 +198,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (delRisky > 0) balRisky = balanceRisky();
         if (delStable > 0) balStable = balanceStable();
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
-        checkRiskyBalance(balRisky + delRisky);
-        checkStableBalance(balStable + delStable);
+        if (delRisky > 0) checkRiskyBalance(balRisky + delRisky);
+        if (delStable > 0) checkStableBalance(balStable + delStable);
 
         margins[recipient].deposit(delRisky, delStable); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, recipient, delRisky, delStable);
