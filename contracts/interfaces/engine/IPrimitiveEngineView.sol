@@ -6,23 +6,6 @@ pragma solidity 0.8.6;
 
 interface IPrimitiveEngineView {
     // ===== View =====
-    /// @notice             Fetches expected stable token reserves using risky reserve balance
-    function getStableGivenRisky(
-        int128 invariantLastX64,
-        uint256 riskyPerLiquidity,
-        uint128 strike,
-        uint64 sigma,
-        uint32 tau
-    ) external view returns (uint256 stablePerLiquidity);
-
-    /// @notice             Fetches expected risky token reserves using stable reserve balance
-    function getRiskyGivenStable(
-        int128 invariantLastX64,
-        uint256 stablePerLiquidity,
-        uint128 strike,
-        uint64 sigma,
-        uint32 tau
-    ) external view returns (uint256 riskyPerLiquidity);
 
     /// @notice             Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
     /// @param  poolId      Pool id to get the invariant of

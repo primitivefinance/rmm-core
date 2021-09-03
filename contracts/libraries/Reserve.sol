@@ -149,7 +149,7 @@ library Reserve {
         uint256 feeStable
     ) internal {
         unchecked {
-            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float; // float has 18 precision
             reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
         }
     }
@@ -168,6 +168,17 @@ library Reserve {
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
     }
 
+    /// @notice                 Calculates amount of liquidity implied from collateral amounts
+    /// @dev                    Scales intermediary token values up to a precision of 1e18
+    /// @param reserve          Reserves to calculate underlying token amounts of
+    /// @param collateralRisky  Wei value of the risky token with the token's native decimals
+    /// @param collateralStable Wei value of the stable token with the token's native decimals
+    /// @param precisionRisky   Factor to scale risky token amounts by, 10**riskyTokenDecimals
+    /// @param precisionStable  Factor to scale stable token amounts by, 10**stableTokenDecimals
+    /// @param strike           Strike price of pool with 18 decimals, 10**18, will scale by stable precision
+    /// @return delLiquidity    Amount of debt incurred with desired collateralRisky/Stable amounts, 1e18 precision
+    /// delRisky                Amount of risky tokens underlying `delLiquidity`, native precision
+    /// delStable               Amount of stable tokens underlying `delLiquidity`, native precision
     function getBorrowAmounts(
         Data memory reserve,
         uint256 collateralRisky,
@@ -177,14 +188,15 @@ library Reserve {
         uint256 strike
     )
         internal
+        pure
         returns (
             uint256 delLiquidity,
             uint256 delRisky,
             uint256 delStable
         )
     {
-        //uint256 stablePerStrike = (collateralStable * precisionStable) / strike;
-        //uint256 delLiquidity = collateralRisky.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
+        uint256 stablePerStrike = (collateralStable * precisionStable) / strike;
+        delLiquidity = (collateralRisky * 1e18) / precisionRisky + (stablePerStrike * 1e18) / precisionStable;
         (delRisky, delStable) = getAmounts(reserve, delLiquidity);
     }
 

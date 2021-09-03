@@ -130,7 +130,7 @@ describe('supply', function () {
 
     it('fails to add liquidity to float above liquidity factor of 80%', async function () {
       let pos = await this.contracts.engine.positions(posId)
-      await expect(this.contracts.engineSupply.supply(poolId, pos.liquidity)).to.be.revertedWith('LiquidityError()')
+      await expect(this.contracts.engineSupply.supply(poolId, pos.liquidity)).to.be.reverted
     })
   })
 })
