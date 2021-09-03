@@ -18,7 +18,8 @@ library Reserve {
         uint128 reserveStable; // reserve of the stable asset
         uint128 liquidity; // total supply of liquidity
         uint128 float; // liquidity supplied to be borrowed
-        uint128 debt; // liquidity unavailable because it was borrowed
+        uint128 collateralRisky; // amount of risky tokens stored as collateral, where 1 risky = 1 liquidity debt
+        uint128 collateralStable; // amount of stable tokens stored as collateral, where K stable = 1 liquidity debt
         uint32 blockTimestamp; // last timestamp of updated cumulative reserves
         uint256 feeRiskyGrowth; // all time risky fees paid per float
         uint256 feeStableGrowth; // // all time stable fees paid per float
@@ -124,17 +125,29 @@ library Reserve {
     /// @notice                 Reduces float and increases debt of the global reserve, called when borrowing
     /// @param reserve          Reserve storage to manipulate
     /// @param delLiquidity     Amount of liquidity to remove from float and add to debt
-    function borrowFloat(Data storage reserve, uint256 delLiquidity) internal {
+    function borrowFloat(
+        Data storage reserve,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) internal {
         reserve.float -= delLiquidity.toUint128();
-        reserve.debt += delLiquidity.toUint128();
+        reserve.collateralRisky += collateralRisky.toUint128();
+        reserve.collateralStable += collateralStable.toUint128();
     }
 
     /// @notice                 Increases float and reduces debt of the global reserve, called when repaying a borrow
     /// @param reserve          Reserve storage to manipulate
     /// @param delLiquidity     Amount of liquidity to add to float and remove from debt
-    function repayFloat(Data storage reserve, uint256 delLiquidity) internal {
+    function repayFloat(
+        Data storage reserve,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) internal {
         reserve.float += delLiquidity.toUint128();
-        reserve.debt -= delLiquidity.toUint128();
+        reserve.collateralRisky -= collateralRisky.toUint128();
+        reserve.collateralStable -= collateralStable.toUint128();
         checkUtilization(reserve);
     }
 
@@ -149,7 +162,7 @@ library Reserve {
         uint256 feeStable
     ) internal {
         unchecked {
-            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float;
+            reserve.feeRiskyGrowth += (feeRisky * 1e18) / reserve.float; // float has 18 precision
             reserve.feeStableGrowth += (feeStable * 1e18) / reserve.float;
         }
     }
@@ -166,6 +179,38 @@ library Reserve {
     {
         delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
         delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+    }
+
+    /// @notice                 Calculates amount of liquidity implied from collateral amounts
+    /// @dev                    Scales intermediary token values up to a precision of 1e18
+    /// @param reserve          Reserves to calculate underlying token amounts of
+    /// @param collateralRisky  Wei value of the risky token with the token's native decimals
+    /// @param collateralStable Wei value of the stable token with the token's native decimals
+    /// @param precisionRisky   Factor to scale risky token amounts by, 10**riskyTokenDecimals
+    /// @param precisionStable  Factor to scale stable token amounts by, 10**stableTokenDecimals
+    /// @param strike           Strike price of pool with 18 decimals, 10**18, will scale by stable precision
+    /// @return delLiquidity    Amount of debt incurred with desired collateralRisky/Stable amounts, 1e18 precision
+    /// delRisky                Amount of risky tokens underlying `delLiquidity`, native precision
+    /// delStable               Amount of stable tokens underlying `delLiquidity`, native precision
+    function getBorrowAmounts(
+        Data memory reserve,
+        uint256 collateralRisky,
+        uint256 collateralStable,
+        uint256 precisionRisky,
+        uint256 precisionStable,
+        uint256 strike
+    )
+        internal
+        pure
+        returns (
+            uint256 delLiquidity,
+            uint256 delRisky,
+            uint256 delStable
+        )
+    {
+        uint256 stablePerStrike = (collateralStable * precisionStable) / strike;
+        delLiquidity = (collateralRisky * 1e18) / precisionRisky + (stablePerStrike * 1e18) / precisionStable;
+        (delRisky, delStable) = getAmounts(reserve, delLiquidity);
     }
 
     /// @notice                 Reverts if the outstanding float is > 80% of liquidity

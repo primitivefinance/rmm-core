@@ -79,10 +79,10 @@ describe('supply', function () {
         await this.contracts.engineSupply.supply(poolId, parseWei('2').raw)
         // calculate the expected borrow fees
         const res = await this.contracts.engine.reserves(poolId)
-        const stableCollateral = strike
-        const delLiquidity = stableCollateral.mul(one).div(strike)
+        const collateralStable = strike
+        const delLiquidity = collateralStable.mul(one).div(strike)
         const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
-        const stableDeficit = stableCollateral.sub(delStable)
+        const stableDeficit = collateralStable.sub(delStable)
         const fee = stableDeficit.mul(30).div(1e4)
         const feeStableGrowth = fee.mul(one).div(res.float)
         // borrow the position, generating revenue
@@ -90,7 +90,7 @@ describe('supply', function () {
           poolId,
           this.contracts.engineSupply.address,
           '0',
-          stableCollateral.raw,
+          collateralStable.raw,
           HashZero
         )
         // repay the position to release the float
@@ -98,7 +98,7 @@ describe('supply', function () {
           poolId,
           this.contracts.engineSupply.address,
           '0',
-          stableCollateral.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -130,7 +130,7 @@ describe('supply', function () {
 
     it('fails to add liquidity to float above liquidity factor of 80%', async function () {
       let pos = await this.contracts.engine.positions(posId)
-      await expect(this.contracts.engineSupply.supply(poolId, pos.liquidity)).to.be.revertedWith('LiquidityError()')
+      await expect(this.contracts.engineSupply.supply(poolId, pos.liquidity)).to.be.reverted
     })
   })
 })

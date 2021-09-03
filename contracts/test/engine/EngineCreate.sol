@@ -51,8 +51,8 @@ contract EngineCreate {
         returns (
             uint128 float,
             uint128 liquidity,
-            uint128 riskyCollateral,
-            uint128 stableCollateral,
+            uint128 collateralRisky,
+            uint128 collateralStable,
             uint256 feeRiskyGrowthLast,
             uint256 feeStableGrowthLast
         )
