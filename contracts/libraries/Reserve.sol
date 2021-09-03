@@ -170,8 +170,8 @@ library Reserve {
 
     function getBorrowAmounts(
         Data memory reserve,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         uint256 precisionRisky,
         uint256 precisionStable,
         uint256 strike
@@ -183,8 +183,8 @@ library Reserve {
             uint256 delStable
         )
     {
-        //uint256 stablePerStrike = (stableCollateral * precisionStable) / strike;
-        //uint256 delLiquidity = riskyCollateral.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
+        //uint256 stablePerStrike = (collateralStable * precisionStable) / strike;
+        //uint256 delLiquidity = collateralRisky.scaleUp(precisionRisky) + stablePerStrike.scaleUp(precisionStable); // debt sum
         (delRisky, delStable) = getAmounts(reserve, delLiquidity);
     }
 

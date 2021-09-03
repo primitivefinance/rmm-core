@@ -30,50 +30,50 @@ contract EngineBorrow {
     function borrow(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
     }
 
     function borrowWithMargin(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, true, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, true, data);
     }
 
     function borrowMaxPremium(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
     }
 
     function borrowWithoutPaying(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bytes calldata data
     ) public {
         owner;
         CALLER = msg.sender;
         dontPay = 0;
-        IPrimitiveEngine(engine).borrow(poolId, riskyCollateral, stableCollateral, false, data);
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
         dontPay = 1;
     }
 
@@ -105,14 +105,14 @@ contract EngineBorrow {
     function repayWithoutRepaying(
         bytes32 poolId,
         address owner,
-        uint256 riskyCollateral,
-        uint256 stableCollateral,
+        uint256 collateralRisky,
+        uint256 collateralStable,
         bool fromMargin,
         bytes calldata data
     ) external {
         CALLER = msg.sender;
         dontRepay = 0;
-        IPrimitiveEngine(engine).repay(poolId, owner, riskyCollateral, stableCollateral, fromMargin, data);
+        IPrimitiveEngine(engine).repay(poolId, owner, collateralRisky, collateralStable, fromMargin, data);
         dontRepay = 1;
     }
 
