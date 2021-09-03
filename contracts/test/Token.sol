@@ -26,7 +26,7 @@ contract Token is IERC20 {
         return _symbol;
     }
 
-    function decimals() public view virtual returns (uint8) {
+    function decimals() public view virtual override returns (uint8) {
         return 18;
     }
 

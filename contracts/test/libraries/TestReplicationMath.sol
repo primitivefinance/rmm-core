@@ -2,12 +2,17 @@
 pragma solidity 0.8.6;
 
 import "../../libraries/ReplicationMath.sol";
+import "../../libraries/Units.sol";
 
 /// @title   ReplicationMath Lib API Test
 /// @author  Primitive
 /// @dev     For testing purposes ONLY
 
 contract TestReplicationMath {
+    using Units for uint256;
+    uint256 public constant precisionRisky = 1e18;
+    uint256 public constant precisionStable = 1e18;
+
     /// @return vol The sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
@@ -21,7 +26,9 @@ contract TestReplicationMath {
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 reserveStable) {
-        reserveStable = ReplicationMath.getStableGivenRisky(invariantLast, reserveRisky, strike, sigma, tau);
+        reserveStable = ReplicationMath
+        .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
+        .scaleToX64(precisionStable);
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
@@ -32,7 +39,9 @@ contract TestReplicationMath {
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 reserveRisky) {
-        reserveRisky = ReplicationMath.getRiskyGivenStable(invariantLast, reserveStable, strike, sigma, tau);
+        reserveRisky = ReplicationMath
+        .getRiskyGivenStable(invariantLast, precisionRisky, precisionStable, reserveStable, strike, sigma, tau)
+        .scaleToX64(precisionRisky);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
@@ -43,6 +52,14 @@ contract TestReplicationMath {
         uint256 sigma,
         uint256 tau
     ) public pure returns (int128 invariant) {
-        invariant = ReplicationMath.calcInvariant(reserveRisky, reserveStable, strike, sigma, tau);
+        invariant = ReplicationMath.calcInvariant(
+            precisionRisky,
+            precisionStable,
+            reserveRisky,
+            reserveStable,
+            strike,
+            sigma,
+            tau
+        );
     }
 }

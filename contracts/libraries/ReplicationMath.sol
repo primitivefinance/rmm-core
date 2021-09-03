@@ -20,73 +20,91 @@ library ReplicationMath {
 
     // ===== Math ======
 
-    /// @param   sigma  Volatility scaled by Percentage Mantissa of 1e4, where 1 bip = 100
-    /// @param   tau    Time until expiry in seconds
-    /// @return  vol    Volatility * sqrt(tau)
+    /// @notice         Normalizes volatility with respect to square root of time until expiry
+    /// @param   sigma  Unsigned 256-bit percentage as an integer with precision of 1e4
+    /// @param   tau    Time until expiry in seconds as an unsigned 256-bit integer
+    /// @return  vol    Signed fixed point 64.64 number equal to sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
-        int128 sqrtTau = tau.toYears().sqrt();
-        vol = sigma.fromUInt().mul(sqrtTau).div(Units.PERCENTAGE_INT); // scales down from Mantissa
+        int128 sqrtTauX64 = tau.toYears().sqrt();
+        int128 sigmaX64 = sigma.percentage();
+        vol = sigmaX64.mul(sqrtTauX64);
     }
 
-    /// @notice                 Uses reserveRisky and invariant to calculate reserveStable
-    /// @dev                    Calculates only 1 unit of reserves
-    /// @param   invariantLast  Previous invariant with the same `tau` input as the parameter `tau`
-    /// @param   reserveRisky   Pool's risky reserves per unit of liquidity, 0 <= x <= 1
-    /// @param   strike         Price point at which portfolio is 100% composed of stable tokens
-    /// @param   sigma          Volatility of the Pool
-    /// @param   tau            Time until expiry in seconds
-    /// @return  reserveStable  = K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(T - t))
+    /// @notice                 Uses riskyPerLiquidity and invariant to calculate stablePerLiquidity
+    /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
+    /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
+    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
+    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
+    /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
+    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
+    /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
+    /// @return  stablePerLiquidity = K*CDF(CDF^-1(1 - riskyPerLiquidity) - sigma*sqrt(tau)) as an unsigned 256-bit int
     function getStableGivenRisky(
-        int128 invariantLast,
-        uint256 reserveRisky,
+        int128 invariantLastX64,
+        uint256 precisionRisky,
+        uint256 precisionStable,
+        uint256 riskyPerLiquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) internal pure returns (int128 reserveStable) {
-        int128 K = strike.parseUnits(); // strike in 64x64 fixed point format
-        int128 vol = getProportionalVolatility(sigma, tau);
-        int128 reserve = reserveRisky.parseUnits();
-        int128 phi = ONE_INT.sub(reserve).getInverseCDF(); // CDF^-1(1-x)
-        int128 input = phi.sub(vol); // phi - vol
-        reserveStable = K.mul(input.getCDF()).add(invariantLast);
+    ) internal pure returns (uint256 stablePerLiquidity) {
+        int128 strikeX64 = strike.scaleToX64(precisionStable);
+        int128 volX64 = getProportionalVolatility(sigma, tau);
+        int128 riskyX64 = riskyPerLiquidity.scaleToX64(precisionRisky);
+        int128 phi = ONE_INT.sub(riskyX64).getInverseCDF(); // CDF^-1(1-x)
+        int128 input = phi.sub(volX64); // phi - volX64
+        int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
+        stablePerLiquidity = stableX64.scalefromX64(precisionStable);
     }
 
-    /// @notice                 Uses reserveStable and invariant to calculate reserveRisky
-    /// @dev                    Calculates 1 unit of reserves
-    /// @param   invariantLast  Previous invariant with the same `tau` input as the parameter `tau`
-    /// @param   reserveStable  Pool's stable reserves per unit of liquidity, 0 <= x <= strike
-    /// @param   strike         Price point at which portfolio is 100% composed of stable tokens
-    /// @param   sigma          Volatility of the Pool
-    /// @param   tau            Time until expiry in seconds
-    /// @return  reserveRisky   = 1 - CDF(CDF^-1((reserveStable - invariantLast)/K) + sigma*sqrt(tau))
+    /// @notice                 Uses stablePerLiquidity and invariant to calculate riskyPerLiquidity
+    /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
+    /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
+    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
+    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
+    /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
+    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
+    /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
+    /// @return  riskyPerLiquidity = 1 - CDF(CDF^-1((stablePerLiquidity - invariantLastX64)/K) + sigma*sqrt(tau))
     function getRiskyGivenStable(
-        int128 invariantLast,
-        uint256 reserveStable,
+        int128 invariantLastX64,
+        uint256 precisionRisky,
+        uint256 precisionStable,
+        uint256 stablePerLiquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) internal pure returns (int128 reserveRisky) {
-        int128 K = strike.parseUnits();
-        int128 vol = getProportionalVolatility(sigma, tau);
-        int128 reserve = reserveStable.parseUnits();
-        int128 phi = reserve.sub(invariantLast).div(K).getInverseCDF(); // CDF^-1((reserveStable - invariantLast)/K)
-        int128 input = phi.add(vol); // phi + vol
-        reserveRisky = ONE_INT.sub(input.getCDF());
+    ) internal pure returns (uint256 riskyPerLiquidity) {
+        int128 strikeX64 = strike.scaleToX64(precisionStable);
+        int128 volX64 = getProportionalVolatility(sigma, tau);
+        int128 stableX64 = stablePerLiquidity.scaleToX64(precisionStable);
+        int128 phi = stableX64.sub(invariantLastX64).div(strikeX64).getInverseCDF(); // CDF^-1((stable - invariant)/K)
+        int128 input = phi.add(volX64); // phi + volX64
+        int128 riskyX64 = ONE_INT.sub(input.getCDF());
+        riskyPerLiquidity = riskyX64.scalefromX64(precisionRisky);
     }
 
-    /// @notice                 Calculates 1 unit of invariant
-    /// @dev                    Only defined for 1 unit of replication
-    /// @param   reserveRisky   Pool's risky reserves per unit of liquidity, 0 <= x <= 1
-    /// @param   reserveStable  Pool's stable reserves per unit of liquidity, 0 <= x <= strike
-    /// @return  invariant      = reserveStable - K * CDF(CDF^-1(1 - reserveRisky) - sigma * sqrt(tau))
+    /// @notice                 Calculates the invariant of a curve
+    /// @dev                    Per unit of replication, aka per unit of liquidity
+    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
+    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
+    /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
+    /// @return  invariantX64      = stablePerLiquidity - K * CDF(CDF^-1(1 - riskyPerLiquidity) - sigma * sqrt(tau))
     function calcInvariant(
-        uint256 reserveRisky,
-        uint256 reserveStable,
+        uint256 precisionRisky,
+        uint256 precisionStable,
+        uint256 riskyPerLiquidity,
+        uint256 stablePerLiquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) internal pure returns (int128 invariant) {
-        int128 reserve2 = getStableGivenRisky(0, reserveRisky, strike, sigma, tau);
-        invariant = reserveStable.parseUnits().sub(reserve2);
+    ) internal pure returns (int128 invariantX64) {
+        uint256 output = getStableGivenRisky(0, precisionRisky, precisionStable, riskyPerLiquidity, strike, sigma, tau);
+        int128 outputX64 = output.scaleToX64(precisionStable);
+        int128 stableX64 = stablePerLiquidity.scaleToX64(precisionStable);
+        invariantX64 = stableX64.sub(outputX64);
     }
 }

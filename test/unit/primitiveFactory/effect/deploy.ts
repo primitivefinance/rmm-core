@@ -24,6 +24,8 @@ describe('deploy', function () {
     it('deploys a new PrimitiveEngine', async function () {
       let mockRisky = await deployMockContract(deployer, Token)
       let mockStable = await deployMockContract(deployer, Token)
+      await mockRisky.mock.decimals.returns(18)
+      await mockStable.mock.decimals.returns(18)
       expect(await this.contracts.factory.getEngine(mockRisky.address, mockStable.address)).to.equal(constants.AddressZero)
       await this.contracts.factoryDeploy.deploy(mockRisky.address, mockStable.address)
     })
@@ -33,6 +35,8 @@ describe('deploy', function () {
 
       let mockRisky = await deployMockContract(deployer, Token)
       let mockStable = await deployMockContract(deployer, Token)
+      await mockRisky.mock.decimals.returns(18)
+      await mockStable.mock.decimals.returns(18)
       const engineAddress = computeEngineAddress(
         this.contracts.factory.address,
         mockRisky.address,
