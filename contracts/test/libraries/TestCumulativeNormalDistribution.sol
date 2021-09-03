@@ -23,6 +23,7 @@ contract TestCumulativeNormalDistribution {
     }
 
     function cdfX64(int128 z) public pure returns (int128) {
+        z = -z;
         return z.getCDF();
     }
 
@@ -33,6 +34,7 @@ contract TestCumulativeNormalDistribution {
     }
 
     function icdfX64(int128 p) public pure returns (int128 y) {
+        p = -p;
         y = p.getInverseCDF();
     }
 }
