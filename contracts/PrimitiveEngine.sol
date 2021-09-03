@@ -457,13 +457,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (collateralStable > delStable) stableDeficit = collateralStable - delStable;
             else stableSurplus = delStable - collateralStable;
 
-            uint256 feeRisky = (riskyDeficit * 30) / 1e4;
-            uint256 feeStable = (stableDeficit * 30) / 1e4;
-            riskyDeficit += feeRisky;
-            stableDeficit += feeStable;
+            {
+                uint256 feeRisky = (riskyDeficit * 30) / 1e4;
+                uint256 feeStable = (stableDeficit * 30) / 1e4;
+                riskyDeficit += feeRisky;
+                stableDeficit += feeStable;
 
-            reserve.addFee(feeRisky, feeStable);
-            reserve.borrowFloat(delLiquidity); // decrease: global float, increase: global debt
+                reserve.addFee(feeRisky, feeStable);
+            }
+
+            reserve.borrowFloat(delLiquidity, collateralRisky, collateralStable); // decrease: global float, increase: global debt
             reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // decrease: risky, stable, liquidity
         }
 
@@ -539,7 +542,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (delStable > collateralStable) stableDeficit = delStable - collateralStable;
             else stableSurplus = collateralStable - delStable;
 
-            reserve.repayFloat(delLiquidity); // increase: float, decrease: debt
+            reserve.repayFloat(delLiquidity, collateralRisky, collateralStable); // increase: float, decrease: debt
             reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
         }
 

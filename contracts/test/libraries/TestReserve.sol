@@ -41,7 +41,8 @@ contract TestReserve {
             reserveStable: uint128(reserveStable), // stable token balance
             liquidity: uint128(2e18),
             float: uint128(1e18), // the LP shares available to be borrowed on a given poolId
-            debt: 0, // the LP shares borrowed from the float
+            collateralRisky: 0,
+            collateralStable: 0,
             feeRiskyGrowth: 0,
             feeStableGrowth: 0,
             blockTimestamp: uint32(timestamp_),
@@ -113,14 +114,24 @@ contract TestReserve {
     }
 
     /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function shouldBorrowFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        reserves[resId].borrowFloat(delLiquidity);
+    function shouldBorrowFloat(
+        bytes32 resId,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) public returns (Reserve.Data memory) {
+        reserves[resId].borrowFloat(delLiquidity, collateralRisky, collateralStable);
         return reserves[resId];
     }
 
     /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
-    function shouldRepayFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        reserves[resId].repayFloat(delLiquidity);
+    function shouldRepayFloat(
+        bytes32 resId,
+        uint256 delLiquidity,
+        uint256 collateralRisky,
+        uint256 collateralStable
+    ) public returns (Reserve.Data memory) {
+        reserves[resId].repayFloat(delLiquidity, collateralRisky, collateralStable);
         return reserves[resId];
     }
 

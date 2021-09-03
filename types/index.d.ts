@@ -112,8 +112,26 @@ declare global {
       decreaseReserveLiquidity(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveFloat(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveFloat(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
-      decreaseReserveDebt(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
+      increaseReserveCollateralRisky(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber
+      ): AsyncAssertion
+      decreaseReserveCollateralRisky(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber
+      ): AsyncAssertion
+      increaseReserveCollateralStable(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber
+      ): AsyncAssertion
+      decreaseReserveCollateralStable(
+        engine: ContractTypes.PrimitiveEngine,
+        poolId: string,
+        amount: BigNumber
+      ): AsyncAssertion
       increaseReserveFeeRiskyGrowth(engine: ContractTypes.PrimitiveEngine, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveFeeStableGrowth(
         engine: ContractTypes.PrimitiveEngine,
