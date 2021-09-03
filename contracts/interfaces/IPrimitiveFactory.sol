@@ -22,13 +22,17 @@ interface IPrimitiveFactory {
     /// @return factory Smart contract deploying the Engine contract
     /// risky           Risky token
     /// stable          Stable token
+    /// precisionRisky  Precision of the risky token, 10**riskyTokenDecimals
+    /// precisionStable Precision of the stable token, 10**stableTokenDecimals
     function args()
         external
         view
         returns (
             address factory,
             address risky,
-            address stable
+            address stable,
+            uint256 precisionRisky,
+            uint256 precisionStable
         );
 
     /// @notice         Fetches engine address of a token pair

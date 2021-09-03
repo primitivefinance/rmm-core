@@ -32,32 +32,32 @@ describe('repay', function () {
   })
 
   let poolId: string, posId: string
-  let riskyCollateral: Wei, stableCollateral: Wei, delLiquidity: Wei
+  let collateralRisky: Wei, collateralStable: Wei, delLiquidity: Wei
   const one = parseWei('1')
 
   beforeEach(async function () {
     poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
     posId = await this.contracts.engineRepay.getPosition(poolId)
-    riskyCollateral = one
-    stableCollateral = strike
-    delLiquidity = riskyCollateral.add(stableCollateral.mul(1e18).div(strike))
+    collateralRisky = one
+    collateralStable = strike
+    delLiquidity = collateralRisky.add(collateralStable.mul(1e18).div(strike))
   })
 
   describe('success cases', function () {
-    it('reduces the riskyCollateral of the position', async function () {
+    it('reduces the collateralRisky of the position', async function () {
       await expect(
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, one.raw, '0', false, HashZero)
       ).to.decreasePositionDebt(this.contracts.engine, posId, one.raw, toBN(0))
       const position = await this.contracts.engine.positions(posId)
-      expect(position.riskyCollateral).to.equal(0)
+      expect(position.collateralRisky).to.equal(0)
     })
 
-    it('reduces the stableCollateral of the position', async function () {
+    it('reduces the collateralStable of the position', async function () {
       await expect(
         this.contracts.engineRepay.repay(poolId, this.contracts.engineRepay.address, '0', strike.raw, false, HashZero)
       ).to.decreasePositionDebt(this.contracts.engine, posId, toBN(0), strike.raw)
       const position = await this.contracts.engine.positions(posId)
-      expect(position.stableCollateral).to.equal(0)
+      expect(position.collateralStable).to.equal(0)
     })
 
     it('res.allocate: increases risky reserve', async function () {
@@ -67,8 +67,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -82,8 +82,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -95,8 +95,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -118,8 +118,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -132,17 +132,30 @@ describe('repay', function () {
       expect(newReserve.liquidity).to.equal(oldReserve.liquidity.add(delLiquidity.raw))
     })
 
-    it('res.repayFloat: decreases reserve debt', async function () {
+    it('res.repayFloat: decreases reserve collateral risky', async function () {
       await expect(
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
-      ).to.decreaseReserveDebt(this.contracts.engine, poolId, delLiquidity.raw)
+      ).to.decreaseReserveCollateralRisky(this.contracts.engine, poolId, collateralRisky.raw)
+    })
+
+    it('res.repayFloat: decreases reserve collateral stable', async function () {
+      await expect(
+        this.contracts.engineRepay.repay(
+          poolId,
+          this.contracts.engineRepay.address,
+          collateralRisky.raw,
+          collateralStable.raw,
+          false,
+          HashZero
+        )
+      ).to.decreaseReserveCollateralStable(this.contracts.engine, poolId, collateralStable.raw)
     })
 
     it('res.repayFloat: increases reserve float', async function () {
@@ -150,8 +163,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -165,8 +178,8 @@ describe('repay', function () {
         this.contracts.engineRepay.repay(
           poolId,
           this.contracts.engineRepay.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           false,
           HashZero
         )
@@ -174,7 +187,8 @@ describe('repay', function () {
 
       const newReserve = await this.contracts.engine.reserves(poolId)
       expect(newReserve.float).to.equal(oldReserve.float.add(delLiquidity.raw))
-      expect(newReserve.debt).to.equal(oldReserve.debt.sub(delLiquidity.raw))
+      expect(newReserve.collateralRisky).to.equal(oldReserve.collateralRisky.sub(collateralRisky.raw))
+      expect(newReserve.collateralStable).to.equal(oldReserve.collateralStable.sub(collateralStable.raw))
     })
 
     it('emits the Repaid event', async function () {
@@ -225,15 +239,15 @@ describe('repay', function () {
         const previousRiskyBalance = await this.contracts.risky.balanceOf(this.signers[0].address)
 
         const oldReserve = await this.contracts.engine.reserves(poolId)
-        // div delLiquidity by 2 because we are only liquidating 1 riskyCollateral = 1 unit of debt
+        // div delLiquidity by 2 because we are only liquidating 1 collateralRisky = 1 unit of debt
         const delRisky = delLiquidity.div(2).mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
-        const riskySurplus = riskyCollateral.sub(delRisky)
+        const riskySurplus = collateralRisky.sub(delRisky)
 
         await expect(() =>
           this.contracts.engineRepay.repay(
             poolId,
             this.contracts.engineRepay.address,
-            riskyCollateral.raw,
+            collateralRisky.raw,
             '0',
             false,
             HashZero
@@ -250,7 +264,7 @@ describe('repay', function () {
         const enginePreviousStableBalance = await this.contracts.stable.balanceOf(this.contracts.engine.address)
 
         const oldReserve = await this.contracts.engine.reserves(poolId)
-        // div delLiquidity by 2 because we are only liquidating 1 riskyCollateral = 1 unit of debt
+        // div delLiquidity by 2 because we are only liquidating 1 collateralRisky = 1 unit of debt
         const delStable = delLiquidity.div(2).mul(oldReserve.reserveStable).div(oldReserve.liquidity)
         const stableDeficit = delStable
 
@@ -258,7 +272,7 @@ describe('repay', function () {
           this.contracts.engineRepay.repay(
             poolId,
             this.contracts.engineRepay.address,
-            riskyCollateral.raw,
+            collateralRisky.raw,
             '0',
             false,
             HashZero
@@ -302,14 +316,14 @@ describe('repay', function () {
         await this.contracts.engineBorrow.borrow(
           expiredPoolId,
           this.contracts.engineBorrow.address,
-          riskyCollateral.raw,
-          stableCollateral.raw,
+          collateralRisky.raw,
+          collateralStable.raw,
           HashZero
         )
         await this.contracts.engine.advanceTime(Time.YearInSeconds + 1 + gracePeriod)
       })
 
-      it('repay engineBorrow`s riskyCollateral position, receive riskySurplus and pay stable deficit', async function () {
+      it('repay engineBorrow`s collateralRisky position, receive riskySurplus and pay stable deficit', async function () {
         const oldReserve = await this.contracts.engine.reserves(expiredPoolId)
         const delRisky = delLiquidity.mul(oldReserve.reserveRisky).div(oldReserve.liquidity)
         const delStable = delLiquidity.mul(oldReserve.reserveStable).div(oldReserve.liquidity)
@@ -319,10 +333,10 @@ describe('repay', function () {
         let stableDeficit = parseWei(0)
         let stableSurplus = parseWei(0)
 
-        if (riskyCollateral.gt(delRisky)) riskySurplus = riskyCollateral.sub(delRisky)
-        else riskyDeficit = delRisky.sub(riskyCollateral)
-        if (riskyCollateral.gt(delRisky)) stableSurplus = stableCollateral.sub(delStable)
-        else stableDeficit = delStable.sub(stableCollateral)
+        if (collateralRisky.gt(delRisky)) riskySurplus = collateralRisky.sub(delRisky)
+        else riskyDeficit = delRisky.sub(collateralRisky)
+        if (collateralRisky.gt(delRisky)) stableSurplus = collateralStable.sub(delStable)
+        else stableDeficit = delStable.sub(collateralStable)
 
         riskySurplus = riskySurplus
         stableSurplus = stableSurplus
@@ -332,8 +346,8 @@ describe('repay', function () {
           this.contracts.engineRepay.repay(
             expiredPoolId,
             this.contracts.engineBorrow.address,
-            riskyCollateral.raw,
-            stableCollateral.raw,
+            collateralRisky.raw,
+            collateralStable.raw,
             true,
             HashZero
           )
@@ -352,8 +366,8 @@ describe('repay', function () {
       await this.contracts.engineRepay.repay(
         poolId,
         this.contracts.engineRepay.address,
-        riskyCollateral.raw,
-        stableCollateral.raw,
+        collateralRisky.raw,
+        collateralStable.raw,
         false,
         HashZero
       )
