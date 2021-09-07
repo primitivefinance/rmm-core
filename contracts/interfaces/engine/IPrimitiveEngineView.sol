@@ -35,12 +35,7 @@ interface IPrimitiveEngineView {
     /// @return reserveRisky Risky token balance in the reserve
     /// reserveStable       Stable token balance in the reserve
     /// liquidity           Total supply of liquidity for the curve
-    /// float               Total supply of liquidity supplied to be borrowed
-    /// collateralRisky     Total risky tokens stored as collateral per 1 liquidity debt
-    /// collateralStable    Total stable tokens stored as collateral, for K stable per 1 liquidity debt
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
-    /// feeRiskyGrowth      All time risky fees accumulated per float
-    /// feeStableGrowth     All time stable fees accumulated per float
     /// cumulativeRisky     Cumulative sum of risky token reserves
     /// cumulativeStable    Cumulative sum of stable token reserves
     /// cumulativeLiquidity Cumulative sum of total supply of liquidity
@@ -51,12 +46,7 @@ interface IPrimitiveEngineView {
             uint128 reserveRisky,
             uint128 reserveStable,
             uint128 liquidity,
-            uint128 float,
-            uint128 collateralRisky,
-            uint128 collateralStable,
             uint32 blockTimestamp,
-            uint256 feeRiskyGrowth,
-            uint256 feeStableGrowth,
             uint256 cumulativeRisky,
             uint256 cumulativeStable,
             uint256 cumulativeLiquidity
@@ -78,25 +68,10 @@ interface IPrimitiveEngineView {
             uint32 lastTimestamp
         );
 
-    /// @notice             Fetches Position data struct using a position id
-    /// @param  posId       Keccak256 hash of owner address and poolId
-    /// @return float       Liquidity that is supplied to be borrowed
-    /// liquidity           Liquidity in the position
-    /// collateralRisky     For every 1 risky collateral, 1 liquidity debt
-    /// collateralStable    For every K stable collateral (K = strike), 1 liquidity debt
-    /// feeRiskyGrowthLast  All time risky fees accumulated per float of the position
-    /// feeStableGrowthLast All time stable fees accumulated per float of the position
-    function positions(bytes32 posId)
-        external
-        view
-        returns (
-            uint128 float,
-            uint128 liquidity,
-            uint128 collateralRisky,
-            uint128 collateralStable,
-            uint256 feeRiskyGrowthLast,
-            uint256 feeStableGrowthLast
-        );
+    /// @notice             Fetches position liquidity an account address and poolId
+    /// @param  poolId      Keccak256 hash of pool parameters
+    /// @return liquidity   Liquidity in the position
+    function liquidity(address account, bytes32 poolId) external view returns (uint256 liquidity);
 
     /// @notice                 Fetchs the margin position of `account`
     /// @param  account         Margin account to fetch
