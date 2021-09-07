@@ -7,7 +7,6 @@ pragma solidity 0.8.6;
 
 import "./libraries/ABDKMath64x64.sol";
 import "./libraries/Margin.sol";
-import "./libraries/Position.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
 import "./libraries/SafeCast.sol";
@@ -15,10 +14,8 @@ import "./libraries/Transfers.sol";
 import "./libraries/Units.sol";
 
 import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveBorrowCallback.sol";
 import "./interfaces/callback/IPrimitiveDepositCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveRepayCallback.sol";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
@@ -33,8 +30,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Reserve for Reserve.Data;
     using Margin for mapping(address => Margin.Data);
     using Margin for Margin.Data;
-    using Position for mapping(bytes32 => Position.Data);
-    using Position for Position.Data;
     using Transfers for IERC20;
 
     /// @dev Parameters of each pool
@@ -60,9 +55,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     mapping(address => Margin.Data) public override margins;
     /// @inheritdoc IPrimitiveEngineView
-    mapping(bytes32 => Position.Data) public override positions;
-    /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Reserve.Data) public override reserves;
+    /// @inheritdoc IPrimitiveEngineView
+    mapping(address => mapping(bytes32 => uint256)) public override liquidity;
 
     uint8 private unlocked = 1;
 
@@ -165,11 +160,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         delRisky = 1e18 - delta; // 18 decimals of precision, 0 < delta < 1
         (uint256 prec0, uint256 prec1) = (precisionRisky, precisionStable);
         delRisky = delRisky.scaleDown(prec0); // 18 decimals of precision -> native risky precision
-        delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau); // stable precision
+        delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau);
         delRisky = (delRisky * delLiquidity) / 1e18; // native risky precision
         delStable = (delStable * delLiquidity) / 1e18; // native stable precision
 
-        if (delRisky * delStable == 0) revert CalibrationError(delRisky, delStable);
+        if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
 
         {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
@@ -180,7 +175,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         calibrations[poolId] = cal; // initialize calibration
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // provide liquidity
-        positions.fetch(msg.sender, poolId).allocate(delLiquidity - 1000); // burn 1000 wei, at cost of msg.sender
+        liquidity[msg.sender][poolId] += delLiquidity - 1000; // burn 1000 wei, at cost of msg.sender
         emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
@@ -243,7 +238,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             checkStableBalance(balStable + delStable);
         }
 
-        positions.fetch(recipient, poolId).allocate(delLiquidity); // increase position liquidity
+        liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
         reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
         emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
     }
@@ -259,7 +254,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts from removing, one side can be 0
 
-        positions.remove(poolId, delLiquidity); // update position liquidity of msg.sender
+        liquidity[msg.sender][poolId] -= delLiquidity; // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
         margins[msg.sender].deposit(delRisky, delStable); // increase margin of msg.sender
         emit Removed(msg.sender, poolId, delRisky, delStable);
@@ -339,16 +334,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 cal.sigma,
                 tau
             );
-
-            if (invariantAfter > 0) {
-                reserve.swap(swapInRisky, deltaInWithFee, deltaOut, _blockTimestamp());
-                if (reserve.float > 0) reserve.addFee(swapInRisky ? fee : 0, swapInRisky ? 0 : fee);
-            } else {
-                reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
-            }
-
-            invariantAfter = invariantOf(details.poolId);
             if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
+            reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
         }
 
         if (deltaOut == 0) revert DeltaOutError();
@@ -374,202 +361,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
-    }
-
-    // ===== Convexity =====
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function supply(bytes32 poolId, uint256 delLiquidity) external override lock {
-        if (calibrations[poolId].lastTimestamp == 0) revert UninitializedError();
-        if (delLiquidity == 0) revert ZeroLiquidityError();
-
-        Reserve.Data storage reserve = reserves[poolId];
-        Position.Data storage position = positions.fetch(msg.sender, poolId);
-        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
-            reserve.feeRiskyGrowth,
-            reserve.feeStableGrowth
-        );
-
-        margins[msg.sender].deposit(feeRisky, feeStable);
-        positions.supply(poolId, delLiquidity); // increase position float by `delLiquidity`
-        reserve.addFloat(delLiquidity); // increase global float
-        emit Supplied(msg.sender, poolId, delLiquidity);
-    }
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function claim(bytes32 poolId, uint256 delLiquidity) external override lock {
-        if (calibrations[poolId].lastTimestamp == 0) revert UninitializedError();
-        if (delLiquidity == 0) revert ZeroLiquidityError();
-
-        Reserve.Data storage reserve = reserves[poolId];
-        Position.Data storage position = positions.fetch(msg.sender, poolId);
-        (uint256 feeRisky, uint256 feeStable) = position.updateFeeGrowth(
-            reserve.feeRiskyGrowth,
-            reserve.feeStableGrowth
-        );
-
-        margins[msg.sender].deposit(feeRisky, feeStable); // increase margin of msg.sender
-        positions.claim(poolId, delLiquidity); // reduce float by `delLiquidity`
-        reserve.removeFloat(delLiquidity); // reduce global float
-        emit Claimed(msg.sender, poolId, delLiquidity);
-    }
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function borrow(
-        bytes32 poolId,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bool fromMargin,
-        bytes calldata data
-    )
-        external
-        override
-        lock
-        returns (
-            uint256 riskyDeficit,
-            uint256 riskySurplus,
-            uint256 stableDeficit,
-            uint256 stableSurplus
-        )
-    {
-        // Source: Convex Payoff Approximation. https://stanford.edu/~guillean/papers/cfmm-lending.pdf. Section 5.
-        Calibration memory cal = calibrations[poolId];
-        if (cal.lastTimestamp == 0) revert UninitializedError();
-        if (collateralRisky == 0 && collateralStable == 0) revert ZeroLiquidityError();
-        if (_blockTimestamp() > cal.maturity) revert PoolExpiredError();
-
-        positions.borrow(poolId, collateralRisky, collateralStable);
-
-        {
-            // liquidity scope
-            Reserve.Data storage reserve = reserves[poolId];
-            (uint256 delLiquidity, uint256 delRisky, uint256 delStable) = reserve.getBorrowAmounts(
-                collateralRisky,
-                collateralStable,
-                precisionRisky,
-                precisionStable,
-                uint256(cal.strike)
-            );
-
-            if (collateralRisky > delRisky) riskyDeficit = collateralRisky - delRisky;
-            else riskySurplus = delRisky - collateralRisky;
-            if (collateralStable > delStable) stableDeficit = collateralStable - delStable;
-            else stableSurplus = delStable - collateralStable;
-
-            {
-                uint256 feeRisky = (riskyDeficit * 30) / 1e4;
-                uint256 feeStable = (stableDeficit * 30) / 1e4;
-                riskyDeficit += feeRisky;
-                stableDeficit += feeStable;
-
-                reserve.addFee(feeRisky, feeStable);
-            }
-
-            reserve.borrowFloat(delLiquidity, collateralRisky, collateralStable); // decrease: global float, increase: global debt
-            reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // decrease: risky, stable, liquidity
-        }
-
-        if (fromMargin) {
-            margins.withdraw(riskyDeficit, stableDeficit); // receive deficits
-            margins[msg.sender].deposit(riskySurplus, stableSurplus); // send surpluses
-        } else {
-            if (riskySurplus > 0) IERC20(risky).safeTransfer(msg.sender, riskySurplus); // send surpluses
-            if (stableSurplus > 0) IERC20(stable).safeTransfer(msg.sender, stableSurplus); // send surpluses
-
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
-            IPrimitiveBorrowCallback(msg.sender).borrowCallback(riskyDeficit, stableDeficit, data); // request deficits
-
-            checkRiskyBalance(balRisky + riskyDeficit);
-            checkStableBalance(balStable + stableDeficit);
-        }
-
-        emit Borrowed(
-            msg.sender,
-            poolId,
-            collateralRisky,
-            collateralStable,
-            riskyDeficit,
-            riskySurplus,
-            stableDeficit,
-            stableSurplus
-        );
-    }
-
-    /// @inheritdoc IPrimitiveEngineActions
-    function repay(
-        bytes32 poolId,
-        address recipient,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bool fromMargin,
-        bytes calldata data
-    )
-        external
-        override
-        lock
-        returns (
-            uint256 riskyDeficit,
-            uint256 riskySurplus,
-            uint256 stableDeficit,
-            uint256 stableSurplus
-        )
-    {
-        Calibration memory cal = calibrations[poolId];
-        if (cal.lastTimestamp == 0) revert UninitializedError();
-
-        {
-            // position scope
-            bytes32 id = poolId;
-            bool expired = _blockTimestamp() >= cal.maturity + 86400;
-            address account = expired ? recipient : msg.sender;
-            positions.fetch(account, id).repay(collateralRisky, collateralStable); // increase: risky/collateralStable
-        }
-
-        {
-            // liquidity scope
-            Reserve.Data storage reserve = reserves[poolId];
-            (uint256 delLiquidity, uint256 delRisky, uint256 delStable) = reserve.getBorrowAmounts(
-                collateralRisky,
-                collateralStable,
-                precisionRisky,
-                precisionStable,
-                uint256(cal.strike)
-            );
-
-            if (delRisky > collateralRisky) riskyDeficit = delRisky - collateralRisky;
-            else riskySurplus = collateralRisky - delRisky;
-            if (delStable > collateralStable) stableDeficit = delStable - collateralStable;
-            else stableSurplus = collateralStable - delStable;
-
-            reserve.repayFloat(delLiquidity, collateralRisky, collateralStable); // increase: float, decrease: debt
-            reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // incr.: risky, stable, liquidity
-        }
-
-        if (fromMargin) {
-            margins.withdraw(riskyDeficit, stableDeficit); // receive deficits
-            margins[msg.sender].deposit(riskySurplus, stableSurplus); // send surpluses
-        } else {
-            if (riskySurplus > 0) IERC20(risky).safeTransfer(msg.sender, riskySurplus); // send surpluses
-            if (stableSurplus > 0) IERC20(stable).safeTransfer(msg.sender, stableSurplus); // send surpluses
-
-            (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable()); // notice line placement
-            IPrimitiveRepayCallback(msg.sender).repayCallback(riskyDeficit, stableDeficit, data); // request deficits
-
-            checkRiskyBalance(balRisky + riskyDeficit);
-            checkStableBalance(balStable + stableDeficit);
-        }
-
-        emit Repaid(
-            msg.sender,
-            recipient,
-            poolId,
-            collateralRisky,
-            collateralStable,
-            riskyDeficit,
-            riskySurplus,
-            stableDeficit,
-            stableSurplus
-        );
     }
 
     // ===== View =====

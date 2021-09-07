@@ -5,7 +5,7 @@ pragma solidity 0.8.6;
 /// @author Primitive
 
 interface IPrimitiveLiquidityCallback {
-    /// @notice Triggered when providing liquidity to an Engine
+    /// @notice              Triggered when providing liquidity to an Engine
     /// @param  delRisky     Amount of risky tokens required to provide to risky reserve
     /// @param  delStable    Amount of stable tokens required to provide to stable reserve
     /// @param  data         Calldata passed on allocate function call
@@ -15,7 +15,7 @@ interface IPrimitiveLiquidityCallback {
         bytes calldata data
     ) external;
 
-    /// @notice Triggered when removing liquidity from an Engine
+    /// @notice              Triggered when removing liquidity from an Engine
     /// @param  delRisky     Amount of risky tokens being removed from risky reserve
     /// @param  delStable    Amount of stable tokens being removed from stable reserve
     /// @param  data         Calldata passed on remove function call

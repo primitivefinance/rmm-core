@@ -42,6 +42,7 @@ type ContractName =
   | 'testRouter'
   | 'factoryCreate'
   | 'factoryDeploy'
+  | 'reentrancyAttacker'
   | 'testReserve'
   | 'testMargin'
   | 'testPosition'
@@ -56,38 +57,14 @@ declare global {
       revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
       increaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       decreaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
-      increasePositionFloat(engine: EngineTypes, posId: string, float: BigNumber): AsyncAssertion
-      decreasePositionFloat(engine: EngineTypes, posId: string, float: BigNumber): AsyncAssertion
-      increasePositionLiquidity(engine: EngineTypes, posId: string, liquidity: BigNumber): AsyncAssertion
-      decreasePositionLiquidity(engine: EngineTypes, posId: string, liquidity: BigNumber): AsyncAssertion
-      increasePositionDebt(
-        engine: EngineTypes,
-        posId: string,
-        collateralRisky: BigNumber,
-        collateralStable: BigNumber
-      ): AsyncAssertion
-      decreasePositionDebt(
-        engine: EngineTypes,
-        posId: string,
-        collateralRisky: BigNumber,
-        collateralStable: BigNumber
-      ): AsyncAssertion
-      increasePositionFeeRiskyGrowthLast(engine: EngineTypes, posId: string, amount: BigNumber): AsyncAssertion
-      increasePositionFeeStableGrowthLast(engine: EngineTypes, posId: string, amount: BigNumber): AsyncAssertion
+      increasePositionLiquidity(engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber): AsyncAssertion
+      decreasePositionLiquidity(engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber): AsyncAssertion
       increaseReserveRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveStable(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveStable(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveLiquidity(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveLiquidity(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveFloat(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      decreaseReserveFloat(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveCollateralRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      decreaseReserveCollateralRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveCollateralStable(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      decreaseReserveCollateralStable(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveFeeRiskyGrowth(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
-      increaseReserveFeeStableGrowth(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       updateReserveBlockTimestamp(engine: EngineTypes, poolId: string, blockTimestamp: number): AsyncAssertion
       updateReserveCumulativeRisky(
         engine: EngineTypes,
