@@ -187,7 +187,7 @@ export class Pool {
 
     // 0. Calculate the new risky reserves (we know the new risky reserves because we are swapping in risky)
     const gamma = 1 - this.fee
-    const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
+    const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
     // 1. Calculate the new stable reserve using the new risky reserve
     const newRiskyReserve = reserveRiskyLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
     const newReserveStable = this.getStableGivenRisky(newRiskyReserve).mul(this.liquidity).div(parseWei(1))
@@ -213,7 +213,7 @@ export class Pool {
     const reserveRiskyLast = this.reserveRisky
     const reserveStableLast = this.reserveStable
     const invariantLast: FixedPointX64 = this.calcInvariant()
-    const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
+    const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
 
     const newReserveRisky = reserveRiskyLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
     const newReserveStable = this.getStableGivenRisky(newReserveRisky).mul(this.liquidity).div(parseWei(1))
@@ -240,7 +240,7 @@ export class Pool {
 
     // 0. Calculate the new risky reserve since we know how much risky is being swapped out
     const gamma = 1 - this.fee
-    const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
+    const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
     // 1. Calculate the new risky reserves using the known new stable reserves
     const newStableReserve = reserveStableLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
     const newReserveRisky = this.getRiskyGivenStable(newStableReserve).mul(this.liquidity).div(parseWei(1))
@@ -266,7 +266,7 @@ export class Pool {
     const reserveRiskyLast = this.reserveRisky
     const reserveStableLast = this.reserveStable
     const invariantLast: FixedPointX64 = this.calcInvariant()
-    const deltaInWithFee = deltaIn.mul(gamma * Percentage.Mantissa).div(Percentage.Mantissa)
+    const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
 
     const newStableReserve = reserveStableLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
     const newReserveRisky = this.getRiskyGivenStable(newStableReserve).mul(this.liquidity).div(parseWei(1))
