@@ -39,8 +39,8 @@ testContext('testCumulativeNormalDistribution', function () {
       let x = 1
       let y = 0.5
       let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
-      await expect(cumulative.cdfX64(parseFixedPointX64(x).raw)).to.not.be.reverted // flips sign in fn
-      await expect(cumulative.cdfX64(parseFixedPointX64(y).raw)).to.not.be.reverted // flips sign in fn
+      await expect(cumulative.cdfX64(parseFixedPointX64(Math.floor(x * 1e9), 9).raw)).to.not.be.reverted // flips sign in fn
+      await expect(cumulative.cdfX64(parseFixedPointX64(Math.floor(y * 1e9), 9).raw)).to.not.be.reverted // flips sign in fn
       expect(new FixedPointX64(await cumulative.cdf(x)).parsed).to.be.closeTo(cdf, precision.percentage)
     })
 
