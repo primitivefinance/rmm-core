@@ -25,7 +25,7 @@ contract TestToken is IERC20 {
     }
 
     /// @notice Used for testing tokens with decimals that are not 18
-    function setDecimals(uint256 decimals_) public {
+    function setDecimals(uint8 decimals_) public {
         decimals = decimals_;
     }
 

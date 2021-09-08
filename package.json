@@ -64,7 +64,7 @@
     "ts-node": "^9.1.1",
     "typechain": "^5.1.2",
     "typescript": "^4.2.3",
-    "web3-units": "1.1.2"
+    "web3-units": "^1.0.0"
   },
   "postinstall": "typechain",
   "lint-staged": {
