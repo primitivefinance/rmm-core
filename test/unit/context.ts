@@ -20,8 +20,6 @@ export default function loadContext(
       let loadedContracts: Contracts = {} as Contracts
       let loadedConfigs: Configs = {} as Configs
 
-      loadedContracts = await createTestContracts(contracts, deployer)
-
       const { risky, stable } = loadedContracts
       const contractAddresses = Object.keys(loadedContracts).map((key) => loadedContracts[key]?.address)
       await batchApproval(contractAddresses, [risky, stable], signers)

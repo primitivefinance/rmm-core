@@ -4,7 +4,7 @@ import { constants } from 'ethers'
 
 import loadContext from '../../context'
 import { deployMockContract } from 'ethereum-waffle'
-import { abi as Token } from '../../../../artifacts/contracts/test/Token.sol/Token.json'
+import { abi as TestToken } from '../../../../artifacts/contracts/test/TestToken.sol/TestToken.json'
 import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
 import { computeEngineAddress } from '../../../shared'
@@ -22,8 +22,8 @@ describe('deploy', function () {
     })
 
     it('deploys a new PrimitiveEngine', async function () {
-      let mockRisky = await deployMockContract(deployer, Token)
-      let mockStable = await deployMockContract(deployer, Token)
+      let mockRisky = await deployMockContract(deployer, TestToken)
+      let mockStable = await deployMockContract(deployer, TestToken)
       await mockRisky.mock.decimals.returns(18)
       await mockStable.mock.decimals.returns(18)
       expect(await this.contracts.factory.getEngine(mockRisky.address, mockStable.address)).to.equal(constants.AddressZero)
@@ -33,8 +33,8 @@ describe('deploy', function () {
     it('emits the Deployed event', async function () {
       const [deployer] = this.signers
 
-      let mockRisky = await deployMockContract(deployer, Token)
-      let mockStable = await deployMockContract(deployer, Token)
+      let mockRisky = await deployMockContract(deployer, TestToken)
+      let mockStable = await deployMockContract(deployer, TestToken)
       await mockRisky.mock.decimals.returns(18)
       await mockStable.mock.decimals.returns(18)
       const engineAddress = computeEngineAddress(

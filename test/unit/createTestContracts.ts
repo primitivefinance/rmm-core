@@ -8,8 +8,8 @@ import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/Mock
 type BaseContracts = {
   factory: ContractTypes.MockFactory
   engine: ContractTypes.MockEngine
-  risky: ContractTypes.Token
-  stable: ContractTypes.Token
+  risky: ContractTypes.TestToken
+  stable: ContractTypes.TestToken
 }
 
 export async function deploy(contractName: string, deployer: Wallet): Promise<Contract> {
@@ -23,8 +23,8 @@ async function initializeTestContract<T extends Contract>(contract: T, loadedCon
 }
 
 export async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
-  const risky = (await deploy('Token', deployer)) as ContractTypes.Token
-  const stable = (await deploy('Token', deployer)) as ContractTypes.Token
+  const risky = (await deploy('TestToken', deployer)) as ContractTypes.TestToken
+  const stable = (await deploy('TestToken', deployer)) as ContractTypes.TestToken
   const factory = (await deploy('MockFactory', deployer)) as ContractTypes.MockFactory
   await factory.deploy(risky.address, stable.address)
   const addr = await factory.getEngine(risky.address, stable.address)
