@@ -12,7 +12,7 @@ testContext('testReserve', function () {
     this.libraries = fixture.libraries
   })
 
-  describe('reserve', function () {
+  describe('reserve library', function () {
     let resId: BytesLike, reserve: TestReserve
     let timestamp: number, reserveRisky: BigNumber, reserveStable: BigNumber
     let before: any, timestep: number

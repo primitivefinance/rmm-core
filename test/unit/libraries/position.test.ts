@@ -12,7 +12,7 @@ testContext('testPosition', function () {
     this.libraries = fixture.libraries
   })
 
-  describe('position', function () {
+  describe('position library', function () {
     let position: TestPosition, poolId: BytesLike, posId: BytesLike, before: any
 
     beforeEach(async function () {
