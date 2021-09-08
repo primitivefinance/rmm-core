@@ -1,29 +1,20 @@
 import { Wallet, BigNumber } from 'ethers'
-import * as ContractTypes from '../typechain'
 import { Calibration } from '../test/shared/calibration'
+import * as ContractTypes from '../typechain'
+import { Fixture } from '@ethereum-waffle/provider'
 
 export interface Contracts {
   engine: ContractTypes.MockEngine
   factory: ContractTypes.MockFactory
-  risky: ContractTypes.Token
-  stable: ContractTypes.Token
-  engineCreate: ContractTypes.EngineCreate
-  engineDeposit: ContractTypes.EngineDeposit
-  engineWithdraw: ContractTypes.EngineWithdraw
-  engineSwap: ContractTypes.EngineSwap
-  engineAllocate: ContractTypes.EngineAllocate
-  engineRemove: ContractTypes.EngineRemove
-  engineSupply: ContractTypes.EngineSupply
-  engineBorrow: ContractTypes.EngineBorrow
-  engineRepay: ContractTypes.EngineRepay
-  badEngineDeposit: ContractTypes.BadEngineDeposit
+  risky: ContractTypes.TestToken
+  stable: ContractTypes.TestToken
+  router: ContractTypes.TestRouter
   factoryDeploy: ContractTypes.FactoryDeploy
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin
   testPosition: ContractTypes.TestPosition
   testReplicationMath: ContractTypes.TestReplicationMath
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
-  reentrancyAttacker: ContractTypes.ReentrancyAttacker
 }
 
 export interface Configs {
@@ -39,6 +30,7 @@ declare module 'mocha' {
     signers: Wallet[]
     contracts: Contracts
     configs: Configs
+    loadFixture: <T>(fixture: Fixture<T>) => Promise<T>
   }
 }
 
