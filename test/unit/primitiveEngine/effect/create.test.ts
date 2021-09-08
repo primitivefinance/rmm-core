@@ -24,20 +24,17 @@ TestPools.forEach(function (pool: PoolState) {
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
-      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      poolId = pool.calibration.poolId(this.contracts.engine.address)
+      posId = computePositionId(this.signers[0].address, poolId)
+      //;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
+      //;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
     })
 
     describe('success cases', function () {
       it('deploys a new pool', async function () {
-        await this.contracts.router.create(
-          strike.raw,
-          sigma.raw,
-          maturity.raw,
-          parseWei(delta).raw,
-          delLiquidity.raw,
-          HashZero
-        )
+        await expect(
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
+        ).to.emit(this.contracts.engine, 'Created')
       })
 
       it('res.allocate: increases reserve liquidity', async function () {
