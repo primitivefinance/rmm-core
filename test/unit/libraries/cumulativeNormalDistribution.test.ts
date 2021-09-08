@@ -19,7 +19,7 @@ testContext('testCumulativeNormalDistribution', function () {
     this.libraries = fixture.libraries
   })
 
-  describe('cumulative', function () {
+  describe('cumulative library', function () {
     let cumulative: TestCumulativeNormalDistribution
 
     beforeEach(async function () {

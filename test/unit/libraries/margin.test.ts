@@ -11,7 +11,7 @@ testContext('testMargin', function () {
     this.libraries = fixture.libraries
   })
 
-  describe('margin', function () {
+  describe('margin library', function () {
     let margin: TestMargin, before: any
 
     beforeEach(async function () {

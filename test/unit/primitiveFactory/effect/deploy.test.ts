@@ -17,7 +17,7 @@ import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine
 import { computeEngineAddress } from '../../../shared'
 
 TestPools.forEach(function (pool: PoolState) {
-  testContext(`allocate to ${pool.description} pool`, function () {
+  testContext(`deploy engines`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
     let poolId: string, posId: string
 

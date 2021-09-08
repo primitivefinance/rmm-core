@@ -11,7 +11,7 @@ import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../.
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
-  testContext(`allocate to ${pool.description} pool`, function () {
+  testContext(`reserves of ${pool.description} pool`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
     let poolId: string, posId: string
 
