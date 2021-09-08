@@ -43,7 +43,7 @@ export async function useLiquidity(
   /// call create on the router contract
   let tx: any
   try {
-    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, parseWei('100').raw, HashZero)
+    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, parseWei('1000').raw, HashZero)
   } catch (err) {
     console.log(`\n Error thrown on attempting to call allocateFromExternal() on the router`, err)
   }
@@ -64,6 +64,42 @@ export async function useMargin(
   let tx: any
   try {
     tx = await contracts.router.connect(signer).deposit(target, delRisky.raw, delStable.raw, HashZero)
+  } catch (err) {
+    console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
+  }
+
+  return { tx }
+}
+
+export async function useSupplyLiquidity(
+  signer: Wallet,
+  contracts: Contracts,
+  config: Calibration,
+  delLiquidity: Wei
+): Promise<{ tx: any }> {
+  const poolId = config.poolId(contracts.engine.address)
+  /// call create on the router contract
+  let tx: any
+  try {
+    tx = await contracts.router.connect(signer).supply(poolId, delLiquidity.raw)
+  } catch (err) {
+    console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
+  }
+
+  return { tx }
+}
+
+export async function useClaimLiquidity(
+  signer: Wallet,
+  contracts: Contracts,
+  config: Calibration,
+  delLiquidity: Wei
+): Promise<{ tx: any }> {
+  const poolId = config.poolId(contracts.engine.address)
+  /// call create on the router contract
+  let tx: any
+  try {
+    tx = await contracts.router.connect(signer).claim(poolId, delLiquidity.raw)
   } catch (err) {
     console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
   }

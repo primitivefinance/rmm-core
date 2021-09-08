@@ -1,4 +1,4 @@
-import expect from '../../shared/expect'
+import expect from '../.../../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
 import { FixedPointX64, parseFixedPointX64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'

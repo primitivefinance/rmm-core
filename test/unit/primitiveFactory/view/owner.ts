@@ -1,10 +1,10 @@
-import expect from '../../../shared/expect'
-import { waffle } from 'hardhat'
-import loadContext from '../../context'
+import expect from '../../.../../../shared/expect'
+import { primitiveFixture } from '../../.../../../shared/fixtures'
 
 describe('owner', async function () {
-  before(async function () {
-    loadContext(waffle.provider, [])
+  beforeEach(async function () {
+    const fixture = await this.loadFixture(primitiveFixture)
+    this.contracts = fixture.contracts
   })
 
   it('returns the deployer of the contract as the owner', async function () {

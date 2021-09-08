@@ -24,7 +24,7 @@ export const calibrations: any = {
  */
 export const TestPools: PoolState[] = [
   { description: 'default', calibration: DEFAULT_CONFIG },
-  {
+  /* {
     description: `expired pool`,
     calibration: calibrations.expired,
   },
@@ -35,7 +35,7 @@ export const TestPools: PoolState[] = [
   {
     description: `out of the money pool`,
     calibration: calibrations.otm,
-  },
+  }, */
   /*   {
     description: `high fee pool`,
     calibration: calibrations.highfee,
@@ -44,7 +44,7 @@ export const TestPools: PoolState[] = [
     description: `feeless pool`,
     calibration: calibrations.feeless,
   }, */
-  {
+  /* {
     description: `6 decimal risky pool`,
     calibration: calibrations.riskyprecision,
   },
@@ -55,5 +55,5 @@ export const TestPools: PoolState[] = [
   {
     description: `6 decimal risky and stable pool`,
     calibration: calibrations.bothprecision,
-  },
+  }, */
 ]

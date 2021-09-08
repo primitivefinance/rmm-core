@@ -1,13 +1,13 @@
-import expect from './shared/expect'
+import expect from '../../.../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants } from 'ethers'
 import { parseWei, Time } from 'web3-units'
 
-import { PoolState, TestPools } from './shared/poolConfigs'
-import { computePoolId, computePositionId } from './shared/utils'
-import { primitiveFixture } from './shared/fixtures'
-import { testContext } from './shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from './shared/hooks'
+import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
+import { computePoolId, computePositionId } from '../../.../../../shared/utils'
+import { primitiveFixture } from '../../.../../../shared/fixtures'
+import { testContext } from '../../.../../../shared/testContext'
+import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../.../../../shared/hooks'
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
