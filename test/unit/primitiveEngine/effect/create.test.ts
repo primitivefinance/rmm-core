@@ -3,12 +3,13 @@ import { waffle } from 'hardhat'
 import { constants, BigNumber } from 'ethers'
 import { parseWei, Time } from 'web3-units'
 
-import { Calibration } from './shared'
+import { Calibration } from '../../../shared'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { computePoolId, computePositionId } from '../../../shared/utils'
 import { primitiveFixture } from '../../../shared/fixtures'
 import { testContext } from '../../../shared/testContext'
 import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
+import { getStableGivenRisky } from '@primitivefinance/v2-math'
 
 const { HashZero } = constants
 

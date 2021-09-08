@@ -4,11 +4,12 @@ import { BigNumber, BytesLike, constants } from 'ethers'
 import { parseWei } from 'web3-units'
 import { TestReserve } from '../../../typechain'
 import { libraryFixture } from '../../shared/fixtures'
+import { testContext } from '../../shared/testContext'
 
-describe('testReserve', function () {
+testContext('testReserve', function () {
   beforeEach(async function () {
     const fixture = await this.loadFixture(libraryFixture)
-    this.contracts = fixture.contracts
+    this.libraries = fixture.libraries
   })
 
   describe('reserve', function () {
@@ -17,7 +18,7 @@ describe('testReserve', function () {
     let before: any, timestep: number
 
     beforeEach(async function () {
-      reserve = this.contracts.testReserve // the test reserve contract
+      reserve = this.libraries.testReserve // the test reserve contract
       timestamp = 1645473600 // the timestamp for the tests
       reserveRisky = parseWei('0.5').raw // initialized risky reserve amount
       reserveStable = parseWei('500').raw // initialized stable reserve amount

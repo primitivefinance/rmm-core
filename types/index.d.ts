@@ -31,7 +31,8 @@ export interface Configs {
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
-    contracts: Contracts | Libraries
+    contracts: Contracts
+    libraries: Libraries
     configs: Configs
     loadFixture: <T>(fixture: Fixture<T>) => Promise<T>
   }

@@ -7,7 +7,16 @@ import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { computePoolId, computePositionId } from '../../../shared/utils'
 import { primitiveFixture } from '../../../shared/fixtures'
 import { testContext } from '../../../shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
+import { Calibration } from '../../../shared'
+import {
+  usePool,
+  useLiquidity,
+  useTokens,
+  useApproveAll,
+  useMargin,
+  useSupplyLiquidity,
+  useBorrow,
+} from '../../../shared/hooks'
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
@@ -24,6 +33,7 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
       ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await useSupplyLiquidity(this.signers[0], this.contracts, pool.calibration, parseWei('1000').mul(5).div(10))
       collateralRisky = parseWei('1', pool.calibration.precisionRisky)
       collateralStable = strike
       delLiquidity = collateralRisky.mul(Math.pow(10, 18 - collateralRisky.decimals)).add(
@@ -32,6 +42,7 @@ TestPools.forEach(function (pool: PoolState) {
           .div(strike)
           .mul(Math.pow(10, 18 - collateralStable.decimals))
       )
+      await useBorrow(this.signers[0], this.contracts, pool.calibration, collateralRisky, collateralStable)
     })
 
     describe('success cases', function () {

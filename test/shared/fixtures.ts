@@ -63,27 +63,27 @@ export async function primitiveFixture([wallet]: Wallet[], provider: any): Promi
 }
 
 export async function createTestLibraries(deployer: Wallet): Promise<Libraries> {
-  const contracts: Libraries = {} as Libraries
+  const libraries: Libraries = {} as Libraries
 
-  contracts.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
-  contracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
+  libraries.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
+  libraries.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
 
-  contracts.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
+  libraries.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
 
-  contracts.testReplicationMath = (await deploy('TestReplicationMath', deployer)) as ContractTypes.TestReplicationMath
+  libraries.testReplicationMath = (await deploy('TestReplicationMath', deployer)) as ContractTypes.TestReplicationMath
 
-  contracts.testCumulativeNormalDistribution = (await deploy(
+  libraries.testCumulativeNormalDistribution = (await deploy(
     'TestCumulativeNormalDistribution',
     deployer
   )) as ContractTypes.TestCumulativeNormalDistribution
 
-  return contracts
+  return libraries
 }
 
 export interface LibraryFixture {
-  contracts: Libraries
+  libraries: Libraries
 }
 
 export async function libraryFixture([wallet]: Wallet[], provider: any): Promise<LibraryFixture> {
-  return { contracts: await createTestLibraries(wallet) }
+  return { libraries: await createTestLibraries(wallet) }
 }

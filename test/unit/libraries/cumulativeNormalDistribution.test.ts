@@ -4,6 +4,7 @@ import { TestCumulativeNormalDistribution } from '../../../typechain'
 import { parseWei, FixedPointX64, Wei, parseFixedPointX64 } from 'web3-units'
 import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
 import { libraryFixture } from '../../shared/fixtures'
+import { testContext } from '../../shared/testContext'
 
 const precision = {
   percentage: 0.01,
@@ -12,17 +13,17 @@ const precision = {
   integer: 1e15,
 }
 
-describe('testCumulativeNormalDistribution', function () {
+testContext('testCumulativeNormalDistribution', function () {
   beforeEach(async function () {
     const fixture = await this.loadFixture(libraryFixture)
-    this.contracts = fixture.contracts
+    this.libraries = fixture.libraries
   })
 
   describe('cumulative', function () {
     let cumulative: TestCumulativeNormalDistribution
 
     beforeEach(async function () {
-      cumulative = this.contracts.testCumulativeNormalDistribution
+      cumulative = this.libraries.testCumulativeNormalDistribution
     })
 
     it('cdf: positive values', async function () {

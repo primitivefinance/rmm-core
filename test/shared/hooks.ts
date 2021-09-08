@@ -107,6 +107,28 @@ export async function useClaimLiquidity(
   return { tx }
 }
 
+export async function useBorrow(
+  signer: Wallet,
+  contracts: Contracts,
+  config: Calibration,
+  collateralRisky: Wei,
+  collateralStable: Wei,
+  target: string = signer.address
+): Promise<UseLiquidity> {
+  const poolId = config.poolId(contracts.engine.address)
+  /// call create on the router contract
+  let tx: any
+  try {
+    tx = await contracts.router.connect(signer).borrow(poolId, target, collateralRisky.raw, collateralStable.raw, HashZero)
+  } catch (err) {
+    console.log(`\n Error thrown on attempting to call allocateFromExternal() on the router`, err)
+  }
+
+  const posId = computePositionId(target, poolId)
+
+  return { tx, poolId, posId }
+}
+
 export async function useTokens(
   signer: Wallet,
   contracts: Contracts,
