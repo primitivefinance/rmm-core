@@ -26,85 +26,35 @@ TestPools.forEach(function (pool: PoolState) {
     })
 
     describe('when calling deposit in the deposit callback', function () {
-      beforeEach(async function () {
-        await this.contracts.router.create(
-          strike.raw,
-          sigma.raw,
-          maturity.raw,
-          parseWei(delta).raw,
-          delLiquidity.raw,
-          HashZero
-        )
-      })
-
       it('reverts the transaction', async function () {
         await expect(
-          this.contracts.router.deposit(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, HashZero)
+          this.contracts.router.depositReentrancy(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, HashZero)
         ).to.be.reverted
       })
     })
 
     describe('when calling allocate in the allocate callback', function () {
-      beforeEach(async function () {
-        await this.contracts.router.create(
-          strike.raw,
-          sigma.raw,
-          maturity.raw,
-          parseWei(delta).raw,
-          delLiquidity.raw,
-          HashZero
-        )
-      })
-
       it('reverts the transaction', async function () {
         await expect(
-          this.contracts.router.allocate(poolId, this.signers[0].address, parseWei('1').raw, HashZero)
+          this.contracts.router.allocateFromExternalReentrancy(poolId, this.signers[0].address, parseWei('1').raw, HashZero)
         ).to.be.reverted
       })
     })
 
     describe('when calling borrow in the borrow callback', function () {
       beforeEach(async function () {
-        await this.contracts.router.create(
-          strike.raw,
-          sigma.raw,
-          maturity.raw,
-          parseWei(delta).raw,
-          delLiquidity.raw,
-          HashZero
-        )
-        await this.contracts.router.allocateFromExternal(
-          poolId,
-          this.contracts.router.address,
-          parseWei('100').raw,
-          HashZero
-        )
         await this.contracts.router.supply(poolId, parseWei('100').mul(8).div(10).raw)
       })
 
       it('reverts the transaction', async function () {
         await expect(
-          this.contracts.router.borrow(poolId, this.signers[0].address, parseWei('1').raw, '0', HashZero)
+          this.contracts.router.borrowReentrancy(poolId, this.signers[0].address, parseWei('1').raw, '0', HashZero)
         ).to.be.reverted
       })
     })
 
     describe('when calling repay in the repay callback', function () {
       beforeEach(async function () {
-        await this.contracts.router.create(
-          strike.raw,
-          sigma.raw,
-          maturity.raw,
-          parseWei(delta).raw,
-          delLiquidity.raw,
-          HashZero
-        )
-        await this.contracts.router.allocateFromExternal(
-          poolId,
-          this.contracts.router.address,
-          parseWei('100').raw,
-          HashZero
-        )
         await this.contracts.router.supply(poolId, parseWei('100').mul(8).div(10).raw)
         await this.contracts.router.borrowWithGoodCallback(
           poolId,
@@ -117,7 +67,14 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('reverts the transaction', async function () {
         await expect(
-          this.contracts.router.repay(poolId, this.contracts.router.address, parseWei('1').raw, '0', false, HashZero)
+          this.contracts.router.repayReentrancy(
+            poolId,
+            this.contracts.router.address,
+            parseWei('1').raw,
+            '0',
+            false,
+            HashZero
+          )
         ).to.be.reverted
       })
     })

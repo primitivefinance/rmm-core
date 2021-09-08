@@ -13,6 +13,8 @@ abstract contract TestRepayCallback is Scenarios {
     ) external {
         data;
         if (scenario == Scenario.FAIL) return;
+        if (scenario == Scenario.REENTRANCY)
+            IPrimitiveEngine(msg.sender).repay(bytes32(0), address(this), riskyDeficit, stableDeficit, false, data);
         address token0 = risky();
         address token1 = stable();
         address from = getCaller();

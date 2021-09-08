@@ -23,6 +23,8 @@ abstract contract TestDepositCallback is Scenarios {
         } else if (scenario == Scenario.SUCCESS) {
             IERC20(token0).transferFrom(from, msg.sender, dRisky);
             IERC20(token1).transferFrom(from, msg.sender, dStable);
+        } else if (scenario == Scenario.REENTRANCY) {
+            IPrimitiveEngine(msg.sender).deposit(address(this), dRisky, dStable, data);
         }
     }
 }

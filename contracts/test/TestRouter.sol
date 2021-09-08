@@ -34,6 +34,18 @@ contract TestRouter is TestBase {
         IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
     }
 
+    function depositReentrancy(
+        address owner,
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        caller = msg.sender;
+        scenario = Scenario.REENTRANCY;
+        IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
+        scenario = Scenario.SUCCESS;
+    }
+
     function withdraw(uint256 delRisky, uint256 delStable) public {
         caller = msg.sender;
         IPrimitiveEngine(engine).withdraw(msg.sender, delRisky, delStable);
@@ -228,6 +240,20 @@ contract TestRouter is TestBase {
         IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
     }
 
+    function borrowReentrancy(
+        bytes32 poolId,
+        address owner,
+        uint256 collateralRisky,
+        uint256 collateralStable,
+        bytes calldata data
+    ) public {
+        owner;
+        caller = msg.sender;
+        scenario = Scenario.REENTRANCY;
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
+        scenario = Scenario.SUCCESS;
+    }
+
     // ===== Repay =====
 
     function repay(
@@ -252,6 +278,20 @@ contract TestRouter is TestBase {
     ) external {
         caller = msg.sender;
         scenario = Scenario.FAIL;
+        IPrimitiveEngine(engine).repay(poolId, owner, collateralRisky, collateralStable, fromMargin, data);
+        scenario = Scenario.SUCCESS;
+    }
+
+    function repayReentrancy(
+        bytes32 poolId,
+        address owner,
+        uint256 collateralRisky,
+        uint256 collateralStable,
+        bool fromMargin,
+        bytes calldata data
+    ) external {
+        caller = msg.sender;
+        scenario = Scenario.REENTRANCY;
         IPrimitiveEngine(engine).repay(poolId, owner, collateralRisky, collateralStable, fromMargin, data);
         scenario = Scenario.SUCCESS;
     }

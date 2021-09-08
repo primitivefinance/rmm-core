@@ -13,6 +13,8 @@ abstract contract TestBorrowCallback is Scenarios {
     ) public {
         data;
         if (scenario == Scenario.FAIL) return;
+        if (scenario == Scenario.REENTRANCY)
+            IPrimitiveEngine(msg.sender).borrow(bytes32(0), riskyDeficit, stableDeficit, false, data);
         address token0 = risky();
         address token1 = stable();
         address from = getCaller();
