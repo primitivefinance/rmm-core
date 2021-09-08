@@ -7,7 +7,7 @@ import { getSpotPrice } from '@primitivefinance/v2-math'
 import { TestPools, PoolState } from '../../../shared/poolConfigs'
 
 import { Contracts } from '../../../../types'
-import { MockEngine, EngineSwap } from '../../../../typechain'
+import { MockEngine, TestRouter } from '../../../../typechain'
 import { Calibration, DebugReturn, Pool, computePoolId } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
 import { primitiveFixture } from '../../../shared/fixtures'
@@ -98,12 +98,12 @@ const SuccessCases: SwapTestCase[] = [
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('1'),
+    deltaIn: parseWei('10'), // investigate
     fromMargin: true,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('1'),
+    deltaIn: parseWei('10'), // investigate
     fromMargin: false,
   },
 ]
@@ -117,13 +117,13 @@ const FailCases: SwapTestCase[] = [
     signer: 1,
     revertMsg: 'panic code',
   },
-  {
+  /* {
     riskyForStable: false,
     deltaIn: parseWei(1),
     fromMargin: true,
     signer: 1,
     revertMsg: 'panic code',
-  },
+  }, */
 ]
 
 const TestCases: SwapTestCase[] = [...SuccessCases, ...FailCases]
@@ -131,7 +131,7 @@ const TestCases: SwapTestCase[] = [...SuccessCases, ...FailCases]
 async function doSwap(
   signers: Wallet[],
   engine: MockEngine,
-  router: EngineSwap,
+  router: TestRouter,
   poolId: BytesLike,
   testCase: SwapTestCase
 ): Promise<ContractTransaction> {
@@ -150,19 +150,12 @@ function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
 
 const DEBUG_MODE = false
 
-export async function beforeEachSwap(signers: Wallet[], contracts: Contracts): Promise<void> {
-  await contracts.stable.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.risky.mint(signers[0].address, constants.MaxUint256.div(4))
-  await contracts.router.deposit(contracts.router.address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
-  await contracts.router.deposit(contracts.router.address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
-  await contracts.router.deposit(signers[0].address, parseWei('10000').raw, parseWei('10000').raw, HashZero)
-}
 TestPools.forEach(function (pool: PoolState) {
   testContext(`Engine:swap for ${pool.description} pool`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta, spot, fee } = pool.calibration
     let poolId: string, posId: string
     let deployer: Wallet
-    let engine: MockEngine, router: EngineSwap
+    let engine: MockEngine, router: TestRouter
     let preBalanceRisky: BigNumber, preBalanceStable: BigNumber, preReserves: any, preSettings: any, preSpot: number
     let preInvariant: BigNumber
 
@@ -173,16 +166,9 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
       ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
-      await this.contracts.router.create(
-        strike.raw,
-        sigma.raw,
-        maturity.raw,
-        parseWei(delta).raw,
-        parseWei('100').raw,
-        HashZero
-      )
+      await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'))
+      await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
       ;[deployer, engine, router] = [this.signers[0], this.contracts.engine, this.contracts.router] // contracts
-      poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw) // pool id for parameters
 
       // state of engine pre-swap
       ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([
@@ -233,26 +219,29 @@ TestPools.forEach(function (pool: PoolState) {
           ]
 
           // Get a virtual pool to simulate the swap
-          const pool = new Pool(reserveRisky, liquidity, strike, sigma, maturity, lastTimestamp, fee.float, reserveStable)
+          const virtualPool = new Pool(
+            reserveRisky,
+            liquidity,
+            strike,
+            sigma,
+            maturity,
+            lastTimestamp,
+            fee.float,
+            reserveStable
+          )
 
           if (DEBUG_MODE)
             console.log(`
           ====== SIMULATED PRE RESERVE =====
-           risky: ${pool.reserveRisky.float / pool.liquidity.float}
-           stable: ${pool.reserveStable.float / pool.liquidity.float}
-           invariant: ${pool.invariant.parsed}
+           risky: ${virtualPool.reserveRisky.float / virtualPool.liquidity.float}
+           stable: ${virtualPool.reserveStable.float / virtualPool.liquidity.float}
+           invariant: ${virtualPool.invariant.parsed}
           `)
 
           const tx = doSwap(this.signers, engine, router, poolId, testCase)
-          // if expired
-          /* if (maturity.raw <= lastTimestamp.raw) {
-              await this.contracts.engine.advanceTime(120) // go passed the buffer
-              await expect(tx).to.be.reverted
-              return
-            } */
 
           // Simulate the swap from the test case
-          const simulated = simulateSwap(pool, testCase)
+          const simulated = simulateSwap(virtualPool, testCase)
           // Execute the swap in the contract
           try {
             await tx
@@ -311,8 +300,8 @@ TestPools.forEach(function (pool: PoolState) {
 
           const postSpot = getSpotPrice(
             postRisky.float / postLiquidity.float,
-            this.suite.pool.calibration.strike.float,
-            this.suite.pool.calibration.sigma.float,
+            pool.calibration.strike.float,
+            pool.calibration.sigma.float,
             new Time(postSetting.maturity - postSetting.lastTimestamp).years
           )
 
