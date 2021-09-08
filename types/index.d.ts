@@ -39,11 +39,7 @@ declare module 'mocha' {
 }
 
 type ContractName =
-  | 'engineCreate'
-  | 'engineDeposit'
-  | 'engineSwap'
-  | 'engineWithdraw'
-  | 'engineAllocate'
+  | 'testRouter'
   | 'factoryCreate'
   | 'factoryDeploy'
   | 'testReserve'
@@ -51,12 +47,6 @@ type ContractName =
   | 'testPosition'
   | 'testReplicationMath'
   | 'testCumulativeNormalDistribution'
-  | 'engineRemove'
-  | 'engineSupply'
-  | 'engineBorrow'
-  | 'engineRepay'
-  | 'badEngineDeposit'
-  | 'reentrancyAttacker'
 
 export type EngineTypes = ContractTypes.PrimitiveEngine | ContractTypes.MockEngine
 
