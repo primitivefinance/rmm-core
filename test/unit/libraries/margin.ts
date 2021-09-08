@@ -1,4 +1,4 @@
-import expect from '../../shared/expect'
+import expect from '../.../../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestMargin } from '../../../typechain'
 import { parseWei } from 'web3-units'
