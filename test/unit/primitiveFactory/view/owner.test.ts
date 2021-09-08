@@ -1,5 +1,5 @@
-import expect from '../../.../../../shared/expect'
-import { primitiveFixture } from '../../.../../../shared/fixtures'
+import expect from '../../../shared/expect'
+import { primitiveFixture } from '../../../shared/fixtures'
 
 describe('owner', async function () {
   beforeEach(async function () {

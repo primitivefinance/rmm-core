@@ -2,7 +2,7 @@ import hre, { ethers } from 'hardhat'
 import { Wallet, Contract } from 'ethers'
 import { deployContract } from 'ethereum-waffle'
 import * as ContractTypes from '../../typechain'
-import { Contracts, ContractName } from '../../types'
+import { Contracts, ContractName, Libraries } from '../../types'
 import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 import { batchApproval } from './utils'
 
@@ -33,7 +33,7 @@ export async function initializeBaseContracts(deployer: Wallet): Promise<BaseCon
   return { factory, engine, stable, risky }
 }
 
-export default async function createTestContracts(deployer: Wallet): Promise<Contracts> {
+export async function createTestContracts(deployer: Wallet): Promise<Contracts> {
   const contracts: Contracts = {} as Contracts
 
   const { factory, engine, risky, stable } = await initializeBaseContracts(deployer)
@@ -48,17 +48,6 @@ export default async function createTestContracts(deployer: Wallet): Promise<Con
   contracts.factoryDeploy = (await deploy('FactoryDeploy', deployer)) as ContractTypes.FactoryDeploy
   await contracts.factoryDeploy.initialize(contracts.factory.address)
 
-  contracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
-
-  contracts.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
-
-  contracts.testReplicationMath = (await deploy('TestReplicationMath', deployer)) as ContractTypes.TestReplicationMath
-
-  contracts.testCumulativeNormalDistribution = (await deploy(
-    'TestCumulativeNormalDistribution',
-    deployer
-  )) as ContractTypes.TestCumulativeNormalDistribution
-
   const contractAddresses = Object.keys(contracts).map((key) => contracts[key]?.address)
   await batchApproval(contractAddresses, [risky, stable], deployer)
 
@@ -71,4 +60,30 @@ export interface PrimitiveFixture {
 
 export async function primitiveFixture([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> {
   return { contracts: await createTestContracts(wallet) }
+}
+
+export async function createTestLibraries(deployer: Wallet): Promise<Libraries> {
+  const contracts: Libraries = {} as Libraries
+
+  contracts.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
+  contracts.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
+
+  contracts.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin
+
+  contracts.testReplicationMath = (await deploy('TestReplicationMath', deployer)) as ContractTypes.TestReplicationMath
+
+  contracts.testCumulativeNormalDistribution = (await deploy(
+    'TestCumulativeNormalDistribution',
+    deployer
+  )) as ContractTypes.TestCumulativeNormalDistribution
+
+  return contracts
+}
+
+export interface LibraryFixture {
+  contracts: Libraries
+}
+
+export async function libraryFixture([wallet]: Wallet[], provider: any): Promise<LibraryFixture> {
+  return { contracts: await createTestLibraries(wallet) }
 }

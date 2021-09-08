@@ -1,9 +1,9 @@
-import expect from '../.../../../shared/expect'
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
 import { parseWei, FixedPointX64, Wei, parseFixedPointX64 } from 'web3-units'
 import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
-import loadContext from '../context'
+import { libraryFixture } from '../../shared/fixtures'
 
 const precision = {
   percentage: 0.01,
@@ -13,8 +13,9 @@ const precision = {
 }
 
 describe('testCumulativeNormalDistribution', function () {
-  before(async function () {
-    loadContext(waffle.provider, ['testCumulativeNormalDistribution'])
+  beforeEach(async function () {
+    const fixture = await this.loadFixture(libraryFixture)
+    this.contracts = fixture.contracts
   })
 
   describe('cumulative', function () {

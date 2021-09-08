@@ -1,13 +1,14 @@
-import expect from '../.../../../shared/expect'
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants } from 'ethers'
 import { parseWei } from 'web3-units'
 import { TestReserve } from '../../../typechain'
-import loadContext from '../context'
+import { libraryFixture } from '../../shared/fixtures'
 
 describe('testReserve', function () {
-  before(async function () {
-    loadContext(waffle.provider, ['testReserve'])
+  beforeEach(async function () {
+    const fixture = await this.loadFixture(libraryFixture)
+    this.contracts = fixture.contracts
   })
 
   describe('reserve', function () {

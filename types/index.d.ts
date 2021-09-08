@@ -3,6 +3,14 @@ import { Calibration } from '../test/shared/calibration'
 import * as ContractTypes from '../typechain'
 import { Fixture } from '@ethereum-waffle/provider'
 
+export interface Libraries {
+  testReserve: ContractTypes.TestReserve
+  testMargin: ContractTypes.TestMargin
+  testPosition: ContractTypes.TestPosition
+  testReplicationMath: ContractTypes.TestReplicationMath
+  testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
+}
+
 export interface Contracts {
   engine: ContractTypes.MockEngine
   factory: ContractTypes.MockFactory
@@ -10,11 +18,6 @@ export interface Contracts {
   stable: ContractTypes.TestToken
   router: ContractTypes.TestRouter
   factoryDeploy: ContractTypes.FactoryDeploy
-  testReserve: ContractTypes.TestReserve
-  testMargin: ContractTypes.TestMargin
-  testPosition: ContractTypes.TestPosition
-  testReplicationMath: ContractTypes.TestReplicationMath
-  testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
 }
 
 export interface Configs {
@@ -28,7 +31,7 @@ export interface Configs {
 declare module 'mocha' {
   export interface Context {
     signers: Wallet[]
-    contracts: Contracts
+    contracts: Contracts | Libraries
     configs: Configs
     loadFixture: <T>(fixture: Fixture<T>) => Promise<T>
   }

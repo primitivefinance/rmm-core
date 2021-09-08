@@ -1,4 +1,4 @@
-import expect from '../.../../../shared/expect'
+import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
 import { FixedPointX64, parseFixedPointX64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
@@ -13,6 +13,7 @@ import {
 } from '@primitivefinance/v2-math'
 import loadContext, { DEFAULT_CONFIG as config } from '../context'
 import { deploy } from '../createTestContracts'
+import { LibraryFixture, libraryFixture } from '../../shared/fixtures'
 const { createFixtureLoader } = waffle
 
 const { strike, sigma, maturity, lastTimestamp } = config
@@ -47,13 +48,14 @@ async function testCalcInvariant([wallet]: Wallet[], provider): Promise<TestCalc
   }
 }
 
-interface TestStepFixture {
+interface TestStepFixture extends LibraryFixture {
   getRiskyGivenStable: TestGetRiskyGivenStable
   getStableGivenRisky: TestGetStableGivenRisky
   calcInvariant: TestCalcInvariant
 }
 
 async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFixture> {
+  const contracts = await libraryFixture([wallet], provider)
   const { getRiskyGivenStable } = await testGetRiskyGivenStable([wallet], provider)
   const { getStableGivenRisky } = await testGetStableGivenRisky([wallet], provider)
   const { calcInvariant } = await testCalcInvariant([wallet], provider)
@@ -61,6 +63,7 @@ async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFi
     getRiskyGivenStable: getRiskyGivenStable,
     getStableGivenRisky: getStableGivenRisky,
     calcInvariant: calcInvariant,
+    contracts,
   }
 }
 
@@ -74,9 +77,9 @@ const precision = {
 describe('testReplicationMath', function () {
   const loadFixture = createFixtureLoader(waffle.provider.getWallets(), waffle.provider)
   let fixture: TestStepFixture
-  before(async function () {
-    loadContext(waffle.provider, ['testReplicationMath', 'testCumulativeNormalDistribution'])
-    fixture = await loadFixture(testStepFixture)
+  beforeEach(async function () {
+    const fixture = await this.loadFixture(testStepFixture)
+    this.contracts = fixture.contracts
   })
 
   describe('replicationMath', function () {
