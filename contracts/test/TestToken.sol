@@ -24,6 +24,11 @@ contract TestToken is IERC20 {
         decimals = decimals_;
     }
 
+    /// @notice Used for testing tokens with decimals that are not 18
+    function setDecimals(uint8 decimals_) public {
+        decimals = decimals_;
+    }
+
     function totalSupply() public view virtual override returns (uint256) {
         return _totalSupply;
     }
