@@ -1,7 +1,8 @@
 import expect from '../../../shared/expect'
 import { primitiveFixture } from '../../../shared/fixtures'
+import { testContext } from '../../../shared/testContext'
 
-describe('owner', async function () {
+testContext('owner', async function () {
   beforeEach(async function () {
     const fixture = await this.loadFixture(primitiveFixture)
     this.contracts = fixture.contracts

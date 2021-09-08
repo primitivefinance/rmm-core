@@ -50,6 +50,15 @@ contract TestRouter is TestBase {
 
     // ===== Allocate =====
 
+    function allocate(
+        bytes32 poolId,
+        address owner,
+        uint256 delLiquidity,
+        bytes calldata data
+    ) public {
+        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+    }
+
     function allocateFromMargin(
         bytes32 poolId,
         address owner,
@@ -103,6 +112,15 @@ contract TestRouter is TestBase {
     }
 
     // ===== Remove =====
+
+    function remove(
+        bytes32 poolId,
+        uint256 delLiquidity,
+        bytes memory data
+    ) public {
+        data;
+        IPrimitiveEngine(engine).remove(poolId, delLiquidity);
+    }
 
     function removeToMargin(
         bytes32 poolId,
@@ -195,6 +213,19 @@ contract TestRouter is TestBase {
         scenario = Scenario.FAIL;
         IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
         scenario = Scenario.SUCCESS;
+    }
+
+    function borrowWithGoodCallback(
+        bytes32 poolId,
+        address owner,
+        uint256 collateralRisky,
+        uint256 collateralStable,
+        bytes calldata data
+    ) public {
+        owner;
+        caller = msg.sender;
+        scenario = Scenario.SUCCESS;
+        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
     }
 
     // ===== Repay =====

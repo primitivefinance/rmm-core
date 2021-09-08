@@ -11,9 +11,9 @@ import {
   inverse_std_n_cdf,
   std_n_cdf,
 } from '@primitivefinance/v2-math'
-import loadContext, { DEFAULT_CONFIG as config } from '../context'
-import { deploy } from '../createTestContracts'
-import { LibraryFixture, libraryFixture } from '../../shared/fixtures'
+import { DEFAULT_CONFIG as config } from '../../shared/poolConfigs'
+import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
+import { testContext } from '../../shared/testContext'
 const { createFixtureLoader } = waffle
 
 const { strike, sigma, maturity, lastTimestamp } = config
@@ -55,7 +55,7 @@ interface TestStepFixture extends LibraryFixture {
 }
 
 async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFixture> {
-  const contracts = await libraryFixture([wallet], provider)
+  const libraries = await libraryFixture([wallet], provider)
   const { getRiskyGivenStable } = await testGetRiskyGivenStable([wallet], provider)
   const { getStableGivenRisky } = await testGetStableGivenRisky([wallet], provider)
   const { calcInvariant } = await testCalcInvariant([wallet], provider)
@@ -63,7 +63,7 @@ async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFi
     getRiskyGivenStable: getRiskyGivenStable,
     getStableGivenRisky: getStableGivenRisky,
     calcInvariant: calcInvariant,
-    contracts,
+    ...libraries,
   }
 }
 
@@ -74,12 +74,12 @@ const precision = {
   integer: 1e15,
 }
 
-describe('testReplicationMath', function () {
+testContext('testReplicationMath', function () {
   const loadFixture = createFixtureLoader(waffle.provider.getWallets(), waffle.provider)
   let fixture: TestStepFixture
   beforeEach(async function () {
-    const fixture = await this.loadFixture(testStepFixture)
-    this.contracts = fixture.contracts
+    fixture = await this.loadFixture(testStepFixture)
+    this.libraries = fixture.libraries
   })
 
   describe('replicationMath', function () {
@@ -88,7 +88,7 @@ describe('testReplicationMath', function () {
     let tau: Time
 
     beforeEach(async function () {
-      math = this.contracts.testReplicationMath
+      math = this.libraries.testReplicationMath
       tau = new Time(maturity.raw - lastTimestamp.raw)
     })
 

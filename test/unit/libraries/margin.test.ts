@@ -3,18 +3,19 @@ import { waffle } from 'hardhat'
 import { TestMargin } from '../../../typechain'
 import { parseWei } from 'web3-units'
 import { libraryFixture } from '../../shared/fixtures'
+import { testContext } from '../../shared/testContext'
 
-describe('testMargin', function () {
+testContext('testMargin', function () {
   beforeEach(async function () {
     const fixture = await this.loadFixture(libraryFixture)
-    this.contracts = fixture.contracts
+    this.libraries = fixture.libraries
   })
 
   describe('margin', function () {
     let margin: TestMargin, before: any
 
     beforeEach(async function () {
-      margin = this.contracts.testMargin
+      margin = this.libraries.testMargin
       before = await margin.margin()
     })
 

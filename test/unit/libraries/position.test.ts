@@ -4,18 +4,19 @@ import { TestPosition } from '../../../typechain'
 import { parseWei } from 'web3-units'
 import { utils, BytesLike } from 'ethers'
 import { libraryFixture } from '../../shared/fixtures'
+import { testContext } from '../../shared/testContext'
 
-describe('testPosition', function () {
+testContext('testPosition', function () {
   beforeEach(async function () {
     const fixture = await this.loadFixture(libraryFixture)
-    this.contracts = fixture.contracts
+    this.libraries = fixture.libraries
   })
 
   describe('position', function () {
     let position: TestPosition, poolId: BytesLike, posId: BytesLike, before: any
 
     beforeEach(async function () {
-      position = this.contracts.testPosition.connect(this.signers[0])
+      position = this.libraries.testPosition.connect(this.signers[0])
       poolId = utils.keccak256(utils.solidityPack(['string'], ['position']))
       await position.beforeEach(poolId, parseWei('1').raw)
       posId = await position.posId()
