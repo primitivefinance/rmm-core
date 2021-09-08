@@ -1,7 +1,7 @@
 import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-import { Integer64x64, parseInt64x64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
+import { FixedPointX64, parseFixedPointX64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
 import {
   getProportionalVol,
@@ -90,14 +90,14 @@ describe('testReplicationMath', function () {
     })
 
     it('getProportionalVolatility', async function () {
-      let expected: number = new Integer64x64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed
+      let expected: number = new FixedPointX64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed
       let actual: number = getProportionalVol(sigma.float, tau.years)
       expect(actual).to.be.closeTo(expected, precision.percentage)
     })
 
     describe('Trading Function: getStableGivenRisky', async function () {
       it('step0: parse strike to 64x64 fixed point int128', async function () {
-        let expected = new Integer64x64(Integer64x64.Denominator.mul(config.strike.float)).raw
+        let expected = new FixedPointX64(FixedPointX64.Denominator.mul(config.strike.float)).raw
         let step0 = await fixture.getStableGivenRisky.step0(config.strike.raw)
         expect(step0).to.be.eq(expected)
       })
@@ -105,12 +105,12 @@ describe('testReplicationMath', function () {
       it('step1: calculate sigma * sqrt(tau)', async function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let expected = config.sigma.float * Math.sqrt(tau.years)
-        let step1 = new Integer64x64(await fixture.getStableGivenRisky.step1(config.sigma.raw, tau.raw))
+        let step1 = new FixedPointX64(await fixture.getStableGivenRisky.step1(config.sigma.raw, tau.raw))
         expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
       })
 
       it('step2: get the stable reserves per 1 unit of liquidity', async function () {
-        let expected = new Integer64x64(Integer64x64.Denominator.mul(reserveRisky.raw).div(parseWei(1).raw)).raw
+        let expected = new FixedPointX64(FixedPointX64.Denominator.mul(reserveRisky.raw).div(parseWei(1).raw)).raw
         let step2 = await fixture.getStableGivenRisky.step2(reserveRisky.raw)
         expect(step2).to.be.eq(expected)
       })
@@ -120,7 +120,7 @@ describe('testReplicationMath', function () {
         let inside = 1 - reserve.float
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF
-        let step3 = new Integer64x64(await fixture.getStableGivenRisky.step3(reserve.raw))
+        let step3 = new FixedPointX64(await fixture.getStableGivenRisky.step3(reserve.raw))
         expect(step3.float).to.be.closeTo(expected, precision.invariant)
       })
 
@@ -130,10 +130,10 @@ describe('testReplicationMath', function () {
         let inside = 1 - reserveRisky.float / liquidity.float
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF - vol
-        let step4 = new Integer64x64(
+        let step4 = new FixedPointX64(
           await fixture.getStableGivenRisky.step4(
-            toBN(Math.floor(inversedCDF * +Integer64x64.Denominator).toString()),
-            toBN(vol).mul(Integer64x64.Denominator)
+            toBN(Math.floor(inversedCDF * +FixedPointX64.Denominator).toString()),
+            toBN(vol).mul(FixedPointX64.Denominator)
           )
         )
         expect(step4.parsed).to.be.eq(expected)
@@ -151,7 +151,7 @@ describe('testReplicationMath', function () {
           await fixture.getStableGivenRisky.step1(config.sigma.raw, tau.raw)
         )
         let expected = (config.strike.float * cdf + invariant) * liquidity.float
-        let step5 = new Integer64x64(
+        let step5 = new FixedPointX64(
           await fixture.getStableGivenRisky.step5(
             await fixture.getStableGivenRisky.step0(config.strike.raw),
             step4,
@@ -162,7 +162,7 @@ describe('testReplicationMath', function () {
       })
 
       it('getStableGivenRisky', async function () {
-        let expected: number = new Integer64x64(
+        let expected: number = new FixedPointX64(
           await fixture.getStableGivenRisky.getStableGivenRisky(0, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
         ).float
         let actual: number = getStableGivenRisky(reserveStable.float, strike.float, sigma.float, tau.years)
@@ -172,7 +172,7 @@ describe('testReplicationMath', function () {
 
     describe('Inverse Trading Function: getRiskyGivenStable', async function () {
       it('step0: parse strike to 64x64 fixed point int128', async function () {
-        let expected = new Integer64x64(Integer64x64.Denominator.mul(config.strike.float)).raw
+        let expected = new FixedPointX64(FixedPointX64.Denominator.mul(config.strike.float)).raw
         let step0 = await fixture.getRiskyGivenStable.step0(config.strike.raw)
         expect(step0).to.be.eq(expected)
       })
@@ -180,12 +180,12 @@ describe('testReplicationMath', function () {
       it('step1: calculate sigma * sqrt(tau)', async function () {
         const tau = config.maturity.sub(config.lastTimestamp)
         let expected = config.sigma.float * Math.sqrt(tau.years)
-        let step1 = new Integer64x64(await fixture.getRiskyGivenStable.step1(config.sigma.raw, tau.raw))
+        let step1 = new FixedPointX64(await fixture.getRiskyGivenStable.step1(config.sigma.raw, tau.raw))
         expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
       })
 
       it('step2: get the stable reserves per 1 unit of liquidity', async function () {
-        let expected = new Integer64x64(Integer64x64.Denominator.mul(reserveRisky.raw).div(parseWei(1).raw)).raw
+        let expected = new FixedPointX64(FixedPointX64.Denominator.mul(reserveRisky.raw).div(parseWei(1).raw)).raw
         let step2 = await fixture.getRiskyGivenStable.step2(reserveRisky.raw)
         expect(step2).to.be.eq(expected)
       })
@@ -196,7 +196,7 @@ describe('testReplicationMath', function () {
         let inside = (reserve.float - invariant) / config.strike.float
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF
-        let step3 = new Integer64x64(await fixture.getRiskyGivenStable.step3(reserve.raw, invariant, config.strike.raw))
+        let step3 = new FixedPointX64(await fixture.getRiskyGivenStable.step3(reserve.raw, invariant, config.strike.raw))
         expect(step3.parsed).to.be.closeTo(expected, precision.cdf)
       })
 
@@ -208,10 +208,10 @@ describe('testReplicationMath', function () {
         let inside = (reserve.float - invariant) / config.strike.float
         let inversedCDF = inverse_std_n_cdf(inside)
         let expected = inversedCDF + vol
-        let step4 = new Integer64x64(
+        let step4 = new FixedPointX64(
           await fixture.getRiskyGivenStable.step4(
-            toBN((inversedCDF * +Integer64x64.Denominator).toString()),
-            Integer64x64.Denominator.mul(vol)
+            toBN((inversedCDF * +FixedPointX64.Denominator).toString()),
+            FixedPointX64.Denominator.mul(vol)
           )
         )
         expect(step4.parsed).to.be.eq(expected)
@@ -224,20 +224,20 @@ describe('testReplicationMath', function () {
         let vol = step1
         let step3 = await fixture.getRiskyGivenStable.step3(reserveRisky.raw, invariant, config.strike.raw)
         let step4 = await fixture.getRiskyGivenStable.step4(step3, vol)
-        let cdf = std_n_cdf(new Integer64x64(step4).parsed)
+        let cdf = std_n_cdf(new FixedPointX64(step4).parsed)
         let expected =
-          new Integer64x64(
+          new FixedPointX64(
             parseWei(1 - cdf)
               .mul(liquidity)
-              .mul(Integer64x64.Denominator)
+              .mul(FixedPointX64.Denominator)
               .div(parseWei(1)).raw
           ).parsed / Math.pow(10, 18)
-        let step5 = new Integer64x64(await fixture.getRiskyGivenStable.step5(step4))
+        let step5 = new FixedPointX64(await fixture.getRiskyGivenStable.step5(step4))
         expect(step5.parsed).to.be.closeTo(expected, precision.cdf)
       })
 
       it('getRiskyGivenStable', async function () {
-        let expected: number = new Integer64x64(
+        let expected: number = new FixedPointX64(
           await fixture.getRiskyGivenStable.getRiskyGivenStable(
             0,
             reserveStable.raw,
@@ -262,7 +262,7 @@ describe('testReplicationMath', function () {
           config.sigma.float,
           tau.years
         )
-        let step0 = new Integer64x64(
+        let step0 = new FixedPointX64(
           await fixture.calcInvariant.step0(reserveRisky.raw, config.strike.raw, config.sigma.raw, tau.raw)
         )
         expect(step0.parsed).to.be.closeTo(expected, precision.invariant)
@@ -277,19 +277,19 @@ describe('testReplicationMath', function () {
           config.sigma.float,
           tau.years
         )
-        let expected = new Integer64x64(Integer64x64.Denominator.mul(reserveStable.sub(parseWei(reserve2)).raw))
+        let expected = new FixedPointX64(FixedPointX64.Denominator.mul(reserveStable.sub(parseWei(reserve2)).raw))
         let step0 = await fixture.calcInvariant.step0(
           reserveRisky.raw,
           config.strike.raw,
           config.sigma.raw,
           config.maturity.sub(config.lastTimestamp).raw
         )
-        let step1 = new Integer64x64(await fixture.calcInvariant.step1(reserveStable.raw, step0))
+        let step1 = new FixedPointX64(await fixture.calcInvariant.step1(reserveStable.raw, step0))
         expect(step1.parsed).to.be.closeTo(expected.parsed / Math.pow(10, 18), precision.invariant)
       })
 
       it('calcInvariant', async function () {
-        let expected: number = new Integer64x64(
+        let expected: number = new FixedPointX64(
           await math.calcInvariant(reserveRisky.raw, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
         ).parsed
         let actual: number = calcInvariant(reserveRisky.float, reserveStable.float, strike.float, sigma.float, tau.years)

@@ -1,12 +1,12 @@
 import { BigNumber } from 'ethers'
-import { PrimitiveEngine } from '../../../typechain'
+import { EngineTypes } from '../../../types'
 
 // Chai matchers for the margins of the PrimitiveEngine
 
 export default function supportMargin(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod(
     'increaseMargin',
-    async function (this: any, engine: PrimitiveEngine, account: string, delRisky: BigNumber, delStable: BigNumber) {
+    async function (this: any, engine: EngineTypes, account: string, delRisky: BigNumber, delStable: BigNumber) {
       const oldMargin = await engine.margins(account)
       await this._obj
       const newMargin = await engine.margins(account)
@@ -34,7 +34,7 @@ export default function supportMargin(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseMargin',
-    async function (this: any, engine: PrimitiveEngine, account: string, delRisky: BigNumber, delStable: BigNumber) {
+    async function (this: any, engine: EngineTypes, account: string, delRisky: BigNumber, delStable: BigNumber) {
       const oldMargin = await engine.margins(account)
       await this._obj
       const newMargin = await engine.margins(account)

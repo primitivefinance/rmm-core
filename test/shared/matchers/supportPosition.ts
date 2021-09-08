@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import { PrimitiveEngine } from '../../../typechain'
+import { EngineTypes } from '../../../types'
 
 // Chai matchers for the positions of the PrimitiveEngine
 
@@ -8,7 +8,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionFloat',
-    async function (this: any, engine: PrimitiveEngine, posId: string, float: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, float: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -27,7 +27,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreasePositionFloat',
-    async function (this: any, engine: PrimitiveEngine, posId: string, float: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, float: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -48,7 +48,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionLiquidity',
-    async function (this: any, engine: PrimitiveEngine, posId: string, liquidity: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, liquidity: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -67,7 +67,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreasePositionLiquidity',
-    async function (this: any, engine: PrimitiveEngine, posId: string, liquidity: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, liquidity: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -88,13 +88,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionDebt',
-    async function (
-      this: any,
-      engine: PrimitiveEngine,
-      posId: string,
-      collateralRisky: BigNumber,
-      collateralStable: BigNumber
-    ) {
+    async function (this: any, engine: EngineTypes, posId: string, collateralRisky: BigNumber, collateralStable: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -121,13 +115,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreasePositionDebt',
-    async function (
-      this: any,
-      engine: PrimitiveEngine,
-      posId: string,
-      collateralRisky: BigNumber,
-      collateralStable: BigNumber
-    ) {
+    async function (this: any, engine: EngineTypes, posId: string, collateralRisky: BigNumber, collateralStable: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -154,7 +142,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionFeeRiskyGrowthLast',
-    async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, amount: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)
@@ -173,7 +161,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionFeeStableGrowthLast',
-    async function (this: any, engine: PrimitiveEngine, posId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, posId: string, amount: BigNumber) {
       const oldPosition = await engine.positions(posId)
       await this._obj
       const newPosition = await engine.positions(posId)

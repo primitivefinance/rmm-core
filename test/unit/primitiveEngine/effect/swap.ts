@@ -2,7 +2,7 @@ import expect from '../../../shared/expect'
 import { assert } from 'chai'
 import { waffle } from 'hardhat'
 import { BigNumber, BytesLike, constants, ContractTransaction, Wallet } from 'ethers'
-import { Wei, Time, parseWei, toBN, Integer64x64, parsePercentage, Percentage } from 'web3-units'
+import { Wei, Time, parseWei, toBN, FixedPointX64, parsePercentage, Percentage } from 'web3-units'
 import { getSpotPrice } from '@primitivefinance/v2-math'
 
 import { Contracts } from '../../../../types'
@@ -261,7 +261,7 @@ describe('Engine:swap', function () {
            spot: ${preSpot}
            risky: ${preRisky.float / preLiquidity.float}
            stable: ${preStable.float / preLiquidity.float}
-           invariant: ${new Integer64x64(preInvariant).parsed}
+           invariant: ${new FixedPointX64(preInvariant).parsed}
           `)
       })
 
@@ -329,7 +329,7 @@ describe('Engine:swap', function () {
           ====== POST RESERVE =====
            risky: ${postRisky.float}
            stable: ${postStable.float}
-           invariant: post: ${new Integer64x64(postInvariant).parsed}, pre: ${new Integer64x64(preInvariant).parsed}
+           invariant: post: ${new FixedPointX64(postInvariant).parsed}, pre: ${new FixedPointX64(preInvariant).parsed}
           `)
             const simLiq = simulated.pool.liquidity.float
             if (DEBUG_MODE)
@@ -365,10 +365,10 @@ describe('Engine:swap', function () {
               new Time(postSetting.maturity - postSetting.lastTimestamp).years
             )
 
-            expect(simulated.nextInvariant?.parsed).to.be.closeTo(new Integer64x64(postInvariant).parsed, 1)
+            expect(simulated.nextInvariant?.parsed).to.be.closeTo(new FixedPointX64(postInvariant).parsed, 1)
             expect(balanceOut).to.be.eq(deltaOut.raw)
-            const postI = new Integer64x64(postInvariant)
-            const preI = new Integer64x64(preInvariant)
+            const postI = new FixedPointX64(postInvariant)
+            const preI = new FixedPointX64(preInvariant)
             expect(postI.parsed >= preI.parsed || postI.parsed - preI.parsed < 1e8).to.be.eq(true)
             if (testCase.riskyForStable) {
               expect(preSpot).to.be.gte(postSpot)

@@ -1,58 +1,32 @@
 import expect from './shared/expect'
 import { waffle } from 'hardhat'
-import { constants, Wallet } from 'ethers'
+import { constants } from 'ethers'
 import { parseWei, Time } from 'web3-units'
 
-import { DEFAULT_CONFIG as config } from './unit/context'
+import { PoolState, TestPools } from './shared/poolConfigs'
 import { computePoolId, computePositionId } from './shared/utils'
-import { Contracts } from '../types'
-import { primitiveFixture, PrimitiveFixture } from './shared/fixtures'
-import { batchApproval, Calibration } from './shared'
+import { primitiveFixture } from './shared/fixtures'
 import { testContext } from './shared/testContext'
-
-//const { strike, sigma, maturity, lastTimestamp, delta } = config
+import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from './shared/hooks'
 const { HashZero } = constants
 
-export async function beforeEachAllocate(signers: Wallet[], contracts: Contracts, conf: Calibration): Promise<void> {
-  const contractAddresses = Object.keys(contracts).map((key) => contracts[key]?.address)
-  const { strike, sigma, maturity, lastTimestamp, delta } = conf
+TestPools.forEach(function (pool: PoolState) {
+  testContext(`allocate to ${pool.description} pool`, function () {
+    const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
+    let poolId: string, posId: string
 
-  await batchApproval(contractAddresses, [contracts.risky, contracts.stable], signers[0])
-  await contracts.stable.mint(signers[0].address, parseWei('10000').raw)
-  await contracts.risky.mint(signers[0].address, parseWei('10000').raw)
-  await contracts.risky.approve(contracts.router.address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.router.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.router.address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.router.address, constants.MaxUint256)
-  await contracts.risky.approve(contracts.router.address, constants.MaxUint256)
-  await contracts.stable.approve(contracts.router.address, constants.MaxUint256)
-
-  await contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, HashZero)
-  const poolId = computePoolId(contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-  await contracts.router.allocateFromExternal(poolId, signers[0].address, parseWei('100').raw, HashZero)
-}
-
-;[config, config].forEach(function (conf) {
-  testContext('allocate', function () {
-    let poolId: string, posId: string, fixture: PrimitiveFixture
-    const { strike, sigma, maturity, lastTimestamp, delta } = conf
     beforeEach(async function () {
-      fixture = await this.loadFixture(primitiveFixture)
+      const fixture = await this.loadFixture(primitiveFixture)
       this.contracts = fixture.contracts
-
-      poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-      posId = await this.contracts.router.getPosition(poolId)
-      await beforeEachAllocate(this.signers, this.contracts, conf)
+      await useTokens(this.signers[0], this.contracts, pool.calibration)
+      await useApproveAll(this.signers[0], this.contracts)
+      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
+      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
     })
 
     describe('when allocating from margin', function () {
       beforeEach(async function () {
-        await this.contracts.router.deposit(
-          this.contracts.router.address,
-          parseWei('1000').raw,
-          parseWei('1000').raw,
-          HashZero
-        )
+        await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
       })
 
       describe('success cases', function () {

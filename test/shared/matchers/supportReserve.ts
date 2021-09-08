@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import { PrimitiveEngine } from '../../../typechain'
+import { EngineTypes } from '../../../types'
 
 // Chai matchers for the reserves of the PrimitiveEngine
 
@@ -8,7 +8,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -26,7 +26,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -47,7 +47,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -66,7 +66,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -87,7 +87,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveLiquidity',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -106,7 +106,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveLiquidity',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -127,7 +127,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveFloat',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -146,7 +146,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveFloat',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -167,7 +167,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveCollateralRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -186,7 +186,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveCollateralRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -205,7 +205,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveCollateralStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -224,7 +224,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveCollateralStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -244,7 +244,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
   // fees
   Assertion.addMethod(
     'increaseReserveFeeRiskyGrowth',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -263,7 +263,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveFeeStableGrowth',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -284,7 +284,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'updateReserveBlockTimestamp',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, blockTimestamp: number) {
       await this._obj
       const newReserve = await engine.reserves(poolId)
 
@@ -302,7 +302,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'updateReserveCumulativeRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber, blockTimestamp: number) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -324,7 +324,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'updateReserveCumulativeStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber, blockTimestamp: number) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
