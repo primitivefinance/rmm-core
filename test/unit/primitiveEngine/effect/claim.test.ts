@@ -5,7 +5,7 @@ import { parseWei } from 'web3-units'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { primitiveFixture } from '../../../shared/fixtures'
 import { testContext } from '../../../shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
+import { usePool, useLiquidity, useTokens, useApproveAll, useSupplyLiquidity } from '../../../shared/hooks'
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
@@ -21,6 +21,7 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
       ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await useSupplyLiquidity(this.signers[0], this.contracts, pool.calibration, parseWei('1000').mul(8).div(10))
     })
 
     describe('success cases', function () {
@@ -97,11 +98,13 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('fails to remove more to float than is available in the position liquidity', async function () {
-        await expect(this.contracts.router.claim(poolId, parseWei('20').raw)).to.be.reverted
+        const float = (await this.contracts.engine.positions(posId)).float
+        await expect(this.contracts.router.claim(poolId, float)).to.be.reverted
       })
       it('fails to remove more to float than is available in the __GLOBAL FLOAT__', async function () {
+        const float = (await this.contracts.engine.positions(posId)).float
         await this.contracts.router.borrow(poolId, this.contracts.router.address, one.raw, '0', HashZero)
-        await expect(this.contracts.router.claim(poolId, one.raw)).to.be.reverted
+        await expect(this.contracts.router.claim(poolId, float)).to.be.reverted
       })
     })
   })

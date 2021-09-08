@@ -22,6 +22,7 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
       ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
     })
 
     describe('success cases', function () {
