@@ -7,17 +7,8 @@ import "./callbacks/TestAllocateCallback.sol";
 import "./callbacks/TestCreateCallback.sol";
 import "./callbacks/TestDepositCallback.sol";
 import "./callbacks/TestSwapCallback.sol";
-import "./callbacks/TestBorrowCallback.sol";
-import "./callbacks/TestRepayCallback.sol";
 
-abstract contract TestBase is
-    TestAllocateCallback,
-    TestBorrowCallback,
-    TestCreateCallback,
-    TestDepositCallback,
-    TestRepayCallback,
-    TestSwapCallback
-{
+abstract contract TestBase is TestAllocateCallback, TestCreateCallback, TestDepositCallback, TestSwapCallback {
     address public engine;
     address public caller;
 

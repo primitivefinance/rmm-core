@@ -53,7 +53,7 @@ testContext('testCumulativeNormalDistribution', function () {
     it('icdf: negative value', async function () {
       let x = 0.25
       let icdf = inverse_std_n_cdf(x)
-      await expect(cumulative.icdfX64(parseFixedPointX64(Math.floor(x * 1e9), 9).raw)).to.not.be.reverted // flips sign in fn
+      await expect(cumulative.icdfX64(parseFixedPointX64(Math.floor(x * 1e4), 4).raw)).to.not.be.reverted // flips sign in fn
       expect(new FixedPointX64(await cumulative.icdf(parseWei(x).raw)).parsed).to.be.closeTo(icdf, precision.percentage)
     })
   })

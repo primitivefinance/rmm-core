@@ -1,5 +1,5 @@
 import { Wallet } from '@ethersproject/wallet'
-import { Calibration, computePoolId, computePositionId } from '.'
+import { Calibration, computePositionId } from '.'
 import { Contracts } from '../../types'
 import { parseWei, Wei } from 'web3-units'
 import { ethers } from 'ethers'
@@ -27,7 +27,7 @@ export async function usePool(signer: Wallet, contracts: Contracts, config: Cali
       .connect(signer)
       .create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, parseWei('1').raw, HashZero)
   } catch (err) {
-    console.log(`\n Error thrown on attempting to call create() on the router in usePool()`, err)
+    console.log(`\n Error thrown on attempting to call create() on the router in usePool()`)
   }
 
   return { tx, poolId: config.poolId(contracts.engine.address) }
@@ -45,7 +45,7 @@ export async function useLiquidity(
   try {
     tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, parseWei('1000').raw, HashZero)
   } catch (err) {
-    console.log(`\n Error thrown on attempting to call allocateFromExternal() on the router`, err)
+    console.log(`\n Error thrown on attempting to call allocateFromExternal() on the router`)
   }
 
   const posId = computePositionId(target, poolId)
@@ -65,68 +65,10 @@ export async function useMargin(
   try {
     tx = await contracts.router.connect(signer).deposit(target, delRisky.raw, delStable.raw, HashZero)
   } catch (err) {
-    console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
+    console.log(`\n Error thrown on attempting to call deposit() on the router`)
   }
 
   return { tx }
-}
-
-export async function useSupplyLiquidity(
-  signer: Wallet,
-  contracts: Contracts,
-  config: Calibration,
-  delLiquidity: Wei
-): Promise<{ tx: any }> {
-  const poolId = config.poolId(contracts.engine.address)
-  /// call create on the router contract
-  let tx: any
-  try {
-    tx = await contracts.router.connect(signer).supply(poolId, delLiquidity.raw)
-  } catch (err) {
-    console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
-  }
-
-  return { tx }
-}
-
-export async function useClaimLiquidity(
-  signer: Wallet,
-  contracts: Contracts,
-  config: Calibration,
-  delLiquidity: Wei
-): Promise<{ tx: any }> {
-  const poolId = config.poolId(contracts.engine.address)
-  /// call create on the router contract
-  let tx: any
-  try {
-    tx = await contracts.router.connect(signer).claim(poolId, delLiquidity.raw)
-  } catch (err) {
-    console.log(`\n Error thrown on attempting to call deposit() on the router`, err)
-  }
-
-  return { tx }
-}
-
-export async function useBorrow(
-  signer: Wallet,
-  contracts: Contracts,
-  config: Calibration,
-  collateralRisky: Wei,
-  collateralStable: Wei,
-  target: string = signer.address
-): Promise<UseLiquidity> {
-  const poolId = config.poolId(contracts.engine.address)
-  /// call create on the router contract
-  let tx: any
-  try {
-    tx = await contracts.router.connect(signer).borrow(poolId, target, collateralRisky.raw, collateralStable.raw, HashZero)
-  } catch (err) {
-    console.log(`\n Error thrown on attempting to call allocateFromExternal() on the router`, err)
-  }
-
-  const posId = computePositionId(target, poolId)
-
-  return { tx, poolId, posId }
 }
 
 export async function useTokens(
@@ -136,15 +78,15 @@ export async function useTokens(
   amount: Wei = parseWei('10000')
 ): Promise<{ tx: any }> {
   // if config precision is not 18, set the tokens to it
-  if (config.precisionRisky != 18) await contracts.risky.setDecimals(config.precisionRisky)
-  if (config.precisionStable != 18) await contracts.stable.setDecimals(config.precisionStable)
+  if (config.precisionRisky != 0) await contracts.risky.setDecimals(18 - config.precisionRisky)
+  if (config.precisionStable != 0) await contracts.stable.setDecimals(18 - config.precisionStable)
   /// mint tokens for the user
   let tx: any
   try {
     tx = await contracts.risky.connect(signer).mint(signer.address, amount.raw)
     tx = await contracts.stable.connect(signer).mint(signer.address, amount.raw)
   } catch (err) {
-    console.log(`\n Error thrown on attempting to call mint() on the tokens`, err)
+    console.log(`\n Error thrown on attempting to call mint() on the tokens`)
   }
 
   return { tx }

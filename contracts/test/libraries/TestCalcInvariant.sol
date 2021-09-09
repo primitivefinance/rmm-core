@@ -13,21 +13,26 @@ contract TestCalcInvariant {
     using Units for int128;
     using Units for uint256;
 
-    uint256 public constant precisionRisky = 1e18;
-    uint256 public constant precisionStable = 1e18;
+    uint256 public precisionRisky;
+    uint256 public precisionStable;
+
+    function set(uint256 prec0, uint256 prec1) public {
+        precisionRisky = prec0;
+        precisionStable = prec1;
+    }
 
     function step0(
         uint256 reserveRisky,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserve2) {
+    ) public view returns (int128 reserve2) {
         reserve2 = ReplicationMath
         .getStableGivenRisky(0, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
         .scaleToX64(precisionStable);
     }
 
-    function step1(uint256 reserveStable, int128 reserve2) public pure returns (int128 invariant) {
+    function step1(uint256 reserveStable, int128 reserve2) public view returns (int128 invariant) {
         invariant = reserveStable.scaleToX64(precisionStable).sub(reserve2);
     }
 
@@ -38,7 +43,7 @@ contract TestCalcInvariant {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 invariant) {
+    ) public view returns (int128 invariant) {
         int128 reserve2 = step0(reserveRisky, strike, sigma, tau);
         invariant = step1(reserveStable, reserve2);
     }

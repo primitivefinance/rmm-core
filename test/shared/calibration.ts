@@ -31,11 +31,11 @@ export class Calibration {
    */
   public readonly fee: Percentage
   /**
-   * @notice Decimals of risky asset
+   * @notice Scaling factor of risky asset, 18 - risky decimals
    */
   public readonly precisionRisky: number
   /**
-   * @notice Decimals of stable asset
+   * @notice Scaling factor of stable asset, 18 - stable decimals
    */
   public readonly precisionStable: number
 
@@ -54,17 +54,17 @@ export class Calibration {
     lastTimestamp: number,
     spot: number,
     fee: Percentage = new Percentage(toBN(0)),
-    precisionRisky: number = 18,
-    precisionStable: number = 18
+    decimalsRisky: number = 18,
+    decimalsStable: number = 18
   ) {
-    this.strike = parseWei(strike, precisionStable)
+    this.strike = parseWei(strike, decimalsStable)
     this.sigma = parsePercentage(sigma)
     this.maturity = new Time(maturity) // in seconds, because `block.timestamp` is in seconds
     this.lastTimestamp = new Time(lastTimestamp) // in seconds, because `block.timestamp` is in seconds
-    this.spot = parseWei(spot, precisionStable)
+    this.spot = parseWei(spot, decimalsStable)
     this.fee = fee
-    this.precisionRisky = precisionRisky
-    this.precisionStable = precisionStable
+    this.precisionRisky = 18 - decimalsRisky
+    this.precisionStable = 18 - decimalsStable
   }
 
   /**
@@ -75,7 +75,7 @@ export class Calibration {
   }
 
   /**
-   * @returns Change in option premium wrt change in underlying spot price
+   * @returns Change in pool premium wrt change in underlying spot price
    */
   get delta(): number {
     return callDelta(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
@@ -96,6 +96,6 @@ export class Calibration {
   }
 
   poolId(engine: string): string {
-    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.raw)
+    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.div(Math.pow(10, this.precisionRisky)).raw)
   }
 }

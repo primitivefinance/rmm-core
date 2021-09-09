@@ -28,8 +28,8 @@ contract MockFactory is IPrimitiveFactory {
     function deploy(address risky, address stable) external override returns (address engine) {
         if (risky == stable) revert SameTokenError();
         if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
-        uint256 precisionRisky = 10**(IERC20(risky).decimals());
-        uint256 precisionStable = 10**(IERC20(stable).decimals());
+        uint256 precisionRisky = 10**(18 - IERC20(risky).decimals());
+        uint256 precisionStable = 10**(18 - IERC20(stable).decimals());
         args = Args({
             factory: address(this),
             risky: risky,
