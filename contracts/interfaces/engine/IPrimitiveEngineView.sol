@@ -57,9 +57,9 @@ interface IPrimitiveEngineView {
 
     /// @notice             Fetches `Calibration` pool parameters
     /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
-    /// @return strike      Strike price of the pool
-    /// sigma               Volatility of the pool
-    /// maturity            Timestamp of maturity
+    /// @return strike      Strike price of the pool with `stable.decimal()` precision
+    /// sigma               Volatility of the pool scaled to a percentage integer from multiplying by 1e4
+    /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
     function calibrations(bytes32 poolId)
         external
