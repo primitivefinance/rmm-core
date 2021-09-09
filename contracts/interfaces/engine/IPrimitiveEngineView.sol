@@ -22,6 +22,9 @@ interface IPrimitiveEngineView {
     /// @return Amount of seconds after pool expiry which allows swaps, no swaps after buffer
     function BUFFER() external view returns (uint256);
 
+    /// @return Amount of liquidity burned on `create()` calls
+    function MIN_LIQUIDITY() external view returns (uint256);
+
     //// @return Factory address which deployed this engine contract
     function factory() external view returns (address);
 
