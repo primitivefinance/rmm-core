@@ -123,7 +123,8 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('reverts if desired liquidity to remove is more than position liquidity', async function () {
-          await expect(this.contracts.router.removeToMargin(poolId, parseWei('11').raw, HashZero)).to.be.reverted
+          const liq = await this.contracts.engine.liquidity(this.contracts.router.address, poolId)
+          await expect(this.contracts.router.removeToMargin(poolId, liq.add(1), HashZero)).to.be.reverted
         })
       })
     })
@@ -221,7 +222,8 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('reverts if remove amount is greater than position liquidity', async function () {
-          await expect(this.contracts.router.removeToExternal(poolId, parseWei('11').raw, HashZero)).to.be.reverted
+          const liq = await this.contracts.engine.liquidity(this.contracts.router.address, poolId)
+          await expect(this.contracts.router.removeToExternal(poolId, liq.add(1), HashZero)).to.be.reverted
         })
       })
     })
