@@ -111,7 +111,8 @@ library Reserve {
         pure
         returns (uint256 delRisky, uint256 delStable)
     {
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+        uint256 liq = uint256(reserve.liquidity);
+        delRisky = (delLiquidity * uint256(reserve.reserveRisky)) / liq;
+        delStable = (delLiquidity * uint256(reserve.reserveStable)) / liq;
     }
 }
