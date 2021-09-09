@@ -29,11 +29,6 @@ TestPools.forEach(function (pool: PoolState) {
         await expect(
           this.contracts.router.deposit(this.contracts.router.address, parseWei('101').raw, parseWei('100').raw, HashZero)
         ).to.increaseMargin(this.contracts.engine, this.contracts.router.address, parseWei('101').raw, parseWei('100').raw)
-
-        expect(await this.contracts.engine.margins(this.contracts.router.address)).to.be.deep.eq([
-          parseWei('101').raw,
-          parseWei('100').raw,
-        ])
       })
 
       it('increases the balances of the engine contract', async function () {

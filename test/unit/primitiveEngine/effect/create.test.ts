@@ -69,7 +69,12 @@ TestPools.forEach(function (pool: PoolState) {
       it('pos.allocate: increase liquidity & burn 1000 wei from position', async function () {
         await expect(
           this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
-        ).to.increasePositionLiquidity(this.contracts.engine, this.signers[0].address, poolId, delLiquidity.sub(1000).raw)
+        ).to.increasePositionLiquidity(
+          this.contracts.engine,
+          this.contracts.router.address,
+          poolId,
+          delLiquidity.sub(1000).raw
+        )
       })
 
       it('emits the Created event', async function () {
