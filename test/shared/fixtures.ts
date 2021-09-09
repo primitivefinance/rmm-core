@@ -65,7 +65,6 @@ export async function primitiveFixture([wallet]: Wallet[], provider: any): Promi
 export async function createTestLibraries(deployer: Wallet): Promise<Libraries> {
   const libraries: Libraries = {} as Libraries
 
-  libraries.testPosition = (await deploy('TestPosition', deployer)) as ContractTypes.TestPosition
   libraries.testReserve = (await deploy('TestReserve', deployer)) as ContractTypes.TestReserve
 
   libraries.testMargin = (await deploy('TestMargin', deployer)) as ContractTypes.TestMargin

@@ -11,41 +11,43 @@ library Units {
     using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64
 
     uint256 internal constant YEAR = 31556952; // 365.24219 ephemeris day = 1 year, in seconds
-    uint256 internal constant DENOMINATOR = 10**18; // precision to scale to
-    uint256 internal constant PERCENTAGE = 1e4;
+    uint256 internal constant PRECISION = 10**18; // precision to scale to
+    uint256 internal constant PERCENTAGE = 1e4; // precision of percentages
 
     // ===== Unit Conversion =====
 
     /// @notice             Scales a wei value to a precision of 1e18
-    /// @param   value      Unsigned 256-bit wei amount to convert
-    /// @param   precision  10**decimals to scale up by, assumes `value` has this level of precision
+    /// @param   value      Unsigned 256-bit wei amount to convert with native decimals
+    /// @param   precision  Scaling factor to multiply by, i.e. 10^(18 - value.decimals())
     /// @return  y          Unsigned 256-bit wei amount scaled to a precision of 1e18
     function scaleUp(uint256 value, uint256 precision) internal pure returns (uint256 y) {
-        y = (value * DENOMINATOR) / precision;
+        y = value * precision;
     }
 
-    /// @notice             Scales a wei value from a precision of 1e18 to `precision`
-    /// @param   value      Unsigned 256-bit wei amount to convert
-    /// @param   precision  10**decimals to scale down by, assumes `value` has this level of precision
-    /// @return  y          Unsigned 256-bit wei amount scaled to `precision`
+    /// @notice             Scales a wei value from a precision of 1e18 to 10^(18 - precision)
+    /// @param   value      Unsigned 256-bit wei amount with 18 decimals
+    /// @param   precision  Scaling factor to divide by, i.e. 10^(18 - value.decimals())
+    /// @return  y          Unsigned 256-bit wei amount scaled to 10^(18 - precision)
     function scaleDown(uint256 value, uint256 precision) internal pure returns (uint256 y) {
-        y = (value * precision) / DENOMINATOR;
+        y = value / precision;
     }
 
     /// @notice             Converts unsigned 256-bit wei value into a fixed point 64.64 number
-    /// @param   value      Unsigned 256-bit wei amount to convert
-    /// @param   precision  10**decimals to scale down by, assumes `value` has this level of precision
-    /// @return  y          Signed 64.64 fixed point wei value
+    /// @param   value      Unsigned 256-bit wei amount, in native precision
+    /// @param   precision  Scaling factor for `value`, used to calculate decimals of `value`
+    /// @return  y          Signed 64.64 fixed point number scaled from native precision
     function scaleToX64(uint256 value, uint256 precision) internal pure returns (int128 y) {
-        y = value.divu(precision);
+        uint256 scaleFactor = PRECISION / precision;
+        y = value.divu(scaleFactor);
     }
 
     /// @notice             Converts signed fixed point 64.64 number into unsigned 256-bit wei value
-    /// @param   value      Signed fixed point 64.64 number to convert from
-    /// @param   precision  10**decimals to scale up by, assumes `value` has this level of precision
-    /// @return  y          Unsigned 256-bit wei value
+    /// @param   value      Signed fixed point 64.64 number to convert from precision of 10^18
+    /// @param   precision  Scaling factor for `value`, used to calculate decimals of `value`
+    /// @return  y          Unsigned 256-bit wei amount scaled to native precision of 10^(18 - precision)
     function scalefromX64(int128 value, uint256 precision) internal pure returns (uint256 y) {
-        y = value.mulu(precision);
+        uint256 scaleFactor = PRECISION / precision;
+        y = value.mulu(scaleFactor);
     }
 
     /// @notice         Converts denormalized percentage integer to a fixed point 64.64 number

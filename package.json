@@ -27,6 +27,7 @@
     "typechain": "hardhat typechain",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
+    "compile:all": "hardhat clean && hardhat compile && hardhat typechain",
     "test": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:engine": "npx mocha ./test/unit/primitiveEngine/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:factory": "npx mocha ./test/unit/primitiveFactory/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",

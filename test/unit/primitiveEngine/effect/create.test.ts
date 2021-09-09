@@ -69,7 +69,12 @@ TestPools.forEach(function (pool: PoolState) {
       it('pos.allocate: increase liquidity & burn 1000 wei from position', async function () {
         await expect(
           this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
-        ).to.increasePositionLiquidity(this.contracts.engine, posId, delLiquidity.sub(1000).raw)
+        ).to.increasePositionLiquidity(
+          this.contracts.engine,
+          this.contracts.router.address,
+          poolId,
+          delLiquidity.sub(1000).raw
+        )
       })
 
       it('emits the Created event', async function () {
@@ -97,9 +102,6 @@ TestPools.forEach(function (pool: PoolState) {
         expect(reserve.reserveRisky).to.not.equal(0)
         expect(reserve.reserveStable).to.not.equal(0)
         expect(reserve.liquidity).to.equal(parseWei(1).raw)
-        expect(reserve.float).to.equal(0)
-        expect(reserve.collateralRisky).to.equal(0)
-        expect(reserve.collateralStable).to.equal(0)
         expect(reserve.cumulativeLiquidity).to.equal(0)
         expect(reserve.cumulativeRisky).to.equal(0)
         expect(reserve.cumulativeStable).to.equal(0)

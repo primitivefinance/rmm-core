@@ -33,8 +33,8 @@ library ReplicationMath {
     /// @notice                 Uses riskyPerLiquidity and invariant to calculate stablePerLiquidity
     /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
     /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
-    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
-    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   precisionRisky     Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
+    /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
     /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
     /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
@@ -51,8 +51,8 @@ library ReplicationMath {
     ) internal pure returns (uint256 stablePerLiquidity) {
         int128 strikeX64 = strike.scaleToX64(precisionStable);
         int128 volX64 = getProportionalVolatility(sigma, tau);
-        int128 riskyX64 = riskyPerLiquidity.scaleToX64(precisionRisky);
-        int128 phi = ONE_INT.sub(riskyX64).getInverseCDF(); // CDF^-1(1-x)
+        int128 riskyX64 = riskyPerLiquidity.scaleToX64(precisionRisky); // mul by 2^64, div by precision
+        int128 phi = ONE_INT.sub(riskyX64).getInverseCDF(); // CDF^-1(1-x), ONE_INT = 2^64
         int128 input = phi.sub(volX64); // phi - volX64
         int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
         stablePerLiquidity = stableX64.scalefromX64(precisionStable);
@@ -61,8 +61,8 @@ library ReplicationMath {
     /// @notice                 Uses stablePerLiquidity and invariant to calculate riskyPerLiquidity
     /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
     /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
-    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
-    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   precisionRisky     Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
+    /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
     /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
     /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
@@ -88,8 +88,8 @@ library ReplicationMath {
 
     /// @notice                 Calculates the invariant of a curve
     /// @dev                    Per unit of replication, aka per unit of liquidity
-    /// @param   precisionRisky     Unsigned 256-bit integer of precision for the `risky` token, aka 10**decimals
-    /// @param   precisionStable    Unsigned 256-bit integer of precision for the `stable` token, aka 10**decimals
+    /// @param   precisionRisky     Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
+    /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
     /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
     /// @return  invariantX64      = stablePerLiquidity - K * CDF(CDF^-1(1 - riskyPerLiquidity) - sigma * sqrt(tau))

@@ -34,6 +34,18 @@ contract TestRouter is TestBase {
         IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
     }
 
+    function depositFail(
+        address owner,
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        caller = msg.sender;
+        scenario = Scenario.FAIL;
+        IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
+        scenario = Scenario.SUCCESS;
+    }
+
     function depositReentrancy(
         address owner,
         uint256 delRisky,
@@ -42,6 +54,30 @@ contract TestRouter is TestBase {
     ) public {
         caller = msg.sender;
         scenario = Scenario.REENTRANCY;
+        IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
+        scenario = Scenario.SUCCESS;
+    }
+
+    function depositOnlyRisky(
+        address owner,
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        caller = msg.sender;
+        scenario = Scenario.RISKY_ONLY;
+        IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
+        scenario = Scenario.SUCCESS;
+    }
+
+    function depositOnlyStable(
+        address owner,
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) public {
+        caller = msg.sender;
+        scenario = Scenario.STABLE_ONLY;
         IPrimitiveEngine(engine).deposit(owner, delRisky, delStable, data);
         scenario = Scenario.SUCCESS;
     }
@@ -164,136 +200,6 @@ contract TestRouter is TestBase {
     ) public {
         caller = msg.sender;
         IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, data);
-    }
-
-    // ===== Supply and Claim =====
-    function supply(bytes32 poolId, uint256 dLiquidity) public {
-        IPrimitiveEngine(engine).supply(poolId, dLiquidity);
-    }
-
-    function claim(bytes32 poolId, uint256 dLiquidity) public {
-        IPrimitiveEngine(engine).claim(poolId, dLiquidity);
-    }
-
-    // ===== Borrow =====
-
-    function borrow(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
-    }
-
-    function borrowWithMargin(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, true, data);
-    }
-
-    function borrowMaxPremium(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
-    }
-
-    function borrowWithoutPaying(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        scenario = Scenario.FAIL;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
-        scenario = Scenario.SUCCESS;
-    }
-
-    function borrowWithGoodCallback(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        scenario = Scenario.SUCCESS;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
-    }
-
-    function borrowReentrancy(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bytes calldata data
-    ) public {
-        owner;
-        caller = msg.sender;
-        scenario = Scenario.REENTRANCY;
-        IPrimitiveEngine(engine).borrow(poolId, collateralRisky, collateralStable, false, data);
-        scenario = Scenario.SUCCESS;
-    }
-
-    // ===== Repay =====
-
-    function repay(
-        bytes32 poolId,
-        address owner,
-        uint256 riskyToLiquidate,
-        uint256 stableToLiquidate,
-        bool fromMargin,
-        bytes calldata data
-    ) external {
-        caller = msg.sender;
-        IPrimitiveEngine(engine).repay(poolId, owner, riskyToLiquidate, stableToLiquidate, fromMargin, data);
-    }
-
-    function repayWithoutRepaying(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bool fromMargin,
-        bytes calldata data
-    ) external {
-        caller = msg.sender;
-        scenario = Scenario.FAIL;
-        IPrimitiveEngine(engine).repay(poolId, owner, collateralRisky, collateralStable, fromMargin, data);
-        scenario = Scenario.SUCCESS;
-    }
-
-    function repayReentrancy(
-        bytes32 poolId,
-        address owner,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        bool fromMargin,
-        bytes calldata data
-    ) external {
-        caller = msg.sender;
-        scenario = Scenario.REENTRANCY;
-        IPrimitiveEngine(engine).repay(poolId, owner, collateralRisky, collateralStable, fromMargin, data);
-        scenario = Scenario.SUCCESS;
     }
 
     function name() public pure override(TestBase) returns (string memory) {
