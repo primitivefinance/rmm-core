@@ -167,6 +167,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             lastTimestamp: _blockTimestamp()
         });
 
+        if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
         delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
         delRisky = delRisky.scaleDown(prec0); // 18 -> native precision
