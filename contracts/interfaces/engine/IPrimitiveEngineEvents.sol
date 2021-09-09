@@ -14,8 +14,7 @@ interface IPrimitiveEngineEvents {
 
     /// @notice             Updates the time until expiry of the pool with `poolId`
     /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
-    /// @param  timestamp   New current timestamp to calculate the time until expiry with
-    event UpdateLastTimestamp(bytes32 indexed poolId, uint32 indexed timestamp);
+    event UpdateLastTimestamp(bytes32 indexed poolId);
 
     // ===== Margin ====
     /// @notice             Added stable and/or risky tokens to a margin accouynt
