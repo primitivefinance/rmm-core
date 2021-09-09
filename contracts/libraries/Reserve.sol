@@ -32,9 +32,9 @@ library Reserve {
         // overflow is desired
         if (deltaTime > 0) {
             unchecked {
-                res.cumulativeRisky += res.reserveRisky * deltaTime;
-                res.cumulativeStable += res.reserveStable * deltaTime;
-                res.cumulativeLiquidity += res.liquidity * deltaTime;
+                res.cumulativeRisky += uint256(res.reserveRisky) * deltaTime;
+                res.cumulativeStable += uint256(res.reserveStable) * deltaTime;
+                res.cumulativeLiquidity += uint256(res.liquidity) * deltaTime;
             }
             res.blockTimestamp = blockTimestamp;
         }
