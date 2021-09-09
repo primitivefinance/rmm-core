@@ -27,20 +27,7 @@ TestPools.forEach(function (pool: PoolState) {
     it('returns 0 for all fields when the pool is uninitialized', async function () {
       expect(
         await this.contracts.engine.reserves('0x6de0b49963079e3aead2278c2be4a58cc6afe973061c653ee98b527d1161a3c5')
-      ).to.deep.equal([
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        0,
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-        toBN('0'),
-      ])
+      ).to.deep.equal([toBN('0'), toBN('0'), toBN('0'), 0, toBN('0'), toBN('0'), toBN('0')])
     })
   })
 })

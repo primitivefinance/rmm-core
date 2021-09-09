@@ -34,12 +34,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @dev Parameters of each pool
     struct Calibration {
-        uint128 strike; // strike price of the option
-        uint64 sigma; // volatility of the option, scaled by Mantissa of 1e4
-        uint32 maturity; // maturity timestamp of option
+        uint128 strike; // scaled by stable precision
+        uint64 sigma; // scaled by percentage precision
+        uint32 maturity; // maturity timestamp of pool
         uint32 lastTimestamp; // last timestamp used to calculate time until expiry, "tau"
     }
 
+    /// @inheritdoc IPrimitiveEngineView
+    uint256 public constant override PRECISION = 10**18;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
@@ -144,7 +146,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint256 delStable
         )
     {
-        uint256 scaledStrike = strike.scaleDown(precisionStable); // strike is 18 decimals, scale down
+        (uint256 prec0, uint256 prec1) = (precisionRisky, precisionStable);
+        uint256 scaledStrike = strike.scaleDown(prec1); // strike / 10^(18 - precision)
         poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity));
 
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
@@ -157,12 +160,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         });
 
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
-        delRisky = 1e18 - delta; // 18 decimals of precision, 0 < delta < 1
-        (uint256 prec0, uint256 prec1) = (precisionRisky, precisionStable);
-        delRisky = delRisky.scaleDown(prec0); // 18 decimals of precision -> native risky precision
+        delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
+        delRisky = delRisky.scaleDown(prec0); // 18 -> native precision
         delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau);
-        delRisky = (delRisky * delLiquidity) / 1e18; // native risky precision
-        delStable = (delStable * delLiquidity) / 1e18; // native stable precision
+        delRisky = (delRisky * delLiquidity) / PRECISION; // liquidity has 18 decimals, so delRisky has native precision
+        delStable = (delStable * delLiquidity) / PRECISION;
 
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
 
@@ -223,11 +225,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes calldata data
     ) external override lock returns (uint256 delRisky, uint256 delStable) {
         Reserve.Data storage reserve = reserves[poolId];
+        uint32 timestamp = _blockTimestamp();
         if (reserve.blockTimestamp == 0) revert UninitializedError();
-        if (_blockTimestamp() > calibrations[poolId].maturity) revert PoolExpiredError();
+        if (timestamp > calibrations[poolId].maturity) revert PoolExpiredError();
 
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
-        if (delRisky * delStable == 0) revert ZeroDeltasError();
+        if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
 
         if (fromMargin) {
             margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
@@ -239,7 +242,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         }
 
         liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
-        reserve.allocate(delRisky, delStable, delLiquidity, _blockTimestamp()); // increase reserves and liquidity
+        reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase reserves and liquidity
         emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
     }
 
@@ -296,13 +299,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Reserve.Data storage reserve = reserves[details.poolId];
             bool swapInRisky = details.riskyForStable;
             uint32 tau = cal.maturity - cal.lastTimestamp;
-            uint256 fee = (details.deltaIn * 15) / 1e4;
-            uint256 deltaInWithFee = details.deltaIn - fee;
+            uint256 deltaInWithFee = (details.deltaIn * 9985) / Units.PERCENTAGE; // amount * (1 - fee %)
             uint256 riskyAfter; // per liquidity
             uint256 stableAfter; // per liquidity
 
             if (swapInRisky) {
-                riskyAfter = ((reserve.reserveRisky + deltaInWithFee) * 1e18) / reserve.liquidity; // native precision
+                riskyAfter = ((reserve.reserveRisky + deltaInWithFee) * PRECISION) / reserve.liquidity;
                 stableAfter = invariantX64.getStableGivenRisky(
                     precisionRisky,
                     precisionStable,
@@ -311,9 +313,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 );
-                deltaOut = reserve.reserveStable - (stableAfter * reserve.liquidity) / 1e18; // native stable precision
+                deltaOut = reserve.reserveStable - (stableAfter * reserve.liquidity) / PRECISION; // native precision
             } else {
-                stableAfter = ((reserve.reserveStable + deltaInWithFee) * 1e18) / reserve.liquidity; // native precision
+                stableAfter = ((reserve.reserveStable + deltaInWithFee) * PRECISION) / reserve.liquidity;
                 riskyAfter = invariantX64.getRiskyGivenStable(
                     precisionRisky,
                     precisionStable,
@@ -322,20 +324,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 );
-                deltaOut = reserve.reserveRisky - (riskyAfter * reserve.liquidity) / 1e18; // native risky precision
+                deltaOut = reserve.reserveRisky - (riskyAfter * reserve.liquidity) / PRECISION; // native precision
             }
 
-            int128 invariantAfter = ReplicationMath.calcInvariant(
-                precisionRisky,
-                precisionStable,
-                riskyAfter,
-                stableAfter,
-                cal.strike,
-                cal.sigma,
-                tau
-            );
+            reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update
+
+            int128 invariantAfter = invariantOf(details.poolId);
             if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
-            reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp());
         }
 
         if (deltaOut == 0) revert DeltaOutError();
@@ -370,7 +365,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data memory reserve = reserves[poolId];
         Calibration memory cal = calibrations[poolId];
         uint32 tau = cal.maturity - cal.lastTimestamp;
-        (uint256 riskyPerLiquidity, uint256 stablePerLiquidity) = reserve.getAmounts(1e18);
+        (uint256 riskyPerLiquidity, uint256 stablePerLiquidity) = reserve.getAmounts(PRECISION);
         invariant = ReplicationMath.calcInvariant(
             precisionRisky,
             precisionStable,

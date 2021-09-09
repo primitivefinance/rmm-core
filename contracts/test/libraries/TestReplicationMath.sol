@@ -10,8 +10,13 @@ import "../../libraries/Units.sol";
 
 contract TestReplicationMath {
     using Units for uint256;
-    uint256 public constant precisionRisky = 1e18;
-    uint256 public constant precisionStable = 1e18;
+    uint256 public precisionRisky;
+    uint256 public precisionStable;
+
+    function set(uint256 prec0, uint256 prec1) public {
+        precisionRisky = prec0;
+        precisionStable = prec1;
+    }
 
     /// @return vol The sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
@@ -25,7 +30,7 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveStable) {
+    ) public view returns (int128 reserveStable) {
         reserveStable = ReplicationMath
         .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
         .scaleToX64(precisionStable);
@@ -38,7 +43,7 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveRisky) {
+    ) public view returns (int128 reserveRisky) {
         reserveRisky = ReplicationMath
         .getRiskyGivenStable(invariantLast, precisionRisky, precisionStable, reserveStable, strike, sigma, tau)
         .scaleToX64(precisionRisky);
@@ -51,7 +56,7 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 invariant) {
+    ) public view returns (int128 invariant) {
         invariant = ReplicationMath.calcInvariant(
             precisionRisky,
             precisionStable,

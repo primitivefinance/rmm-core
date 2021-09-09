@@ -13,19 +13,22 @@ interface IPrimitiveEngineView {
 
     // ===== Immutables =====
 
-    //// @return factory address which deployed this engine contract
+    /// @return Precision units to scale to when doing calculations
+    function PRECISION() external view returns (uint256);
+
+    //// @return Factory address which deployed this engine contract
     function factory() external view returns (address);
 
-    //// @return risky token address
+    //// @return Risky token address
     function risky() external view returns (address);
 
-    /// @return stable token address
+    /// @return Stable token address
     function stable() external view returns (address);
 
-    /// @return 10**decimalsOfRisky, precision to scale to/from
+    /// @return Precision multiplier to scale amounts to/from, 10^(18 - riskyDecimals)
     function precisionRisky() external view returns (uint256);
 
-    /// @return 10**decimalsOfStable, precision to scale to/from
+    /// @return Precision multiplier to scale amounts to/from, 10^(18 - riskyDecimals)
     function precisionStable() external view returns (uint256);
 
     // ===== Pool State =====
@@ -70,7 +73,7 @@ interface IPrimitiveEngineView {
 
     /// @notice             Fetches position liquidity an account address and poolId
     /// @param  poolId      Keccak256 hash of pool parameters
-    /// @return liquidity   Liquidity in the position
+    /// @return liquidity   Liquidity owned by `account` in `poolId`
     function liquidity(address account, bytes32 poolId) external view returns (uint256 liquidity);
 
     /// @notice                 Fetchs the margin position of `account`

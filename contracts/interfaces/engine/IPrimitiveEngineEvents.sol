@@ -7,13 +7,13 @@ pragma solidity 0.8.6;
 interface IPrimitiveEngineEvents {
     /// @notice             Creates a new calibrated curve with liquidity
     /// @param  from        Calling `msg.sender` of the create function
-    /// @param  strike      Strike price of the option of the curve to calibrate to
-    /// @param  sigma       Volatility of the option of the curve to calibrate to
-    /// @param  maturity    Maturity timestamp of the option of the curve to calibrate to
+    /// @param  strike      Strike price of the pool of the curve to calibrate to
+    /// @param  sigma       Volatility of the pool of the curve to calibrate to
+    /// @param  maturity    Maturity timestamp of the pool of the curve to calibrate to
     event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
 
-    /// @notice             Updates the time until expiry of the option with `poolId`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @notice             Updates the time until expiry of the pool with `poolId`
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  timestamp   New current timestamp to calculate the time until expiry with
     event UpdatedTimestamp(bytes32 indexed poolId, uint32 indexed timestamp);
 
@@ -36,7 +36,7 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity of risky and stable tokens to a specified curve `poolId`
     /// @param  from        Calling `msg.sender`
     /// @param  recipient   Address that controls the position
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
     event Allocated(
@@ -49,7 +49,7 @@ interface IPrimitiveEngineEvents {
 
     /// @notice             Adds liquidity of risky and stable tokens to a specified curve `poolId`
     /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
     event Removed(address indexed from, bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
@@ -57,7 +57,7 @@ interface IPrimitiveEngineEvents {
     // ===== Swaps =====
     /// @notice             Swaps either risky for stable tokens or stable for risky.
     /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  riskyForStable  If true, a swap from the risky token to the stable token
     /// @param  deltaIn     Amount of tokens paid
     /// @param  deltaOut    Amount of tokens received
