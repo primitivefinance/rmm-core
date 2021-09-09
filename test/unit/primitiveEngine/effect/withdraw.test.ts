@@ -87,9 +87,9 @@ TestPools.forEach(function (pool: PoolState) {
         expect(await this.contracts.stable.balanceOf(recipient.address)).to.equal(stableBalance.add(parseWei('250').raw))
       })
 
-      it('emits the Withdrawn event', async function () {
+      it('emits the Withdraw event', async function () {
         await expect(this.contracts.router.withdraw(parseWei('1000').raw, parseWei('1000').raw))
-          .to.emit(this.contracts.engine, 'Withdrawn')
+          .to.emit(this.contracts.engine, 'Withdraw')
           .withArgs(this.contracts.router.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
       })
     })

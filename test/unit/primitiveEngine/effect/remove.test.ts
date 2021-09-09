@@ -106,13 +106,13 @@ TestPools.forEach(function (pool: PoolState) {
           expect(updatedRes.reserveStable).to.equal(res.reserveStable.sub(delStable.raw))
         })
 
-        it('emits the Removed event', async function () {
+        it('emits the Remove event', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
           await expect(this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero))
-            .to.emit(this.contracts.engine, 'Removed')
+            .to.emit(this.contracts.engine, 'Remove')
             .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw)
         })
       })
@@ -205,13 +205,13 @@ TestPools.forEach(function (pool: PoolState) {
           expect(updatedRes.reserveStable).to.equal(res.reserveStable.sub(delStable.raw))
         })
 
-        it('emits the Removed event', async function () {
+        it('emits the Remove event', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
           await expect(this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero))
-            .to.emit(this.contracts.engine, 'Removed')
+            .to.emit(this.contracts.engine, 'Remove')
             .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw)
         })
       })

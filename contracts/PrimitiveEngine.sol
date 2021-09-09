@@ -131,7 +131,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 maturity = cal.maturity;
         if (lastTimestamp > maturity) lastTimestamp = maturity; // if expired, set to the maturity
         cal.lastTimestamp = lastTimestamp;
-        emit UpdatedTimestamp(poolId, lastTimestamp);
+        emit UpdateLastTimestamp(poolId, lastTimestamp);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -188,7 +188,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             checkRiskyBalance(balRisky + delRisky);
             checkStableBalance(balStable + delStable);
         }
-        emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
+        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
     // ===== Margin =====
@@ -210,7 +210,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
         if (delRisky > 0) checkRiskyBalance(balRisky + delRisky);
         if (delStable > 0) checkStableBalance(balStable + delStable);
-        emit Deposited(msg.sender, recipient, delRisky, delStable);
+        emit Deposit(msg.sender, recipient, delRisky, delStable);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -223,7 +223,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         margins.withdraw(delRisky, delStable); // removes risky and/or stable token balances from `msg.sender`
         if (delRisky > 0) IERC20(risky).safeTransfer(recipient, delRisky);
         if (delStable > 0) IERC20(stable).safeTransfer(recipient, delStable);
-        emit Withdrawn(msg.sender, recipient, delRisky, delStable);
+        emit Withdraw(msg.sender, recipient, delRisky, delStable);
     }
 
     // ===== Liquidity =====
@@ -255,7 +255,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             checkRiskyBalance(balRisky + delRisky);
             checkStableBalance(balStable + delStable);
         }
-        emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
+        emit Allocate(msg.sender, recipient, poolId, delRisky, delStable);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -272,7 +272,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         liquidity[msg.sender][poolId] -= delLiquidity; // update position liquidity of msg.sender
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp()); // update global reserves
         margins[msg.sender].deposit(delRisky, delStable); // increase margin of msg.sender
-        emit Removed(msg.sender, poolId, delRisky, delStable);
+        emit Remove(msg.sender, poolId, delRisky, delStable);
     }
 
     struct SwapDetails {
