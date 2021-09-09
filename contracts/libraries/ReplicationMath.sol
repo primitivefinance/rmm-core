@@ -21,7 +21,7 @@ library ReplicationMath {
     // ===== Math ======
 
     /// @notice         Normalizes volatility with respect to square root of time until expiry
-    /// @param   sigma  Unsigned 256-bit percentage as an integer with precision of 1e4
+    /// @param   sigma  Unsigned 256-bit percentage as an integer with precision of 1e4, 10000 = 100%
     /// @param   tau    Time until expiry in seconds as an unsigned 256-bit integer
     /// @return  vol    Signed fixed point 64.64 number equal to sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
@@ -37,7 +37,7 @@ library ReplicationMath {
     /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
     /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
-    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
+    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
     /// @return  stablePerLiquidity = K*CDF(CDF^-1(1 - riskyPerLiquidity) - sigma*sqrt(tau)) as an unsigned 256-bit int
     function getStableGivenRisky(
@@ -65,7 +65,7 @@ library ReplicationMath {
     /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
     /// @param   strike         Unsigned 256-bit integer price point at which liquidity is 100% in stable tokens
-    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer percentage with precision of 1e4
+    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
     /// @return  riskyPerLiquidity = 1 - CDF(CDF^-1((stablePerLiquidity - invariantLastX64)/K) + sigma*sqrt(tau))
     function getRiskyGivenStable(
