@@ -45,9 +45,9 @@ export class Pool {
    * @notice Builds a typescript representation of a single curve within an Engine contract
    * @param initialRisky Reserve amount to initialize the pool's risky tokens
    * @param liquidity Total liquidity supply to initialize the pool with
-   * @param strike Strike price of option
-   * @param sigma Implied volatility of option
-   * @param maturity Timestamp of option maturity
+   * @param strike Strike price of pool
+   * @param sigma Implied volatility of pool
+   * @param maturity Timestamp of pool maturity
    * @param lastTimestamp Timestamp last used to calculate the time until maturity
    * @param fee Price paid on swaps
    * @param overrideStable The initial stable reserve value

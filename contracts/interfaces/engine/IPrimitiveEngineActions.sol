@@ -6,16 +6,16 @@ pragma solidity 0.8.6;
 interface IPrimitiveEngineActions {
     // ===== Pool Updates =====
 
-    /// @notice             Updates the time until expiry of the option by setting its last timestamp value
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @notice             Updates the time until expiry of the pool by setting its last timestamp value
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @return lastTimestamp Timestamp loaded into the state of the pool's Calibration.lastTimestamp
     function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
 
     /// @notice             Initializes a curve with parameters in the `settings` storage mapping in the Engine
-    /// @param  strike      Strike price of the option to calibrate to
-    /// @param  sigma       Volatility of the option to calibrate to
-    /// @param  maturity    Maturity timestamp of the option
-    /// @param  delta       Call option delta, change in option value wrt to a 1% change in underlying value
+    /// @param  strike      Strike price of the pool to calibrate to
+    /// @param  sigma       Volatility of the pool to calibrate to
+    /// @param  maturity    Maturity timestamp of the pool
+    /// @param  delta       N(d1), d1 = (ln(S / K) + (r * sigma^2 / 2) ) / sigma * sqrt(tau)
     /// @param  delLiquidity Amount of liquidity to allocate to the curve
     /// @param  data        Arbitrary data that is passed to the createCallback function
     /// @return poolId      Keccak256 hash of the parameters (engine, strike, sigma, and maturity)
@@ -63,7 +63,7 @@ interface IPrimitiveEngineActions {
     // ===== Liquidity =====
 
     /// @notice             Allocates risky and stable tokens to a specific curve with `poolId`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  recipient   Address to give the allocated position to
     /// @param  delLiquidity  Quantity of liquidity units to get allocated
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
@@ -79,7 +79,7 @@ interface IPrimitiveEngineActions {
     ) external returns (uint256 delRisky, uint256 delStable);
 
     /// @notice             Unallocates risky and stable tokens from a specific curve with `poolId`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  delLiquidity Amount of liquidity to burn to release tokens
     /// @return delRisky    Amount of risky tokens received from the burned liquidity
     /// delStable           Amount of stable tokens received from the burned liquidity
@@ -87,7 +87,7 @@ interface IPrimitiveEngineActions {
 
     // ===== Swaps =====
     /// @notice             Swaps risky or stable tokens
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
     /// @param  riskyForStable Whether to do a risky to stable token swap, or stable to risky swap
     /// @param  deltaIn     Amount of tokens to swap in
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens

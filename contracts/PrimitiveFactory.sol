@@ -62,8 +62,8 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address risky,
         address stable
     ) internal returns (address engine) {
-        uint256 precisionRisky = 10**(IERC20(risky).decimals());
-        uint256 precisionStable = 10**(IERC20(stable).decimals());
+        uint256 precisionRisky = 10**(18 - IERC20(risky).decimals());
+        uint256 precisionStable = 10**(18 - IERC20(stable).decimals());
         args = Args({
             factory: factory,
             risky: risky,
