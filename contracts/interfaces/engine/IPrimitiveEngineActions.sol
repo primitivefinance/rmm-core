@@ -88,7 +88,7 @@ interface IPrimitiveEngineActions {
     // ===== Swaps =====
     /// @notice             Swaps risky or stable tokens
     /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
-    /// @param  riskyForStable Whether to do a risky to stable token swap, or stable to risky swap
+    /// @param  riskyForStable If true, swap risky to stable tokens, else swap stable to risky tokens
     /// @param  deltaIn     Amount of tokens to swap in
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the swapCallback function
