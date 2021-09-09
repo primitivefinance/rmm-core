@@ -10,7 +10,7 @@ import "./ABDKMath64x64.sol";
 library Units {
     using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64
 
-    uint256 internal constant YEAR = 365 days; // 365.24219 ephemeris day = 1 year, in seconds
+    uint256 internal constant YEAR = 31556952; // 365.24219 ephemeris day = 1 year, in seconds
     uint256 internal constant PRECISION = 1e18; // precision to scale to
     uint256 internal constant PERCENTAGE = 1e4; // precision of percentages
 

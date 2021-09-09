@@ -176,16 +176,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
 
+        calibrations[poolId] = cal; // initialize calibration
+        reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // provide liquidity
+        liquidity[msg.sender][poolId] += delLiquidity - MIN_LIQUIDITY; // burn 1000 wei, at cost of msg.sender
+
         {
             (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
             IPrimitiveCreateCallback(msg.sender).createCallback(delRisky, delStable, data);
             checkRiskyBalance(balRisky + delRisky);
             checkStableBalance(balStable + delStable);
         }
-
-        calibrations[poolId] = cal; // initialize calibration
-        reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // provide liquidity
-        liquidity[msg.sender][poolId] += delLiquidity - MIN_LIQUIDITY; // burn 1000 wei, at cost of msg.sender
         emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
@@ -198,7 +198,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delStable,
         bytes calldata data
     ) external override lock {
-        if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
+        if (delRisky == 0 && delStable == 0) revert ZeroDeltasError();
+        margins[recipient].deposit(delRisky, delStable); // adds to risky and/or stable token balances
+
         uint256 balRisky;
         uint256 balStable;
         if (delRisky > 0) balRisky = balanceRisky();
@@ -206,8 +208,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
         if (delRisky > 0) checkRiskyBalance(balRisky + delRisky);
         if (delStable > 0) checkStableBalance(balStable + delStable);
-
-        margins[recipient].deposit(delRisky, delStable); // adds to risky and/or stable token balances
         emit Deposited(msg.sender, recipient, delRisky, delStable);
     }
 
@@ -217,7 +217,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delRisky,
         uint256 delStable
     ) external override lock {
-        if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
+        if (delRisky == 0 && delStable == 0) revert ZeroDeltasError();
         margins.withdraw(delRisky, delStable); // removes risky and/or stable token balances from `msg.sender`
         if (delRisky > 0) IERC20(risky).safeTransfer(recipient, delRisky);
         if (delStable > 0) IERC20(stable).safeTransfer(recipient, delStable);
@@ -242,6 +242,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
         if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
 
+        liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
+        reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase reserves and liquidity
+
         if (fromMargin) {
             margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
         } else {
@@ -250,9 +253,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             checkRiskyBalance(balRisky + delRisky);
             checkStableBalance(balStable + delStable);
         }
-
-        liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
-        reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase reserves and liquidity
         emit Allocated(msg.sender, recipient, poolId, delRisky, delStable);
     }
 
@@ -326,7 +326,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
-                deltaOut = res1 - (res1 * liq) / PRECISION; // res1 for all liquidity
+                deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
             } else {
                 res1 = ((res1 + deltaInWithFee) * PRECISION) / liq; // per liquidity
                 res0 = invariantX64.getRiskyGivenStable(
@@ -337,7 +337,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
-                deltaOut = res0 - (res0 * liq) / PRECISION; // res0 for all liquidity
+                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
             }
 
             reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update
