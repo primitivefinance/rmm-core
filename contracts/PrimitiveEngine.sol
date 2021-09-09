@@ -131,7 +131,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 maturity = cal.maturity;
         if (lastTimestamp > maturity) lastTimestamp = maturity; // if expired, set to the maturity
         cal.lastTimestamp = lastTimestamp;
-        emit UpdateLastTimestamp(poolId, lastTimestamp);
+        emit UpdateLastTimestamp(poolId);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
