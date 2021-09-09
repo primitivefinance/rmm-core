@@ -43,6 +43,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public constant override PRECISION = 10**18;
     /// @inheritdoc IPrimitiveEngineView
+    uint256 public constant override GAMMA = 9985;
+    /// @inheritdoc IPrimitiveEngineView
+    uint256 public constant override BUFFER = 120 seconds;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
@@ -292,7 +296,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         });
 
         uint32 lastTimestamp = _updateLastTimestamp(details.poolId); // the pool's timestamp, after being updated
-        if (details.timestamp > lastTimestamp + 120) revert PoolExpiredError(); // 120s buffer to allow final swaps
+        if (details.timestamp > lastTimestamp + BUFFER) revert PoolExpiredError(); // 120s buffer to allow final swaps
         int128 invariantX64 = invariantOf(details.poolId); // stored in memory to perform the invariant check
 
         {
@@ -301,32 +305,35 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Reserve.Data storage reserve = reserves[details.poolId];
             bool swapInRisky = details.riskyForStable;
             uint32 tau = cal.maturity - cal.lastTimestamp;
-            uint256 deltaInWithFee = (details.deltaIn * 9985) / Units.PERCENTAGE; // amount * (1 - fee %)
-            uint256 riskyAfter; // per liquidity
-            uint256 stableAfter; // per liquidity
+            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
+            (uint256 res0, uint256 res1, uint256 liq) = (
+                uint256(reserve.reserveRisky),
+                uint256(reserve.reserveStable),
+                uint256(reserve.liquidity)
+            );
 
             if (swapInRisky) {
-                riskyAfter = ((reserve.reserveRisky + deltaInWithFee) * PRECISION) / reserve.liquidity;
-                stableAfter = invariantX64.getStableGivenRisky(
+                res0 = ((res0 + deltaInWithFee) * PRECISION) / liq; // per liquidity
+                res1 = invariantX64.getStableGivenRisky(
                     precisionRisky,
                     precisionStable,
-                    riskyAfter,
+                    res0,
                     cal.strike,
                     cal.sigma,
                     tau
-                );
-                deltaOut = reserve.reserveStable - (stableAfter * reserve.liquidity) / PRECISION; // native precision
+                ); // native precision, per liquidity
+                deltaOut = res1 - (res1 * liq) / PRECISION; // res1 for all liquidity
             } else {
-                stableAfter = ((reserve.reserveStable + deltaInWithFee) * PRECISION) / reserve.liquidity;
-                riskyAfter = invariantX64.getRiskyGivenStable(
+                res1 = ((res1 + deltaInWithFee) * PRECISION) / liq; // per liquidity
+                res0 = invariantX64.getRiskyGivenStable(
                     precisionRisky,
                     precisionStable,
-                    stableAfter,
+                    res1,
                     cal.strike,
                     cal.sigma,
                     tau
-                );
-                deltaOut = reserve.reserveRisky - (riskyAfter * reserve.liquidity) / PRECISION; // native precision
+                ); // native precision, per liquidity
+                deltaOut = res0 - (res0 * liq) / PRECISION; // res0 for all liquidity
             }
 
             reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update
