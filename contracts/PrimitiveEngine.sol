@@ -47,6 +47,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public constant override BUFFER = 120 seconds;
     /// @inheritdoc IPrimitiveEngineView
+    uint256 public constant override MIN_LIQUIDITY = 1e3;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
@@ -183,7 +185,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         calibrations[poolId] = cal; // initialize calibration
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // provide liquidity
-        liquidity[msg.sender][poolId] += delLiquidity - 1000; // burn 1000 wei, at cost of msg.sender
+        liquidity[msg.sender][poolId] += delLiquidity - MIN_LIQUIDITY; // burn 1000 wei, at cost of msg.sender
         emit Created(msg.sender, cal.strike, cal.sigma, cal.maturity);
     }
 
