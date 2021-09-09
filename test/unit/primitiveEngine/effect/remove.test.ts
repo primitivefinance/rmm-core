@@ -52,7 +52,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('pos.remove: decreases position liquidity', async function () {
           await expect(
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
-          ).to.decreasePositionLiquidity(this.contracts.engine, posId, delLiquidity.raw)
+          ).to.decreasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('res.remove: decreases reserve liquidity', async function () {
@@ -154,7 +154,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('pos.remove: decreases position liquidity', async function () {
           await expect(
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
-          ).to.decreasePositionLiquidity(this.contracts.engine, posId, delLiquidity.raw)
+          ).to.decreasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('res.remove: decreases reserve liquidity', async function () {

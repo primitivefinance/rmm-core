@@ -14,7 +14,6 @@ TestPools.forEach(function (pool: PoolState) {
   testContext(`reentrancy attacks on ${pool.description} pool`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
     let poolId: string, posId: string
-    const delLiquidity = parseWei('1')
 
     beforeEach(async function () {
       const fixture = await this.loadFixture(primitiveFixture)
@@ -37,44 +36,6 @@ TestPools.forEach(function (pool: PoolState) {
       it('reverts the transaction', async function () {
         await expect(
           this.contracts.router.allocateFromExternalReentrancy(poolId, this.signers[0].address, parseWei('1').raw, HashZero)
-        ).to.be.reverted
-      })
-    })
-
-    describe('when calling borrow in the borrow callback', function () {
-      beforeEach(async function () {
-        await this.contracts.router.supply(poolId, parseWei('100').mul(8).div(10).raw)
-      })
-
-      it('reverts the transaction', async function () {
-        await expect(
-          this.contracts.router.borrowReentrancy(poolId, this.signers[0].address, parseWei('1').raw, '0', HashZero)
-        ).to.be.reverted
-      })
-    })
-
-    describe('when calling repay in the repay callback', function () {
-      beforeEach(async function () {
-        await this.contracts.router.supply(poolId, parseWei('100').mul(8).div(10).raw)
-        await this.contracts.router.borrowWithGoodCallback(
-          poolId,
-          this.contracts.router.address,
-          parseWei('1').raw,
-          '0',
-          HashZero
-        )
-      })
-
-      it('reverts the transaction', async function () {
-        await expect(
-          this.contracts.router.repayReentrancy(
-            poolId,
-            this.contracts.router.address,
-            parseWei('1').raw,
-            '0',
-            false,
-            HashZero
-          )
         ).to.be.reverted
       })
     })

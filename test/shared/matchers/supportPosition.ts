@@ -8,7 +8,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionLiquidity',
-    async function (this: any, engine: PrimitiveEngine, account: string, poolId: string, liquidity: BigNumber) {
+    async function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
       const oldPosition = await engine.liquidity(account, poolId)
       await this._obj
       const newPosition = await engine.liquidity(account, poolId)
@@ -27,7 +27,7 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreasePositionLiquidity',
-    async function (this: any, engine: PrimitiveEngine, account: string, poolId: string, liquidity: BigNumber) {
+    async function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
       const oldPosition = await engine.liquidity(account, poolId)
       await this._obj
       const newPosition = await engine.liquidity(account, poolId)
