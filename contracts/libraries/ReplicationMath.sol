@@ -81,7 +81,7 @@ library ReplicationMath {
         int128 volX64 = getProportionalVolatility(sigma, tau);
         int128 stableX64 = stablePerLiquidity.scaleToX64(precisionStable);
         int128 phi = stableX64.sub(invariantLastX64).div(strikeX64).getInverseCDF(); // CDF^-1((stable - invariant)/K)
-        int128 input = phi.add(volX64); // phi + volX64
+        int128 input = phi.add(volX64);
         int128 riskyX64 = ONE_INT.sub(input.getCDF());
         riskyPerLiquidity = riskyX64.scalefromX64(precisionRisky);
     }
