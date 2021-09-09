@@ -196,6 +196,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delStable,
         bytes calldata data
     ) external override lock {
+        if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
         uint256 balRisky;
         uint256 balStable;
         if (delRisky > 0) balRisky = balanceRisky();
@@ -214,6 +215,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 delRisky,
         uint256 delStable
     ) external override lock {
+        if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
         margins.withdraw(delRisky, delStable); // removes risky and/or stable token balances from `msg.sender`
         if (delRisky > 0) IERC20(risky).safeTransfer(recipient, delRisky);
         if (delStable > 0) IERC20(stable).safeTransfer(recipient, delStable);
