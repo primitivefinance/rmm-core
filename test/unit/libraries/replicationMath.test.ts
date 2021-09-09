@@ -95,6 +95,10 @@ TestPools.forEach(function (pool: PoolState) {
         tau = new Time(maturity.raw - lastTimestamp.raw)
       })
 
+      it('YEAR()', async function () {
+        expect(await math.YEAR()).to.be.eq(31556952)
+      })
+
       it('getProportionalVolatility', async function () {
         let expected: number = new FixedPointX64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed
         let actual: number = getProportionalVol(sigma.float, tau.years)
@@ -105,9 +109,6 @@ TestPools.forEach(function (pool: PoolState) {
         it('step0: parse strike to 64x64 fixed point int128', async function () {
           let expected = new FixedPointX64(FixedPointX64.Denominator.mul(pool.calibration.strike.float)).raw
           let step0 = await fixture.getStableGivenRisky.step0(pool.calibration.strike.raw)
-          console.log(
-            (await fixture.getStableGivenRisky.PRECISION()).sub(Math.pow(10, pool.calibration.precisionRisky)).toString()
-          )
           expect(step0).to.be.eq(expected)
         })
 
