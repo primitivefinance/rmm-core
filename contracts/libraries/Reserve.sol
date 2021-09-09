@@ -36,8 +36,8 @@ library Reserve {
                 res.cumulativeStable += res.reserveStable * deltaTime;
                 res.cumulativeLiquidity += res.liquidity * deltaTime;
             }
+            res.blockTimestamp = blockTimestamp;
         }
-        res.blockTimestamp = blockTimestamp;
     }
 
     /// @notice                 Increases one reserve value and decreases the other
