@@ -33,14 +33,13 @@ TestPools.forEach(function (pool: PoolState) {
         it('increases position liquidity', async function () {
           await expect(
             this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, posId, parseWei('1').raw)
+          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, parseWei('1').raw)
         })
 
         it('increases position liquidity of another recipient', async function () {
-          const recipientPosId = computePositionId(this.signers[1].address, poolId)
           await expect(
             this.contracts.router.allocateFromMargin(poolId, this.signers[1].address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, recipientPosId, parseWei('1').raw)
+          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
         })
 
         it('emits the Allocated event', async function () {
@@ -125,14 +124,13 @@ TestPools.forEach(function (pool: PoolState) {
         it('increases liquidity', async function () {
           await expect(
             this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, posId, parseWei('1').raw)
+          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, parseWei('1').raw)
         })
 
         it('increases position liquidity of another recipient', async function () {
-          const recipientPosId = computePositionId(this.signers[1].address, poolId)
           await expect(
             this.contracts.router.allocateFromExternal(poolId, this.signers[1].address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, recipientPosId, parseWei('1').raw)
+          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
         })
 
         it('emits the Allocated event', async function () {

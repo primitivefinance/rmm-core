@@ -6,7 +6,6 @@ import { Fixture } from '@ethereum-waffle/provider'
 export interface Libraries {
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin
-  testPosition: ContractTypes.TestPosition
   testReplicationMath: ContractTypes.TestReplicationMath
   testCumulativeNormalDistribution: ContractTypes.TestCumulativeNormalDistribution
 }
@@ -42,7 +41,6 @@ type ContractName =
   | 'testRouter'
   | 'factoryCreate'
   | 'factoryDeploy'
-  | 'reentrancyAttacker'
   | 'testReserve'
   | 'testMargin'
   | 'testPosition'
