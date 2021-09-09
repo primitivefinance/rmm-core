@@ -42,10 +42,10 @@ TestPools.forEach(function (pool: PoolState) {
           ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
         })
 
-        it('emits the Allocated event', async function () {
+        it('emits the Allocate event', async function () {
           await expect(
             this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.emit(this.contracts.engine, 'Allocated')
+          ).to.emit(this.contracts.engine, 'Allocate')
         })
 
         it('increases reserve liquidity', async function () {
@@ -133,10 +133,10 @@ TestPools.forEach(function (pool: PoolState) {
           ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
         })
 
-        it('emits the Allocated event', async function () {
+        it('emits the Allocate event', async function () {
           await expect(
             this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.emit(this.contracts.engine, 'Allocated')
+          ).to.emit(this.contracts.engine, 'Allocate')
         })
 
         it('increases reserve liquidity', async function () {
