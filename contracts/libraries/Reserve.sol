@@ -10,9 +10,6 @@ import "./SafeCast.sol";
 library Reserve {
     using SafeCast for uint256;
 
-    /// @notice Thrown on attempting to supply more liquidity than is allowed
-    error LiquidityError();
-
     struct Data {
         uint128 reserveRisky; // reserve of the risky asset
         uint128 reserveStable; // reserve of the stable asset
