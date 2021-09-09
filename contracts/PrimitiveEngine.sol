@@ -156,7 +156,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 scaledStrike = strike.scaleDown(prec1); // strike / 10^(18 - precision)
         poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity));
 
-        if (delta > 1e18 || delta == 0) revert OutOfBoundsError(delta); // 0 < delta < 1, <= 18 decimals
+        if (delta > PRECISION || delta == 0) revert OutOfBoundsError(delta); // 0 < delta < 1, <= 18 decimals
         if (sigma > 1e7 || sigma < 100) revert OutOfBoundsError(sigma); // 1% <= sigma <= 1000%, precision of 4
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
 
