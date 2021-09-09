@@ -16,6 +16,12 @@ interface IPrimitiveEngineView {
     /// @return Precision units to scale to when doing calculations
     function PRECISION() external view returns (uint256);
 
+    /// @return Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %
+    function GAMMA() external view returns (uint256);
+
+    /// @return Amount of seconds after pool expiry which allows swaps, no swaps after buffer
+    function BUFFER() external view returns (uint256);
+
     //// @return Factory address which deployed this engine contract
     function factory() external view returns (address);
 
