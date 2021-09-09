@@ -17,6 +17,9 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when calling `create` with a maturity that is less than the current block.timestamp
     error PoolExpiredError();
 
+    /// @notice Thrown when a parameter is outside the range of acceptable values
+    error OutOfBoundsError(uint256 value);
+
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
     error CalibrationError(uint256 delRisky, uint256 delStable);
 
