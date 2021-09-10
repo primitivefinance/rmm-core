@@ -58,6 +58,7 @@ interface SwapTestCase {
   riskyForStable: boolean
   deltaIn: Wei
   fromMargin: boolean
+  toMargin: boolean
   deltaOutMin?: Wei
   signer?: number
   revertMsg?: string
@@ -69,42 +70,100 @@ const SuccessCases: SwapTestCase[] = [
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: true,
+    toMargin: false,
   },
   {
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: false,
+    toMargin: false,
   },
   {
     riskyForStable: false,
     deltaIn: parseWei(10),
     fromMargin: true,
+    toMargin: false,
   },
   {
     riskyForStable: false,
     deltaIn: parseWei(10),
     fromMargin: false,
+    toMargin: false,
   },
   // 2e3
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: true,
+    toMargin: false,
   },
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
     fromMargin: false,
+    toMargin: false,
   },
   {
     riskyForStable: false,
     deltaIn: parseWei('10'), // investigate
     fromMargin: true,
+    toMargin: false,
   },
   {
     riskyForStable: false,
     deltaIn: parseWei('10'), // investigate
     fromMargin: false,
+    toMargin: false,
+  },
+  // 1e18
+  {
+    riskyForStable: true,
+    deltaIn: parseWei(1),
+    fromMargin: true,
+    toMargin: true,
+  },
+  {
+    riskyForStable: true,
+    deltaIn: parseWei(1),
+    fromMargin: false,
+    toMargin: true,
+  },
+  {
+    riskyForStable: false,
+    deltaIn: parseWei(10),
+    fromMargin: true,
+    toMargin: true,
+  },
+  {
+    riskyForStable: false,
+    deltaIn: parseWei(10),
+    fromMargin: false,
+    toMargin: true,
+  },
+  // 2e3
+  {
+    riskyForStable: true,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: true,
+    toMargin: true,
+  },
+  {
+    riskyForStable: true,
+    deltaIn: new Wei(toBN(2000)),
+    fromMargin: false,
+    toMargin: true,
+  },
+  {
+    riskyForStable: false,
+    deltaIn: parseWei('10'), // investigate
+    fromMargin: true,
+    toMargin: true,
+  },
+  {
+    riskyForStable: false,
+    deltaIn: parseWei('10'), // investigate
+    fromMargin: false,
+    toMargin: true,
   },
 ]
 
@@ -114,6 +173,7 @@ const FailCases: SwapTestCase[] = [
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: true,
+    toMargin: false,
     signer: 1,
     revertMsg: 'panic code',
   },
@@ -121,6 +181,7 @@ const FailCases: SwapTestCase[] = [
     riskyForStable: false,
     deltaIn: parseWei(1),
     fromMargin: true,
+    toMargin: false,
     signer: 1,
     revertMsg: 'panic code',
   }, */
@@ -135,11 +196,11 @@ async function doSwap(
   poolId: BytesLike,
   testCase: SwapTestCase
 ): Promise<ContractTransaction> {
-  const { riskyForStable, fromMargin, deltaIn } = testCase
+  const { riskyForStable, fromMargin, deltaIn, toMargin } = testCase
   const signerIndex = testCase.signer ? testCase.signer : 0
   const signer = signers[signerIndex]
   const target = testCase.fromMargin ? engine : router
-  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, HashZero)
+  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
 }
 
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
@@ -157,7 +218,7 @@ TestPools.forEach(function (pool: PoolState) {
     let deployer: Wallet
     let engine: MockEngine, router: TestRouter
     let preBalanceRisky: BigNumber, preBalanceStable: BigNumber, preReserves: any, preSettings: any, preSpot: number
-    let preInvariant: BigNumber
+    let preInvariant: BigNumber, preMarginSigner: any, preMarginRouter: any
 
     beforeEach(async function () {
       const fixture = await this.loadFixture(primitiveFixture)
@@ -171,13 +232,16 @@ TestPools.forEach(function (pool: PoolState) {
       ;[deployer, engine, router] = [this.signers[0], this.contracts.engine, this.contracts.router] // contracts
 
       // state of engine pre-swap
-      ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant] = await Promise.all([
-        this.contracts.risky.balanceOf(engine.address),
-        this.contracts.stable.balanceOf(engine.address),
-        engine.reserves(poolId),
-        engine.calibrations(poolId),
-        engine.invariantOf(poolId),
-      ])
+      ;[preBalanceRisky, preBalanceStable, preReserves, preSettings, preInvariant, preMarginSigner, preMarginRouter] =
+        await Promise.all([
+          this.contracts.risky.balanceOf(engine.address),
+          this.contracts.stable.balanceOf(engine.address),
+          engine.reserves(poolId),
+          engine.calibrations(poolId),
+          engine.invariantOf(poolId),
+          engine.margins(this.signers[0].address),
+          engine.margins(this.contracts.router.address),
+        ])
 
       // spot price of pool pre-swap
       preSpot = getSpotPrice(
@@ -251,12 +315,22 @@ TestPools.forEach(function (pool: PoolState) {
           }
 
           // Get the new state of the contract
-          const [postBalanceRisky, postBalanceStable, postReserve, postSetting, postInvariant] = await Promise.all([
+          const [
+            postBalanceRisky,
+            postBalanceStable,
+            postReserve,
+            postSetting,
+            postInvariant,
+            postMarginSigner,
+            postMarginRouter,
+          ] = await Promise.all([
             this.contracts.risky.balanceOf(engine.address),
             this.contracts.stable.balanceOf(engine.address),
             engine.reserves(poolId),
             engine.calibrations(poolId),
             engine.invariantOf(poolId),
+            engine.margins(this.signers[0].address),
+            engine.margins(this.contracts.router.address),
           ])
 
           const [postRisky, postStable, postLiquidity] = [
@@ -280,10 +354,15 @@ TestPools.forEach(function (pool: PoolState) {
            invariant: ${simulated.pool.invariant.parsed}
           `)
 
-          const balanceOut = testCase.riskyForStable
-            ? preBalanceStable.sub(postBalanceStable)
-            : preBalanceRisky.sub(postBalanceRisky)
+          const marginAccount = testCase.fromMargin ? preMarginSigner : preMarginRouter
+          const postMarginAccount = testCase.fromMargin ? postMarginSigner : postMarginRouter
+          const preBalStable = testCase.toMargin ? marginAccount.balanceStable : preBalanceStable
+          const preBalRisky = testCase.toMargin ? marginAccount.balanceRisky : preBalanceRisky
+          const postBalStable = testCase.toMargin ? postMarginAccount.balanceStable : postBalanceStable
+          const postBalRisky = testCase.toMargin ? postMarginAccount.balanceRisky : postBalanceRisky
 
+          let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
+          if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
           const deltaOut = testCase.riskyForStable ? reserveStable.sub(postStable) : reserveRisky.sub(postRisky)
 
           if (maturity.raw > lastTimestamp.raw)
