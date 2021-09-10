@@ -8,7 +8,7 @@ library Transfers {
     /// @param  token   ERC20 token to transfer
     /// @param  to      Recipient of the ERC20 token
     /// @param  value   Amount of ERC20 to transfer
-    /// @return         Whether or not the call was successful
+    /// @return         Always true, revert in case of failed transfer
     function safeTransfer(
         IERC20 token,
         address to,

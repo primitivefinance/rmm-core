@@ -7,7 +7,7 @@ import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 
 const precision = {
-  percentage: 0.01,
+  percentage: 1e-2,
   invariant: 0.1,
   cdf: 0.1,
   integer: 1e15,
@@ -50,11 +50,22 @@ testContext('testCumulativeNormalDistribution', function () {
       expect(new FixedPointX64(await cumulative.icdf(parseWei(x).raw)).parsed).to.be.closeTo(icdf, precision.percentage)
     })
 
-    it('icdf: negative value', async function () {
+    it('icdfX64: negative value', async function () {
       let x = 0.25
-      let icdf = inverse_std_n_cdf(x)
-      await expect(cumulative.icdfX64(parseFixedPointX64(Math.floor(x * 1e4), 4).raw)).to.not.be.reverted // flips sign in fn
-      expect(new FixedPointX64(await cumulative.icdf(parseWei(x).raw)).parsed).to.be.closeTo(icdf, precision.percentage)
+      await expect(cumulative.icdfX64(parseFixedPointX64(Math.floor(x * 1e4), 4).raw)).to.be.reverted // flips sign in fn
     })
+
+    // todo: fix
+    /* it('icdf: high tail', async function () {
+      let x = 0.99
+      let icdf = inverse_std_n_cdf(x)
+      expect(new FixedPointX64(await cumulative.inverseCDFHighTail()).parsed).to.be.closeTo(icdf, precision.percentage)
+    })
+
+    it('icdf: low tail', async function () {
+      let x = 0.01
+      let icdf = inverse_std_n_cdf(x)
+      expect(new FixedPointX64(await cumulative.inverseCDFLowTail()).parsed).to.be.closeTo(icdf, precision.percentage)
+    }) */
   })
 })

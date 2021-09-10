@@ -67,4 +67,16 @@ contract TestReplicationMath {
             tau
         );
     }
+
+    function YEAR() public pure returns (uint256) {
+        return Units.YEAR;
+    }
+
+    function PRECISION() public pure returns (uint256) {
+        return Units.PRECISION;
+    }
+
+    function PERCENTAGE() public pure returns (uint256) {
+        return Units.PERCENTAGE;
+    }
 }

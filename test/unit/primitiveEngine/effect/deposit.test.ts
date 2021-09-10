@@ -56,11 +56,11 @@ TestPools.forEach(function (pool: PoolState) {
         expect(margin.balanceStable).to.equal(parseWei('2000').raw)
       })
 
-      it('emits the Deposited event', async function () {
+      it('emits the Deposit event', async function () {
         await expect(
           this.contracts.router.deposit(this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
         )
-          .to.emit(this.contracts.engine, 'Deposited')
+          .to.emit(this.contracts.engine, 'Deposit')
           .withArgs(this.contracts.router.address, this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw)
       })
     })

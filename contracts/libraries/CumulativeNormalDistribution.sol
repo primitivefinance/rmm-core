@@ -9,59 +9,91 @@ import "./ABDKMath64x64.sol";
 library CumulativeNormalDistribution {
     using ABDKMath64x64 for *;
 
+    /// @notice Thrown on passing an arg that is out of the input range for these math functions
+    error OutOfBoundsError(int128 value);
+
+    int128 public constant ONE_INT = 0x10000000000000000;
+    int128 public constant TWO_INT = 0x20000000000000000;
+    int128 public constant CDF0 = 0x53dd02a4f5ee2e46;
+    int128 public constant CDF1 = 0x413c831bb169f874;
+    int128 public constant CDF2 = -0x48d4c730f051a5fe;
+    int128 public constant CDF3 = 0x16a09e667f3bcc908;
+    int128 public constant CDF4 = -0x17401c57014c38f14;
+    int128 public constant CDF5 = 0x10fb844255a12d72e;
+
     /// @notice Returns the Standard Normal Cumulative Distribution Function of `x`
     function getCDF(int128 x) internal pure returns (int128) {
-        // where p = 0.3275911,
-        // a1 = 0.254829592, a2 = −0.284496736, a3 = 1.421413741, a4 = −1.453152027, a5 = 1.061405429
-        int128 p = 0x53dd02a4f5ee2e46;
-        int128 one = uint256(1).fromUInt();
-        int128 two = uint256(2).fromUInt();
-        int128 a3 = 0x16a09e667f3bcc908;
-        int128 z = x.div(a3);
-        int128 t = one.div(one.add(p.mul(z.abs())));
+        int128 z = x.div(CDF3);
+        int128 t = ONE_INT.div(ONE_INT.add(CDF0.mul(z.abs())));
         int128 erf = getErrorFunction(z, t);
         if (z < 0) {
             erf = erf.neg();
         }
-        int128 result = (one.div(two)).mul(one.add(erf));
+        int128 result = (HALF_INT).mul(ONE_INT.add(erf));
         return result;
     }
 
     /// @notice Returns the Error Function for approximating the Standard Normal CDF
     function getErrorFunction(int128 z, int128 t) internal pure returns (int128) {
-        // where a1 = 0.254829592, a2 = −0.284496736, a3 = 1.421413741, a4 = −1.453152027, a5 = 1.061405429
-        int128 step1; // t * (1.4214 + (t * (-1.4531 + (t * 1.0614))))
-        {
-            int128 a3 = 0x16a09e667f3bcc908;
-            int128 a4 = -0x17401c57014c38f14;
-            int128 a5 = 0x10fb844255a12d72e;
-            step1 = t.mul(a3.add(t.mul(a4.add(t.mul(a5)))));
-        }
-
-        int128 result; // 1 - t * (step2 * e^-2z)
-        {
-            int128 one = ABDKMath64x64.fromUInt(1);
-            int128 a1 = 0x413c831bb169f874;
-            int128 a2 = -0x48d4c730f051a5fe;
-            int128 step2 = a1.add(t.mul(a2.add(step1)));
-            result = one.sub(t.mul(step2.mul(((z).pow(2).neg()).exp())));
-        }
+        int128 step1 = t.mul(CDF3.add(t.mul(CDF4.add(t.mul(CDF5)))));
+        int128 step2 = CDF1.add(t.mul(CDF2.add(step1)));
+        int128 result = ONE_INT.sub(t.mul(step2.mul((z.mul(z).neg()).exp())));
         return result;
     }
+
+    int128 public constant HALF_INT = 0x8000000000000000; // 0.5
+    int128 public constant INVERSE0 = 0x26A8F3C1F21B336E;
+    int128 public constant INVERSE1 = -0x87C57E5DA70D3C90;
+    int128 public constant INVERSE2 = 0x15D71F5721242C787;
+    int128 public constant INVERSE3 = 0x21D0A04B0E9B94F1;
+    int128 public constant INVERSE4 = -0xC2BF5D74C724E53F;
+
+    int128 public constant LOW_TAIL = 0x666666666666666; // 0.025
+    int128 public constant HIGH_TAIL = 0xF999999999999999; // 0.975
 
     /// @notice  Returns the inverse CDF, or quantile function of `p`.
     /// @dev     Source: https://arxiv.org/pdf/1002.0567.pdf
     /// @return  fcentral(p) = q * (a2 + (a1r + a0) / (r^2 + b1r +b0))
     function getInverseCDF(int128 p) internal pure returns (int128) {
-        int128 half = 0x8000000000001060; // 0.5
-        int128 q = p.sub(half);
-        int128 r = q.pow(2);
-        int128 a0 = 0x26A8F3C1F21B39C0; // 0.151015506
-        int128 a1 = -0x87C57E5DA70D0FE0; // -0.530357263
-        int128 a2 = 0x15D71F57212414CA0; // 1.365020123
-        int128 b0 = 0x21D0A04B0E9BA0F0; // 0.132089632
-        int128 b1 = -0xC2BF5D74C7247680; // -0.760732499
-        int128 result = q.mul(a2.add((a1.mul(r).add(a0)).div((r.pow(2).add(b1.mul(r)).add(b0)))));
+        if (p >= ONE_INT || p <= 0) revert OutOfBoundsError(p);
+        // Short circuit for the central region, central region inclusive of tails
+        if (p <= HIGH_TAIL && p >= LOW_TAIL) {
+            return central(p);
+        } else if (p < LOW_TAIL) {
+            return tail(p);
+        } else {
+            int128 negativeTail = -tail(ONE_INT.sub(p)); // -fTail(1 - p) for p > 0.975
+            return negativeTail;
+        }
+    }
+
+    /// @return Inverse CDF around the central area of 0.025 <= p <= 0.975
+    function central(int128 p) internal pure returns (int128) {
+        int128 q = p.sub(HALF_INT);
+        int128 r = q.mul(q);
+        int128 result = q.mul(
+            INVERSE2.add((INVERSE1.mul(r).add(INVERSE0)).div((r.mul(r).add(INVERSE4.mul(r)).add(INVERSE3))))
+        );
+        return result;
+    }
+
+    int128 public constant C0 = 0x10E56D75CE8BCE9FAE;
+    int128 public constant C1 = -0x2CB2447D36D513DAE;
+    int128 public constant C2 = -0x8BB4226952BD69EDF;
+    int128 public constant C3 = -0x1000BF627FA188411;
+    int128 public constant C0_D = 0x10AEAC93F55267A9A5;
+    int128 public constant C1_D = 0x41ED34A2561490236;
+    int128 public constant C2_D = 0x7A1E70F720ECA43;
+    int128 public constant D0 = 0x72C7D592D021FB1DB;
+    int128 public constant D1 = 0x8C27B4617F5F800EA;
+
+    /// @return Inverse CDF of the tail, defined for p < 0.0465, used with p < 0.025
+    function tail(int128 p) internal pure returns (int128) {
+        int128 r = ONE_INT.div(p.mul(p)).ln().sqrt();
+        int128 step0 = C3.mul(r).add(C2_D);
+        int128 numerator = C1_D.mul(r).add(C0_D);
+        int128 denominator = r.mul(r).add(D1.mul(r)).add(D0);
+        int128 result = step0.add(numerator.div(denominator));
         return result;
     }
 }
