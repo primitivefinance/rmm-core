@@ -280,6 +280,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 deltaIn;
         bool riskyForStable;
         bool fromMargin;
+        bool toMargin;
         uint32 timestamp;
     }
 
@@ -289,6 +290,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bool riskyForStable,
         uint256 deltaIn,
         bool fromMargin,
+        bool toMargin,
         bytes calldata data
     ) external override lock returns (uint256 deltaOut) {
         if (deltaIn == 0) revert DeltaInError();
@@ -298,6 +300,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             deltaIn: deltaIn,
             riskyForStable: riskyForStable,
             fromMargin: fromMargin,
+            toMargin: toMargin,
             timestamp: _blockTimestamp()
         });
 
@@ -351,7 +354,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (deltaOut == 0) revert DeltaOutError();
 
         if (details.riskyForStable) {
-            IERC20(stable).safeTransfer(msg.sender, deltaOut); // send proceeds, for callback if needed
+            if (details.toMargin) margins[msg.sender].deposit(0, deltaOut);
+            else IERC20(stable).safeTransfer(msg.sender, deltaOut); // send proceeds, for callback if needed
             if (details.fromMargin) {
                 margins.withdraw(deltaIn, 0); // pay for swap
             } else {
@@ -360,7 +364,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 checkRiskyBalance(balRisky + details.deltaIn);
             }
         } else {
-            IERC20(risky).safeTransfer(msg.sender, deltaOut); // send proceeds first, for callback if needed
+            if (details.toMargin) margins[msg.sender].deposit(deltaOut, 0);
+            else IERC20(risky).safeTransfer(msg.sender, deltaOut); // send proceeds first, for callback if needed
             if (details.fromMargin) {
                 margins.withdraw(0, deltaIn); // pay for swap
             } else {
