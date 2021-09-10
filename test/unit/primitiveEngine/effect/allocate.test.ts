@@ -1,27 +1,49 @@
 import expect from '../../.../../../shared/expect'
 import { waffle } from 'hardhat'
-import { constants } from 'ethers'
+import { constants, Wallet } from 'ethers'
 import { parseWei, Time } from 'web3-units'
 
 import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
 import { computePoolId, computePositionId } from '../../.../../../shared/utils'
-import { primitiveFixture } from '../../.../../../shared/fixtures'
+import { PrimitiveFixture, primitiveFixture } from '../../.../../../shared/fixtures'
 import { testContext } from '../../.../../../shared/testContext'
 import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../.../../../shared/hooks'
+import { Fixture } from '@ethereum-waffle/provider'
 const { HashZero } = constants
 
+// for each calibration, run the tests
 TestPools.forEach(function (pool: PoolState) {
   testContext(`allocate to ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
-    let poolId: string, posId: string
+    // curve parameters
+    const { strike, sigma, maturity, lastTimestamp, delta, decimalsRisky, decimalsStable, precisionRisky, precisionStable } =
+      pool.calibration
+    // environment variables
+    let poolId: string
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(primitiveFixture)
+      // modifies engine contract if testing different tokens with different decimals
+      const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
+        const fix = await primitiveFixture([wallet], provider)
+        // if using a custom engine, create it and replace the default contracts
+        if (pool.customEngine) {
+          const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
+          fix.contracts.risky = risky
+          fix.contracts.stable = stable
+          fix.contracts.engine = engine
+          await fix.contracts.router.setEngine(engine.address) // set the router's engine
+          return fix
+        }
+
+        return fix
+      }
+
+      const fixture = await this.loadFixture(poolFixture)
       this.contracts = fixture.contracts
-      await useTokens(this.signers[0], this.contracts, pool.calibration)
-      await useApproveAll(this.signers[0], this.contracts)
-      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+
+      await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
+      await useApproveAll(this.signers[0], this.contracts) // approves tokens
+      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration)) // calls create()
+      await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address) // allocates liq
     })
 
     describe('when allocating from margin', function () {
