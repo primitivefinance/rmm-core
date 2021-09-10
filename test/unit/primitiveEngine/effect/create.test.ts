@@ -15,9 +15,20 @@ const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`create ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta, spot } = pool.calibration
+    const {
+      strike,
+      sigma,
+      maturity,
+      lastTimestamp,
+      delta,
+      spot,
+      decimalsRisky,
+      decimalsStable,
+      precisionRisky,
+      precisionStable,
+    } = pool.calibration
     let poolId: string, posId: string
-    const delLiquidity = parseWei('1')
+    const delLiquidity = parseWei('1', 18)
 
     beforeEach(async function () {
       const fixture = await this.loadFixture(primitiveFixture)
@@ -26,8 +37,6 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       poolId = pool.calibration.poolId(this.contracts.engine.address)
       posId = computePositionId(this.signers[0].address, poolId)
-      //;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      //;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
     })
 
     describe('success cases', function () {

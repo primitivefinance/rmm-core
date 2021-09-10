@@ -21,6 +21,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine is IPrimitiveEngine {
     using ABDKMath64x64 for *;
     using ReplicationMath for int128;
@@ -171,9 +173,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
         delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
+        console.log(delRisky);
         delRisky = delRisky.scaleDown(prec0); // 18 -> native precision
+        console.log(delRisky);
         delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau);
         delRisky = (delRisky * delLiquidity) / PRECISION; // liquidity has 18 decimals, so delRisky has native precision
+        console.log(delRisky);
         delStable = (delStable * delLiquidity) / PRECISION;
 
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);

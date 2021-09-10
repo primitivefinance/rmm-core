@@ -72,7 +72,7 @@ const SuccessCases: SwapTestCase[] = [
     fromMargin: true,
     toMargin: false,
   },
-  {
+  /* {
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: false,
@@ -164,7 +164,7 @@ const SuccessCases: SwapTestCase[] = [
     deltaIn: parseWei('10'), // investigate
     fromMargin: false,
     toMargin: true,
-  },
+  }, */
 ]
 
 const FailCases: SwapTestCase[] = [
@@ -209,11 +209,23 @@ function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
   else return pool.swapAmountInStable(deltaIn)
 }
 
-const DEBUG_MODE = false
+const DEBUG_MODE = true
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`Engine:swap for ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta, spot, fee } = pool.calibration
+    const {
+      strike,
+      sigma,
+      maturity,
+      lastTimestamp,
+      delta,
+      spot,
+      fee,
+      decimalsRisky,
+      decimalsStable,
+      precisionRisky,
+      precisionStable,
+    } = pool.calibration
     let poolId: string, posId: string
     let deployer: Wallet
     let engine: MockEngine, router: TestRouter
@@ -243,6 +255,7 @@ TestPools.forEach(function (pool: PoolState) {
           engine.margins(this.contracts.router.address),
         ])
 
+      console.log(preReserves.reserveRisky.toString(), decimalsRisky)
       // spot price of pool pre-swap
       preSpot = getSpotPrice(
         new Wei(preReserves.reserveRisky).float / new Wei(preReserves.liquidity).float,
@@ -252,10 +265,12 @@ TestPools.forEach(function (pool: PoolState) {
       )
 
       const [preRisky, preStable, preLiquidity] = [
-        new Wei(preReserves.reserveRisky),
-        new Wei(preReserves.reserveStable),
-        new Wei(preReserves.liquidity),
+        new Wei(preReserves.reserveRisky, decimalsRisky),
+        new Wei(preReserves.reserveStable, decimalsStable),
+        new Wei(preReserves.liquidity, 18),
       ]
+
+      console.log(preRisky.float, preLiquidity.float)
       if (DEBUG_MODE)
         console.log(`
          ====== PRE =========
@@ -277,9 +292,9 @@ TestPools.forEach(function (pool: PoolState) {
       for (const testCase of TestCases) {
         it(swapTestCaseDescription(testCase), async function () {
           const [reserveRisky, reserveStable, liquidity] = [
-            new Wei(preReserves.reserveRisky),
-            new Wei(preReserves.reserveStable),
-            new Wei(preReserves.liquidity),
+            new Wei(preReserves.reserveRisky, decimalsRisky),
+            new Wei(preReserves.reserveStable, decimalsStable),
+            new Wei(preReserves.liquidity, 18),
           ]
 
           // Get a virtual pool to simulate the swap
@@ -334,9 +349,9 @@ TestPools.forEach(function (pool: PoolState) {
           ])
 
           const [postRisky, postStable, postLiquidity] = [
-            new Wei(postReserve.reserveRisky),
-            new Wei(postReserve.reserveStable),
-            new Wei(postReserve.liquidity),
+            new Wei(postReserve.reserveRisky, decimalsRisky),
+            new Wei(postReserve.reserveStable, decimalsStable),
+            new Wei(postReserve.liquidity, 18),
           ]
           if (DEBUG_MODE)
             console.log(`

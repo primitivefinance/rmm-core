@@ -31,13 +31,13 @@ export class Calibration {
    */
   public readonly fee: Percentage
   /**
-   * @notice Scaling factor of risky asset, 18 - risky decimals
+   * @notice Decimals of risky asset
    */
-  public readonly precisionRisky: number
+  public readonly decimalsRisky: number
   /**
-   * @notice Scaling factor of stable asset, 18 - stable decimals
+   * @notice Decimals of stable asset
    */
-  public readonly precisionStable: number
+  public readonly decimalsStable: number
 
   /**
    *
@@ -63,8 +63,22 @@ export class Calibration {
     this.lastTimestamp = new Time(lastTimestamp) // in seconds, because `block.timestamp` is in seconds
     this.spot = parseWei(spot, decimalsStable)
     this.fee = fee
-    this.precisionRisky = 18 - decimalsRisky
-    this.precisionStable = 18 - decimalsStable
+    this.decimalsRisky = decimalsRisky
+    this.decimalsStable = decimalsStable
+  }
+
+  /**
+   * @notice Scaling factor of risky asset, 18 - risky decimals
+   */
+  get precisionRisky(): number {
+    return 18 - this.decimalsRisky
+  }
+
+  /**
+   * @notice Scaling factor of stable asset, 18 - stable decimals
+   */
+  get precisionStable(): number {
+    return 18 - this.decimalsStable
   }
 
   /**
@@ -96,6 +110,6 @@ export class Calibration {
   }
 
   poolId(engine: string): string {
-    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.div(Math.pow(10, this.precisionRisky)).raw)
+    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.raw)
   }
 }

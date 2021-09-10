@@ -108,8 +108,8 @@ export class Pool {
     )
 
     stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
-    if (isNaN(stable)) return parseWei(0)
-    return parseWei(stable)
+    if (isNaN(stable)) return parseWei(0, this.reserveStable.decimals)
+    return parseWei(stable, this.reserveStable.decimals)
   }
 
   /**
@@ -144,8 +144,8 @@ export class Pool {
     )
     if (this.debug) console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
     risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
-    if (isNaN(risky)) return parseWei(0)
-    return parseWei(risky)
+    if (isNaN(risky)) return parseWei(0, this.reserveRisky.decimals)
+    return parseWei(risky, this.reserveRisky.decimals)
   }
 
   /**
@@ -162,7 +162,9 @@ export class Pool {
   calcInvariant(): FixedPointX64 {
     const risky = this.reserveRisky.float / this.liquidity.float
     const stable = this.reserveStable.float / this.liquidity.float
+    console.log({ risky, stable })
     let invariant = calcInvariant(risky, stable, this.strike.float, this.sigma.float, this.tau.years)
+    console.log(invariant)
     invariant = Math.floor(invariant * Math.pow(10, 18))
     this.invariant = new FixedPointX64(
       toBN(invariant === NaN ? 0 : invariant)
