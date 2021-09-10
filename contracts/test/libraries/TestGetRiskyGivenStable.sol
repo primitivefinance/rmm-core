@@ -29,8 +29,8 @@ contract TestGetRiskyGivenStable {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    function step2(uint256 reserveRisky) public view returns (int128 reserve) {
-        reserve = reserveRisky.scaleToX64(precisionStable);
+    function step2(uint256 reserveStable) public view returns (int128 reserve) {
+        reserve = reserveStable.scaleToX64(precisionStable);
     }
 
     function step3(
@@ -52,16 +52,17 @@ contract TestGetRiskyGivenStable {
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
     function getRiskyGivenStable(
         int128 invariantLast,
+        uint256 precRisky,
         uint256 reserveStable,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public view returns (int128 reserveRisky) {
+    ) public view returns (uint256 reserveRisky) {
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
         int128 reserve = step2(reserveStable);
         int128 phi = step3(reserve, invariantLast, K);
         int128 input = step4(phi, vol);
-        reserveRisky = step5(input);
+        reserveRisky = step5(input).scalefromX64(precRisky);
     }
 }

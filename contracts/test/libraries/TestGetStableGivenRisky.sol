@@ -56,16 +56,21 @@ contract TestGetStableGivenRisky {
     /// @return reserveStable The calculated stable reserve, using the risky reserve
     function getStableGivenRisky(
         int128 invariantLast,
+        uint256 precStable,
         uint256 reserveRisky,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) public view returns (int128 reserveStable) {
+        precStable;
         int128 K = step0(strike);
-        int128 vol = step1(sigma, tau);
-        int128 reserve = step2(reserveRisky);
-        int128 phi = step3(reserve);
-        int128 input = step4(phi, vol);
+        int128 input;
+        {
+            int128 vol = step1(sigma, tau);
+            int128 reserve = step2(reserveRisky);
+            int128 phi = step3(reserve);
+            input = step4(phi, vol);
+        }
         reserveStable = step5(K, input, invariantLast);
     }
 }

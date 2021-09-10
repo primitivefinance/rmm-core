@@ -10,9 +10,6 @@ import "./SafeCast.sol";
 library Reserve {
     using SafeCast for uint256;
 
-    /// @notice Thrown on attempting to supply more liquidity than is allowed
-    error LiquidityError();
-
     struct Data {
         uint128 reserveRisky; // reserve of the risky asset
         uint128 reserveStable; // reserve of the stable asset
@@ -32,12 +29,12 @@ library Reserve {
         // overflow is desired
         if (deltaTime > 0) {
             unchecked {
-                res.cumulativeRisky += res.reserveRisky * deltaTime;
-                res.cumulativeStable += res.reserveStable * deltaTime;
-                res.cumulativeLiquidity += res.liquidity * deltaTime;
+                res.cumulativeRisky += uint256(res.reserveRisky) * deltaTime;
+                res.cumulativeStable += uint256(res.reserveStable) * deltaTime;
+                res.cumulativeLiquidity += uint256(res.liquidity) * deltaTime;
             }
+            res.blockTimestamp = blockTimestamp;
         }
-        res.blockTimestamp = blockTimestamp;
     }
 
     /// @notice                 Increases one reserve value and decreases the other
@@ -111,7 +108,8 @@ library Reserve {
         pure
         returns (uint256 delRisky, uint256 delStable)
     {
-        delRisky = (delLiquidity * reserve.reserveRisky) / reserve.liquidity;
-        delStable = (delLiquidity * reserve.reserveStable) / reserve.liquidity;
+        uint256 liq = uint256(reserve.liquidity);
+        delRisky = (delLiquidity * uint256(reserve.reserveRisky)) / liq;
+        delStable = (delLiquidity * uint256(reserve.reserveStable)) / liq;
     }
 }

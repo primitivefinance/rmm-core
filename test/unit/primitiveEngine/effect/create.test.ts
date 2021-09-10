@@ -34,7 +34,7 @@ TestPools.forEach(function (pool: PoolState) {
       it('deploys a new pool', async function () {
         await expect(
           this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
-        ).to.emit(this.contracts.engine, 'Created')
+        ).to.emit(this.contracts.engine, 'Create')
       })
 
       it('res.allocate: increases reserve liquidity', async function () {
@@ -77,11 +77,11 @@ TestPools.forEach(function (pool: PoolState) {
         )
       })
 
-      it('emits the Created event', async function () {
+      it('emits the Create event', async function () {
         await expect(
           this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         )
-          .to.emit(this.contracts.engine, 'Created')
+          .to.emit(this.contracts.engine, 'Create')
           .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw)
       })
 

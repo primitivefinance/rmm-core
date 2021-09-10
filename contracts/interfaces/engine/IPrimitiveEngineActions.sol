@@ -12,11 +12,11 @@ interface IPrimitiveEngineActions {
     function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
 
     /// @notice             Initializes a curve with parameters in the `settings` storage mapping in the Engine
-    /// @param  strike      Strike price of the pool to calibrate to
-    /// @param  sigma       Volatility of the pool to calibrate to
-    /// @param  maturity    Maturity timestamp of the pool
-    /// @param  delta       N(d1), d1 = (ln(S / K) + (r * sigma^2 / 2) ) / sigma * sqrt(tau)
-    /// @param  delLiquidity Amount of liquidity to allocate to the curve
+    /// @param  strike      Strike price of the pool to calibrate to, wei value with 18 decimals of precision
+    /// @param  sigma       Volatility to calibrate to as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
+    /// @param  maturity    Maturity timestamp of the pool, in seconds
+    /// @param  delta       N(d1), d1 = (ln(S / K) + (r * sigma^2 / 2) ) / sigma * sqrt(tau), 0 < delta < 1e18
+    /// @param  delLiquidity Amount of liquidity to allocate to the curve, must be > 1000 weii
     /// @param  data        Arbitrary data that is passed to the createCallback function
     /// @return poolId      Keccak256 hash of the parameters (engine, strike, sigma, and maturity)
     /// delRisky            Amount of risky tokens provided to reserves
@@ -88,7 +88,7 @@ interface IPrimitiveEngineActions {
     // ===== Swaps =====
     /// @notice             Swaps risky or stable tokens
     /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
-    /// @param  riskyForStable Whether to do a risky to stable token swap, or stable to risky swap
+    /// @param  riskyForStable If true, swap risky to stable tokens, else swap stable to risky tokens
     /// @param  deltaIn     Amount of tokens to swap in
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the swapCallback function

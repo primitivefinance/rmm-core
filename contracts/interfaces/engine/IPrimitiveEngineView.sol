@@ -16,6 +16,15 @@ interface IPrimitiveEngineView {
     /// @return Precision units to scale to when doing calculations
     function PRECISION() external view returns (uint256);
 
+    /// @return Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %
+    function GAMMA() external view returns (uint256);
+
+    /// @return Amount of seconds after pool expiry which allows swaps, no swaps after buffer
+    function BUFFER() external view returns (uint256);
+
+    /// @return Amount of liquidity burned on `create()` calls
+    function MIN_LIQUIDITY() external view returns (uint256);
+
     //// @return Factory address which deployed this engine contract
     function factory() external view returns (address);
 
@@ -57,9 +66,9 @@ interface IPrimitiveEngineView {
 
     /// @notice             Fetches `Calibration` pool parameters
     /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
-    /// @return strike      Strike price of the pool
-    /// sigma               Volatility of the pool
-    /// maturity            Timestamp of maturity
+    /// @return strike      Strike price of the pool with `stable.decimal()` precision
+    /// sigma               Volatility of the pool scaled to a percentage integer from multiplying by 1e4
+    /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
     function calibrations(bytes32 poolId)
         external

@@ -14,8 +14,11 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when a pool with poolId already exists
     error PoolDuplicateError();
 
-    /// @notice Thrown when calling `create` with a maturity that is less than the current block.timestamp
+    /// @notice Thrown when calling an expired pool, where block.timestamp > maturity, + BUFFER if swap
     error PoolExpiredError();
+
+    /// @notice Thrown when a parameter is outside the range of acceptable values
+    error OutOfBoundsError(uint256 value);
 
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
     error CalibrationError(uint256 delRisky, uint256 delStable);

@@ -16,6 +16,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @notice Thrown when the risky or the stable token is 0x0...
     error ZeroAddressError();
 
+    /// @notice Thrown on attempting to deploy an already deployed Engine
+    error DeployedError();
+
     /// @inheritdoc IPrimitiveFactory
     address public override owner;
 
@@ -41,6 +44,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     function deploy(address risky, address stable) external override returns (address engine) {
         if (risky == stable) revert SameTokenError();
         if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
+        if (getEngine[risky][stable] != address(0)) revert DeployedError();
 
         engine = deploy(address(this), risky, stable);
         getEngine[risky][stable] = engine;
