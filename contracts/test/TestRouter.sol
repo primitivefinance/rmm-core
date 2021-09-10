@@ -196,10 +196,11 @@ contract TestRouter is TestBase {
         bool riskyForStable,
         uint256 deltaOut,
         bool fromMargin,
+        bool toMargin,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, data);
+        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
     }
 
     function name() public pure override(TestBase) returns (string memory) {
