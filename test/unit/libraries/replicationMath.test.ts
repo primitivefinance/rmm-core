@@ -1,5 +1,6 @@
 import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
+import { parseEther } from '@ethersproject/units'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
 import { FixedPointX64, parseFixedPointX64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
@@ -74,10 +75,12 @@ const precision = {
 TestPools.forEach(function (pool: PoolState) {
   testContext(`testReplicationMath for ${pool.description}`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta, spot } = pool.calibration
-    let fixture: TestStepFixture
+    let fixture: TestStepFixture, precisionRisky: Wei, precisionStable: Wei
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
       let [prec0, prec1] = [pool.calibration.precisionRisky, pool.calibration.precisionStable]
+      precisionRisky = parseWei(1, 18 - prec0)
+      precisionStable = parseWei(1, 18 - prec1)
       await fixture.calcInvariant.set(Math.pow(10, prec0), Math.pow(10, prec1))
       await fixture.getRiskyGivenStable.set(Math.pow(10, prec0), Math.pow(10, prec1))
       await fixture.getStableGivenRisky.set(Math.pow(10, prec0), Math.pow(10, prec1))
@@ -86,13 +89,18 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('replicationMath', function () {
       let math: TestReplicationMath
-      let [reserveRisky, reserveStable, liquidity] = [parseWei('0.5'), parseWei('500'), parseWei('1')]
+      let reserveRisky: Wei, reserveStable: Wei, liquidity: Wei
       let tau: Time
 
       beforeEach(async function () {
         math = this.libraries.testReplicationMath
         await math.set(Math.pow(10, pool.calibration.precisionRisky), Math.pow(10, pool.calibration.precisionStable))
         tau = new Time(maturity.raw - lastTimestamp.raw)
+        liquidity = parseWei('1')
+        reserveRisky = parseWei('1').sub(parseWei(delta.toString()))
+        reserveStable = new Wei(
+          parseEther(getStableGivenRisky(reserveRisky.float, strike.float, sigma.float, tau.years).toString())
+        )
       })
 
       it('YEAR()', async function () {
@@ -126,12 +134,13 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('step3: calculate phi = CDF^-1( 1 - riskyReserve )', async function () {
-          let reserve = reserveRisky.mul(parseWei(1)).div(liquidity)
+          let reserve = reserveRisky
           let inside = 1 - reserve.float
+          let reserveX64 = new FixedPointX64(reserveRisky.mul(FixedPointX64.Denominator).div(1e18).raw)
           let inversedCDF = inverse_std_n_cdf(inside)
           let expected = inversedCDF
-          let step3 = new FixedPointX64(await fixture.getStableGivenRisky.step3(reserve.raw))
-          expect(step3.float).to.be.closeTo(expected, precision.invariant)
+          let step3 = new FixedPointX64(await fixture.getStableGivenRisky.step3(reserveX64.raw))
+          expect(step3.parsed).to.be.closeTo(expected, precision.invariant)
         })
 
         it('step4: calculate input = phi - vol', async function () {
@@ -172,11 +181,19 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('getStableGivenRisky', async function () {
+          console.log(precisionStable.float)
           let expected: number = new FixedPointX64(
-            await fixture.getStableGivenRisky.getStableGivenRisky(0, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
-          ).float
-          let actual: number = getStableGivenRisky(reserveStable.float, strike.float, sigma.float, tau.years)
-          expect(actual).to.be.eq(expected)
+            await fixture.getStableGivenRisky.getStableGivenRisky(
+              0,
+              precisionStable.raw,
+              reserveRisky.raw,
+              strike.raw,
+              sigma.raw,
+              tau.raw
+            )
+          ).parsed
+          let actual: number = getStableGivenRisky(reserveRisky.float, strike.float, sigma.float, tau.years)
+          expect(actual).to.be.closeTo(expected, precision.invariant)
         })
       })
 
@@ -252,8 +269,8 @@ TestPools.forEach(function (pool: PoolState) {
           let expected: number = new FixedPointX64(
             await fixture.getRiskyGivenStable.getRiskyGivenStable(
               0,
+              precisionRisky.raw,
               reserveStable.raw,
-
               strike.raw,
               sigma.raw,
               tau.raw
