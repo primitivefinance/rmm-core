@@ -11,6 +11,7 @@ import "../../libraries/Units.sol";
 
 contract TestCumulativeNormalDistribution {
     using Units for *;
+    using ABDKMath64x64 for *;
     using CumulativeNormalDistribution for *;
 
     constructor() {}
@@ -30,6 +31,16 @@ contract TestCumulativeNormalDistribution {
     function icdf(uint256 x) public pure returns (int128 y) {
         //int128 p = 0x4000000000000830; // 0.25
         int128 p = x.scaleToX64(1);
+        y = p.getInverseCDF();
+    }
+
+    function inverseCDFHighTail() public pure returns (int128 y) {
+        int128 p = CumulativeNormalDistribution.HIGH_TAIL.add(1);
+        y = p.getInverseCDF();
+    }
+
+    function inverseCDFLowTail() public pure returns (int128 y) {
+        int128 p = CumulativeNormalDistribution.LOW_TAIL.sub(1);
         y = p.getInverseCDF();
     }
 
