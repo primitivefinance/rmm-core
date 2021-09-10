@@ -16,6 +16,10 @@ abstract contract TestBase is TestAllocateCallback, TestCreateCallback, TestDepo
         engine = engine_;
     }
 
+    function setEngine(address engine_) public {
+        engine = engine_;
+    }
+
     function risky() public view override(Scenarios) returns (address) {
         return IPrimitiveEngine(engine).risky();
     }

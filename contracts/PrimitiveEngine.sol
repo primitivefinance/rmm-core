@@ -173,12 +173,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
         delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
-        console.log(delRisky);
         delRisky = delRisky.scaleDown(prec0); // 18 -> native precision
-        console.log(delRisky);
         delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau);
         delRisky = (delRisky * delLiquidity) / PRECISION; // liquidity has 18 decimals, so delRisky has native precision
-        console.log(delRisky);
         delStable = (delStable * delLiquidity) / PRECISION;
 
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
@@ -347,6 +344,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
+                console.log(res1, cal.strike, cal.sigma);
+                console.log(reserve.reserveRisky, (res0 * liq) / PRECISION);
                 deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
             }
 

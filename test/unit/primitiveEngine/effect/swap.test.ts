@@ -10,7 +10,7 @@ import { Contracts } from '../../../../types'
 import { MockEngine, TestRouter } from '../../../../typechain'
 import { Calibration, DebugReturn, Pool, computePoolId } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
-import { primitiveFixture } from '../../../shared/fixtures'
+import { PrimitiveFixture, primitiveFixture } from '../../../shared/fixtures'
 import { useTokens, useLiquidity, useMargin, useApproveAll, usePool } from '../../../shared/hooks'
 
 const { HashZero } = constants
@@ -66,24 +66,25 @@ interface SwapTestCase {
 
 const SuccessCases: SwapTestCase[] = [
   // 1e18
-  {
+  /* {
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: true,
     toMargin: false,
   },
-  /* {
+  {
     riskyForStable: true,
     deltaIn: parseWei(1),
     fromMargin: false,
     toMargin: false,
-  },
+  }, */
   {
     riskyForStable: false,
     deltaIn: parseWei(10),
     fromMargin: true,
     toMargin: false,
   },
+  /*
   {
     riskyForStable: false,
     deltaIn: parseWei(10),
@@ -115,7 +116,7 @@ const SuccessCases: SwapTestCase[] = [
     fromMargin: false,
     toMargin: false,
   },
-  // 1e18
+   // 1e18
   {
     riskyForStable: true,
     deltaIn: parseWei(1),
@@ -196,6 +197,7 @@ async function doSwap(
   poolId: BytesLike,
   testCase: SwapTestCase
 ): Promise<ContractTransaction> {
+  console.log(`\n   Executing a swap`)
   const { riskyForStable, fromMargin, deltaIn, toMargin } = testCase
   const signerIndex = testCase.signer ? testCase.signer : 0
   const signer = signers[signerIndex]
@@ -204,6 +206,7 @@ async function doSwap(
 }
 
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
+  console.log(`\n   Simulating a swap`)
   const { riskyForStable, deltaIn } = testCase
   if (riskyForStable) return pool.swapAmountInRisky(deltaIn)
   else return pool.swapAmountInStable(deltaIn)
@@ -233,8 +236,27 @@ TestPools.forEach(function (pool: PoolState) {
     let preInvariant: BigNumber, preMarginSigner: any, preMarginRouter: any
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(primitiveFixture)
+      const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
+        let fix = await primitiveFixture([wallet], provider)
+        // if using a custom engine, create it and replace the default contracts
+        if (pool.customEngine) {
+          const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
+          console.log(
+            `\n   Updating Test Router from ${fix.contracts.engine.address.slice(0, 6)} to ${engine.address.slice(0, 6)}`
+          )
+          fix.contracts.risky = risky
+          fix.contracts.stable = stable
+          fix.contracts.engine = engine
+          await fix.contracts.router.setEngine(engine.address) // set the router's engine
+        }
+
+        console.log(`\n   Loaded pool fixture`)
+        return fix
+      }
+
+      const fixture = await this.loadFixture(poolFixture)
       this.contracts = fixture.contracts
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
@@ -255,7 +277,6 @@ TestPools.forEach(function (pool: PoolState) {
           engine.margins(this.contracts.router.address),
         ])
 
-      console.log(preReserves.reserveRisky.toString(), decimalsRisky)
       // spot price of pool pre-swap
       preSpot = getSpotPrice(
         new Wei(preReserves.reserveRisky).float / new Wei(preReserves.liquidity).float,
@@ -270,11 +291,11 @@ TestPools.forEach(function (pool: PoolState) {
         new Wei(preReserves.liquidity, 18),
       ]
 
-      console.log(preRisky.float, preLiquidity.float)
       if (DEBUG_MODE)
         console.log(`
          ====== PRE =========
            spot: ${preSpot}
+           liq: ${preLiquidity.float}
            risky: ${preRisky.float / preLiquidity.float}
            stable: ${preStable.float / preLiquidity.float}
            invariant: ${new FixedPointX64(preInvariant).parsed}
@@ -291,6 +312,18 @@ TestPools.forEach(function (pool: PoolState) {
     } else {
       for (const testCase of TestCases) {
         it(swapTestCaseDescription(testCase), async function () {
+          console.log(`   Scaling deltaIn value of: ${testCase.deltaIn.toString()}`)
+          // scale the deltaInAmount by decimals
+          const dec = testCase.riskyForStable ? decimalsRisky : decimalsStable
+          const prec = testCase.riskyForStable ? precisionRisky : precisionStable // 18 - dec
+          // Given a deltaIn amount with decimals, e.g. 1 w/ 18 decimals
+          // we need to first scale this down by the precision of the asset being swapped in
+          // the scale factor is 1 with (18 - prec)
+          // dividing by scaling factor gives us the new deltaIn value
+          // then we return a new wei instance with the proper decimals
+          testCase.deltaIn = new Wei(testCase.deltaIn.div(parseWei('1', prec)).raw, dec)
+          console.log(`   DeltaIn scaled to ${testCase.deltaIn.toString()}`)
+
           const [reserveRisky, reserveStable, liquidity] = [
             new Wei(preReserves.reserveRisky, decimalsRisky),
             new Wei(preReserves.reserveStable, decimalsStable),
@@ -316,11 +349,20 @@ TestPools.forEach(function (pool: PoolState) {
            stable: ${virtualPool.reserveStable.float / virtualPool.liquidity.float}
            invariant: ${virtualPool.invariant.parsed}
           `)
+          // Simulate the swap from the test case
+          const simulated = simulateSwap(virtualPool, testCase)
+
+          const simLiq = simulated.pool.liquidity.float
+          if (DEBUG_MODE)
+            console.log(`
+          ====== SIMULATED POST RESERVE =====
+           risky: ${simulated.pool.reserveRisky.float / simLiq}
+           stable: ${simulated.pool.reserveStable.float / simLiq}
+           invariant: ${simulated.pool.invariant.parsed}
+          `)
 
           const tx = doSwap(this.signers, engine, router, poolId, testCase)
 
-          // Simulate the swap from the test case
-          const simulated = simulateSwap(virtualPool, testCase)
           // Execute the swap in the contract
           try {
             await tx
@@ -356,17 +398,10 @@ TestPools.forEach(function (pool: PoolState) {
           if (DEBUG_MODE)
             console.log(`
           ====== POST RESERVE =====
-           risky: ${postRisky.float}
-           stable: ${postStable.float}
+           liq: ${postLiquidity.float}
+           risky: ${postRisky.float / postLiquidity.float}
+           stable: ${postStable.float / postLiquidity.float}
            invariant: post: ${new FixedPointX64(postInvariant).parsed}, pre: ${new FixedPointX64(preInvariant).parsed}
-          `)
-          const simLiq = simulated.pool.liquidity.float
-          if (DEBUG_MODE)
-            console.log(`
-          ====== SIMULATED POST RESERVE =====
-           risky: ${simulated.pool.reserveRisky.float / simLiq}
-           stable: ${simulated.pool.reserveStable.float / simLiq}
-           invariant: ${simulated.pool.invariant.parsed}
           `)
 
           const marginAccount = testCase.fromMargin ? preMarginSigner : preMarginRouter
@@ -378,7 +413,9 @@ TestPools.forEach(function (pool: PoolState) {
 
           let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
           if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
+
           const deltaOut = testCase.riskyForStable ? reserveStable.sub(postStable) : reserveRisky.sub(postRisky)
+          console.log(`   Calculated deltaOut amount of: ${deltaOut.float}`)
 
           if (maturity.raw > lastTimestamp.raw)
             await expect(tx)

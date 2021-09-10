@@ -16,7 +16,7 @@ library ReplicationMath {
     using Units for int128;
     using Units for uint256;
 
-    int128 internal constant ONE_INT = int128(2**64);
+    int128 internal constant ONE_INT = 0x10000000000000000;
 
     // ===== Math ======
 
