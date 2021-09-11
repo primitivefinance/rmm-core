@@ -2,11 +2,11 @@ import hre, { ethers } from 'hardhat'
 import { Wallet, Contract } from 'ethers'
 import { deployContract } from 'ethereum-waffle'
 import * as ContractTypes from '../../typechain'
-import { Contracts, ContractName, Libraries } from '../../types'
+import { Contracts, Libraries, EngineTypes } from '../../types'
 import { abi as MockEngineAbi } from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 import { batchApproval } from './utils'
 
-type BaseContracts = {
+type DefaultContracts = {
   factory: ContractTypes.MockFactory
   engine: ContractTypes.MockEngine
   risky: ContractTypes.TestToken
@@ -19,24 +19,45 @@ export async function deploy(contractName: string, deployer: Wallet, args: any[]
   return contract
 }
 
-async function initializeTestContract<T extends Contract>(contract: T, loadedContracts: any): Promise<void> {
-  await contract.initialize(loadedContracts.engine.address, loadedContracts.risky.address, loadedContracts.stable.address)
+export async function deployToken(deployer: Wallet, decimals: number): Promise<ContractTypes.TestToken> {
+  const token = (await deploy('TestToken', deployer, ['Test', 'Token', decimals])) as ContractTypes.TestToken
+  return token
 }
 
-export async function initializeBaseContracts(deployer: Wallet): Promise<BaseContracts> {
-  const risky = (await deploy('TestToken', deployer, ['Risky', 'Risky', 18])) as ContractTypes.TestToken
-  const stable = (await deploy('TestToken', deployer, ['Stable', 'Stable', 18])) as ContractTypes.TestToken
-  const factory = (await deploy('MockFactory', deployer)) as ContractTypes.MockFactory
-  await factory.deploy(risky.address, stable.address)
-  const addr = await factory.getEngine(risky.address, stable.address)
+export async function deployEngine(
+  factory: ContractTypes.MockFactory,
+  token0: ContractTypes.TestToken,
+  token1: ContractTypes.TestToken
+): Promise<ContractTypes.MockEngine> {
+  await factory.deploy(token0.address, token1.address)
+  const addr = await factory.getEngine(token0.address, token1.address)
   const engine = (await ethers.getContractAt(MockEngineAbi, addr)) as unknown as ContractTypes.MockEngine
+  return engine
+}
+
+export async function defaultContracts(deployer: Wallet): Promise<DefaultContracts> {
+  const factory = (await deploy('MockFactory', deployer)) as ContractTypes.MockFactory
+  const risky = await deployToken(deployer, 18)
+  const stable = await deployToken(deployer, 18)
+  const engine = await deployEngine(factory, risky, stable)
   return { factory, engine, stable, risky }
 }
 
-export async function createTestContracts(deployer: Wallet): Promise<Contracts> {
+export interface CreateEngine {
+  engine: ContractTypes.MockEngine
+  risky: ContractTypes.TestToken
+  stable: ContractTypes.TestToken
+}
+
+export interface TestContracts {
+  contracts: Contracts
+  createEngine: (decimalsRisky, decimalsStable) => Promise<CreateEngine>
+}
+
+export async function createTestContracts(deployer: Wallet): Promise<TestContracts> {
   const contracts: Contracts = {} as Contracts
 
-  const { factory, engine, risky, stable } = await initializeBaseContracts(deployer)
+  const { factory, engine, risky, stable } = await defaultContracts(deployer)
 
   contracts.factory = factory
   contracts.engine = engine
@@ -51,15 +72,24 @@ export async function createTestContracts(deployer: Wallet): Promise<Contracts> 
   const contractAddresses = Object.keys(contracts).map((key) => contracts[key]?.address)
   await batchApproval(contractAddresses, [risky, stable], deployer)
 
-  return contracts
+  async function createEngine(decimalsRisky, decimalsStable): Promise<CreateEngine> {
+    console.log(`\n Creating Engine with...`)
+    console.log(`     - Risky Decimals ${decimalsRisky}`)
+    console.log(`     - Stable Decimals ${decimalsStable}`)
+    const risky = await deployToken(deployer, decimalsRisky)
+    const stable = await deployToken(deployer, decimalsStable)
+    const engine = await deployEngine(factory, risky, stable)
+    await batchApproval(contractAddresses.push(engine.address), [risky, stable], deployer)
+    return { engine, risky, stable }
+  }
+
+  return { contracts, createEngine }
 }
 
-export interface PrimitiveFixture {
-  contracts: Contracts
-}
+export interface PrimitiveFixture extends TestContracts {}
 
 export async function primitiveFixture([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> {
-  return { contracts: await createTestContracts(wallet) }
+  return await createTestContracts(wallet)
 }
 
 export async function createTestLibraries(deployer: Wallet): Promise<Libraries> {
