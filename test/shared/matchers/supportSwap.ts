@@ -66,37 +66,36 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       const oldBalances = await Promise.all([tokens[0].balanceOf(engine.address), tokens[1].balanceOf(engine.address)])
       const oldReserves = await engine.reserves(poolId)
 
-      this._obj.then(async (res) => {
-        const newReserves = await engine.reserves(poolId)
-        const newMargin = await engine.margins(receiver)
-        const newBalances = await Promise.all([tokens[0].balanceOf(engine.address), tokens[1].balanceOf(engine.address)])
+      await this._obj
+      const newReserves = await engine.reserves(poolId)
+      const newMargin = await engine.margins(receiver)
+      const newBalances = await Promise.all([tokens[0].balanceOf(engine.address), tokens[1].balanceOf(engine.address)])
 
-        const preBalStable = testCase.toMargin ? oldMargin.balanceStable : oldBalances[1]
-        const preBalRisky = testCase.toMargin ? oldMargin.balanceRisky : oldBalances[0]
-        const postBalStable = testCase.toMargin ? newMargin.balanceStable : newBalances[1]
-        const postBalRisky = testCase.toMargin ? newMargin.balanceRisky : newBalances[0]
+      const preBalStable = testCase.toMargin ? oldMargin.balanceStable : oldBalances[1]
+      const preBalRisky = testCase.toMargin ? oldMargin.balanceRisky : oldBalances[0]
+      const postBalStable = testCase.toMargin ? newMargin.balanceStable : newBalances[1]
+      const postBalRisky = testCase.toMargin ? newMargin.balanceRisky : newBalances[0]
 
-        let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
-        if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
+      let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
+      if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
 
-        const deltaOut = testCase.riskyForStable
-          ? oldReserves.reserveStable.sub(newReserves.reserveStable)
-          : oldReserves.reserveRisky.sub(newReserves.reserveRisky)
+      const deltaOut = testCase.riskyForStable
+        ? oldReserves.reserveStable.sub(newReserves.reserveStable)
+        : oldReserves.reserveRisky.sub(newReserves.reserveRisky)
 
-        function bnToNumber(bn: BigNumber): number | string {
-          return new Wei(bn).toString()
-        }
+      function bnToNumber(bn: BigNumber): number | string {
+        return new Wei(bn).toString()
+      }
 
-        console.log(bnToNumber(oldReserves.reserveRisky), bnToNumber(oldReserves.reserveStable))
-        console.log(bnToNumber(newReserves.reserveRisky), bnToNumber(newReserves.reserveStable))
-        this.assert(
-          balanceOut.eq(deltaOut),
-          `Expected ${balanceOut} to be ${deltaOut}`,
-          `Expected ${balanceOut} NOT to be ${deltaOut}`,
-          deltaOut,
-          balanceOut
-        )
-      })
+      console.log(bnToNumber(oldReserves.reserveRisky), bnToNumber(oldReserves.reserveStable))
+      console.log(bnToNumber(newReserves.reserveRisky), bnToNumber(newReserves.reserveStable))
+      this.assert(
+        balanceOut.eq(deltaOut),
+        `Expected ${balanceOut} to be ${deltaOut}`,
+        `Expected ${balanceOut} NOT to be ${deltaOut}`,
+        deltaOut,
+        balanceOut
+      )
     }
   )
 
