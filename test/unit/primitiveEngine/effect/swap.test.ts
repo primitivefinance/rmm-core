@@ -80,14 +80,14 @@ const SuccessCases: SwapTestCase[] = [
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei(10),
+    deltaIn: parseWei(1),
     fromMargin: true,
     toMargin: false,
   },
 
   {
     riskyForStable: false,
-    deltaIn: parseWei(10),
+    deltaIn: parseWei(1),
     fromMargin: false,
     toMargin: false,
   },
@@ -106,13 +106,13 @@ const SuccessCases: SwapTestCase[] = [
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('10'), // investigate
+    deltaIn: new Wei(toBN(2000)), // investigate
     fromMargin: true,
     toMargin: false,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('10'), // investigate
+    deltaIn: new Wei(toBN(2000)), // investigate
     fromMargin: false,
     toMargin: false,
   },
@@ -156,13 +156,13 @@ const SuccessCases: SwapTestCase[] = [
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('10'), // investigate
+    deltaIn: new Wei(toBN(2000)), // investigate
     fromMargin: true,
     toMargin: true,
   },
   {
     riskyForStable: false,
-    deltaIn: parseWei('10'), // investigate
+    deltaIn: new Wei(toBN(2000)), // investigate
     fromMargin: false,
     toMargin: true,
   },
@@ -230,7 +230,7 @@ TestPools.forEach(function (pool: PoolState) {
       precisionRisky,
       precisionStable,
     } = pool.calibration
-    let poolId: string, posId: string
+    let poolId: string
     let deployer: Wallet
     let engine: MockEngine, router: TestRouter
     let preBalanceRisky: BigNumber, preBalanceStable: BigNumber, preReserves: any, preSettings: any, preSpot: number
@@ -264,7 +264,7 @@ TestPools.forEach(function (pool: PoolState) {
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address)
       await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'))
       await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
       ;[deployer, engine, router] = [this.signers[0], this.contracts.engine, this.contracts.router] // contracts
