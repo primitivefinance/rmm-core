@@ -107,7 +107,6 @@ export class Pool {
       this.tau.years,
       noInvariant ? 0 : invariant
     )
-
     stable = Math.floor(stable * Math.pow(10, decimals)) / Math.pow(10, decimals)
     if (isNaN(stable)) return parseWei(0, decimals)
     return parseWei(stable, decimals)

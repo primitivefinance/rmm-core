@@ -90,19 +90,21 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
         return new Wei(val).float
       }
 
-      function calcError(expected: BigNumber, actual: BigNumber): number {
+      function calcError(expected: BigNumber, actual: BigNumber, decimals: number): number {
         const percent = actual.sub(expected).mul(100)
-        return flo(percent.mul(parseWei('1').raw).div(expected))
+        return flo(percent.mul(parseWei('1', decimals).raw).div(expected))
       }
 
+      const outDecimals = amountOut ? amountOut.decimals : 18
+
       const maxError = 1 // point
-      const isValid = calcError(balanceOut, deltaOut) <= maxError ? true : false
+      const isValid = calcError(new Wei(balanceOut, outDecimals).raw, deltaOut, outDecimals) <= maxError ? true : false
 
       this.assert(
         isValid,
         `Expected ${flo(balanceOut)} to be ${flo(deltaOut)}, but has ${flo(
           deltaOut.sub(balanceOut)
-        )} difference with error of: ${calcError(balanceOut, deltaOut)}%`,
+        )} difference with error of: ${calcError(new Wei(balanceOut, outDecimals).raw, deltaOut, outDecimals)}%`,
         `Expected ${balanceOut} NOT to be ${deltaOut}`,
         deltaOut,
         balanceOut

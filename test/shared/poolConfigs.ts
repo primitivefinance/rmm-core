@@ -24,7 +24,7 @@ export const calibrations: any = {
  */
 export const TestPools: PoolState[] = [
   { description: 'default', calibration: DEFAULT_CONFIG },
-  /*{
+  /* {
     description: `expired pool`,
     calibration: calibrations.expired,
   }, */
