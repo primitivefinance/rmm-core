@@ -3,7 +3,7 @@ import { EngineTypes } from '../../../types'
 import { getSpotPrice } from '@primitivefinance/v2-math'
 import { Wei } from 'web3-units'
 import { Calibration } from '..'
-import { SwapTestCase } from '../../unit/primitiveEngine/effect/swapnew.test'
+import { SwapTestCase } from '../../unit/primitiveEngine/effect/swap.test'
 // Chai matchers for the positions of the PrimitiveEngine
 
 export default function supportSwap(Assertion: Chai.AssertionStatic) {
@@ -63,13 +63,13 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       testCase: SwapTestCase
     ) {
       const oldMargin = await engine.margins(receiver)
-      const oldBalances = await Promise.all([tokens[0].balanceOf(engine.address), tokens[1].balanceOf(engine.address)])
+      const oldBalances = [await tokens[0].balanceOf(engine.address), await tokens[1].balanceOf(engine.address)]
       const oldReserves = await engine.reserves(poolId)
 
       await this._obj
       const newReserves = await engine.reserves(poolId)
       const newMargin = await engine.margins(receiver)
-      const newBalances = await Promise.all([tokens[0].balanceOf(engine.address), tokens[1].balanceOf(engine.address)])
+      const newBalances = [await tokens[0].balanceOf(engine.address), await tokens[1].balanceOf(engine.address)]
 
       const preBalStable = testCase.toMargin ? oldMargin.balanceStable : oldBalances[1]
       const preBalRisky = testCase.toMargin ? oldMargin.balanceRisky : oldBalances[0]
@@ -83,12 +83,6 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
         ? oldReserves.reserveStable.sub(newReserves.reserveStable)
         : oldReserves.reserveRisky.sub(newReserves.reserveRisky)
 
-      function bnToNumber(bn: BigNumber): number | string {
-        return new Wei(bn).toString()
-      }
-
-      console.log(bnToNumber(oldReserves.reserveRisky), bnToNumber(oldReserves.reserveStable))
-      console.log(bnToNumber(newReserves.reserveRisky), bnToNumber(newReserves.reserveStable))
       this.assert(
         balanceOut.eq(deltaOut),
         `Expected ${balanceOut} to be ${deltaOut}`,
