@@ -2,7 +2,8 @@ import { Wallet, BigNumber } from 'ethers'
 import { Calibration } from '../test/shared/calibration'
 import * as ContractTypes from '../typechain'
 import { Fixture } from '@ethereum-waffle/provider'
-import { SwapTestCase } from '../test/unit/primitiveEngine/effect/swapnew.test'
+import { SwapTestCase } from '../test/unit/primitiveEngine/effect/swap.test'
+import { Wei } from 'web3-units'
 
 export interface Libraries {
   testReserve: ContractTypes.TestReserve
@@ -84,7 +85,8 @@ declare global {
         tokens: any[],
         receiver: string,
         poolId: string,
-        testCase: SwapTestCase
+        testCase: SwapTestCase,
+        amountOut?: Wei
       ): AsyncAssertion
       increaseInvariant(engine: EngineTypes, poolId: string): AsyncAssertion
     }
