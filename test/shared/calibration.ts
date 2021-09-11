@@ -81,6 +81,10 @@ export class Calibration {
     return 18 - this.decimalsStable
   }
 
+  get MIN_LIQUIDITY(): number {
+    return (this.decimalsStable > this.decimalsRisky ? this.decimalsRisky : this.decimalsStable) / 6
+  }
+
   /**
    * @returns Time until expiry
    */

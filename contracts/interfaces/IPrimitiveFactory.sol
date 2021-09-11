@@ -24,6 +24,7 @@ interface IPrimitiveFactory {
     /// stable          Stable token
     /// precisionRisky  Precision of the risky token, 10**riskyTokenDecimals
     /// precisionStable Precision of the stable token, 10**stableTokenDecimals
+    /// minLiquidity    Minimum amount of liquidity on pool creation
     function args()
         external
         view
@@ -32,7 +33,8 @@ interface IPrimitiveFactory {
             address risky,
             address stable,
             uint256 precisionRisky,
-            uint256 precisionStable
+            uint256 precisionStable,
+            uint256 minLiquidity
         );
 
     /// @notice         Fetches engine address of a token pair

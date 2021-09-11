@@ -16,15 +16,15 @@ export const calibrations: any = {
   ['feeless']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, new Percentage(toBN(0))),
   ['riskyprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, parsePercentage(0.0015), 6, 18),
   ['stableprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, parsePercentage(0.0015), 18, 6),
-  ['bothprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, parsePercentage(0.0015), 6, 6),
+  ['bothprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 12, parsePercentage(0.0015), 18, 18),
 }
 
 /**
  * @notice Array of pool calibrations to test per test file
  */
 export const TestPools: PoolState[] = [
-  /* { description: 'default', calibration: DEFAULT_CONFIG },
-  {
+  { description: 'default', calibration: DEFAULT_CONFIG },
+  /* {
     description: `expired pool`,
     calibration: calibrations.expired,
   },
@@ -54,9 +54,9 @@ export const TestPools: PoolState[] = [
     calibration: calibrations.stableprecision,
     customEngine: true,
   }, */
-  {
+  /* {
     description: `6 decimal risky and stable pool`,
     calibration: calibrations.bothprecision,
     customEngine: true,
-  },
+  }, */
 ]
