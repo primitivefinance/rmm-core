@@ -32,7 +32,7 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 reserveStable) {
         reserveStable = ReplicationMath
-        .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
+        .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, 1e18, strike, sigma, tau)
         .scaleToX64(precisionStable);
     }
 
