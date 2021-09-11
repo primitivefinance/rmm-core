@@ -10,7 +10,7 @@ library CumulativeNormalDistribution {
     using ABDKMath64x64 for *;
 
     /// @notice Thrown on passing an arg that is out of the input range for these math functions
-    error OutOfBoundsError(int128 value);
+    error InverseOutOfBounds(int128 value);
 
     int128 public constant ONE_INT = 0x10000000000000000;
     int128 public constant TWO_INT = 0x20000000000000000;
@@ -55,7 +55,7 @@ library CumulativeNormalDistribution {
     /// @dev     Source: https://arxiv.org/pdf/1002.0567.pdf
     /// @return  fcentral(p) = q * (a2 + (a1r + a0) / (r^2 + b1r +b0))
     function getInverseCDF(int128 p) internal pure returns (int128) {
-        if (p >= ONE_INT || p <= 0) revert OutOfBoundsError(p);
+        if (p >= ONE_INT || p <= 0) revert InverseOutOfBounds(p);
         // Short circuit for the central region, central region inclusive of tails
         if (p <= HIGH_TAIL && p >= LOW_TAIL) {
             return central(p);

@@ -17,9 +17,15 @@ export interface UseLiquidity extends UsePool {
   posId: string
 }
 
-export async function usePool(signer: Wallet, contracts: Contracts, config: Calibration): Promise<UsePool> {
+export async function usePool(
+  signer: Wallet,
+  contracts: Contracts,
+  config: Calibration,
+  debug: boolean = false
+): Promise<UsePool> {
   /// get the parameters from the config
-  const { strike, sigma, maturity, delta, precisionStable, precisionRisky } = config
+  const { strike, sigma, maturity, delta, precisionStable, precisionRisky, decimalsRisky, decimalsStable, MIN_LIQUIDITY } =
+    config
   // since strike is in native precision, scale to 18 decimals if needed
   const scaledStrike = strike.mul(parseWei('1', precisionStable))
   /// call create on the router contract
@@ -27,20 +33,13 @@ export async function usePool(signer: Wallet, contracts: Contracts, config: Cali
   try {
     tx = await contracts.router
       .connect(signer)
-      .create(
-        scaledStrike.raw,
-        sigma.raw,
-        maturity.raw,
-        parseWei(delta, 18).raw,
-        parseWei('1', precisionStable > precisionRisky ? precisionRisky + 1 : precisionStable + 1).raw,
-        HashZero
-      )
+      .create(scaledStrike.raw, sigma.raw, maturity.raw, parseWei(delta, 18).raw, parseWei('1', 18).raw, HashZero)
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call create() on the router in usePool()`, err)
   }
 
   const poolId = config.poolId(contracts.engine.address)
-  console.log(`\n   Using pool with id: ${poolId.slice(0, 6)}`)
+  if (debug) console.log(`\n   Using pool with id: ${poolId.slice(0, 6)}`)
 
   const receipt = await tx.wait()
   const args = receipt?.events?.[0].args
@@ -49,6 +48,11 @@ export async function usePool(signer: Wallet, contracts: Contracts, config: Cali
     if (actualPoolId !== poolId) throw Error(`\n  PoolIds do not match: ${poolId} != ${actualPoolId}`)
   }
 
+  const res = await contracts.engine.reserves(poolId)
+
+  if (debug)
+    console.log(`Created with reserves risky: ${res.reserveRisky.toString()} stable: ${res.reserveStable.toString()}`)
+
   return { tx, poolId }
 }
 
@@ -56,7 +60,8 @@ export async function useLiquidity(
   signer: Wallet,
   contracts: Contracts,
   config: Calibration,
-  target: string = signer.address
+  target: string = signer.address,
+  debug = false
 ): Promise<UseLiquidity> {
   const poolId = config.poolId(contracts.engine.address)
   const amount = parseWei('1000', 18)
@@ -70,7 +75,7 @@ export async function useLiquidity(
 
   const posId = computePositionId(target, poolId)
 
-  console.log(`\n   Provided ${amount.float} liquidity to ${poolId.slice(0, 6)}`)
+  if (debug) console.log(`\n   Provided ${amount.float} liquidity to ${poolId.slice(0, 6)}`)
   return { tx, poolId, posId }
 }
 
@@ -79,7 +84,8 @@ export async function useMargin(
   contracts: Contracts,
   delRisky: Wei,
   delStable: Wei,
-  target: string = signer.address
+  target: string = signer.address,
+  debug = false
 ): Promise<{ tx: any }> {
   /// call create on the router contract
   let tx: any
@@ -89,7 +95,7 @@ export async function useMargin(
     console.log(`\n   Error thrown on attempting to call deposit() on the router`)
   }
 
-  console.log(`   Deposited margin acc: ${target.slice(0, 6)},  ${delRisky.float} ${delStable.float}`)
+  if (debug) console.log(`   Deposited margin acc: ${target.slice(0, 6)},  ${delRisky.float} ${delStable.float}`)
   return { tx }
 }
 
@@ -97,7 +103,8 @@ export async function useTokens(
   signer: Wallet,
   contracts: Contracts,
   config: Calibration,
-  amount: Wei = parseWei('10000')
+  amount: Wei = parseWei('10000'),
+  debug: boolean = false
 ): Promise<{ tx: any }> {
   // if config precision is not 18, set the tokens to it
   if (config.precisionRisky != 0) await contracts.risky.setDecimals(config.decimalsRisky)
@@ -111,9 +118,11 @@ export async function useTokens(
     console.log(`\n   Error thrown on attempting to call mint() on the tokens`)
   }
 
-  console.log(`\n   Using tokens with:`)
-  console.log(`     - Risky decimals: ${config.decimalsRisky}`)
-  console.log(`     - Stable decimals: ${config.decimalsStable}`)
+  if (debug) {
+    console.log(`\n   Using tokens with:`)
+    console.log(`     - Risky decimals: ${config.decimalsRisky}`)
+    console.log(`     - Stable decimals: ${config.decimalsStable}`)
+  }
   return { tx }
 }
 

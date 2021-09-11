@@ -2,7 +2,7 @@ import expect from '../../shared/expect'
 import { waffle } from 'hardhat'
 import { parseEther, parseUnits } from '@ethersproject/units'
 import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-import { FixedPointX64, parseFixedPointX64, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
+import { FixedPointX64, parseFixedPointX64, parsePercentage, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
 import {
   getProportionalVol,
@@ -15,6 +15,7 @@ import {
 import { TestPools, PoolState } from '../../shared/poolConfigs'
 import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
+import { Calibration } from '../../shared'
 
 interface TestTradingFunctionFixture {
   getStableGivenRisky: TestGetStableGivenRisky
@@ -118,6 +119,78 @@ TestPools.forEach(function (pool: PoolState) {
         expect(await math.YEAR()).to.be.eq(31556952)
       })
 
+      function scaleDown(value: number, decimals: number) {
+        return Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+      }
+
+      /* it('testing stuff', async function () {
+        const cal = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015), 6, 6)
+        //const stablePerLP = 1156359
+        const tau = Time.YearInSeconds
+        const strike = parseWei('10', 6)
+        const riskyPerLP = parseWei('1', cal.decimalsRisky).sub(
+          parseWei(scaleDown(cal.delta, cal.decimalsRisky), cal.decimalsRisky)
+        )
+        const stable = getStableGivenRisky(riskyPerLP.float, cal.strike.float, cal.sigma.float, cal.tau.years)
+        const stablePerLP = parseWei(scaleDown(stable, cal.decimalsStable), cal.decimalsStable)
+
+        console.log('stable per lp raw', stablePerLP.raw.toString())
+        console.log(cal.spot.float, cal.strike.float, cal.sigma.float, cal.tau.years, riskyPerLP.float, stablePerLP.float)
+
+        const step0 = await fixture.getRiskyGivenStable.step0(cal.strike.raw)
+        const step1 = await fixture.getRiskyGivenStable.step1(cal.sigma.raw, cal.tau.raw)
+        const step2 = await fixture.getRiskyGivenStable.step2(stablePerLP.raw)
+        const step3 = await fixture.getRiskyGivenStable.step3(step2, 0, step0)
+        const step4 = await fixture.getRiskyGivenStable.step4(step3, step1)
+        const step5 = await fixture.getRiskyGivenStable.step5(step4)
+        const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
+          0,
+          parseWei(1, precisionRisky).raw,
+          stablePerLP.raw,
+          cal.strike.raw,
+          cal.sigma.raw,
+          cal.tau.raw
+        )
+
+        const steps = [step0, step1, step2, step3, step4, step5, riskyPerLp]
+
+        steps.forEach((step) => console.log(step.toString()))
+      })
+
+      it('testing stuff', async function () {
+        const resStableX64 = '1165346570348736648' //'1178304127791294090'
+        const strikeX64 = parseWei('10')
+        const sigmaX64 = 10000
+        const tau = 31556925
+
+        const step0 = await fixture.getRiskyGivenStable.step0(strikeX64.raw)
+        const step1 = await fixture.getRiskyGivenStable.step1(sigmaX64, tau)
+        const step2 = await fixture.getRiskyGivenStable.step2(resStableX64)
+        const step3 = await fixture.getRiskyGivenStable.step3(step2, 0, step0)
+        const step4 = await fixture.getRiskyGivenStable.step4(step3, step1)
+        const step5 = await fixture.getRiskyGivenStable.step5(step4)
+        const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
+          0,
+          parseWei(1, precisionRisky).raw,
+          resStableX64,
+          strikeX64.raw,
+          sigmaX64,
+          tau
+        )
+
+        const actual = getRiskyGivenStable(
+          new Wei(toBN(resStableX64)).float,
+          strikeX64.float,
+          sigmaX64 / 1e4,
+          tau / Time.YearInSeconds
+        )
+        console.log({ actual })
+
+        const steps = [step0, step1, step2, step3, step4, step5, riskyPerLp]
+
+        steps.forEach((step) => console.log(step.toString()))
+      }) */
+
       it('getProportionalVolatility', async function () {
         let expected: number = new FixedPointX64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed
         let actual: number = getProportionalVol(sigma.float, tau.years)
@@ -151,7 +224,6 @@ TestPools.forEach(function (pool: PoolState) {
           let reserveX64 = new FixedPointX64(reserveRisky.mul(FixedPointX64.Denominator).div(parseWei(1, decimalsRisky)).raw)
           let inversedCDF = inverse_std_n_cdf(inside)
           let expected = inversedCDF
-          console.log(reserveX64.parsed, reserve.float)
           let step3 = new FixedPointX64(await fixture.getStableGivenRisky.step3(reserveX64.raw))
           expect(step3.parsed).to.be.closeTo(expected, precision.invariant)
         })

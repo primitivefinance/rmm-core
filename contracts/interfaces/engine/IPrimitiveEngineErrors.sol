@@ -17,6 +17,15 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when calling an expired pool, where block.timestamp > maturity, + BUFFER if swap
     error PoolExpiredError();
 
+    /// @notice Thrown when liquidity is lower than the minimum amount of liquidity
+    error MinLiquidityError(uint256 value);
+
+    /// @notice Thrown when delta is outside the range of acceptable values
+    error DeltaError(uint256 value);
+
+    /// @notice Thrown when sigma is outside the range of acceptable values
+    error SigmaError(uint256 value);
+
     /// @notice Thrown when a parameter is outside the range of acceptable values
     error OutOfBoundsError(uint256 value);
 

@@ -31,6 +31,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address stable;
         uint256 precisionRisky;
         uint256 precisionStable;
+        uint256 minLiquidity;
     }
 
     /// @inheritdoc IPrimitiveFactory
@@ -66,14 +67,18 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address risky,
         address stable
     ) internal returns (address engine) {
-        uint256 precisionRisky = 10**(18 - IERC20(risky).decimals());
-        uint256 precisionStable = 10**(18 - IERC20(stable).decimals());
+        uint256 riskyDecimals = IERC20(risky).decimals();
+        uint256 stableDecimals = IERC20(stable).decimals();
+        uint256 precisionRisky = 10**(18 - riskyDecimals);
+        uint256 precisionStable = 10**(18 - stableDecimals);
+        uint256 minLiquidity = 10**((riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals) / 6);
         args = Args({
             factory: factory,
             risky: risky,
             stable: stable,
             precisionRisky: precisionRisky,
-            precisionStable: precisionStable
+            precisionStable: precisionStable,
+            minLiquidity: minLiquidity
         }); // Engines call this to get constructor args
         engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, stable))}());
         delete args;
