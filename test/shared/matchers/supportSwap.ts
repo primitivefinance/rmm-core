@@ -92,6 +92,7 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
 
       function calcError(expected: BigNumber, actual: BigNumber, decimals: number): number {
         const percent = actual.sub(expected).mul(100)
+        if (expected.isZero()) return 0
         return flo(percent.mul(parseWei('1', decimals).raw).div(expected))
       }
 
