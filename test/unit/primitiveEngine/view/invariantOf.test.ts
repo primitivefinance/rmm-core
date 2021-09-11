@@ -40,7 +40,7 @@ TestPools.forEach(function (pool: PoolState) {
       )
       await this.contracts.engine.advanceTime(10)
       const poolId = computePoolId(this.contracts.engine.address, cal.maturity.raw, cal.sigma.raw, cal.strike.raw)
-      await this.contracts.router.swap(poolId, true, 2000, false, constants.HashZero)
+      await this.contracts.router.swap(poolId, true, 2000, false, true, constants.HashZero)
       await expect(this.contracts.engine.invariantOf(poolId)).to.not.be.reverted
     })
   })

@@ -47,7 +47,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public constant override BUFFER = 120 seconds;
     /// @inheritdoc IPrimitiveEngineView
-    uint256 public constant override MIN_LIQUIDITY = 1e3;
+    uint256 public immutable override MIN_LIQUIDITY;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
@@ -79,7 +79,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
-        (factory, risky, stable, precisionRisky, precisionStable) = IPrimitiveFactory(msg.sender).args();
+        (factory, risky, stable, precisionRisky, precisionStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender).args();
     }
 
     /// @return Risky token balance of this contract
@@ -156,9 +156,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 scaledStrike = strike.scaleDown(prec1); // strike / 10^(18 - precision)
         poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity));
 
-        if (delLiquidity <= MIN_LIQUIDITY) revert OutOfBoundsError(delLiquidity);
-        if (delta > PRECISION || delta == 0) revert OutOfBoundsError(delta); // 0 < delta < 1, <= 18 decimals
-        if (sigma > 1e7 || sigma < 100) revert OutOfBoundsError(sigma); // 1% <= sigma <= 1000%, precision of 4
+        if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
+        if (delta > PRECISION || delta == 0) revert DeltaError(delta); // 0 < delta < 1, <= 18 decimals
+        if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma); // 1% <= sigma <= 1000%, precision of 4
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
 
         Calibration memory cal = Calibration({

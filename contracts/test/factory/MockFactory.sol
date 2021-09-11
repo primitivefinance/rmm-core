@@ -21,6 +21,7 @@ contract MockFactory is IPrimitiveFactory {
         address stable;
         uint256 precisionRisky;
         uint256 precisionStable;
+        uint256 minLiquidity;
     }
 
     Args public override args; // Used instead of an initializer in Engine contract
@@ -28,14 +29,18 @@ contract MockFactory is IPrimitiveFactory {
     function deploy(address risky, address stable) external override returns (address engine) {
         if (risky == stable) revert SameTokenError();
         if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
-        uint256 precisionRisky = 10**(18 - IERC20(risky).decimals());
-        uint256 precisionStable = 10**(18 - IERC20(stable).decimals());
+        uint256 riskyDecimals = IERC20(risky).decimals();
+        uint256 stableDecimals = IERC20(stable).decimals();
+        uint256 precisionRisky = 10**(18 - riskyDecimals);
+        uint256 precisionStable = 10**(18 - stableDecimals);
+        uint256 minLiquidity = 10**((riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals) / 6);
         args = Args({
             factory: address(this),
             risky: risky,
             stable: stable,
             precisionRisky: precisionRisky,
-            precisionStable: precisionStable
+            precisionStable: precisionStable,
+            minLiquidity: minLiquidity
         }); // Engines call this to get constructor args
         engine = address(new MockEngine{salt: keccak256(abi.encode(risky, stable))}());
         getEngine[risky][stable] = engine;

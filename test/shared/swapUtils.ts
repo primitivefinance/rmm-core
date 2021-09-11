@@ -81,6 +81,7 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei, noInvariant?: boolean): Wei {
+    const decimals = this.reserveStable.decimals
     let invariant = this.invariant.parsed
     invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
     if (this.debug)
@@ -107,9 +108,9 @@ export class Pool {
       noInvariant ? 0 : invariant
     )
 
-    stable = Math.floor(stable * Math.pow(10, 18)) / Math.pow(10, 18)
-    if (isNaN(stable)) return parseWei(0)
-    return parseWei(stable)
+    stable = Math.floor(stable * Math.pow(10, decimals)) / Math.pow(10, decimals)
+    if (isNaN(stable)) return parseWei(0, decimals)
+    return parseWei(stable, decimals)
   }
 
   /**
@@ -118,6 +119,7 @@ export class Pool {
    * @return reserveRisky Expected amount of risky token reserves
    */
   getRiskyGivenStable(reserveStable: Wei, noInvariant?: boolean): Wei {
+    const decimals = this.reserveRisky.decimals
     let invariant = this.invariant.parsed
     invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
     if (this.debug)
@@ -143,9 +145,9 @@ export class Pool {
       noInvariant ? 0 : invariant
     )
     if (this.debug) console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
-    risky = Math.floor(risky * Math.pow(10, 18)) / Math.pow(10, 18)
-    if (isNaN(risky)) return parseWei(0)
-    return parseWei(risky)
+    risky = Math.floor(risky * Math.pow(10, decimals)) / Math.pow(10, decimals)
+    if (isNaN(risky)) return parseWei(0, decimals)
+    return parseWei(risky, decimals)
   }
 
   /**
@@ -332,7 +334,6 @@ export class Pool {
     const step5 = step0 * (1 / strike.float)
     const step6 = quantilePrime(step5)
     const step7 = gamma * step4 * step6
-    //console.log({ step0, step1, step3, step4, step5, step6, step7 }, 1 / step7)
     return 1 / step7
   }
 }
