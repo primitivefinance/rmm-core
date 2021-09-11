@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers'
 import { EngineTypes } from '../../../types'
 import { getSpotPrice } from '@primitivefinance/v2-math'
-import { Wei } from 'web3-units'
+import { parseWei, Wei } from 'web3-units'
 import { Calibration } from '..'
 import { SwapTestCase } from '../../unit/primitiveEngine/effect/swap.test'
 // Chai matchers for the positions of the PrimitiveEngine
@@ -60,7 +60,8 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       tokens: any[],
       receiver: string,
       poolId: string,
-      testCase: SwapTestCase
+      testCase: SwapTestCase,
+      amountOut?: Wei
     ) {
       const oldMargin = await engine.margins(receiver)
       const oldBalances = [await tokens[0].balanceOf(engine.address), await tokens[1].balanceOf(engine.address)]
@@ -79,13 +80,29 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
       if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
 
-      const deltaOut = testCase.riskyForStable
+      const deltaOut = amountOut
+        ? amountOut.raw
+        : testCase.riskyForStable
         ? oldReserves.reserveStable.sub(newReserves.reserveStable)
         : oldReserves.reserveRisky.sub(newReserves.reserveRisky)
 
+      function flo(val: BigNumber): number {
+        return new Wei(val).float
+      }
+
+      function calcError(expected: BigNumber, actual: BigNumber): number {
+        const percent = actual.sub(expected).mul(100)
+        return flo(percent.mul(parseWei('1').raw).div(expected))
+      }
+
+      const maxError = 1 // point
+      const isValid = calcError(balanceOut, deltaOut) <= maxError ? true : false
+
       this.assert(
-        balanceOut.eq(deltaOut),
-        `Expected ${balanceOut} to be ${deltaOut}`,
+        isValid,
+        `Expected ${flo(balanceOut)} to be ${flo(deltaOut)}, but has ${flo(
+          deltaOut.sub(balanceOut)
+        )} difference with error of: ${calcError(balanceOut, deltaOut)}%`,
         `Expected ${balanceOut} NOT to be ${deltaOut}`,
         deltaOut,
         balanceOut
