@@ -72,10 +72,12 @@ export async function createTestContracts(deployer: Wallet): Promise<TestContrac
   const contractAddresses = Object.keys(contracts).map((key) => contracts[key]?.address)
   await batchApproval(contractAddresses, [risky, stable], deployer)
 
-  async function createEngine(decimalsRisky, decimalsStable): Promise<CreateEngine> {
-    console.log(`\n Creating Engine with...`)
-    console.log(`     - Risky Decimals ${decimalsRisky}`)
-    console.log(`     - Stable Decimals ${decimalsStable}`)
+  async function createEngine(decimalsRisky, decimalsStable, debug = false): Promise<CreateEngine> {
+    if (debug) {
+      console.log(`\n Creating Engine with...`)
+      console.log(`     - Risky Decimals ${decimalsRisky}`)
+      console.log(`     - Stable Decimals ${decimalsStable}`)
+    }
     const risky = await deployToken(deployer, decimalsRisky)
     const stable = await deployToken(deployer, decimalsStable)
     const engine = await deployEngine(factory, risky, stable)

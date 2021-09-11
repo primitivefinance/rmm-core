@@ -172,7 +172,16 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
         delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
         delRisky = delRisky.scaleDown(prec0); // 18 -> native precision
-        delStable = ReplicationMath.getStableGivenRisky(0, prec0, prec1, delRisky, cal.strike, cal.sigma, tau);
+        delStable = ReplicationMath.getStableGivenRisky(
+            0,
+            prec0,
+            prec1,
+            delRisky,
+            delLiquidity,
+            cal.strike,
+            cal.sigma,
+            tau
+        );
         delRisky = (delRisky * delLiquidity) / PRECISION; // liquidity has 18 decimals, so delRisky has native precision
         delStable = (delStable * delLiquidity) / PRECISION;
 
@@ -284,6 +293,15 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 timestamp;
     }
 
+    struct SwapIntermediate {
+        uint256 amountInFee;
+        uint256 tau;
+        int128 invariant;
+        uint256 liquidity;
+        uint256 prec0;
+        uint256 prec1;
+    }
+
     /// @inheritdoc IPrimitiveEngineActions
     function swap(
         bytes32 poolId,
@@ -321,28 +339,38 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 uint256(reserve.liquidity)
             );
 
+            SwapIntermediate memory inter = SwapIntermediate({
+                amountInFee: deltaInWithFee,
+                tau: tau,
+                invariant: invariantX64,
+                liquidity: liq,
+                prec0: precisionRisky,
+                prec1: precisionStable
+            });
+
             if (swapInRisky) {
-                res0 = ((res0 + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                res1 = invariantX64.getStableGivenRisky(
-                    precisionRisky,
-                    precisionStable,
+                res0 = ((res0 + deltaInWithFee) * PRECISION) / inter.liquidity; //res0 + inter.amountInFee; //// per liquidity
+                res1 = inter.invariant.getStableGivenRisky(
+                    inter.prec0,
+                    inter.prec1,
                     res0,
+                    inter.liquidity,
                     cal.strike,
                     cal.sigma,
-                    tau
+                    inter.tau
                 ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
+                deltaOut = uint256(reserve.reserveStable) - (res1 * inter.liquidity) / PRECISION; // res1 for all liquidity
             } else {
-                res1 = ((res1 + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                res0 = invariantX64.getRiskyGivenStable(
-                    precisionRisky,
-                    precisionStable,
+                res1 = ((res1 + inter.amountInFee) * PRECISION) / inter.liquidity; // per liquidity
+                res0 = inter.invariant.getRiskyGivenStable(
+                    inter.prec0,
+                    inter.prec1,
                     res1,
                     cal.strike,
                     cal.sigma,
-                    tau
+                    inter.tau
                 ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
+                deltaOut = uint256(reserve.reserveRisky) - (res0 * inter.liquidity) / PRECISION; // res0 for all liquidity
             }
 
             reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update

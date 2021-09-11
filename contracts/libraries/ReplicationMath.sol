@@ -35,7 +35,8 @@ library ReplicationMath {
     /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
     /// @param   precisionRisky     Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
     /// @param   precisionStable    Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
-    /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
+    /// @param   totalRisky     Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
+    /// @param   totalLiquidity trteevg
     /// @param   strike         Unsigned 256-bit integer value with precision equal to 10^(18 - precisionStable)
     /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
@@ -44,15 +45,18 @@ library ReplicationMath {
         int128 invariantLastX64,
         uint256 precisionRisky,
         uint256 precisionStable,
-        uint256 riskyPerLiquidity,
+        uint256 totalRisky,
+        uint256 totalLiquidity,
         uint256 strike,
         uint256 sigma,
         uint256 tau
     ) internal pure returns (uint256 stablePerLiquidity) {
         int128 strikeX64 = strike.scaleToX64(precisionStable);
         int128 volX64 = getProportionalVolatility(sigma, tau);
-        int128 riskyX64 = riskyPerLiquidity.scaleToX64(precisionRisky); // mul by 2^64, div by precision
+        int128 riskyX64 = totalRisky.scaleToX64(precisionRisky); // mul by 2^64, div by precision
         int128 phi = ONE_INT.sub(riskyX64).getInverseCDF(); // CDF^-1(1-x), ONE_INT = 2^64
+        //int128 riskyX64 = (totalRisky * precisionRisky).divu(totalLiquidity); // mul by 2^64, div by precision
+        //int128 phi = ONE_INT.sub(riskyX64).getInverseCDF(); // CDF^-1(1-x), ONE_INT = 2^64
         int128 input = phi.sub(volX64); // phi - volX64
         int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
         stablePerLiquidity = stableX64.scalefromX64(precisionStable);
@@ -102,7 +106,16 @@ library ReplicationMath {
         uint256 sigma,
         uint256 tau
     ) internal pure returns (int128 invariantX64) {
-        uint256 output = getStableGivenRisky(0, precisionRisky, precisionStable, riskyPerLiquidity, strike, sigma, tau);
+        uint256 output = getStableGivenRisky(
+            0,
+            precisionRisky,
+            precisionStable,
+            riskyPerLiquidity,
+            1e18,
+            strike,
+            sigma,
+            tau
+        );
         int128 outputX64 = output.scaleToX64(precisionStable);
         int128 stableX64 = stablePerLiquidity.scaleToX64(precisionStable);
         invariantX64 = stableX64.sub(outputX64);
