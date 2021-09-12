@@ -84,15 +84,15 @@ TestPools.forEach(function (pool: PoolState) {
       spot,
       decimalsRisky,
       decimalsStable,
-      precisionRisky,
-      precisionStable,
+      scaleFactorRisky,
+      scaleFactorStable,
     } = pool.calibration
     let fixture: TestStepFixture
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
-      await fixture.calcInvariant.set(parseWei('1', precisionRisky).raw, parseWei('1', precisionStable).raw)
-      await fixture.getRiskyGivenStable.set(parseWei('1', precisionRisky).raw, parseWei('1', precisionStable).raw)
-      await fixture.getStableGivenRisky.set(parseWei('1', precisionRisky).raw, parseWei('1', precisionStable).raw)
+      await fixture.calcInvariant.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
+      await fixture.getRiskyGivenStable.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
+      await fixture.getStableGivenRisky.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
       this.libraries = fixture.libraries
     })
 
@@ -103,7 +103,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       beforeEach(async function () {
         math = this.libraries.testReplicationMath
-        await math.set(Math.pow(10, pool.calibration.precisionRisky), Math.pow(10, pool.calibration.precisionStable))
+        await math.set(Math.pow(10, pool.calibration.scaleFactorRisky), Math.pow(10, pool.calibration.scaleFactorStable))
         tau = new Time(maturity.raw - lastTimestamp.raw)
         liquidity = parseWei('1')
         const one = parseWei('1', decimalsRisky)
@@ -145,7 +145,7 @@ TestPools.forEach(function (pool: PoolState) {
         const step5 = await fixture.getRiskyGivenStable.step5(step4)
         const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
           0,
-          parseWei(1, precisionRisky).raw,
+          parseWei(1, scaleFactorRisky).raw,
           stablePerLP.raw,
           cal.strike.raw,
           cal.sigma.raw,
@@ -171,7 +171,7 @@ TestPools.forEach(function (pool: PoolState) {
         const step5 = await fixture.getRiskyGivenStable.step5(step4)
         const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
           0,
-          parseWei(1, precisionRisky).raw,
+          parseWei(1, scaleFactorRisky).raw,
           resStableX64,
           strikeX64.raw,
           sigmaX64,
@@ -269,7 +269,7 @@ TestPools.forEach(function (pool: PoolState) {
           let expected: number = new FixedPointX64(
             await fixture.getStableGivenRisky.getStableGivenRisky(
               0,
-              parseWei('1', precisionStable).raw,
+              parseWei('1', scaleFactorStable).raw,
               reserveRisky.raw,
               strike.raw,
               sigma.raw,
@@ -357,7 +357,7 @@ TestPools.forEach(function (pool: PoolState) {
           let expected: number = new Wei(
             await fixture.getRiskyGivenStable.getRiskyGivenStable(
               0,
-              parseWei('1', precisionRisky).raw,
+              parseWei('1', scaleFactorRisky).raw,
               reserveStable.raw,
               strike.raw,
               sigma.raw,

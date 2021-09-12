@@ -7,11 +7,11 @@ interface IPrimitiveEngineView {
     // ===== View =====
 
     /// @notice             Fetches the current invariant based on risky and stable token reserves of pool with `poolId`
-    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @param  poolId      Pool Identifier
     /// @return invariant   Signed fixed point 64.64 number, invariant of `poolId`
     function invariantOf(bytes32 poolId) external view returns (int128 invariant);
 
-    // ===== Immutables =====
+    // ===== Constants =====
 
     /// @return Precision units to scale to when doing calculations
     function PRECISION() external view returns (uint256);
@@ -21,6 +21,8 @@ interface IPrimitiveEngineView {
 
     /// @return Amount of seconds after pool expiry which allows swaps, no swaps after buffer
     function BUFFER() external view returns (uint256);
+
+    // ===== Immutables =====
 
     /// @return Amount of liquidity burned on `create()` calls
     function MIN_LIQUIDITY() external view returns (uint256);
@@ -34,23 +36,23 @@ interface IPrimitiveEngineView {
     /// @return Stable token address
     function stable() external view returns (address);
 
-    /// @return Precision multiplier to scale amounts to/from, 10^(18 - riskyDecimals)
-    function precisionRisky() external view returns (uint256);
+    /// @return Multiplier to scale amounts to/from, equal to 10^(18 - riskyDecimals)
+    function scaleFactorRisky() external view returns (uint256);
 
-    /// @return Precision multiplier to scale amounts to/from, 10^(18 - riskyDecimals)
-    function precisionStable() external view returns (uint256);
+    /// @return Multiplier to scale amounts to/from, equal to 10^(18 - stableDecimals)
+    function scaleFactorStable() external view returns (uint256);
 
     // ===== Pool State =====
 
     /// @notice             Fetches the global reserve state for a pool with `poolId`
-    /// @param  poolId       Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @param  poolId      Pool Identifier
     /// @return reserveRisky Risky token balance in the reserve
     /// reserveStable       Stable token balance in the reserve
     /// liquidity           Total supply of liquidity for the curve
     /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
-    /// cumulativeRisky     Cumulative sum of risky token reserves
-    /// cumulativeStable    Cumulative sum of stable token reserves
-    /// cumulativeLiquidity Cumulative sum of total supply of liquidity
+    /// cumulativeRisky     Cumulative sum of risky token reserves of the previous update
+    /// cumulativeStable    Cumulative sum of stable token reserves of the previous update
+    /// cumulativeLiquidity Cumulative sum of total supply of liquidity of the previous update
     function reserves(bytes32 poolId)
         external
         view
@@ -65,9 +67,9 @@ interface IPrimitiveEngineView {
         );
 
     /// @notice             Fetches `Calibration` pool parameters
-    /// @param  poolId      Keccak256 hash of engine, strike price, volatility, and maturity timestamp
+    /// @param  poolId      Pool Identifier
     /// @return strike      Strike price of the pool with `stable.decimal()` precision
-    /// sigma               Volatility of the pool scaled to a percentage integer from multiplying by 1e4
+    /// sigma               Volatility of the pool scaled to a percentage integer with a precision of 1e4
     /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
     function calibrations(bytes32 poolId)
@@ -81,13 +83,13 @@ interface IPrimitiveEngineView {
         );
 
     /// @notice             Fetches position liquidity an account address and poolId
-    /// @param  poolId      Keccak256 hash of pool parameters
+    /// @param  poolId      Pool Identifier
     /// @return liquidity   Liquidity owned by `account` in `poolId`
     function liquidity(address account, bytes32 poolId) external view returns (uint256 liquidity);
 
-    /// @notice                 Fetchs the margin position of `account`
-    /// @param  account         Margin account to fetch
-    /// @return balanceRisky    Balance of the risky token
-    /// balanceStable           Balance of the stable token
+    /// @notice             Fetches the margin position of `account`
+    /// @param  account     Margin account to fetch
+    /// @return balanceRisky Balance of the risky token
+    /// balanceStable       Balance of the stable token
     function margins(address account) external view returns (uint128 balanceRisky, uint128 balanceStable);
 }

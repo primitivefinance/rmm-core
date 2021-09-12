@@ -7,7 +7,7 @@ import { computePoolId } from './utils'
  */
 export class Calibration {
   /**
-   * @notice Strike price with decimals = precisionStable
+   * @notice Strike price with decimals = scaleFactorStable
    */
   public readonly strike: Wei
   /**
@@ -70,14 +70,14 @@ export class Calibration {
   /**
    * @notice Scaling factor of risky asset, 18 - risky decimals
    */
-  get precisionRisky(): number {
+  get scaleFactorRisky(): number {
     return 18 - this.decimalsRisky
   }
 
   /**
    * @notice Scaling factor of stable asset, 18 - stable decimals
    */
-  get precisionStable(): number {
+  get scaleFactorStable(): number {
     return 18 - this.decimalsStable
   }
 

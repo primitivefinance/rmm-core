@@ -188,8 +188,17 @@ const DEBUG_MODE = false
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`Engine:swap for ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, fee, decimalsRisky, decimalsStable, precisionRisky, precisionStable } =
-      pool.calibration
+    const {
+      strike,
+      sigma,
+      maturity,
+      lastTimestamp,
+      fee,
+      decimalsRisky,
+      decimalsStable,
+      scaleFactorRisky,
+      scaleFactorStable,
+    } = pool.calibration
     let poolId: string
     let deployer: Wallet
     let engine: MockEngine, router: TestRouter
@@ -239,7 +248,7 @@ TestPools.forEach(function (pool: PoolState) {
           let { riskyForStable, deltaIn, fromMargin, toMargin, signer, revertMsg } = testCase
           beforeEach(async function () {
             const dec = riskyForStable ? decimalsRisky : decimalsStable
-            const prec = riskyForStable ? precisionRisky : precisionStable
+            const prec = riskyForStable ? scaleFactorRisky : scaleFactorStable
             deltaIn = new Wei(deltaIn.div(parseWei('1', prec)).raw, dec)
             swapper = this.signers[signer ? signer : 0]
             target = fromMargin ? engine : router

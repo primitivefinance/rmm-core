@@ -7,7 +7,7 @@ interface IPrimitiveEngineActions {
     // ===== Pool Updates =====
 
     /// @notice             Updates the time until expiry of the pool by setting its last timestamp value
-    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
+    /// @param  poolId      Pool Identifier
     /// @return lastTimestamp Timestamp loaded into the state of the pool's Calibration.lastTimestamp
     function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
 
@@ -16,9 +16,9 @@ interface IPrimitiveEngineActions {
     /// @param  sigma       Volatility to calibrate to as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param  maturity    Maturity timestamp of the pool, in seconds
     /// @param  delta       N(d1), d1 = (ln(S / K) + (r * sigma^2 / 2) ) / sigma * sqrt(tau), 0 < delta < 1e18
-    /// @param  delLiquidity Amount of liquidity to allocate to the curve, must be > 1000 weii
+    /// @param  delLiquidity Amount of liquidity to allocate to the curve, wei value with 18 decimals of precision
     /// @param  data        Arbitrary data that is passed to the createCallback function
-    /// @return poolId      Keccak256 hash of the parameters (engine, strike, sigma, and maturity)
+    /// @return poolId      Pool Identifier
     /// delRisky            Amount of risky tokens provided to reserves
     /// delStable           Amount of stable tokens provided to reserves
     function create(
@@ -63,13 +63,13 @@ interface IPrimitiveEngineActions {
     // ===== Liquidity =====
 
     /// @notice             Allocates risky and stable tokens to a specific curve with `poolId`
-    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
-    /// @param  recipient   Address to give the allocated position to
-    /// @param  delLiquidity  Quantity of liquidity units to get allocated
-    /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
+    /// @param  poolId      Pool Identifier
+    /// @param  recipient   Address to give the allocated liquidity to
+    /// @param  delLiquidity  Quantity of liquidity units to allocate
+    /// @param  fromMargin  Whether the `msg.sender` pays with their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the allocateCallback function
-    /// @return delRisky    Amount of risky tokens that were allocated
-    /// delStable           Amount of stable tokens that were allocated
+    /// @return delRisky    Amount of risky tokens allocated
+    /// delStable           Amount of stable tokens allocated
     function allocate(
         bytes32 poolId,
         address recipient,
@@ -79,15 +79,16 @@ interface IPrimitiveEngineActions {
     ) external returns (uint256 delRisky, uint256 delStable);
 
     /// @notice             Unallocates risky and stable tokens from a specific curve with `poolId`
-    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
+    /// @param  poolId      Pool Identifier
     /// @param  delLiquidity Amount of liquidity to burn to release tokens
-    /// @return delRisky    Amount of risky tokens received from the burned liquidity
-    /// delStable           Amount of stable tokens received from the burned liquidity
+    /// @return delRisky    Amount of risky tokens received from removed liquidity
+    /// delStable           Amount of stable tokens received from removed liquidity
     function remove(bytes32 poolId, uint256 delLiquidity) external returns (uint256 delRisky, uint256 delStable);
 
     // ===== Swaps =====
-    /// @notice             Swaps risky or stable tokens
-    /// @param  poolId      Keccak hash of the pool parameters of a curve to interact with
+
+    /// @notice             Swaps between `risky` and `stable` assets
+    /// @param  poolId      Pool Identifier
     /// @param  riskyForStable If true, swap risky to stable tokens, else swap stable to risky tokens
     /// @param  deltaIn     Amount of tokens to swap in
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens

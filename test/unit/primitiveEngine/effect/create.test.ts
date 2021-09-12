@@ -24,8 +24,8 @@ TestPools.forEach(function (pool: PoolState) {
       spot,
       decimalsRisky,
       decimalsStable,
-      precisionRisky,
-      precisionStable,
+      scaleFactorRisky,
+      scaleFactorStable,
     } = pool.calibration
     let poolId: string, posId: string
     const delLiquidity = parseWei('1', 18)

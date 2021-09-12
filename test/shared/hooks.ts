@@ -24,10 +24,19 @@ export async function usePool(
   debug: boolean = false
 ): Promise<UsePool> {
   /// get the parameters from the config
-  const { strike, sigma, maturity, delta, precisionStable, precisionRisky, decimalsRisky, decimalsStable, MIN_LIQUIDITY } =
-    config
+  const {
+    strike,
+    sigma,
+    maturity,
+    delta,
+    scaleFactorStable,
+    scaleFactorRisky,
+    decimalsRisky,
+    decimalsStable,
+    MIN_LIQUIDITY,
+  } = config
   // since strike is in native precision, scale to 18 decimals if needed
-  const scaledStrike = strike.mul(parseWei('1', precisionStable))
+  const scaledStrike = strike.mul(parseWei('1', scaleFactorStable))
   /// call create on the router contract
   let tx: any
   try {
@@ -107,8 +116,8 @@ export async function useTokens(
   debug: boolean = false
 ): Promise<{ tx: any }> {
   // if config precision is not 18, set the tokens to it
-  if (config.precisionRisky != 0) await contracts.risky.setDecimals(config.decimalsRisky)
-  if (config.precisionStable != 0) await contracts.stable.setDecimals(config.decimalsStable)
+  if (config.scaleFactorRisky != 0) await contracts.risky.setDecimals(config.decimalsRisky)
+  if (config.scaleFactorStable != 0) await contracts.stable.setDecimals(config.decimalsStable)
   /// mint tokens for the user
   let tx: any
   try {
