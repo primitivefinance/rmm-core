@@ -13,16 +13,24 @@ contract TestGetRiskyGivenStable {
     using Units for int128;
     using Units for uint256;
 
-    function step0(uint256 strike) public pure returns (int128 K) {
-        K = strike.scaleToX64(1e18);
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
+
+    function set(uint256 prec0, uint256 prec1) public {
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
+    }
+
+    function step0(uint256 strike) public view returns (int128 K) {
+        K = strike.scaleToX64(scaleFactorStable);
     }
 
     function step1(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    function step2(uint256 reserveRisky) public pure returns (int128 reserve) {
-        reserve = reserveRisky.scaleToX64(1e18);
+    function step2(uint256 reserveStable) public view returns (int128 reserve) {
+        reserve = reserveStable.scaleToX64(scaleFactorStable);
     }
 
     function step3(
@@ -44,16 +52,17 @@ contract TestGetRiskyGivenStable {
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
     function getRiskyGivenStable(
         int128 invariantLast,
+        uint256 precRisky,
         uint256 reserveStable,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveRisky) {
+    ) public view returns (uint256 reserveRisky) {
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
         int128 reserve = step2(reserveStable);
         int128 phi = step3(reserve, invariantLast, K);
         int128 input = step4(phi, vol);
-        reserveRisky = step5(input);
+        reserveRisky = step5(input).scalefromX64(precRisky);
     }
 }

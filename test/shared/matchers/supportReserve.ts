@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import { PrimitiveEngine } from '../../../typechain'
+import { EngineTypes } from '../../../types'
 
 // Chai matchers for the reserves of the PrimitiveEngine
 
@@ -8,7 +8,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -26,7 +26,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -47,7 +47,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -66,7 +66,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -87,7 +87,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increaseReserveLiquidity',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -106,7 +106,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'decreaseReserveLiquidity',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -123,168 +123,11 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
     }
   )
 
-  // Float
-
-  Assertion.addMethod(
-    'increaseReserveFloat',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedFloat = oldReserve.float.add(amount)
-
-      this.assert(
-        newReserve.float.eq(expectedFloat),
-        `Expected ${expectedFloat} to be ${newReserve.float}`,
-        `Expected ${expectedFloat} NOT to be ${newReserve.float}`,
-        expectedFloat,
-        newReserve.float
-      )
-    }
-  )
-
-  Assertion.addMethod(
-    'decreaseReserveFloat',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedFloat = oldReserve.float.sub(amount)
-
-      this.assert(
-        newReserve.float.eq(expectedFloat),
-        `Expected ${expectedFloat} to be ${newReserve.float}`,
-        `Expected ${expectedFloat} NOT to be ${newReserve.float}`,
-        expectedFloat,
-        newReserve.float
-      )
-    }
-  )
-
-  // Debt
-
-  Assertion.addMethod(
-    'increaseReserveCollateralRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedDebt = oldReserve.collateralRisky.add(amount)
-
-      this.assert(
-        newReserve.collateralRisky.eq(expectedDebt),
-        `Expected ${expectedDebt} to be ${newReserve.collateralRisky}`,
-        `Expected ${expectedDebt} NOT to be ${newReserve.collateralRisky}`,
-        expectedDebt,
-        newReserve.collateralRisky
-      )
-    }
-  )
-
-  Assertion.addMethod(
-    'decreaseReserveCollateralRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedDebt = oldReserve.collateralRisky.sub(amount)
-
-      this.assert(
-        newReserve.collateralRisky.eq(expectedDebt),
-        `Expected ${expectedDebt} to be ${newReserve.collateralRisky}`,
-        `Expected ${expectedDebt} NOT to be ${newReserve.collateralRisky}`,
-        expectedDebt,
-        newReserve.collateralRisky
-      )
-    }
-  )
-
-  Assertion.addMethod(
-    'increaseReserveCollateralStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedDebt = oldReserve.collateralStable.add(amount)
-
-      this.assert(
-        newReserve.collateralStable.eq(expectedDebt),
-        `Expected ${expectedDebt} to be ${newReserve.collateralStable}`,
-        `Expected ${expectedDebt} NOT to be ${newReserve.collateralStable}`,
-        expectedDebt,
-        newReserve.collateralStable
-      )
-    }
-  )
-
-  Assertion.addMethod(
-    'decreaseReserveCollateralStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedDebt = oldReserve.collateralStable.sub(amount)
-
-      this.assert(
-        newReserve.collateralStable.eq(expectedDebt),
-        `Expected ${expectedDebt} to be ${newReserve.collateralStable}`,
-        `Expected ${expectedDebt} NOT to be ${newReserve.collateralStable}`,
-        expectedDebt,
-        newReserve.collateralStable
-      )
-    }
-  )
-
-  // fees
-  Assertion.addMethod(
-    'increaseReserveFeeRiskyGrowth',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedGrowth = oldReserve.feeRiskyGrowth.add(amount)
-
-      this.assert(
-        newReserve.feeRiskyGrowth.eq(expectedGrowth),
-        `Expected ${expectedGrowth} to be ${newReserve.feeRiskyGrowth}`,
-        `Expected ${expectedGrowth} NOT to be ${newReserve.feeRiskyGrowth}`,
-        expectedGrowth,
-        newReserve.feeRiskyGrowth
-      )
-    }
-  )
-
-  Assertion.addMethod(
-    'increaseReserveFeeStableGrowth',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber) {
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedGrowth = oldReserve.feeStableGrowth.add(amount)
-
-      this.assert(
-        newReserve.feeStableGrowth.eq(expectedGrowth),
-        `Expected ${expectedGrowth} to be ${newReserve.feeStableGrowth}`,
-        `Expected ${expectedGrowth} NOT to be ${newReserve.feeStableGrowth}`,
-        expectedGrowth,
-        newReserve.feeStableGrowth
-      )
-    }
-  )
-
   // BlockTimestamp
 
   Assertion.addMethod(
     'updateReserveBlockTimestamp',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, blockTimestamp: number) {
       await this._obj
       const newReserve = await engine.reserves(poolId)
 
@@ -302,7 +145,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'updateReserveCumulativeRisky',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber, blockTimestamp: number) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -324,7 +167,7 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'updateReserveCumulativeStable',
-    async function (this: any, engine: PrimitiveEngine, poolId: string, amount: BigNumber, blockTimestamp: number) {
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber, blockTimestamp: number) {
       const oldReserve = await engine.reserves(poolId)
       await this._obj
       const newReserve = await engine.reserves(poolId)
@@ -338,6 +181,28 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
         `Expected ${expectedCumulativeStable} NOT to be ${newReserve.cumulativeStable}`,
         expectedCumulativeStable,
         newReserve.cumulativeStable
+      )
+    }
+  )
+
+  // Cumulative Liquidity
+
+  Assertion.addMethod(
+    'updateReserveCumulativeLiquidity',
+    async function (this: any, engine: EngineTypes, poolId: string, amount: BigNumber, blockTimestamp: number) {
+      const oldReserve = await engine.reserves(poolId)
+      await this._obj
+      const newReserve = await engine.reserves(poolId)
+
+      const deltaTime = blockTimestamp - oldReserve.blockTimestamp
+      const expectedCumulativeLiquidity = oldReserve.cumulativeLiquidity.add(newReserve.liquidity.mul(deltaTime))
+
+      this.assert(
+        newReserve.cumulativeLiquidity.eq(expectedCumulativeLiquidity),
+        `Expected ${expectedCumulativeLiquidity} to be ${newReserve.cumulativeLiquidity}`,
+        `Expected ${expectedCumulativeLiquidity} NOT to be ${newReserve.cumulativeLiquidity}`,
+        expectedCumulativeLiquidity,
+        newReserve.cumulativeLiquidity
       )
     }
   )

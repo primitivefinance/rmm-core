@@ -3,43 +3,44 @@ pragma solidity 0.8.6;
 
 /// @title  Events of the Primitive Engine contract
 /// @author Primitive
-
 interface IPrimitiveEngineEvents {
-    /// @notice             Creates a new calibrated curve with liquidity
+    /// @notice             Creates a pool with liquidity
+    /// @dev                Keccak256 hash of the engine address and the parameters is the `poolId`
     /// @param  from        Calling `msg.sender` of the create function
-    /// @param  strike      Strike price of the option of the curve to calibrate to
-    /// @param  sigma       Volatility of the option of the curve to calibrate to
-    /// @param  maturity    Maturity timestamp of the option of the curve to calibrate to
-    event Created(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
+    /// @param  strike      Strike price of the pool
+    /// @param  sigma       Volatility of the pool
+    /// @param  maturity    Maturity timestamp of the pool
+    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
 
-    /// @notice             Updates the time until expiry of the option with `poolId`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  timestamp   New current timestamp to calculate the time until expiry with
-    event UpdatedTimestamp(bytes32 indexed poolId, uint32 indexed timestamp);
+    /// @notice             Updates the time until expiry of the pool with `poolId`
+    /// @param  poolId      Pool Identifier
+    event UpdateLastTimestamp(bytes32 indexed poolId);
 
     // ===== Margin ====
+
     /// @notice             Added stable and/or risky tokens to a margin accouynt
-    /// @param  from        Calling `msg.sender`
+    /// @param  from        Method caller `msg.sender`
     /// @param  recipient   Margin account recieving deposits
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Deposited(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
+    event Deposit(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
 
     /// @notice             Removes stable and/or risky from a margin account
-    /// @param  from        Calling `msg.sender`
+    /// @param  from        Method caller `msg.sender`
     /// @param  recipient   Address that tokens are sent to
     /// @param  delRisky    Amount of risky tokens withdrawn
     /// @param  delStable   Amount of stable tokens withdrawn
-    event Withdrawn(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
+    event Withdraw(address indexed from, address indexed recipient, uint256 delRisky, uint256 delStable);
 
     // ===== Liquidity =====
-    /// @notice             Adds liquidity of risky and stable tokens to a specified curve `poolId`
-    /// @param  from        Calling `msg.sender`
-    /// @param  recipient   Address that controls the position
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+
+    /// @notice             Adds liquidity of risky and stable tokens to a specified `poolId`
+    /// @param  from        Method caller `msg.sender`
+    /// @param  recipient   Address that receives liquidity
+    /// @param  poolId      Pool Identifier
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Allocated(
+    event Allocate(
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
@@ -47,18 +48,19 @@ interface IPrimitiveEngineEvents {
         uint256 delStable
     );
 
-    /// @notice             Adds liquidity of risky and stable tokens to a specified curve `poolId`
-    /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
+    /// @notice             Adds liquidity of risky and stable tokens to a specified `poolId`
+    /// @param  from        Method caller `msg.sender`
+    /// @param  poolId      Pool Identifier
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Removed(address indexed from, bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
+    event Remove(address indexed from, bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
 
     // ===== Swaps =====
-    /// @notice             Swaps either risky for stable tokens or stable for risky.
-    /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  riskyForStable  If true, a swap from the risky token to the stable token
+
+    /// @notice             Swaps between `risky` and `stable` assets
+    /// @param  from        Method caller `msg.sender`
+    /// @param  poolId      Pool Identifier
+    /// @param  riskyForStable  If true, risky -> stable, else, stable -> risky
     /// @param  deltaIn     Amount of tokens paid
     /// @param  deltaOut    Amount of tokens received
     event Swap(
@@ -67,60 +69,5 @@ interface IPrimitiveEngineEvents {
         bool indexed riskyForStable,
         uint256 deltaIn,
         uint256 deltaOut
-    );
-
-    // ===== Convexity =====
-    /// @notice             Liquidity shares added to the float to be borrowed
-    /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity shares supplied
-    event Supplied(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
-
-    /// @notice             Liquidity shares removed from the float
-    /// @param  from        Calling `msg.sender`
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  delLiquidity Amount of liquidity shares removed from the float
-    event Claimed(address indexed from, bytes32 indexed poolId, uint256 delLiquidity);
-
-    /// @notice             Adds liquidity shares to a `recipient`'s position while adding an equal amount of debt
-    /// @param  recipient   Owner of the position which receives liquidity shares
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  collateralRisky Amount of desired risky tokens backing liquidity debt
-    /// @param  collateralStable Amount of desired stable tokens backing liquidity debt
-    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
-    /// @param  riskySurplus    Amount of risky tokens paid to user
-    /// @param  stableDeficit   Amount of stable tokens requested to Engine
-    /// @param  stableSurplus   Amount of stable tokens paid to user
-    event Borrowed(
-        address indexed recipient,
-        bytes32 indexed poolId,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        uint256 riskyDeficit,
-        uint256 riskySurplus,
-        uint256 stableDeficit,
-        uint256 stableSurplus
-    );
-
-    /// @notice             Repays a borrowed position, reduces liquidity shares of position and debt
-    /// @param  from        Calling `msg.sender`
-    /// @param  recipient   Owner of the position to repay
-    /// @param  poolId      Keccak hash of the option parameters of a curve to interact with
-    /// @param  collateralRisky Amount of desired risky tokens backing liquidity debt
-    /// @param  collateralStable Amount of desired stable tokens backing liquidity debt
-    /// @param  riskyDeficit    Amount of risky tokens requested to Engine
-    /// @param  riskySurplus    Amount of risky tokens paid to user
-    /// @param  stableDeficit   Amount of stable tokens requested to Engine
-    /// @param  stableSurplus   Amount of stable tokens paid to user
-    event Repaid(
-        address indexed from,
-        address indexed recipient,
-        bytes32 indexed poolId,
-        uint256 collateralRisky,
-        uint256 collateralStable,
-        uint256 riskyDeficit,
-        uint256 riskySurplus,
-        uint256 stableDeficit,
-        uint256 stableSurplus
     );
 }

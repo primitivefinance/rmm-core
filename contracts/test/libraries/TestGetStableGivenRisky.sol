@@ -13,16 +13,28 @@ contract TestGetStableGivenRisky {
     using Units for int128;
     using Units for uint256;
 
-    function step0(uint256 strike) public pure returns (int128 K) {
-        K = strike.scaleToX64(1e18);
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
+
+    function set(uint256 prec0, uint256 prec1) public {
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
+    }
+
+    function PRECISION() public pure returns (uint256) {
+        return Units.PRECISION;
+    }
+
+    function step0(uint256 strike) public view returns (int128 K) {
+        K = strike.scaleToX64(scaleFactorStable);
     }
 
     function step1(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
         vol = ReplicationMath.getProportionalVolatility(sigma, tau);
     }
 
-    function step2(uint256 reserveRisky) public pure returns (int128 reserve) {
-        reserve = reserveRisky.scaleToX64(1e18);
+    function step2(uint256 reserveRisky) public view returns (int128 reserve) {
+        reserve = reserveRisky.scaleToX64(scaleFactorRisky);
     }
 
     function step3(int128 reserve) public pure returns (int128 phi) {
@@ -44,16 +56,21 @@ contract TestGetStableGivenRisky {
     /// @return reserveStable The calculated stable reserve, using the risky reserve
     function getStableGivenRisky(
         int128 invariantLast,
+        uint256 precStable,
         uint256 reserveRisky,
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveStable) {
+    ) public view returns (int128 reserveStable) {
+        precStable;
         int128 K = step0(strike);
-        int128 vol = step1(sigma, tau);
-        int128 reserve = step2(reserveRisky);
-        int128 phi = step3(reserve);
-        int128 input = step4(phi, vol);
+        int128 input;
+        {
+            int128 vol = step1(sigma, tau);
+            int128 reserve = step2(reserveRisky);
+            int128 phi = step3(reserve);
+            input = step4(phi, vol);
+        }
         reserveStable = step5(K, input, invariantLast);
     }
 }

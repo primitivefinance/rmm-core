@@ -27,6 +27,7 @@
     "typechain": "hardhat typechain",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
+    "compile:all": "hardhat clean && hardhat compile && hardhat typechain",
     "test": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:engine": "npx mocha ./test/unit/primitiveEngine/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:factory": "npx mocha ./test/unit/primitiveFactory/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
@@ -64,7 +65,7 @@
     "ts-node": "^9.1.1",
     "typechain": "^5.1.2",
     "typescript": "^4.2.3",
-    "web3-units": "1.1.2"
+    "web3-units": "^1.0.0"
   },
   "postinstall": "typechain",
   "lint-staged": {
