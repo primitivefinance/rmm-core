@@ -5,7 +5,7 @@ pragma solidity 0.8.6;
 /// @author Primitive
 
 interface IPrimitiveDepositCallback {
-    /// @notice Triggered when depositing tokens to an Engine
+    /// @notice              Triggered when depositing tokens to an Engine
     /// @param  delRisky     Amount of risky tokens required to deposit to risky margin balance
     /// @param  delStable    Amount of stable tokens required to deposit to stable margin balance
     /// @param  data         Calldata passed on deposit function call
