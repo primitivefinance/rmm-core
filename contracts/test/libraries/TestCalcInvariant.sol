@@ -13,12 +13,12 @@ contract TestCalcInvariant {
     using Units for int128;
     using Units for uint256;
 
-    uint256 public precisionRisky;
-    uint256 public precisionStable;
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
 
     function set(uint256 prec0, uint256 prec1) public {
-        precisionRisky = prec0;
-        precisionStable = prec1;
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
     }
 
     function step0(
@@ -28,12 +28,12 @@ contract TestCalcInvariant {
         uint256 tau
     ) public view returns (int128 reserve2) {
         reserve2 = ReplicationMath
-        .getStableGivenRisky(0, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
-        .scaleToX64(precisionStable);
+        .getStableGivenRisky(0, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
+        .scaleToX64(scaleFactorStable);
     }
 
     function step1(uint256 reserveStable, int128 reserve2) public view returns (int128 invariant) {
-        invariant = reserveStable.scaleToX64(precisionStable).sub(reserve2);
+        invariant = reserveStable.scaleToX64(scaleFactorStable).sub(reserve2);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees

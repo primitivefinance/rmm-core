@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-/// @title   Cumulative Normal Distribution Math Library
-/// @author  Primitive
-
 import "./ABDKMath64x64.sol";
 
+/// @title   Cumulative Normal Distribution Math Library
+/// @author  Primitive
 library CumulativeNormalDistribution {
     using ABDKMath64x64 for *;
 
@@ -62,7 +61,7 @@ library CumulativeNormalDistribution {
         } else if (p < LOW_TAIL) {
             return tail(p);
         } else {
-            int128 negativeTail = -tail(ONE_INT.sub(p)); // -fTail(1 - p) for p > 0.975
+            int128 negativeTail = -tail(ONE_INT.sub(p));
             return negativeTail;
         }
     }

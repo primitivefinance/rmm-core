@@ -13,12 +13,12 @@ contract TestGetStableGivenRisky {
     using Units for int128;
     using Units for uint256;
 
-    uint256 public precisionRisky;
-    uint256 public precisionStable;
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
 
     function set(uint256 prec0, uint256 prec1) public {
-        precisionRisky = prec0;
-        precisionStable = prec1;
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
     }
 
     function PRECISION() public pure returns (uint256) {
@@ -26,7 +26,7 @@ contract TestGetStableGivenRisky {
     }
 
     function step0(uint256 strike) public view returns (int128 K) {
-        K = strike.scaleToX64(precisionStable);
+        K = strike.scaleToX64(scaleFactorStable);
     }
 
     function step1(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
@@ -34,7 +34,7 @@ contract TestGetStableGivenRisky {
     }
 
     function step2(uint256 reserveRisky) public view returns (int128 reserve) {
-        reserve = reserveRisky.scaleToX64(precisionRisky);
+        reserve = reserveRisky.scaleToX64(scaleFactorRisky);
     }
 
     function step3(int128 reserve) public pure returns (int128 phi) {

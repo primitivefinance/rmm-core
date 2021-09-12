@@ -3,12 +3,11 @@ pragma solidity 0.8.6;
 
 /// @title  Errors for the Primitive Engine contract
 /// @author Primitive
-
 interface IPrimitiveEngineErrors {
     /// @notice Thrown when a callback function calls the engine __again__
     error LockedError();
 
-    /// @notice Thrown when the balanceOf function is not successful and doesn't return data
+    /// @notice Thrown when the balanceOf function is not successful and does not return data
     error BalanceError();
 
     /// @notice Thrown when a pool with poolId already exists
@@ -20,14 +19,11 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when liquidity is lower than the minimum amount of liquidity
     error MinLiquidityError(uint256 value);
 
-    /// @notice Thrown when delta is outside the range of acceptable values
+    /// @notice Thrown when delta is outside the range of acceptable values, 0 < delta < 1 with 18 precision
     error DeltaError(uint256 value);
 
-    /// @notice Thrown when sigma is outside the range of acceptable values
+    /// @notice Thrown when sigma is outside the range of acceptable values, 100 < sigma < 1e7 with 4 precision
     error SigmaError(uint256 value);
-
-    /// @notice Thrown when a parameter is outside the range of acceptable values
-    error OutOfBoundsError(uint256 value);
 
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
     error CalibrationError(uint256 delRisky, uint256 delStable);

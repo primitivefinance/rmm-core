@@ -8,6 +8,9 @@ contract MockFactory is IPrimitiveFactory {
     error SameTokenError();
     error ZeroAddressError();
 
+    /// @inheritdoc IPrimitiveFactory
+    uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
+    /// @inheritdoc IPrimitiveFactory
     address public override owner;
     mapping(address => mapping(address => address)) public override getEngine;
 
@@ -19,8 +22,8 @@ contract MockFactory is IPrimitiveFactory {
         address factory;
         address risky;
         address stable;
-        uint256 precisionRisky;
-        uint256 precisionStable;
+        uint256 scaleFactorRisky;
+        uint256 scaleFactorStable;
         uint256 minLiquidity;
     }
 
@@ -31,15 +34,15 @@ contract MockFactory is IPrimitiveFactory {
         if (risky == address(0) || stable == address(0)) revert ZeroAddressError();
         uint256 riskyDecimals = IERC20(risky).decimals();
         uint256 stableDecimals = IERC20(stable).decimals();
-        uint256 precisionRisky = 10**(18 - riskyDecimals);
-        uint256 precisionStable = 10**(18 - stableDecimals);
+        uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
+        uint256 scaleFactorStable = 10**(18 - stableDecimals);
         uint256 minLiquidity = 10**((riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals) / 6);
         args = Args({
             factory: address(this),
             risky: risky,
             stable: stable,
-            precisionRisky: precisionRisky,
-            precisionStable: precisionStable,
+            scaleFactorRisky: scaleFactorRisky,
+            scaleFactorStable: scaleFactorStable,
             minLiquidity: minLiquidity
         }); // Engines call this to get constructor args
         engine = address(new MockEngine{salt: keccak256(abi.encode(risky, stable))}());

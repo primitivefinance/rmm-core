@@ -19,21 +19,22 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @notice Thrown on attempting to deploy an already deployed Engine
     error DeployedError();
 
-    /// @inheritdoc IPrimitiveFactory
-    address public override owner;
-
-    /// @inheritdoc IPrimitiveFactory
-    mapping(address => mapping(address => address)) public override getEngine;
-
+    /// @notice Engine will use these variables for its immutable variables
     struct Args {
         address factory;
         address risky;
         address stable;
-        uint256 precisionRisky;
-        uint256 precisionStable;
+        uint256 scaleFactorRisky;
+        uint256 scaleFactorStable;
         uint256 minLiquidity;
     }
 
+    /// @inheritdoc IPrimitiveFactory
+    uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
+    /// @inheritdoc IPrimitiveFactory
+    address public override owner;
+    /// @inheritdoc IPrimitiveFactory
+    mapping(address => mapping(address => address)) public override getEngine;
     /// @inheritdoc IPrimitiveFactory
     Args public override args; // Used instead of an initializer in Engine contract
 
@@ -58,6 +59,8 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ///                 "It will compute the address from the address of the creating contract,
     ///                 the given salt value, the (creation) bytecode of the created contract,
     ///                 and the constructor arguments."
+    ///                 While the address is still deterministic by appending constructor args to a contract's bytecode,
+    ///                 it's not efficient to do so on chain.
     /// @param  factory Address of the deploying smart contract
     /// @param  risky   Risky token address, underlying token
     /// @param  stable  Stable token address, quote token
@@ -67,17 +70,17 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address risky,
         address stable
     ) internal returns (address engine) {
-        uint256 riskyDecimals = IERC20(risky).decimals();
-        uint256 stableDecimals = IERC20(stable).decimals();
-        uint256 precisionRisky = 10**(18 - riskyDecimals);
-        uint256 precisionStable = 10**(18 - stableDecimals);
-        uint256 minLiquidity = 10**((riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals) / 6);
+        (uint256 riskyDecimals, uint256 stableDecimals) = (IERC20(risky).decimals(), IERC20(stable).decimals());
+        uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
+        uint256 scaleFactorStable = 10**(18 - stableDecimals);
+        uint256 lowestDecimals = (riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals);
+        uint256 minLiquidity = 10**(lowestDecimals / MIN_LIQUIDITY_FACTOR);
         args = Args({
             factory: factory,
             risky: risky,
             stable: stable,
-            precisionRisky: precisionRisky,
-            precisionStable: precisionStable,
+            scaleFactorRisky: scaleFactorRisky,
+            scaleFactorStable: scaleFactorStable,
             minLiquidity: minLiquidity
         }); // Engines call this to get constructor args
         engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, stable))}());

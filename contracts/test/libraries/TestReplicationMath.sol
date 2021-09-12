@@ -10,12 +10,12 @@ import "../../libraries/Units.sol";
 
 contract TestReplicationMath {
     using Units for uint256;
-    uint256 public precisionRisky;
-    uint256 public precisionStable;
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
 
     function set(uint256 prec0, uint256 prec1) public {
-        precisionRisky = prec0;
-        precisionStable = prec1;
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
     }
 
     /// @return vol The sigma * sqrt(tau)
@@ -32,8 +32,8 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 reserveStable) {
         reserveStable = ReplicationMath
-        .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
-        .scaleToX64(precisionStable);
+        .getStableGivenRisky(invariantLast, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
+        .scaleToX64(scaleFactorStable);
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
@@ -45,8 +45,8 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 reserveRisky) {
         reserveRisky = ReplicationMath
-        .getRiskyGivenStable(invariantLast, precisionRisky, precisionStable, reserveStable, strike, sigma, tau)
-        .scaleToX64(precisionRisky);
+        .getRiskyGivenStable(invariantLast, scaleFactorRisky, scaleFactorStable, reserveStable, strike, sigma, tau)
+        .scaleToX64(scaleFactorRisky);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
@@ -58,8 +58,8 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 invariant) {
         invariant = ReplicationMath.calcInvariant(
-            precisionRisky,
-            precisionStable,
+            scaleFactorRisky,
+            scaleFactorStable,
             reserveRisky,
             reserveStable,
             strike,

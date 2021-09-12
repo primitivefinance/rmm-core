@@ -15,8 +15,17 @@ const { HashZero } = constants
 TestPools.forEach(function (pool: PoolState) {
   testContext(`allocate to ${pool.description} pool`, function () {
     // curve parameters
-    const { strike, sigma, maturity, lastTimestamp, delta, decimalsRisky, decimalsStable, precisionRisky, precisionStable } =
-      pool.calibration
+    const {
+      strike,
+      sigma,
+      maturity,
+      lastTimestamp,
+      delta,
+      decimalsRisky,
+      decimalsStable,
+      scaleFactorRisky,
+      scaleFactorStable,
+    } = pool.calibration
     // environment variables
     let poolId: string
 
