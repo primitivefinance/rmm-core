@@ -18,12 +18,21 @@ interface IPrimitiveFactory {
     function deploy(address risky, address stable) external returns (address engine);
 
     // ===== View =====
+
+    /// @notice         Used to scale the minimum amount of liquidity to lowest precision
+    /// @dev            E.g. if the lowest decimal token is 6, min liquidity w/ 18 decimals
+    ///                 cannot be 1000 wei, therefore the token decimals
+    ///                 divided by the min liquidity factor is the amount of minimum liquidity
+    ///                 MIN_LIQUIDITY = 10 ^ (Decimals / MIN_LIQUIDITY_FACTOR)
+    function MIN_LIQUIDITY_FACTOR() external pure returns (uint256);
+
     /// @notice         Called within Engine constructor so Engine can set immutable variables without constructor args
     /// @return factory Smart contract deploying the Engine contract
     /// risky           Risky token
     /// stable          Stable token
-    /// precisionRisky  Precision of the risky token, 10**riskyTokenDecimals
-    /// precisionStable Precision of the stable token, 10**stableTokenDecimals
+    /// scaleFactorRisky  Scale factor of the risky token, 10^(18 - riskyTokenDecimals)
+    /// scaleFactorStable Scale factor of the stable token, 10^(18 - stableTokenDecimals)
+    /// minLiquidity    Minimum amount of liquidity on pool creation
     function args()
         external
         view
@@ -31,8 +40,9 @@ interface IPrimitiveFactory {
             address factory,
             address risky,
             address stable,
-            uint256 precisionRisky,
-            uint256 precisionStable
+            uint256 scaleFactorRisky,
+            uint256 scaleFactorStable,
+            uint256 minLiquidity
         );
 
     /// @notice         Fetches engine address of a token pair

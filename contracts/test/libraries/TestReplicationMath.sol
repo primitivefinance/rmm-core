@@ -10,8 +10,13 @@ import "../../libraries/Units.sol";
 
 contract TestReplicationMath {
     using Units for uint256;
-    uint256 public constant precisionRisky = 1e18;
-    uint256 public constant precisionStable = 1e18;
+    uint256 public scaleFactorRisky;
+    uint256 public scaleFactorStable;
+
+    function set(uint256 prec0, uint256 prec1) public {
+        scaleFactorRisky = prec0;
+        scaleFactorStable = prec1;
+    }
 
     /// @return vol The sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) public pure returns (int128 vol) {
@@ -25,10 +30,10 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveStable) {
+    ) public view returns (int128 reserveStable) {
         reserveStable = ReplicationMath
-        .getStableGivenRisky(invariantLast, precisionRisky, precisionStable, reserveRisky, strike, sigma, tau)
-        .scaleToX64(precisionStable);
+        .getStableGivenRisky(invariantLast, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
+        .scaleToX64(scaleFactorStable);
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
@@ -38,10 +43,10 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 reserveRisky) {
+    ) public view returns (int128 reserveRisky) {
         reserveRisky = ReplicationMath
-        .getRiskyGivenStable(invariantLast, precisionRisky, precisionStable, reserveStable, strike, sigma, tau)
-        .scaleToX64(precisionRisky);
+        .getRiskyGivenStable(invariantLast, scaleFactorRisky, scaleFactorStable, reserveStable, strike, sigma, tau)
+        .scaleToX64(scaleFactorRisky);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
@@ -51,15 +56,27 @@ contract TestReplicationMath {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public pure returns (int128 invariant) {
+    ) public view returns (int128 invariant) {
         invariant = ReplicationMath.calcInvariant(
-            precisionRisky,
-            precisionStable,
+            scaleFactorRisky,
+            scaleFactorStable,
             reserveRisky,
             reserveStable,
             strike,
             sigma,
             tau
         );
+    }
+
+    function YEAR() public pure returns (uint256) {
+        return Units.YEAR;
+    }
+
+    function PRECISION() public pure returns (uint256) {
+        return Units.PRECISION;
+    }
+
+    function PERCENTAGE() public pure returns (uint256) {
+        return Units.PERCENTAGE;
     }
 }

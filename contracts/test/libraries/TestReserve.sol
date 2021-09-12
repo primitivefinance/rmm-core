@@ -40,11 +40,6 @@ contract TestReserve {
             reserveRisky: uint128(reserveRisky), // risky token balance
             reserveStable: uint128(reserveStable), // stable token balance
             liquidity: uint128(2e18),
-            float: uint128(1e18), // the LP shares available to be borrowed on a given poolId
-            collateralRisky: 0,
-            collateralStable: 0,
-            feeRiskyGrowth: 0,
-            feeStableGrowth: 0,
             blockTimestamp: uint32(timestamp_),
             cumulativeRisky: 0,
             cumulativeStable: 0,
@@ -101,40 +96,6 @@ contract TestReserve {
         return reserves[resId];
     }
 
-    /// @notice Increases available float to borrow, called when supplying
-    function shouldAddFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        reserves[resId].addFloat(delLiquidity);
-        return reserves[resId];
-    }
-
-    /// @notice Reduces available float, taking liquidity off the market, called when claiming
-    function shouldRemoveFloat(bytes32 resId, uint256 delLiquidity) public returns (Reserve.Data memory) {
-        reserves[resId].removeFloat(delLiquidity);
-        return reserves[resId];
-    }
-
-    /// @notice Reduces float and increases debt of the global reserve, called when borrowing
-    function shouldBorrowFloat(
-        bytes32 resId,
-        uint256 delLiquidity,
-        uint256 collateralRisky,
-        uint256 collateralStable
-    ) public returns (Reserve.Data memory) {
-        reserves[resId].borrowFloat(delLiquidity, collateralRisky, collateralStable);
-        return reserves[resId];
-    }
-
-    /// @notice Increases float and reduces debt of the global reserve, called when repaying a borrow
-    function shouldRepayFloat(
-        bytes32 resId,
-        uint256 delLiquidity,
-        uint256 collateralRisky,
-        uint256 collateralStable
-    ) public returns (Reserve.Data memory) {
-        reserves[resId].repayFloat(delLiquidity, collateralRisky, collateralStable);
-        return reserves[resId];
-    }
-
     function update(
         bytes32 resId,
         uint256 risky,
@@ -146,17 +107,6 @@ contract TestReserve {
         reserves[resId].cumulativeStable = stable;
         reserves[resId].cumulativeLiquidity = liquidity;
         reserves[resId].blockTimestamp = blockTimestamp;
-        return reserves[resId];
-    }
-
-    /// @notice Increases excess fees generated from swapping or borrowing
-    /// @dev    Will overflow
-    function shouldAddFee(
-        bytes32 resId,
-        uint256 feeRisky,
-        uint256 feeStable
-    ) public returns (Reserve.Data memory) {
-        reserves[resId].addFee(feeRisky, feeStable);
         return reserves[resId];
     }
 }

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
+import "./SafeCast.sol";
+
 /// @notice  Margin Library
 /// @author  Primitive
 /// @dev     Uses a data struct with two uint128s to optimize for one storage slot
-
-import "./SafeCast.sol";
-
 library Margin {
     using SafeCast for uint256;
 

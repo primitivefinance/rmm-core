@@ -13,4 +13,14 @@ contract MockEngine is PrimitiveEngine {
     function _blockTimestamp() internal view override returns (uint32 blockTimestamp) {
         blockTimestamp = uint32(time);
     }
+
+    function setReserves(
+        bytes32 poolId,
+        uint256 reserveRisky,
+        uint256 reserveStable
+    ) public {
+        Reserve.Data storage res = reserves[poolId];
+        res.reserveRisky = SafeCast.toUint128(reserveRisky);
+        res.reserveStable = SafeCast.toUint128(reserveStable);
+    }
 }
