@@ -349,7 +349,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
+                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION - 1; // res0 for all liquidity
             }
 
             reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update
