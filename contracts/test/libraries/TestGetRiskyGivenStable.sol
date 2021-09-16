@@ -65,4 +65,8 @@ contract TestGetRiskyGivenStable {
         int128 input = step4(phi, vol);
         reserveRisky = step5(input).scalefromX64(precRisky);
     }
+
+    function name() public view returns (string memory) {
+        return "TestGetRiskyGivenStable";
+    }
 }

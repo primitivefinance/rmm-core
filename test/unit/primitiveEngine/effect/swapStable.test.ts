@@ -77,19 +77,13 @@ testContext('Swap stable to risky', function () {
 
     console.log(`\n   - Reserves: `)
     let res = await logRes(this.contracts.engine, poolId)
+    let pool = new Pool(res.risky, res.liquidity, cal.strike, cal.sigma, cal.maturity, cal.lastTimestamp, 0.0015)
+    console.log(`   Virtual reserves: ${pool.reserveRisky.toString()} ${pool.reserveStable.toString()}`)
+
     console.log(`   - Calibration: `)
     await logEngineCal(this.contracts.engine, poolId)
 
-    const pool = new Pool(
-      res.risky,
-      res.liquidity,
-      cal.strike,
-      cal.sigma,
-      cal.maturity,
-      cal.lastTimestamp,
-      0.0015,
-      res.stable
-    )
+    pool = new Pool(res.risky, res.liquidity, cal.strike, cal.sigma, cal.maturity, cal.lastTimestamp, 0.0015, res.stable)
 
     console.log(`   - Effective price: ${pool.getSpotPrice().float}`)
 
@@ -176,7 +170,8 @@ testContext('Swap stable to risky', function () {
 
     let amount = parseWei('4')
     let i = 0
-    while (i < 500) {
+    while (i < 50) {
+      console.log({ i })
       if (DEBUG) console.log(`\n Swapping: ${amount.float} stable`)
       let res = await logRes(this.contracts.engine, poolId)
 
@@ -204,7 +199,7 @@ testContext('Swap stable to risky', function () {
         console.log(`\n   - Reserves: `)
       }
       await logRes(this.contracts.engine, poolId)
-      i++
+      i += 1
     }
 
     console.log(`   Before Effective price: ${pool.getSpotPrice().float}`)
