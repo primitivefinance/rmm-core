@@ -4,12 +4,7 @@ import { FixedPointX64, parseFixedPointX64 } from 'web3-units'
 import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 import { parseEther } from '@ethersproject/units'
-
-const maxError = {
-  cdf: 3.15e-3,
-  centralInverseCDF: 1.16e-4,
-  tailInverseCDF: 2.458e-5,
-}
+import { maxError } from '../../shared/utils'
 
 // array values below calculated with https://keisan.casio.com/calculator
 const cdfs = {
