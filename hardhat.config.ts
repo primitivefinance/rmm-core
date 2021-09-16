@@ -14,6 +14,9 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
     },
   },
+  mocha: {
+    timeout: 1000000,
+  },
   solidity: {
     version: '0.8.6',
     settings: {
