@@ -42,6 +42,8 @@ function logCal(cal: Calibration) {
   console.log(`       - Tau: ${cal.tau.years}`)
 }
 
+const DEBUG = false
+
 testContext('Swap stable to risky', function () {
   let cal: Calibration, poolId: string, deployer: Wallet
   beforeEach(async function () {
@@ -74,7 +76,7 @@ testContext('Swap stable to risky', function () {
     console.log(`   Engine invariant: ${new FixedPointX64(await this.contracts.engine.invariantOf(poolId)).parsed}`)
 
     console.log(`\n   - Reserves: `)
-    const res = await logRes(this.contracts.engine, poolId)
+    let res = await logRes(this.contracts.engine, poolId)
     console.log(`   - Calibration: `)
     await logEngineCal(this.contracts.engine, poolId)
 
@@ -104,7 +106,9 @@ testContext('Swap stable to risky', function () {
     console.log(`   - Amount out: ${amountOut.float}`)
     console.log(`   - Effective price: ${amount.div(amountOut).toString()}`)
 
-    console.log(`   Engine invariant: ${new FixedPointX64(await this.contracts.engine.invariantOf(poolId)).parsed}`)
+    let invariant = await this.contracts.engine.invariantOf(poolId)
+    console.log(`   Invariant raw: ${invariant.toString()}`)
+    console.log(`   Engine invariant: ${new FixedPointX64(invariant).parsed}`)
     console.log(`\n   - Reserves: `)
     await logRes(this.contracts.engine, poolId)
     console.log(`   - Calibration: `)
@@ -129,5 +133,95 @@ testContext('Swap stable to risky', function () {
       await logEngineCal(this.contracts.engine, poolId)
       amount = amount.sub(parseWei('0.1'))
     } */
+
+    /* console.log(`\n   - Reserves: `)
+    res = await logRes(this.contracts.engine, poolId)
+    await this.contracts.router.swap(poolId, true, deltaOut.raw, false, false, HashZero)
+    console.log(` After Engine Swap`)
+    const amountOut2 = res.stable.sub((await this.contracts.engine.reserves(poolId)).reserveStable)
+
+    console.log(`   - Amount out: ${amountOut2.float}`)
+    console.log(`   - Effective price: ${amountOut2.div(deltaOut).toString()}`)
+    invariant = await this.contracts.engine.invariantOf(poolId)
+    console.log(`   Invariant raw: ${invariant.toString()}`)
+    console.log(`   Engine invariant: ${new FixedPointX64(invariant).parsed}`)
+    console.log(`\n   - Reserves: `)
+    await logRes(this.contracts.engine, poolId)
+    console.log(`   - Calibration: `)
+    await logEngineCal(this.contracts.engine, poolId) */
+  })
+
+  it('swaps back and forth', async function () {
+    console.log('\n Using settings:')
+    await logCal(cal)
+
+    console.log(` Before Engine Swap`)
+    console.log(`   Engine invariant: ${new FixedPointX64(await this.contracts.engine.invariantOf(poolId)).parsed}`)
+
+    console.log(`\n   BEFORE Reserves: `)
+    let resBefore = await logRes(this.contracts.engine, poolId)
+
+    let pool = new Pool(
+      resBefore.risky,
+      resBefore.liquidity,
+      cal.strike,
+      cal.sigma,
+      cal.maturity,
+      cal.lastTimestamp,
+      0.0015,
+      resBefore.stable
+    )
+
+    console.log(`   - Effective price: ${pool.getSpotPrice().float}`)
+
+    let amount = parseWei('4')
+    let i = 0
+    while (i < 500) {
+      if (DEBUG) console.log(`\n Swapping: ${amount.float} stable`)
+      let res = await logRes(this.contracts.engine, poolId)
+
+      await this.contracts.router.swap(poolId, false, amount.raw, false, false, HashZero)
+
+      const amountOut = res.risky.sub((await this.contracts.engine.reserves(poolId)).reserveRisky)
+
+      let invariant = await this.contracts.engine.invariantOf(poolId)
+      if (DEBUG) {
+        console.log(`   - Amount out: ${amountOut.float}`)
+        console.log(`   - Effective price: ${amount.div(amountOut).toString()}`)
+        console.log(`   Engine invariant: ${new FixedPointX64(invariant).parsed}`)
+        console.log(`  - Reserves: `)
+      }
+      res = await logRes(this.contracts.engine, poolId)
+
+      await this.contracts.router.swap(poolId, true, amountOut.raw, false, false, HashZero)
+      const amountOut2 = res.stable.sub((await this.contracts.engine.reserves(poolId)).reserveStable)
+      invariant = await this.contracts.engine.invariantOf(poolId)
+
+      if (DEBUG) {
+        console.log(`   - Amount out: ${amountOut2.float}`)
+        console.log(`   - Effective price: ${amountOut2.div(amountOut).toString()}`)
+        console.log(`   Engine invariant: ${new FixedPointX64(invariant).parsed}`)
+        console.log(`\n   - Reserves: `)
+      }
+      await logRes(this.contracts.engine, poolId)
+      i++
+    }
+
+    console.log(`   Before Effective price: ${pool.getSpotPrice().float}`)
+    let resAfter = await logRes(this.contracts.engine, poolId)
+    pool = new Pool(
+      resAfter.risky,
+      resAfter.liquidity,
+      cal.strike,
+      cal.sigma,
+      cal.maturity,
+      cal.lastTimestamp,
+      0.0015,
+      resAfter.stable
+    )
+    console.log(`   After Effective price: ${pool.getSpotPrice().float}`)
+
+    console.log(` risky diff: ${resAfter.risky.sub(resBefore.risky).float}`)
+    console.log(` stable diff: ${resAfter.stable.sub(resBefore.stable).float}`)
   })
 })
