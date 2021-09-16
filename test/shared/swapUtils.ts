@@ -82,7 +82,7 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei, noInvariant?: boolean): Wei {
-    const decimals = this.reserveStable.decimals
+    const decimals = this?.reserveStable?.decimals ? this.reserveStable.decimals : 18
     let invariant = this.invariant.parsed
     invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
     if (this.debug)
