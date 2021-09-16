@@ -49,6 +49,31 @@ contract TestGetRiskyGivenStable {
         reserveRisky = ReplicationMath.ONE_INT.sub(input.getCDF());
     }
 
+    function testStep3(uint256 reserve, uint256 strike) public view returns (int128 phi) {
+        phi = reserve.scaleToX64(scaleFactorStable).div(strike.scaleToX64(scaleFactorStable)).getInverseCDF();
+    }
+
+    function testStep4(
+        uint256 reserve,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public view returns (int128 input) {
+        int128 phi = testStep3(reserve, strike);
+        int128 vol = step1(sigma, tau);
+        input = phi.add(vol);
+    }
+
+    function testStep5(
+        uint256 reserve,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public view returns (int128 reserveRisky) {
+        int128 input = testStep4(reserve, strike, sigma, tau);
+        reserveRisky = ReplicationMath.ONE_INT.sub(input.getCDF());
+    }
+
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
     function getRiskyGivenStable(
         int128 invariantLast,
@@ -57,13 +82,13 @@ contract TestGetRiskyGivenStable {
         uint256 strike,
         uint256 sigma,
         uint256 tau
-    ) public view returns (uint256 reserveRisky) {
+    ) public view returns (int128 reserveRisky) {
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
         int128 reserve = step2(reserveStable);
         int128 phi = step3(reserve, invariantLast, K);
         int128 input = step4(phi, vol);
-        reserveRisky = step5(input).scalefromX64(precRisky);
+        reserveRisky = step5(input);
     }
 
     function name() public view returns (string memory) {
