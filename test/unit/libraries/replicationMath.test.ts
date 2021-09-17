@@ -1,8 +1,6 @@
 import expect from '../../shared/expect'
-import { waffle } from 'hardhat'
-import { parseEther, parseUnits } from '@ethersproject/units'
-import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-import { FixedPointX64, parseFixedPointX64, parsePercentage, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
+import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
+import { FixedPointX64, parseWei, Time, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
 import {
   getProportionalVol,
@@ -15,9 +13,7 @@ import {
 import { TestPools, PoolState } from '../../shared/poolConfigs'
 import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
-import { Calibration } from '../../shared'
 import { maxError } from '../../shared/utils'
-import { BigNumber } from '@ethersproject/bignumber'
 
 interface TestTradingFunctionFixture {
   getStableGivenRisky: TestGetStableGivenRisky
@@ -68,18 +64,6 @@ async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFi
   }
 }
 
-const getStableFns = {
-  riskySwapStep3,
-  riskySwapStep4,
-  riskySwapStep5,
-}
-
-const getRiskyFns = {
-  stableSwapStep3,
-  stableSwapStep4,
-  stableSwapStep5,
-}
-
 function riskySwapStep3(reserve: Wei) {
   let inside = 1 - reserve.float
   let expected = inverse_std_n_cdf(inside)
@@ -124,240 +108,270 @@ interface RangeTest {
     params: any[]
     min: number
     max: number
-    step: number
+    increment: number
     error: number
     parse: (val: number) => any
     expected: (val: any) => any
   }
 }
 
-const riskySwapTests: RangeTest = {
-  ['step0']: {
-    params: [0], // value
-    min: 0,
-    max: 10000,
-    step: 100,
-    error: 1e-4,
-    parse: parseWei,
-    expected: (val: Wei) => new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1)).raw).parsed,
-  },
-  ['step1']: {
-    params: [0, Time.YearInSeconds], // sigma, tau
-    min: 1,
-    max: 1000,
-    step: 10,
-    error: 1e-4,
-    parse: (val: number) => parseWei(val, 4),
-    expected: (val: Wei) => getProportionalVol(val.float, new Time(Time.YearInSeconds).years),
-  },
-  ['step2']: {
-    params: [0], // reserve risky
-    min: 0,
-    max: 10000,
-    step: 100,
-    error: 1e-4,
-    parse: parseWei,
-    expected: (val: Wei) => new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1)).raw).parsed,
-  },
-  ['testStep3']: {
-    params: [0], // reserve
-    min: 0.02,
-    max: 0.98,
-    step: 0.01,
-    error: maxError.centralInverseCDF,
-    parse: parseWei,
-    expected: riskySwapStep3,
-  },
-  ['testStep4']: {
-    params: [0, 1e3, Time.YearInSeconds], // reserve, sigma, tau
-    min: 0.02,
-    max: 0.98,
-    step: 0.01,
-    error: maxError.centralInverseCDF,
-    parse: parseWei,
-    expected: (val: Wei) => riskySwapStep4(val, 0.1, new Time(Time.YearInSeconds)),
-  },
-  ['testStep5']: {
-    // input
-    params: [0, parseWei(10).raw, 1e3, Time.YearInSeconds], // reserve, strike, sigma, tau
-    min: 0.01,
-    max: 0.99,
-    step: 0.01,
-    error: maxError.cdf,
-    parse: parseWei,
-    expected: (val: Wei) => riskySwapStep5(val, parseWei(10), 0.1, new Time(Time.YearInSeconds)),
-  },
-  ['getStableGivenRisky']: {
-    // reserveRisky
-    params: [0, 1, 0, parseWei(10).raw, 1e3, Time.YearInSeconds], // invariant, prec, risky, strike, sigma, tau
-    min: 0.02,
-    max: 0.98,
-    step: 0.01,
-    error: maxError.cdf,
-    parse: parseWei,
-    expected: (val: Wei) => getStableGivenRisky(val.float, 10, 0.1, 1),
-  },
+function parseX64(val: Wei): FixedPointX64 {
+  return new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1, val.decimals)).raw, val.decimals)
 }
 
-const stableSwapTests: RangeTest = {
-  ['step0']: {
-    params: [0], // value
-    min: 0,
-    max: 10000,
-    step: 100,
-    error: 1e-4,
-    parse: parseWei,
-    expected: (val: Wei) => new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1)).raw).parsed,
-  },
-  ['step1']: {
-    params: [0, Time.YearInSeconds], // sigma, tau
-    min: 1,
-    max: 1000,
-    step: 10,
-    error: 1e-4,
-    parse: (val: number) => parseWei(val, 4),
-    expected: (val: Wei) => getProportionalVol(val.float, new Time(Time.YearInSeconds).years),
-  },
-  ['step2']: {
-    params: [0], // reserve risky
-    min: 0,
-    max: 10000,
-    step: 100,
-    error: 1e-4,
-    parse: parseWei,
-    expected: (val: Wei) => new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1)).raw).parsed,
-  },
-  ['testStep3']: {
-    params: [0, parseWei(10).raw], // reserve
-    min: 0.1,
-    max: 9.9,
-    step: 0.1,
-    error: maxError.centralInverseCDF,
-    parse: parseWei,
-    expected: (val: Wei) => stableSwapStep3(val, parseWei(10)),
-  },
-  ['testStep4']: {
-    params: [0, parseWei(10).raw, 1e3, Time.YearInSeconds], // reserve, sigma, tau
-    min: 0.1,
-    max: 9.9,
-    step: 0.1,
-    error: maxError.centralInverseCDF,
-    parse: parseWei,
-    expected: (val: Wei) => stableSwapStep4(val, parseWei(10), 0.1, new Time(Time.YearInSeconds)),
-  },
-  ['testStep5']: {
-    // input
-    params: [0, parseWei(10).raw, 1e3, Time.YearInSeconds], // reserve, strike, sigma, tau
-    min: 0.1,
-    max: 9.9,
-    step: 0.1,
-    error: maxError.cdf,
-    parse: parseWei,
-    expected: (val: Wei) => stableSwapStep5(val, parseWei(10), 0.1, new Time(Time.YearInSeconds)),
-  },
-  ['getRiskyGivenStable']: {
-    // reserveRisky
-    params: [0, 1, 0, parseWei(10).raw, 1e3, Time.YearInSeconds], // invariant, prec, risky, strike, sigma, tau
-    min: 0.1,
-    max: 9.9,
-    step: 0.1,
-    error: maxError.cdf,
-    parse: parseWei,
-    expected: (val: Wei) => getRiskyGivenStable(val.float, 10, 0.1, 1),
-  },
-}
-
-const precision = {
-  percentage: 0.01,
-  invariant: 0.1,
-  cdf: 0.1,
-  integer: 1e15,
-}
-
+// for each calibration
 TestPools.forEach(function (pool: PoolState) {
   testContext(`testReplicationMath for ${pool.description}`, function () {
-    const {
-      strike,
-      sigma,
-      maturity,
-      lastTimestamp,
-      delta,
-      spot,
-      decimalsRisky,
-      decimalsStable,
-      scaleFactorRisky,
-      scaleFactorStable,
-    } = pool.calibration
+    const { strike, sigma, tau, decimalsRisky, decimalsStable, scaleFactorRisky, scaleFactorStable } = pool.calibration
 
     let fixture: TestStepFixture
 
+    // test domain and range of `getStableGivenRisky`
+    const riskySwapTests: RangeTest = {
+      ['step0']: {
+        params: [0],
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => parseX64(val).parsed, // parses strike to fixed point
+      },
+      ['step1']: {
+        params: [0, tau.raw], // sigma, tau
+        min: 1,
+        max: 1000,
+        increment: 10,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, 4), // parses percentage
+        expected: (val: Wei) => getProportionalVol(val.float, tau.years),
+      },
+      ['step2']: {
+        params: [0], // reserve risky
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['testStep3']: {
+        params: [0], // reserve
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsRisky),
+        expected: riskySwapStep3,
+      },
+      ['testStep4']: {
+        params: [0, sigma.raw, tau.raw], // reserve, sigma, tau
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => riskySwapStep4(val, sigma.float, tau),
+      },
+      ['testStep5']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, strike, sigma, tau
+        min: 0.01,
+        max: 0.99,
+        increment: 0.01,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => riskySwapStep5(val, strike, sigma.float, tau),
+      },
+      ['getStableGivenRisky']: {
+        params: [0, 1, 0, strike.raw, sigma.raw, tau.raw], // invariant, prec, risky, strike, sigma, tau
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => getStableGivenRisky(val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    // test domain and range of `getRiskyGivenStable
+    const stableSwapTests: RangeTest = {
+      ['step0']: {
+        params: [0], // value
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['step1']: {
+        params: [0, tau.raw], // sigma, tau
+        min: 1,
+        max: 1000,
+        increment: 10,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, 4), // parses percentage
+        expected: (val: Wei) => getProportionalVol(val.float, tau.years),
+      },
+      ['step2']: {
+        params: [0], // stable
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['testStep3']: {
+        params: [0, strike.raw], // reserve
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep3(val, strike),
+      },
+      ['testStep4']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep4(val, strike, sigma.float, tau),
+      },
+      ['testStep5']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, strike, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep5(val, strike, sigma.float, tau),
+      },
+      ['getRiskyGivenStable']: {
+        params: [0, 1, 0, strike.raw, sigma.raw, tau.raw], // invariant, prec, risky, strike, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => getRiskyGivenStable(val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    const calcInvariantTests: RangeTest = {
+      ['calcInvariantRisky']: {
+        params: [0, strike.div(2).raw, strike.raw, sigma.raw, tau.raw],
+        min: 0.01,
+        max: 0.99,
+        increment: 0.1,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => calcInvariant(val.float, strike.div(2).float, strike.float, sigma.float, tau.years),
+      },
+      ['calcInvariantStable']: {
+        params: [parseWei(0.5).raw, 0, strike.raw, sigma.raw, tau.raw],
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => calcInvariant(parseWei(0.5).float, val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    // load the fixtures
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
       await fixture.calcInvariant.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
       await fixture.getRiskyGivenStable.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
       await fixture.getStableGivenRisky.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
       this.libraries = fixture.libraries
-      this.getStableGivenRisky = fixture.getStableGivenRisky
     })
 
+    // run the tests for `getStableGivenRisky
     describe('testGetStableGivenRisky', function () {
-      let math: TestGetStableGivenRisky
-
-      beforeEach(async function () {
-        math = fixture.getStableGivenRisky
-      })
-
+      // for each of the tests, run through its domain and range
       for (let step in riskySwapTests) {
         describe(`testing ${step}`, function () {
-          let range = riskySwapTests[step]
-          let increment: number = range.step
-          let value: number = range.min
+          let { params, min, max, increment, parse, expected, error } = riskySwapTests[step]
 
           it('stays within max error', async function () {
-            for (let i = value; i < range.max; i += increment) {
-              const input = range.parse(i)
-              const expected = range.expected(input) //getProportionalVol(value.float, 1)
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
+
               if (step == 'getStableGivenRisky') {
-                range.params[2] = input.raw
+                params[2] = input.raw // reserve parameter is at index of `2`
               } else {
-                range.params[0] = input.raw
+                params[0] = input.raw
               }
-              const actual = new FixedPointX64(await math[step](...range.params)).parsed
+
+              const result = await fixture.getStableGivenRisky[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
+
               if (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getStableGivenRisky')
-                console.log(`${step} w/ reserve: ${i}: expected: ${+expected}, actual: ${actual}, ae: ${actual - expected}`)
-              //expect(actual).to.be.closeTo(+expected, range.error)
+                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
             }
           })
         })
       }
     })
 
+    // run the tests for `getStableGivenRisky
     describe('testGetRiskyGivenStable', function () {
-      let math: TestGetRiskyGivenStable
-
-      beforeEach(async function () {
-        math = fixture.getRiskyGivenStable
-      })
-
+      // for each of the tests, run through its domain and range
       for (let step in stableSwapTests) {
         describe(`testing ${step}`, function () {
-          let range = stableSwapTests[step]
-          let increment: number = range.step
-          let value: number = range.min
+          let { params, min, max, increment, parse, expected, error } = stableSwapTests[step]
 
           it('stays within max error', async function () {
-            for (let i = value; i < range.max; i += increment) {
-              const input = range.parse(i)
-              const expected = range.expected(input) //getProportionalVol(value.float, 1)
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
+
               if (step == 'getRiskyGivenStable') {
-                range.params[2] = input.raw
+                params[2] = input.raw // reserve parameter is at index of `2`
               } else {
-                range.params[0] = input.raw
+                params[0] = input.raw
               }
-              const actual = new FixedPointX64(await math[step](...range.params)).parsed
+
+              const result = await fixture.getRiskyGivenStable[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
+
               if (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getRiskyGivenStable')
-                console.log(`${step} w/ reserve: ${i}: expected: ${+expected}, actual: ${actual}, ae: ${actual - expected}`)
-              //expect(actual).to.be.closeTo(+expected, range.error)
+                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
+            }
+          })
+        })
+      }
+    })
+
+    describe('testCalcInvariant', function () {
+      // for each of the tests, run through its domain and range
+      for (let step in calcInvariantTests) {
+        describe(`testing ${step}`, function () {
+          let { params, min, max, increment, parse, expected, error } = calcInvariantTests[step]
+
+          it('stays within max error', async function () {
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
+
+              if (step == 'calcInvariantRisky') {
+                params[0] = input.raw
+              } else {
+                params[1] = input.raw
+              }
+
+              const result = await fixture.calcInvariant[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
+
+              console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
             }
           })
         })

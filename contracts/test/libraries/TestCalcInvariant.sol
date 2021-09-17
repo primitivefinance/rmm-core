@@ -37,7 +37,18 @@ contract TestCalcInvariant {
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
-    function calcInvariant(
+    function calcInvariantRisky(
+        uint256 reserveRisky,
+        uint256 reserveStable,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) public view returns (int128 invariant) {
+        int128 reserve2 = step0(reserveRisky, strike, sigma, tau);
+        invariant = step1(reserveStable, reserve2);
+    }
+
+    function calcInvariantStable(
         uint256 reserveRisky,
         uint256 reserveStable,
         uint256 strike,
