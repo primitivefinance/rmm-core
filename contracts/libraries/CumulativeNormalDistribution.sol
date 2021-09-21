@@ -11,6 +11,27 @@ library CumulativeNormalDistribution {
     /// @notice Thrown on passing an arg that is out of the input range for these math functions
     error InverseOutOfBounds(int128 value);
 
+    /// testing
+
+    int128 public constant A0 = 0x5529DC725C3DEE78;
+    int128 public constant A1 = 0x6FA9BA790D3217AA;
+    int128 public constant A2 = 0x1EC34DC809EF6D0A;
+    int128 public constant A3 = 0xEFF2C3009B30728E;
+    int128 public constant SQRT2PI = 0x281B263FEC4E0B2CA;
+
+    function getCDF(int128 z) internal pure returns (int128) {
+        int128 t = ONE_INT.div(ONE_INT.add(A0.mul(z)));
+        int128 part1 = A1.mul(t).sub(A2.mul(t.mul(t))).add(A3.mul(t.mul(t).mul(t)));
+        int128 p0 = -z.mul(z);
+        int128 p1 = p0.div(TWO_INT);
+        int128 p2 = p1.exp();
+        int128 p3 = p2.div(SQRT2PI);
+        int128 result = ONE_INT.sub(part1.mul(p3));
+        return result;
+    }
+
+    /// testing
+
     int128 public constant ONE_INT = 0x10000000000000000;
     int128 public constant TWO_INT = 0x20000000000000000;
     int128 public constant CDF0 = 0x53dd02a4f5ee2e46;
@@ -24,7 +45,7 @@ library CumulativeNormalDistribution {
     ///         https://en.wikipedia.org/wiki/Abramowitz_and_Stegun
     /// @dev    Maximum error: 3.15x10-3
     /// @return Standard Normal Cumulative Distribution Function of `x`
-    function getCDF(int128 x) internal pure returns (int128) {
+    /* function getCDF(int128 x) internal pure returns (int128) {
         int128 z = x.div(CDF3);
         int128 t = ONE_INT.div(ONE_INT.add(CDF0.mul(z.abs())));
         int128 erf = getErrorFunction(z, t);
@@ -33,7 +54,7 @@ library CumulativeNormalDistribution {
         }
         int128 result = (HALF_INT).mul(ONE_INT.add(erf));
         return result;
-    }
+    } */
 
     /// @notice Uses Abramowitz and Stegun approximation:
     ///         https://en.wikipedia.org/wiki/Error_function

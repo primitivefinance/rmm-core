@@ -30,7 +30,7 @@ async function logRes(engine: Contract, poolId: string) {
 const timeTests = {
   min: 1,
   max: YEAR,
-  increment: YEAR * 0.02,
+  increment: YEAR * 0.25,
 }
 
 interface Reserves {
@@ -79,7 +79,7 @@ TestPools.forEach(function (pool: PoolState) {
     })
 
     for (let i = timeTests.min; i < timeTests.max; i += timeTests.increment) {
-      it(`successfully swaps 0.5 tokens after ${Math.floor(i)} seconds have passed`, async function () {
+      /* it(`successfully swaps 0.5 tokens after ${Math.floor(i)} seconds have passed`, async function () {
         // advances time
         await engine.advanceTime(Math.floor(i))
         // get the reserves
@@ -97,9 +97,8 @@ TestPools.forEach(function (pool: PoolState) {
         // swap risky -> stable
         tx = await router.swap(poolId, true, amountOut.raw, false, false, HashZero)
         await expect(tx).to.increaseInvariant(engine, poolId)
-      })
-
-      /* for (let a = 1; a < strike.float; a++) {
+      }) */
+      for (let a = 1; a < strike.float; a++) {
         it(`swaps ${a} stable to risky after ${Math.floor(i)} seconds have passed`, async function () {
           // advances time
           await engine.advanceTime(Math.floor(i))
@@ -109,7 +108,7 @@ TestPools.forEach(function (pool: PoolState) {
           // does the swap
           let amount = parseWei(a)
 
-          if (amount.gt(maxInStable)) amount = maxInStable.sub(1)
+          if (amount.gt(maxInStable)) amount = maxInStable.sub(1e9)
 
           // swap stable -> risky
           let tx = router.swap(poolId, false, amount.raw, false, false, HashZero)
@@ -133,7 +132,7 @@ TestPools.forEach(function (pool: PoolState) {
           let tx = router.swap(poolId, true, amount.raw, false, false, HashZero)
           await expect(tx).to.increaseInvariant(engine, poolId)
         })
-      } */
+      }
     }
   })
 })
