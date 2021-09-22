@@ -20,7 +20,10 @@ library CumulativeNormalDistribution {
     int128 public constant CDF4 = -0x17401c57014c38f14;
     int128 public constant CDF5 = 0x10fb844255a12d72e;
 
-    /// @notice Returns the Standard Normal Cumulative Distribution Function of `x`
+    /// @notice Uses Abramowitz and Stegun approximation:
+    ///         https://en.wikipedia.org/wiki/Abramowitz_and_Stegun
+    /// @dev    Maximum error: 3.15x10-3
+    /// @return Standard Normal Cumulative Distribution Function of `x`
     function getCDF(int128 x) internal pure returns (int128) {
         int128 z = x.div(CDF3);
         int128 t = ONE_INT.div(ONE_INT.add(CDF0.mul(z.abs())));
@@ -32,7 +35,10 @@ library CumulativeNormalDistribution {
         return result;
     }
 
-    /// @notice Returns the Error Function for approximating the Standard Normal CDF
+    /// @notice Uses Abramowitz and Stegun approximation:
+    ///         https://en.wikipedia.org/wiki/Error_function
+    /// @dev    Maximum error: 1.5×10−7
+    /// @return Error Function for approximating the Standard Normal CDF
     function getErrorFunction(int128 z, int128 t) internal pure returns (int128) {
         int128 step1 = t.mul(CDF3.add(t.mul(CDF4.add(t.mul(CDF5)))));
         int128 step2 = CDF1.add(t.mul(CDF2.add(step1)));
@@ -40,7 +46,7 @@ library CumulativeNormalDistribution {
         return result;
     }
 
-    int128 public constant HALF_INT = 0x8000000000000000; // 0.5
+    int128 public constant HALF_INT = 0x8000000000000000;
     int128 public constant INVERSE0 = 0x26A8F3C1F21B336E;
     int128 public constant INVERSE1 = -0x87C57E5DA70D3C90;
     int128 public constant INVERSE2 = 0x15D71F5721242C787;
@@ -52,6 +58,7 @@ library CumulativeNormalDistribution {
 
     /// @notice  Returns the inverse CDF, or quantile function of `p`.
     /// @dev     Source: https://arxiv.org/pdf/1002.0567.pdf
+    ///          Maximum error of central region is 1.16x10−4
     /// @return  fcentral(p) = q * (a2 + (a1r + a0) / (r^2 + b1r +b0))
     function getInverseCDF(int128 p) internal pure returns (int128) {
         if (p >= ONE_INT || p <= 0) revert InverseOutOfBounds(p);
@@ -66,6 +73,7 @@ library CumulativeNormalDistribution {
         }
     }
 
+    /// @dev    Maximum error: 1.16x10−4
     /// @return Inverse CDF around the central area of 0.025 <= p <= 0.975
     function central(int128 p) internal pure returns (int128) {
         int128 q = p.sub(HALF_INT);
@@ -86,6 +94,7 @@ library CumulativeNormalDistribution {
     int128 public constant D0 = 0x72C7D592D021FB1DB;
     int128 public constant D1 = 0x8C27B4617F5F800EA;
 
+    /// @dev    Maximum error: 2.458x10-5
     /// @return Inverse CDF of the tail, defined for p < 0.0465, used with p < 0.025
     function tail(int128 p) internal pure returns (int128) {
         int128 r = ONE_INT.div(p.mul(p)).ln().sqrt();

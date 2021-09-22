@@ -1,5 +1,12 @@
 import { utils, BigNumber, constants } from 'ethers'
+import { parseWei, Wei } from 'web3-units'
 const { keccak256, solidityPack } = utils
+
+export const maxError = {
+  cdf: 3.15e-3,
+  centralInverseCDF: 1.16e-4,
+  tailInverseCDF: 2.458e-5,
+}
 
 export function computePoolId(
   engine: string,
@@ -17,6 +24,11 @@ export function computePositionId(account: string, poolId: string): string {
 export function computeEngineAddress(factory: string, risky: string, stable: string, bytecode: string): string {
   const salt = utils.solidityKeccak256(['bytes'], [utils.defaultAbiCoder.encode(['address', 'address'], [risky, stable])])
   return utils.getCreate2Address(factory, salt, utils.keccak256(bytecode))
+}
+
+export function scaleUp(value: number, decimals: number): Wei {
+  const scaled = Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+  return parseWei(scaled, decimals)
 }
 
 /**

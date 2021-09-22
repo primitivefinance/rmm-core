@@ -1,17 +1,55 @@
 import expect from '../../shared/expect'
-import { waffle } from 'hardhat'
 import { TestCumulativeNormalDistribution } from '../../../typechain'
-import { parseWei, FixedPointX64, Wei, parseFixedPointX64 } from 'web3-units'
-import { std_n_cdf, inverse_std_n_cdf } from '@primitivefinance/v2-math'
+import { FixedPointX64, parseFixedPointX64 } from 'web3-units'
 import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
+import { parseEther } from '@ethersproject/units'
+import { maxError } from '../../shared/utils'
 
-const precision = {
-  percentage: 1e-2,
-  invariant: 0.1,
-  cdf: 0.1,
-  integer: 1e15,
+// array values below calculated with https://keisan.casio.com/calculator
+const cdfs = {
+  [-1.0]: 0.1586552539314570514148,
+  [-0.9]: 0.1840601253467594885542,
+  [-0.8]: 0.2118553985833966855755,
+  [-0.7]: 0.2419636522230730147494,
+  [-0.6]: 0.2742531177500735802944,
+  [-0.5]: 0.3085375387259868963623,
+  [-0.4]: 0.3445782583896758332631,
+  [-0.3]: 0.3820885778110473626935,
+  [-0.2]: 0.4207402905608969769576,
+  [-0.1]: 0.4601721627229710185346,
+  [0.0]: 0.5,
+  [0.1]: 0.5398278372770289814654,
+  [0.2]: 0.5792597094391030230424,
+  [0.3]: 0.6179114221889526373065,
+  [0.4]: 0.6554217416103241667369,
+  [0.5]: 0.6914624612740131036377,
+  [0.6]: 0.7257468822499264197056,
+  [0.7]: 0.7580363477769269852507,
+  [0.8]: 0.7881446014166033144245,
+  [0.9]: 0.8159398746532405114458,
+  [1.0]: 0.8413447460685429485852,
 }
+
+const icdfs = {
+  [0.0]: -Infinity,
+  [0.01]: -2.32634787404084110089,
+  [0.02]: -2.053748910631823052937,
+  [0.1]: -1.281551565544600466965,
+  [0.2]: -0.8416212335729142051787,
+  [0.3]: -0.5244005127080407840383,
+  [0.4]: -0.2533471031357997987982,
+  [0.5]: 0,
+  [0.6]: 0.2533471031357997987982,
+  [0.7]: 0.5244005127080407840383,
+  [0.8]: 0.8416212335729142051787,
+  [0.9]: 1.281551565544600466965,
+  [0.98]: 2.053748910631823052937,
+  [0.99]: 2.326347874040841100886,
+  [1.0]: Infinity,
+}
+
+const DEBUG = false
 
 testContext('testCumulativeNormalDistribution', function () {
   beforeEach(async function () {
@@ -26,46 +64,54 @@ testContext('testCumulativeNormalDistribution', function () {
       cumulative = this.libraries.testCumulativeNormalDistribution
     })
 
-    it('cdf: positive values', async function () {
-      let x = 1
-      let y = 0.5
-      let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
-      await expect(cumulative.cdf(parseWei(x).div(1e10).raw)).to.not.be.reverted
-      await expect(cumulative.cdf(parseWei(y).div(1e10).raw)).to.not.be.reverted
-      expect(new FixedPointX64(await cumulative.cdf(x)).parsed).to.be.closeTo(cdf, precision.percentage)
+    for (let x in cdfs) {
+      it(`gets the cdf of ${x}`, async function () {
+        const expected = +cdfs[x]
+        const value =
+          Math.sign(+x) >= 0
+            ? await cumulative.cdf(parseEther(x))
+            : await cumulative.signedCDF(parseEther((+x * -1).toString()))
+
+        const actual = new FixedPointX64(value).parsed
+        const ae = actual - expected
+        const error = (ae / expected) * 100
+        if (DEBUG) console.log(`   Expected: ${expected}, actual: ${actual} with ae: ${ae} and error: ${error}%`)
+
+        const addedMaxError = +x <= 0.1 && +x >= -0.1 ? 0.55e-3 : 0
+        expect(expected).to.be.closeTo(actual, maxError.cdf + addedMaxError)
+      })
+    }
+
+    for (let x in icdfs) {
+      it(`gets the inverse cdf of ${x}`, async function () {
+        const expected = +icdfs[x]
+        if (expected == Infinity || expected == -Infinity) {
+          await expect(cumulative.inverseCDF(parseEther(x))).to.be.reverted
+        } else {
+          const isTail = +x > 0.975 || +x < 0.025
+
+          const value = await cumulative.inverseCDF(parseEther(x))
+
+          const actual = new FixedPointX64(value).parsed
+          const ae = actual - expected
+          const error = (ae / expected) * 100
+          if (DEBUG) console.log(`   Expected: ${expected}, actual: ${actual} with ae: ${ae} and error: ${error}%`)
+          expect(expected).to.be.closeTo(actual, isTail ? maxError.tailInverseCDF : maxError.centralInverseCDF)
+        }
+      })
+    }
+
+    it('inverseCDF: x >= 1 should revert', async function () {
+      await expect(cumulative.inverseCDF(parseEther('1'))).to.be.reverted // flips sign in fn
     })
 
-    it('cdf: negative values', async function () {
-      let x = 1
-      let y = 0.5
-      let cdf = Math.floor(std_n_cdf(x) * Wei.Mantissa) / Wei.Mantissa
-      await expect(cumulative.cdfX64(parseFixedPointX64(Math.floor(x * 1e9), 9).raw)).to.not.be.reverted // flips sign in fn
-      await expect(cumulative.cdfX64(parseFixedPointX64(Math.floor(y * 1e9), 9).raw)).to.not.be.reverted // flips sign in fn
-      expect(new FixedPointX64(await cumulative.cdf(x)).parsed).to.be.closeTo(cdf, precision.percentage)
+    it('inverseCDF: x == 0 should revert', async function () {
+      await expect(cumulative.inverseCDF(parseEther('0'))).to.be.reverted // flips sign in fn
     })
 
-    it('icdf: positive value', async function () {
+    it('signedInverseCDF: negative value should revert', async function () {
       let x = 0.25
-      let icdf = inverse_std_n_cdf(x)
-      expect(new FixedPointX64(await cumulative.icdf(parseWei(x).raw)).parsed).to.be.closeTo(icdf, precision.percentage)
+      await expect(cumulative.signedInverseCDF(parseFixedPointX64(Math.floor(x * 1e4), 4).raw)).to.be.reverted // flips sign in fn
     })
-
-    it('icdfX64: negative value', async function () {
-      let x = 0.25
-      await expect(cumulative.icdfX64(parseFixedPointX64(Math.floor(x * 1e4), 4).raw)).to.be.reverted // flips sign in fn
-    })
-
-    // todo: fix
-    /* it('icdf: high tail', async function () {
-      let x = 0.99
-      let icdf = inverse_std_n_cdf(x)
-      expect(new FixedPointX64(await cumulative.inverseCDFHighTail()).parsed).to.be.closeTo(icdf, precision.percentage)
-    })
-
-    it('icdf: low tail', async function () {
-      let x = 0.01
-      let icdf = inverse_std_n_cdf(x)
-      expect(new FixedPointX64(await cumulative.inverseCDFLowTail()).parsed).to.be.closeTo(icdf, precision.percentage)
-    }) */
   })
 })

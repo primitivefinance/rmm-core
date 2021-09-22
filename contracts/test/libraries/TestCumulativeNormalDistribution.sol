@@ -14,18 +14,34 @@ contract TestCumulativeNormalDistribution {
     using ABDKMath64x64 for *;
     using CumulativeNormalDistribution for *;
 
+    uint256 public constant PRECISION = 1e18;
+
     constructor() {}
 
     // ==== Cumulative Normal Distribution Function Library Entry ====
+    function signedCDF(uint256 x) public pure returns (int128) {
+        int128 z = -x.divu(PRECISION);
+        return z.getCDF();
+    }
 
     function cdf(uint256 x) public pure returns (int128) {
-        int128 z = ABDKMath64x64.fromUInt(x);
+        int128 z = x.divu(PRECISION);
         return z.getCDF();
     }
 
     function cdfX64(int128 z) public pure returns (int128) {
         z = -z;
         return z.getCDF();
+    }
+
+    function inverseCDF(uint256 x) public pure returns (int128 y) {
+        int128 p = x.divu(PRECISION);
+        y = p.getInverseCDF();
+    }
+
+    function signedInverseCDF(uint256 x) public pure returns (int128 y) {
+        int128 p = -x.divu(PRECISION);
+        y = p.getInverseCDF();
     }
 
     function icdf(uint256 x) public pure returns (int128 y) {
@@ -41,11 +57,6 @@ contract TestCumulativeNormalDistribution {
 
     function inverseCDFLowTail() public pure returns (int128 y) {
         int128 p = CumulativeNormalDistribution.LOW_TAIL.sub(1);
-        y = p.getInverseCDF();
-    }
-
-    function icdfX64(int128 p) public pure returns (int128 y) {
-        p = -p;
         y = p.getInverseCDF();
     }
 }

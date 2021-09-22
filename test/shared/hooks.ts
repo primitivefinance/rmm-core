@@ -37,6 +37,7 @@ export async function usePool(
   } = config
   // since strike is in native precision, scale to 18 decimals if needed
   const scaledStrike = strike.mul(parseWei('1', scaleFactorStable))
+
   /// call create on the router contract
   let tx: any
   try {
@@ -48,12 +49,13 @@ export async function usePool(
   }
 
   const poolId = config.poolId(contracts.engine.address)
+
   if (debug) console.log(`\n   Using pool with id: ${poolId.slice(0, 6)}`)
 
   const receipt = await tx.wait()
   const args = receipt?.events?.[0].args
   if (args) {
-    const actualPoolId = computePoolId(contracts.engine.address, args.strike, args.sigma, args.maturity)
+    const actualPoolId = computePoolId(contracts.engine.address, args.maturity, args.sigma, args.strike)
     if (actualPoolId !== poolId) throw Error(`\n  PoolIds do not match: ${poolId} != ${actualPoolId}`)
   }
 

@@ -32,6 +32,7 @@
     "test:engine": "npx mocha ./test/unit/primitiveEngine/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:factory": "npx mocha ./test/unit/primitiveFactory/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "test:libraries": "npx mocha ./test/unit/libraries/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
+    "test:swapStable": "npx mocha ./test/unit/primitiveEngine/effect/swapStable.test.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "prepare": "husky install"
   },
   "devDependencies": {
