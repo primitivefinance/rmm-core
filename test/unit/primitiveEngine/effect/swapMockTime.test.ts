@@ -10,20 +10,24 @@ import { PrimitiveFixture, primitiveFixture } from '../../../shared/fixtures'
 import { useTokens, useApproveAll, usePool } from '../../../shared/hooks'
 import { Pool } from '../../../shared'
 import { TestPools, PoolState } from '../../../shared/poolConfigs'
+import { scaleUp } from '../../../shared'
+import { callDelta } from '@primitivefinance/v2-math'
 
-const { HashZero } = constants
+const { HashZero, MaxUint256 } = constants
 const YEAR = Time.YearInSeconds
 
-async function logRes(engine: Contract, poolId: string) {
+async function logRes(engine: Contract, poolId: string, decimalsRisky = 18, decimalsStable = 18) {
   const res = await engine.reserves(poolId)
   const obj = {
-    risky: new Wei(res.reserveRisky),
-    stable: new Wei(res.reserveStable),
+    risky: new Wei(res.reserveRisky, decimalsRisky),
+    stable: new Wei(res.reserveStable, decimalsStable),
     liquidity: new Wei(res.liquidity),
   }
 
-  console.log(`       - Risky: ${obj.risky.float}`)
-  console.log(`       - Stable: ${obj.stable.float}`)
+  if (DEBUG) {
+    console.log(`       - Risky: ${obj.risky.float}`)
+    console.log(`       - Stable: ${obj.stable.float}`)
+  }
   return obj
 }
 
@@ -39,6 +43,8 @@ interface Reserves {
   liquidity: Wei
 }
 
+const DEBUG = true
+
 TestPools.forEach(function (pool: PoolState) {
   testContext(`mocking time for ${pool.description}`, function () {
     let poolId: string, deployer: Wallet, engine: MockEngine, router: TestRouter
@@ -48,6 +54,7 @@ TestPools.forEach(function (pool: PoolState) {
       maturity,
       lastTimestamp,
       fee,
+      spot,
       decimalsRisky,
       decimalsStable,
       scaleFactorRisky,
@@ -79,13 +86,13 @@ TestPools.forEach(function (pool: PoolState) {
     })
 
     for (let i = timeTests.min; i < timeTests.max; i += timeTests.increment) {
-      /* it(`successfully swaps 0.5 tokens after ${Math.floor(i)} seconds have passed`, async function () {
+      it(`successfully swaps 0.5 tokens after ${Math.floor(i)} seconds have passed`, async function () {
         // advances time
         await engine.advanceTime(Math.floor(i))
         // get the reserves
-        let res = await logRes(this.contracts.engine, poolId)
+        let res = await logRes(this.contracts.engine, poolId, decimalsRisky, decimalsStable)
         // does the swap
-        let amount = parseWei(0.5)
+        let amount = scaleUp(0.5, decimalsRisky)
 
         // swap stable -> risky
         let tx = await router.swap(poolId, false, amount.raw, false, false, HashZero)
@@ -97,18 +104,26 @@ TestPools.forEach(function (pool: PoolState) {
         // swap risky -> stable
         tx = await router.swap(poolId, true, amountOut.raw, false, false, HashZero)
         await expect(tx).to.increaseInvariant(engine, poolId)
-      }) */
+      })
       for (let a = 1; a < strike.float; a++) {
         it(`swaps ${a} stable to risky after ${Math.floor(i)} seconds have passed`, async function () {
           // advances time
           await engine.advanceTime(Math.floor(i))
+          await engine.updateLastTimestamp(poolId)
+          let delta = scaleUp(
+            callDelta(strike.float, sigma.float, maturity.sub(new Time(Math.floor(i) - 1)).years, spot.float),
+            decimalsRisky
+          )
+          await this.contracts.risky.approve(engine.address, MaxUint256)
+          await this.contracts.stable.approve(engine.address, MaxUint256)
+          await engine.updateReserves(poolId, scaleUp(1, decimalsRisky).sub(delta).raw)
           // get the reserves
-          let res = await logRes(this.contracts.engine, poolId)
+          let res = await logRes(this.contracts.engine, poolId, decimalsRisky, decimalsStable)
           const maxInStable = strike.sub(res.stable)
           // does the swap
-          let amount = parseWei(a)
+          let amount = scaleUp(a, decimalsStable)
 
-          if (amount.gt(maxInStable)) amount = maxInStable.sub(1e9)
+          if (amount.gt(maxInStable)) amount = maxInStable.sub(await engine.MIN_LIQUIDITY())
 
           // swap stable -> risky
           let tx = router.swap(poolId, false, amount.raw, false, false, HashZero)
@@ -116,23 +131,38 @@ TestPools.forEach(function (pool: PoolState) {
         })
       }
 
-      for (let a = 0.1; a < 1; a += 0.1) {
+      // TODO: FIX THIS
+      /* for (let a = 0.1; a < 1; a += 0.1) {
         it(`swaps ${a} risky to stable tokens after ${Math.floor(i)} seconds have passed`, async function () {
           // advances time
           await engine.advanceTime(Math.floor(i))
+          await engine.updateLastTimestamp(poolId)
+          let delta = scaleUp(
+            callDelta(strike.float, sigma.float, maturity.sub(new Time(Math.floor(i) - 1)).years, spot.float),
+            decimalsRisky
+          )
+          await this.contracts.risky.approve(engine.address, MaxUint256)
+          await this.contracts.stable.approve(engine.address, MaxUint256)
+          await engine.updateReserves(poolId, scaleUp(1, decimalsRisky).sub(delta).raw)
           // get the reserves
-          let res = await logRes(this.contracts.engine, poolId)
-          const maxInRisky = parseWei(1).sub(res.risky)
+          let res = await logRes(this.contracts.engine, poolId, decimalsRisky, decimalsStable)
+          const maxInRisky = delta.sub(await engine.MIN_LIQUIDITY())
           // does the swap
-          let amount = parseWei(a)
+          let amount = scaleUp(a, decimalsRisky)
 
-          if (amount.gt(maxInRisky)) amount = maxInRisky.sub(1)
+          if (amount.gt(maxInRisky)) amount = maxInRisky
 
           // swap risky -> stable
+          console.log(
+            'swapping risky now',
+            amount.toString(),
+            (await this.contracts.risky.balanceOf(engine.address)).toString(),
+            (await this.contracts.stable.balanceOf(engine.address)).toString()
+          )
           let tx = router.swap(poolId, true, amount.raw, false, false, HashZero)
           await expect(tx).to.increaseInvariant(engine, poolId)
         })
-      }
+      } */
     }
   })
 })

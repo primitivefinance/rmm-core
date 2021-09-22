@@ -291,6 +291,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint32 timestamp;
     }
 
+    error ReservesError(uint256 prev, uint256 next);
+
     /// @inheritdoc IPrimitiveEngineActions
     function swap(
         bytes32 poolId,
@@ -338,7 +340,10 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
+                uint256 next = (res1 * liq) / PRECISION;
+                if (next > uint256(reserve.reserveStable)) revert ReservesError(uint256(reserve.reserveStable), next);
+                deltaOut = uint256(reserve.reserveStable) - next;
+                //deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
             } else {
                 res1 = ((res1 + deltaInWithFee) * PRECISION) / liq; // per liquidity
                 res0 = invariantX64.getRiskyGivenStable(
@@ -349,7 +354,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
                     cal.sigma,
                     tau
                 ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
+
+                uint256 next = (res0 * liq) / PRECISION;
+                if (next > uint256(reserve.reserveRisky)) revert ReservesError(uint256(reserve.reserveRisky), next);
+                deltaOut = uint256(reserve.reserveRisky) - next;
+                //deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
             }
 
             reserve.swap(swapInRisky, details.deltaIn, deltaOut, _blockTimestamp()); // state update
