@@ -263,23 +263,6 @@ TestPools.forEach(function (pool: PoolState) {
         ).to.reverted
       })
 
-      it('reverts if the actual delta amounts are 0', async function () {
-        let fig = new Calibration(100, sigma.float, maturity.seconds, 1, spot.float)
-        let pid = computePoolId(this.contracts.engine.address, fig.maturity.raw, fig.sigma.raw, fig.strike.raw)
-        await expect(
-          this.contracts.router.create(
-            fig.strike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(fig.delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
-        ).to.be.reverted
-        const res = await this.contracts.engine.reserves(pid)
-        expect(res.reserveStable.isZero()).to.eq(true)
-      })
-
       it('reverts if strike is greater than uint128', async function () {
         await expect(
           this.contracts.router.create(

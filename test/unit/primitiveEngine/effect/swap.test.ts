@@ -252,7 +252,6 @@ TestPools.forEach(function (pool: PoolState) {
             deltaIn = new Wei(deltaIn.div(parseWei('1', prec)).raw, dec)
           })
           beforeEach(async function () {
-            console.log(deltaIn.toString(), 'delta in')
             swapper = this.signers[signer ? signer : 0]
             target = fromMargin ? engine : router
             receiver = fromMargin ? swapper.address : router.address
