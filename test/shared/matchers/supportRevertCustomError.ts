@@ -4,9 +4,9 @@ export default function supportRevertCustomError(Assertion: Chai.AssertionStatic
   Assertion.addMethod('revertWithCustomError', async function (this: any, errorName: string, params?: any[]) {
     try {
       await this._obj
-    } catch (e) {
-      const msg: string = e.message
-      const [, revertMsg] = msg.split("'")
+    } catch (e: any) {
+      const msg: string = e?.message
+      const [, revertMsg] = msg?.split("'")
 
       const [actualErrorName, actualParamsRaw] = revertMsg.split('(')
       const actualParams = actualParamsRaw
