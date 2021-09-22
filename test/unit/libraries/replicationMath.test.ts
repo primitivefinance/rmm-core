@@ -119,6 +119,8 @@ function parseX64(val: Wei): FixedPointX64 {
   return new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1, val.decimals)).raw, val.decimals)
 }
 
+const DEBUG = false
+
 // for each calibration
 TestPools.forEach(function (pool: PoolState) {
   testContext(`testReplicationMath for ${pool.description}`, function () {
@@ -311,7 +313,10 @@ TestPools.forEach(function (pool: PoolState) {
               const result = await fixture.getStableGivenRisky[step](...params) // smart contract call
               const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
 
-              if (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getStableGivenRisky')
+              if (
+                DEBUG &&
+                (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getStableGivenRisky')
+              )
                 console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
               //expect(actual).to.be.closeTo(+exp, error)
             }
@@ -341,7 +346,10 @@ TestPools.forEach(function (pool: PoolState) {
               const result = await fixture.getRiskyGivenStable[step](...params) // smart contract call
               const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
 
-              if (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getRiskyGivenStable')
+              if (
+                DEBUG &&
+                (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getRiskyGivenStable')
+              )
                 console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
               //expect(actual).to.be.closeTo(+exp, error)
             }
@@ -370,7 +378,7 @@ TestPools.forEach(function (pool: PoolState) {
               const result = await fixture.calcInvariant[step](...params) // smart contract call
               const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
 
-              console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              if (DEBUG) console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
               //expect(actual).to.be.closeTo(+exp, error)
             }
           })
