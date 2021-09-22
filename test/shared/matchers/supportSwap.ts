@@ -116,9 +116,7 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod('increaseInvariant', async function (this: any, engine: EngineTypes, poolId: string) {
     // need to update the invariant to the latest timestamp before the swap (even though it happens in swap)
     // to get the invariant after the update
-    /* const lastTimestamp = await engine.time()
-    const cal = await engine.calibrations(poolId)
-    if (cal.lastTimestamp != lastTimestamp) await engine.updateLastTimestamp(poolId) */
+    await engine.updateLastTimestamp(poolId)
 
     const oldInvariant = await engine.invariantOf(poolId)
     await this._obj

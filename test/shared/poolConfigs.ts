@@ -7,16 +7,7 @@ export interface PoolState {
   customEngine?: boolean
 }
 
-export const DEFAULT_CONFIG: Calibration = new Calibration(
-  10,
-  1,
-  Time.YearInSeconds + 1,
-  1,
-  10,
-  parsePercentage(0.0015),
-  6,
-  6
-)
+export const DEFAULT_CONFIG: Calibration = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015))
 export const calibrations: any = {
   ['expired']: new Calibration(10, 1, Time.YearInSeconds, Time.YearInSeconds + 1, 10),
   ['itm']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5),

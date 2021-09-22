@@ -3,7 +3,7 @@ import { parseWei, Wei } from 'web3-units'
 const { keccak256, solidityPack } = utils
 
 export const maxError = {
-  cdf: 1.15e-5,
+  cdf: 3.15e-3,
   centralInverseCDF: 1.16e-4,
   tailInverseCDF: 2.458e-5,
 }
