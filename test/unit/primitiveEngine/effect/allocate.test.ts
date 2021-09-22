@@ -34,7 +34,7 @@ TestPools.forEach(function (pool: PoolState) {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         const fix = await primitiveFixture([wallet], provider)
         // if using a custom engine, create it and replace the default contracts
-        if (pool.customEngine) {
+        if (decimalsRisky != 18 || decimalsStable != 18) {
           const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
           fix.contracts.risky = risky
           fix.contracts.stable = stable
@@ -58,6 +58,7 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when allocating from margin', function () {
       beforeEach(async function () {
         await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
+        poolId = pool.calibration.poolId(this.contracts.engine.address)
       })
 
       describe('success cases', function () {

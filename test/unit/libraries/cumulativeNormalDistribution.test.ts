@@ -49,7 +49,7 @@ const icdfs = {
   [1.0]: Infinity,
 }
 
-const DEBUG = true
+const DEBUG = false
 
 testContext('testCumulativeNormalDistribution', function () {
   beforeEach(async function () {

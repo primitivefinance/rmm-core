@@ -7,7 +7,7 @@ import { computePoolId } from './utils'
  */
 export class Calibration {
   /**
-   * @notice Strike price with decimals = scaleFactorStable
+   * @notice Strike price with decimals = stable decimals
    */
   public readonly strike: Wei
   /**
