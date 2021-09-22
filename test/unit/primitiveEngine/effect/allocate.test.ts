@@ -34,7 +34,7 @@ TestPools.forEach(function (pool: PoolState) {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         const fix = await primitiveFixture([wallet], provider)
         // if using a custom engine, create it and replace the default contracts
-        if (pool.customEngine) {
+        if (decimalsRisky != 18 || decimalsStable != 18) {
           const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
           fix.contracts.risky = risky
           fix.contracts.stable = stable
@@ -46,7 +46,7 @@ TestPools.forEach(function (pool: PoolState) {
         return fix
       }
 
-      const fixture = await this.loadFixture(poolFixture)
+      const fixture = await this.loadFixture(primitiveFixture)
       this.contracts = fixture.contracts
 
       await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
@@ -58,6 +58,7 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when allocating from margin', function () {
       beforeEach(async function () {
         await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
+        poolId = pool.calibration.poolId(this.contracts.engine.address)
       })
 
       describe('success cases', function () {
@@ -134,7 +135,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('reverts if there is no liquidity', async function () {
           await expect(
             this.contracts.router.allocateFromMargin(HashZero, this.signers[0].address, parseWei('1').raw, HashZero)
-          ).to.be.revertedWith('UninitializedError()')
+          ).to.be.reverted
         })
 
         it('reverts if the deltas are 0', async function () {
@@ -143,9 +144,7 @@ TestPools.forEach(function (pool: PoolState) {
 
         it('reverts if pool is expired', async function () {
           await this.contracts.engine.advanceTime(Time.YearInSeconds + 1)
-          await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)
-          ).to.revertedWith('PoolExpiredError()')
+          await expect(this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)).to.reverted
         })
       })
     })

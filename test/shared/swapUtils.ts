@@ -1,6 +1,7 @@
 import { Wei, Percentage, Time, FixedPointX64, parseFixedPointX64, parseWei, toBN } from 'web3-units'
 import { quantilePrime, std_n_pdf, std_n_cdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
+import { scaleUp } from '.'
 
 export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
   return new Pool(
@@ -81,7 +82,7 @@ export class Pool {
    * @return reserveStable Expected amount of stable token reserves
    */
   getStableGivenRisky(reserveRisky: Wei, noInvariant?: boolean): Wei {
-    const decimals = this.reserveStable.decimals
+    const decimals = this?.reserveStable?.decimals ? this.reserveStable.decimals : 18
     let invariant = this.invariant.parsed
     invariant = Math.abs(invariant) >= 1e-8 ? invariant : 0
     if (this.debug)
@@ -107,9 +108,8 @@ export class Pool {
       this.tau.years,
       noInvariant ? 0 : invariant
     )
-    stable = Math.floor(stable * Math.pow(10, decimals)) / Math.pow(10, decimals)
     if (isNaN(stable)) return parseWei(0, decimals)
-    return parseWei(stable, decimals)
+    return scaleUp(stable, decimals)
   }
 
   /**
@@ -144,9 +144,8 @@ export class Pool {
       noInvariant ? 0 : invariant
     )
     if (this.debug) console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
-    risky = Math.floor(risky * Math.pow(10, decimals)) / Math.pow(10, decimals)
     if (isNaN(risky)) return parseWei(0, decimals)
-    return parseWei(risky, decimals)
+    return scaleUp(risky, decimals)
   }
 
   /**

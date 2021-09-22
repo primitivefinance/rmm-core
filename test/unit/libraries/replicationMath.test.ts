@@ -1,8 +1,6 @@
 import expect from '../../shared/expect'
-import { waffle } from 'hardhat'
-import { parseEther, parseUnits } from '@ethersproject/units'
-import { TestReplicationMath, TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-import { FixedPointX64, parseFixedPointX64, parsePercentage, parseWei, Percentage, Time, toBN, Wei } from 'web3-units'
+import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
+import { FixedPointX64, parseWei, Time, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
 import {
   getProportionalVol,
@@ -15,7 +13,7 @@ import {
 import { TestPools, PoolState } from '../../shared/poolConfigs'
 import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
-import { Calibration } from '../../shared'
+import { maxError } from '../../shared/utils'
 
 interface TestTradingFunctionFixture {
   getStableGivenRisky: TestGetStableGivenRisky
@@ -66,28 +64,226 @@ async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFi
   }
 }
 
-const precision = {
-  percentage: 0.01,
-  invariant: 0.1,
-  cdf: 0.1,
-  integer: 1e15,
+function riskySwapStep3(reserve: Wei) {
+  let inside = 1 - reserve.float
+  let expected = inverse_std_n_cdf(inside)
+  return expected
 }
 
+function riskySwapStep4(reserve: Wei, sigma: number, tau: Time) {
+  let vol = getProportionalVol(sigma, tau.years)
+  let expected = riskySwapStep3(reserve) - vol
+  return expected
+}
+
+function riskySwapStep5(reserve: Wei, strike: Wei, sigma: number, tau: Time) {
+  const invariant = 0
+  let input = riskySwapStep4(reserve, sigma, tau)
+  let cdf = std_n_cdf(input)
+  let expected = strike.float * cdf + invariant
+  return expected
+}
+
+function stableSwapStep3(reserve: Wei, strike: Wei) {
+  let inside = reserve.float / strike.float
+  let expected = inverse_std_n_cdf(inside)
+  return expected
+}
+
+function stableSwapStep4(reserve: Wei, strike: Wei, sigma: number, tau: Time) {
+  let vol = getProportionalVol(sigma, tau.years)
+  let expected = stableSwapStep3(reserve, strike) + vol
+  return expected
+}
+
+function stableSwapStep5(reserve: Wei, strike: Wei, sigma: number, tau: Time) {
+  let input = stableSwapStep4(reserve, strike, sigma, tau)
+  let cdf = std_n_cdf(input)
+  let expected = 1 - cdf
+  return expected
+}
+
+interface RangeTest {
+  [key: string]: {
+    params: any[]
+    min: number
+    max: number
+    increment: number
+    error: number
+    parse: (val: number) => any
+    expected: (val: any) => any
+  }
+}
+
+function parseX64(val: Wei): FixedPointX64 {
+  return new FixedPointX64(val.mul(FixedPointX64.Denominator).div(parseWei(1, val.decimals)).raw, val.decimals)
+}
+
+const DEBUG = false
+
+// for each calibration
 TestPools.forEach(function (pool: PoolState) {
   testContext(`testReplicationMath for ${pool.description}`, function () {
-    const {
-      strike,
-      sigma,
-      maturity,
-      lastTimestamp,
-      delta,
-      spot,
-      decimalsRisky,
-      decimalsStable,
-      scaleFactorRisky,
-      scaleFactorStable,
-    } = pool.calibration
+    const { strike, sigma, tau, decimalsRisky, decimalsStable, scaleFactorRisky, scaleFactorStable } = pool.calibration
+
     let fixture: TestStepFixture
+
+    // test domain and range of `getStableGivenRisky`
+    const riskySwapTests: RangeTest = {
+      ['step0']: {
+        params: [0],
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => parseX64(val).parsed, // parses strike to fixed point
+      },
+      ['step1']: {
+        params: [0, tau.raw], // sigma, tau
+        min: 1,
+        max: 1000,
+        increment: 10,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, 4), // parses percentage
+        expected: (val: Wei) => getProportionalVol(val.float, tau.years),
+      },
+      ['step2']: {
+        params: [0], // reserve risky
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['testStep3']: {
+        params: [0], // reserve
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsRisky),
+        expected: riskySwapStep3,
+      },
+      ['testStep4']: {
+        params: [0, sigma.raw, tau.raw], // reserve, sigma, tau
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => riskySwapStep4(val, sigma.float, tau),
+      },
+      ['testStep5']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, strike, sigma, tau
+        min: 0.01,
+        max: 0.99,
+        increment: 0.01,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => riskySwapStep5(val, strike, sigma.float, tau),
+      },
+      ['getStableGivenRisky']: {
+        params: [0, 1, 0, strike.raw, sigma.raw, tau.raw], // invariant, prec, risky, strike, sigma, tau
+        min: 0.02,
+        max: 0.98,
+        increment: 0.01,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => getStableGivenRisky(val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    // test domain and range of `getRiskyGivenStable
+    const stableSwapTests: RangeTest = {
+      ['step0']: {
+        params: [0], // value
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['step1']: {
+        params: [0, tau.raw], // sigma, tau
+        min: 1,
+        max: 1000,
+        increment: 10,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, 4), // parses percentage
+        expected: (val: Wei) => getProportionalVol(val.float, tau.years),
+      },
+      ['step2']: {
+        params: [0], // stable
+        min: 0,
+        max: 10000,
+        increment: 100,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => parseX64(val).parsed,
+      },
+      ['testStep3']: {
+        params: [0, strike.raw], // reserve
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep3(val, strike),
+      },
+      ['testStep4']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.centralInverseCDF,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep4(val, strike, sigma.float, tau),
+      },
+      ['testStep5']: {
+        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, strike, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => stableSwapStep5(val, strike, sigma.float, tau),
+      },
+      ['getRiskyGivenStable']: {
+        params: [0, 1, 0, strike.raw, sigma.raw, tau.raw], // invariant, prec, risky, strike, sigma, tau
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: maxError.cdf,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        expected: (val: Wei) => getRiskyGivenStable(val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    const calcInvariantTests: RangeTest = {
+      ['calcInvariantRisky']: {
+        params: [0, strike.div(2).raw, strike.raw, sigma.raw, tau.raw],
+        min: 0.01,
+        max: 0.99,
+        increment: 0.1,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        expected: (val: Wei) => calcInvariant(val.float, strike.div(2).float, strike.float, sigma.float, tau.years),
+      },
+      ['calcInvariantStable']: {
+        params: [parseWei(0.5).raw, 0, strike.raw, sigma.raw, tau.raw],
+        min: 0.1,
+        max: 9.9,
+        increment: 0.1,
+        error: 1e-4,
+        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        expected: (val: Wei) => calcInvariant(parseWei(0.5).float, val.float, strike.float, sigma.float, tau.years),
+      },
+    }
+
+    // load the fixtures
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
       await fixture.calcInvariant.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
@@ -96,333 +292,98 @@ TestPools.forEach(function (pool: PoolState) {
       this.libraries = fixture.libraries
     })
 
-    describe('replicationMath', function () {
-      let math: TestReplicationMath
-      let reserveRisky: Wei, reserveStable: Wei, liquidity: Wei
-      let tau: Time
+    // run the tests for `getStableGivenRisky
+    describe('testGetStableGivenRisky', function () {
+      // for each of the tests, run through its domain and range
+      for (let step in riskySwapTests) {
+        describe(`testing ${step}`, function () {
+          let { params, min, max, increment, parse, expected, error } = riskySwapTests[step]
 
-      beforeEach(async function () {
-        math = this.libraries.testReplicationMath
-        await math.set(Math.pow(10, pool.calibration.scaleFactorRisky), Math.pow(10, pool.calibration.scaleFactorStable))
-        tau = new Time(maturity.raw - lastTimestamp.raw)
-        liquidity = parseWei('1')
-        const one = parseWei('1', decimalsRisky)
-        const deltaFloored = Math.floor(delta * Math.pow(10, decimalsRisky)) / Math.pow(10, decimalsRisky)
-        const poolDelta = parseWei(deltaFloored, decimalsRisky)
-        reserveRisky = one.sub(poolDelta)
-        const stableAmount = getStableGivenRisky(reserveRisky.float, strike.float, sigma.float, tau.years)
-        const stableFloored = Math.floor(stableAmount * Math.pow(10, decimalsStable)) / Math.pow(10, decimalsStable)
-        reserveStable = new Wei(parseUnits(stableFloored.toString(), decimalsStable), decimalsStable)
-      })
+          it('stays within max error', async function () {
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
 
-      it('YEAR()', async function () {
-        expect(await math.YEAR()).to.be.eq(31556952)
-      })
+              if (step == 'getStableGivenRisky') {
+                params[2] = input.raw // reserve parameter is at index of `2`
+              } else {
+                params[0] = input.raw
+              }
 
-      function scaleDown(value: number, decimals: number) {
-        return Math.floor(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+              const result = await fixture.getStableGivenRisky[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
+
+              if (
+                DEBUG &&
+                (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getStableGivenRisky')
+              )
+                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
+            }
+          })
+        })
       }
+    })
 
-      /* it('testing stuff', async function () {
-        const cal = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015), 6, 6)
-        //const stablePerLP = 1156359
-        const tau = Time.YearInSeconds
-        const strike = parseWei('10', 6)
-        const riskyPerLP = parseWei('1', cal.decimalsRisky).sub(
-          parseWei(scaleDown(cal.delta, cal.decimalsRisky), cal.decimalsRisky)
-        )
-        const stable = getStableGivenRisky(riskyPerLP.float, cal.strike.float, cal.sigma.float, cal.tau.years)
-        const stablePerLP = parseWei(scaleDown(stable, cal.decimalsStable), cal.decimalsStable)
+    // run the tests for `getStableGivenRisky
+    describe('testGetRiskyGivenStable', function () {
+      // for each of the tests, run through its domain and range
+      for (let step in stableSwapTests) {
+        describe(`testing ${step}`, function () {
+          let { params, min, max, increment, parse, expected, error } = stableSwapTests[step]
 
-        console.log('stable per lp raw', stablePerLP.raw.toString())
-        console.log(cal.spot.float, cal.strike.float, cal.sigma.float, cal.tau.years, riskyPerLP.float, stablePerLP.float)
+          it('stays within max error', async function () {
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
 
-        const step0 = await fixture.getRiskyGivenStable.step0(cal.strike.raw)
-        const step1 = await fixture.getRiskyGivenStable.step1(cal.sigma.raw, cal.tau.raw)
-        const step2 = await fixture.getRiskyGivenStable.step2(stablePerLP.raw)
-        const step3 = await fixture.getRiskyGivenStable.step3(step2, 0, step0)
-        const step4 = await fixture.getRiskyGivenStable.step4(step3, step1)
-        const step5 = await fixture.getRiskyGivenStable.step5(step4)
-        const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
-          0,
-          parseWei(1, scaleFactorRisky).raw,
-          stablePerLP.raw,
-          cal.strike.raw,
-          cal.sigma.raw,
-          cal.tau.raw
-        )
+              if (step == 'getRiskyGivenStable') {
+                params[2] = input.raw // reserve parameter is at index of `2`
+              } else {
+                params[0] = input.raw
+              }
 
-        const steps = [step0, step1, step2, step3, step4, step5, riskyPerLp]
+              const result = await fixture.getRiskyGivenStable[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
 
-        steps.forEach((step) => console.log(step.toString()))
-      })
-
-      it('testing stuff', async function () {
-        const resStableX64 = '1165346570348736648' //'1178304127791294090'
-        const strikeX64 = parseWei('10')
-        const sigmaX64 = 10000
-        const tau = 31556925
-
-        const step0 = await fixture.getRiskyGivenStable.step0(strikeX64.raw)
-        const step1 = await fixture.getRiskyGivenStable.step1(sigmaX64, tau)
-        const step2 = await fixture.getRiskyGivenStable.step2(resStableX64)
-        const step3 = await fixture.getRiskyGivenStable.step3(step2, 0, step0)
-        const step4 = await fixture.getRiskyGivenStable.step4(step3, step1)
-        const step5 = await fixture.getRiskyGivenStable.step5(step4)
-        const riskyPerLp = await fixture.getRiskyGivenStable.getRiskyGivenStable(
-          0,
-          parseWei(1, scaleFactorRisky).raw,
-          resStableX64,
-          strikeX64.raw,
-          sigmaX64,
-          tau
-        )
-
-        const actual = getRiskyGivenStable(
-          new Wei(toBN(resStableX64)).float,
-          strikeX64.float,
-          sigmaX64 / 1e4,
-          tau / Time.YearInSeconds
-        )
-        console.log({ actual })
-
-        const steps = [step0, step1, step2, step3, step4, step5, riskyPerLp]
-
-        steps.forEach((step) => console.log(step.toString()))
-      }) */
-
-      it('getProportionalVolatility', async function () {
-        let expected: number = new FixedPointX64(await math.getProportionalVolatility(sigma.raw, tau.raw)).parsed
-        let actual: number = getProportionalVol(sigma.float, tau.years)
-        expect(actual).to.be.closeTo(expected, precision.percentage)
-      })
-
-      describe('Trading Function: getStableGivenRisky', async function () {
-        it('step0: parse strike to 64x64 fixed point int128', async function () {
-          let expected = new FixedPointX64(FixedPointX64.Denominator.mul(pool.calibration.strike.float)).raw
-          let step0 = await fixture.getStableGivenRisky.step0(pool.calibration.strike.raw)
-          expect(step0).to.be.eq(expected)
+              if (
+                DEBUG &&
+                (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getRiskyGivenStable')
+              )
+                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
+            }
+          })
         })
+      }
+    })
 
-        it('step1: calculate sigma * sqrt(tau)', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          let expected = pool.calibration.sigma.float * Math.sqrt(tau.years)
-          let step1 = new FixedPointX64(await fixture.getStableGivenRisky.step1(pool.calibration.sigma.raw, tau.raw))
-          expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
+    describe('testCalcInvariant', function () {
+      // for each of the tests, run through its domain and range
+      for (let step in calcInvariantTests) {
+        describe(`testing ${step}`, function () {
+          let { params, min, max, increment, parse, expected, error } = calcInvariantTests[step]
+
+          it('stays within max error', async function () {
+            for (let i = min; i < max; i += increment) {
+              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
+              const exp = expected(input) // uses the parsed value and returns the expected value of this test
+
+              if (step == 'calcInvariantRisky') {
+                params[0] = input.raw
+              } else {
+                params[1] = input.raw
+              }
+
+              const result = await fixture.calcInvariant[step](...params) // smart contract call
+              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
+
+              if (DEBUG) console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              //expect(actual).to.be.closeTo(+exp, error)
+            }
+          })
         })
-
-        it('step2: get the stable reserves per 1 unit of liquidity', async function () {
-          let expected = new FixedPointX64(reserveRisky.mul(FixedPointX64.Denominator).div(parseWei(1, decimalsRisky)).raw)
-            .raw
-          let step2 = await fixture.getStableGivenRisky.step2(reserveRisky.raw)
-          expect(step2).to.be.eq(expected)
-        })
-
-        it('step3: calculate phi = CDF^-1( 1 - riskyReserve )', async function () {
-          let reserve = reserveRisky
-          let inside = 1 - reserve.float
-          let reserveX64 = new FixedPointX64(reserveRisky.mul(FixedPointX64.Denominator).div(parseWei(1, decimalsRisky)).raw)
-          let inversedCDF = inverse_std_n_cdf(inside)
-          let expected = inversedCDF
-          let step3 = new FixedPointX64(await fixture.getStableGivenRisky.step3(reserveX64.raw))
-          expect(step3.parsed).to.be.closeTo(expected, precision.invariant)
-        })
-
-        it('step4: calculate input = phi - vol', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          let vol = pool.calibration.sigma.float * Math.sqrt(tau.years)
-          let inside = 1 - reserveRisky.float / liquidity.float
-          let inversedCDF = inverse_std_n_cdf(inside)
-          let expected = inversedCDF - vol
-          let step4 = new FixedPointX64(
-            await fixture.getStableGivenRisky.step4(
-              toBN(Math.floor(inversedCDF * +FixedPointX64.Denominator).toString()),
-              toBN(vol).mul(FixedPointX64.Denominator)
-            )
-          )
-          expect(step4.parsed).to.be.eq(expected)
-        })
-
-        it('step5: calculate reserveRisky = ( K*CDF(step4) + invariant ) * liquidity', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          const invariant = 0
-          let vol = pool.calibration.sigma.float * Math.sqrt(tau.years)
-          let phi = inverse_std_n_cdf(1 - reserveRisky.float / liquidity.float)
-          let input = phi - vol
-          let cdf = std_n_cdf(input)
-          let step4 = await fixture.getStableGivenRisky.step4(
-            await fixture.getStableGivenRisky.step3(await fixture.getStableGivenRisky.step2(reserveRisky.raw)),
-            await fixture.getStableGivenRisky.step1(pool.calibration.sigma.raw, tau.raw)
-          )
-          let expected = (pool.calibration.strike.float * cdf + invariant) * liquidity.float
-          let step5 = new FixedPointX64(
-            await fixture.getStableGivenRisky.step5(
-              await fixture.getStableGivenRisky.step0(pool.calibration.strike.raw),
-              step4,
-              invariant
-            )
-          )
-          expect(step5.parsed).to.be.closeTo(expected, precision.invariant)
-        })
-
-        it('getStableGivenRisky', async function () {
-          let expected: number = new FixedPointX64(
-            await fixture.getStableGivenRisky.getStableGivenRisky(
-              0,
-              parseWei('1', scaleFactorStable).raw,
-              reserveRisky.raw,
-              strike.raw,
-              sigma.raw,
-              tau.raw
-            )
-          ).parsed
-          let actual: number = getStableGivenRisky(reserveRisky.float, strike.float, sigma.float, tau.years)
-          expect(actual).to.be.closeTo(expected, precision.invariant)
-        })
-      })
-
-      describe('Inverse Trading Function: getRiskyGivenStable', async function () {
-        it('step0: parse strike to 64x64 fixed point int128', async function () {
-          let expected = new FixedPointX64(FixedPointX64.Denominator.mul(pool.calibration.strike.float)).raw
-          let step0 = await fixture.getRiskyGivenStable.step0(pool.calibration.strike.raw)
-          expect(step0).to.be.eq(expected)
-        })
-
-        it('step1: calculate sigma * sqrt(tau)', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          let expected = pool.calibration.sigma.float * Math.sqrt(tau.years)
-          let step1 = new FixedPointX64(await fixture.getRiskyGivenStable.step1(pool.calibration.sigma.raw, tau.raw))
-          expect(step1.parsed).to.be.closeTo(expected, precision.percentage)
-        })
-
-        it('step2: get the stable reserves per 1 unit of liquidity', async function () {
-          let expected = new FixedPointX64(
-            FixedPointX64.Denominator.mul(reserveRisky.raw).div(parseWei(1, decimalsRisky).raw)
-          ).raw
-          let step2 = await fixture.getRiskyGivenStable.step2(reserveRisky.raw)
-          expect(step2).to.be.eq(expected)
-        })
-
-        it('step3: calculate phi = CDF^-1( (reserve - invariant) / K )', async function () {
-          let reserve = reserveRisky
-          let invariant = 0
-          let inside = (reserve.float - invariant) / pool.calibration.strike.float
-          let inversedCDF = inverse_std_n_cdf(inside)
-          let expected = inversedCDF
-          const reserveX64 = new FixedPointX64(reserve.mul(FixedPointX64.Denominator).div(parseWei(1, decimalsRisky)).raw)
-          const strikeX64 = new FixedPointX64(
-            pool.calibration.strike.mul(FixedPointX64.Denominator).div(parseWei(1, decimalsStable)).raw
-          )
-          let step3 = new FixedPointX64(await fixture.getRiskyGivenStable.step3(reserveX64.raw, invariant, strikeX64.raw))
-          expect(step3.parsed).to.be.closeTo(expected, precision.cdf)
-        })
-
-        it('step4: calculate input = phi + vol', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          const invariant = 0
-          let vol = pool.calibration.sigma.float * Math.sqrt(tau.years)
-          let reserve = reserveRisky.mul(parseWei(1)).div(liquidity) //await fixture.getRiskyGivenStable.step2(reserveRisky.raw)
-          let inside = (reserve.float - invariant) / pool.calibration.strike.float
-          let inversedCDF = inverse_std_n_cdf(inside)
-          let expected = inversedCDF + vol
-          let step4 = new FixedPointX64(
-            await fixture.getRiskyGivenStable.step4(
-              toBN((inversedCDF * +FixedPointX64.Denominator).toString()),
-              FixedPointX64.Denominator.mul(vol)
-            )
-          )
-          expect(step4.parsed).to.be.eq(expected)
-        })
-
-        it('step5: calculate reserveRisky = ( 1 - CDF(step4) ) * liquidity', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          const invariant = 0
-          let step1 = await fixture.getRiskyGivenStable.step1(pool.calibration.sigma.raw, tau.raw)
-          let vol = step1
-          let step3 = await fixture.getRiskyGivenStable.step3(reserveRisky.raw, invariant, pool.calibration.strike.raw)
-          let step4 = await fixture.getRiskyGivenStable.step4(step3, vol)
-          let cdf = std_n_cdf(new FixedPointX64(step4).parsed)
-          let expected =
-            new FixedPointX64(
-              parseWei(1 - cdf)
-                .mul(liquidity)
-                .mul(FixedPointX64.Denominator)
-                .div(parseWei(1)).raw
-            ).parsed / Math.pow(10, 18)
-          let step5 = new FixedPointX64(await fixture.getRiskyGivenStable.step5(step4))
-          expect(step5.parsed).to.be.closeTo(expected, precision.cdf)
-        })
-
-        it('getRiskyGivenStable', async function () {
-          let expected: number = new Wei(
-            await fixture.getRiskyGivenStable.getRiskyGivenStable(
-              0,
-              parseWei('1', scaleFactorRisky).raw,
-              reserveStable.raw,
-              strike.raw,
-              sigma.raw,
-              tau.raw
-            ),
-            decimalsRisky
-          ).float
-
-          let actual: number = getRiskyGivenStable(reserveStable.float, strike.float, sigma.float, tau.years)
-          actual = Math.floor(actual * Math.pow(10, decimalsRisky)) / Math.pow(10, decimalsRisky)
-          expect(actual).to.be.closeTo(expected, precision.percentage)
-        })
-      })
-
-      describe('Invariant: calcInvariant', async function () {
-        it('step0', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          let expected = getStableGivenRisky(
-            reserveRisky.float,
-
-            pool.calibration.strike.float,
-            pool.calibration.sigma.float,
-            tau.years
-          )
-          let step0 = new FixedPointX64(
-            await fixture.calcInvariant.step0(
-              reserveRisky.raw,
-              pool.calibration.strike.raw,
-              pool.calibration.sigma.raw,
-              tau.raw
-            )
-          )
-          expect(step0.parsed).to.be.closeTo(expected, precision.invariant)
-        })
-
-        it('step1', async function () {
-          const tau = pool.calibration.maturity.sub(pool.calibration.lastTimestamp)
-          let reserve2 = getStableGivenRisky(
-            reserveRisky.float,
-            pool.calibration.strike.float,
-            pool.calibration.sigma.float,
-            tau.years
-          )
-          reserve2 = Math.floor(reserve2 * Math.pow(10, decimalsStable)) / Math.pow(10, decimalsStable)
-          let expected = new FixedPointX64(
-            FixedPointX64.Denominator.mul(reserveStable.sub(parseWei(reserve2, decimalsStable)).raw)
-          )
-          let step0 = await fixture.calcInvariant.step0(
-            reserveRisky.raw,
-            pool.calibration.strike.raw,
-            pool.calibration.sigma.raw,
-            pool.calibration.maturity.sub(pool.calibration.lastTimestamp).raw
-          )
-          let step1 = new FixedPointX64(await fixture.calcInvariant.step1(reserveStable.raw, step0))
-          expect(step1.parsed).to.be.closeTo(expected.parsed / Math.pow(10, 18), precision.invariant)
-        })
-
-        it('calcInvariant', async function () {
-          let expected: number = new FixedPointX64(
-            await math.calcInvariant(reserveRisky.raw, reserveStable.raw, strike.raw, sigma.raw, tau.raw)
-          ).parsed
-          let actual: number = calcInvariant(reserveRisky.float, reserveStable.float, strike.float, sigma.float, tau.years)
-          expect(actual).to.be.closeTo(expected, precision.invariant)
-        })
-      })
+      }
     })
   })
 })

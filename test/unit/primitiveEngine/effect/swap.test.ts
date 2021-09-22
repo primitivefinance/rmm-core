@@ -207,7 +207,7 @@ TestPools.forEach(function (pool: PoolState) {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         let fix = await primitiveFixture([wallet], provider)
         // if using a custom engine, create it and replace the default contracts
-        if (pool.customEngine) {
+        if (decimalsRisky != 18 || decimalsStable != 18) {
           const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
           if (DEBUG_MODE)
             console.log(
@@ -246,14 +246,17 @@ TestPools.forEach(function (pool: PoolState) {
       for (const testCase of TestCases) {
         describe(swapTestCaseDescription(testCase), async function () {
           let { riskyForStable, deltaIn, fromMargin, toMargin, signer, revertMsg } = testCase
-          beforeEach(async function () {
+          before(async function () {
             const dec = riskyForStable ? decimalsRisky : decimalsStable
             const prec = riskyForStable ? scaleFactorRisky : scaleFactorStable
             deltaIn = new Wei(deltaIn.div(parseWei('1', prec)).raw, dec)
+          })
+          beforeEach(async function () {
             swapper = this.signers[signer ? signer : 0]
             target = fromMargin ? engine : router
             receiver = fromMargin ? swapper.address : router.address
           })
+
           if (revertMsg) {
             it(`fails with msg ${revertMsg}`, async function () {
               tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
