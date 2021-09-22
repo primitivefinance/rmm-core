@@ -12,7 +12,7 @@ export function testContext(description: string, hooks: () => void): void {
     before(async function () {
       this.contracts = {} as Contracts
       this.signers = await waffle.provider.getWallets()
-      this.loadFixture = createFixtureLoader(this.signers)
+      this.loadFixture = createFixtureLoader(this.signers, waffle.provider)
     })
 
     hooks()
