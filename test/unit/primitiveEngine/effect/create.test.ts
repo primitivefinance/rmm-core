@@ -27,7 +27,7 @@ TestPools.forEach(function (pool: PoolState) {
       scaleFactorRisky,
       scaleFactorStable,
     } = pool.calibration
-    let poolId: string, scaledStrike: Wei
+    let poolId: string
     const delLiquidity = parseWei('1', 18)
 
     beforeEach(async function () {
@@ -51,90 +51,47 @@ TestPools.forEach(function (pool: PoolState) {
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       poolId = pool.calibration.poolId(this.contracts.engine.address)
-      scaledStrike = strike.mul(parseWei('1', scaleFactorStable))
     })
 
     describe('success cases', function () {
       it('deploys a new pool', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.emit(this.contracts.engine, 'Create')
       })
 
       it('res.allocate: increases reserve liquidity', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
       })
 
       it('res.allocate: increases reserve risky', async function () {
         const delRisky = parseWei(1 - delta)
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.increaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
       })
 
       it('res.allocate: increases reserve stable', async function () {
         const delRisky = parseWei(1 - delta)
         const delStable = parseWei(
-          getStableGivenRisky(delRisky.float, scaledStrike.float, sigma.float, maturity.sub(lastTimestamp).years)
+          getStableGivenRisky(delRisky.float, strike.float, sigma.float, maturity.sub(lastTimestamp).years)
         )
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.increaseReserveStable(this.contracts.engine, poolId, delStable.raw)
       })
 
       it('res.allocate: update block timestamp', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
       })
 
       it('pos.allocate: increase liquidity & burn 1000 wei from position', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.increasePositionLiquidity(
           this.contracts.engine,
           this.contracts.router.address,
@@ -145,14 +102,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('emits the Create event', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         )
           .to.emit(this.contracts.engine, 'Create')
           .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw)
@@ -160,7 +110,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('updates the reserves of the engine with create, but not cumulative reserves', async function () {
         const tx = await this.contracts.router.create(
-          scaledStrike.raw,
+          strike.raw,
           sigma.raw,
           maturity.raw,
           parseWei(delta).raw,
@@ -183,14 +133,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('initializes the calibration struct', async function () {
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
         const calibrations = await this.contracts.engine.calibrations(poolId)
         expect(calibrations.lastTimestamp).to.not.equal(0)
@@ -202,7 +145,7 @@ TestPools.forEach(function (pool: PoolState) {
         // set a new mock timestamp to create the pool with
         await this.contracts.engine.advanceTime(1)
         await this.contracts.router.create(
-          scaledStrike.raw,
+          strike.raw,
           sigma.raw,
           maturity.raw,
           parseWei(delta).raw,
@@ -210,14 +153,7 @@ TestPools.forEach(function (pool: PoolState) {
           HashZero
         )
         await expect(
-          this.contracts.router.create(
-            scaledStrike.raw,
-            sigma.raw,
-            maturity.raw,
-            parseWei(delta).raw,
-            delLiquidity.raw,
-            HashZero
-          )
+          this.contracts.router.create(strike.raw, sigma.raw, maturity.raw, parseWei(delta).raw, delLiquidity.raw, HashZero)
         ).to.be.revertedWith('PoolDuplicateError()')
       })
 
