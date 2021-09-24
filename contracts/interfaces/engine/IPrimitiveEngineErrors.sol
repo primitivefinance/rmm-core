@@ -25,6 +25,9 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when sigma is outside the range of acceptable values, 100 < sigma < 1e7 with 4 precision
     error SigmaError(uint256 value);
 
+    /// @notice Thrown when strike is not valid, i.e. equal to 0
+    error StrikeError(uint256 value);
+
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
     error CalibrationError(uint256 delRisky, uint256 delStable);
 
