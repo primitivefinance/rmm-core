@@ -78,7 +78,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
         (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
-        .args();
+            .args();
     }
 
     /// @return Risky token balance of this contract
@@ -271,6 +271,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         lock
         returns (uint256 delRisky, uint256 delStable)
     {
+        if (delLiquidity == 0) revert ZeroLiquidityError();
         Reserve.Data storage reserve = reserves[poolId];
         if (reserve.blockTimestamp == 0) revert UninitializedError();
 
