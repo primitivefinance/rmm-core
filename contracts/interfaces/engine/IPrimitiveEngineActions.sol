@@ -12,7 +12,7 @@ interface IPrimitiveEngineActions {
     function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
 
     /// @notice             Initializes a curve with parameters in the `settings` storage mapping in the Engine
-    /// @param  strike      Strike price of the pool to calibrate to, wei value with 18 decimals of precision
+    /// @param  strike      Strike price of the pool to calibrate to, with the same decimals as the stable token
     /// @param  sigma       Volatility to calibrate to as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param  maturity    Maturity timestamp of the pool, in seconds
     /// @param  delta       N(d1), d1 = (ln(S / K) + (r * sigma^2 / 2) ) / sigma * sqrt(tau), 0 < delta < 1e18

@@ -155,9 +155,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
-        uint256 scaledStrike = strike.scaleDown(factor1); // strike / 10^(18 - scaleFactorStable)
 
-        poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity));
+        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity));
 
         if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
@@ -166,7 +165,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
 
         Calibration memory cal = Calibration({
-            strike: scaledStrike.toUint128(),
+            strike: strike.toUint128(),
             sigma: sigma,
             maturity: maturity,
             lastTimestamp: _blockTimestamp()

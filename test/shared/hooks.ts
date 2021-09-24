@@ -35,15 +35,13 @@ export async function usePool(
     decimalsStable,
     MIN_LIQUIDITY,
   } = config
-  // since strike is in native precision, scale to 18 decimals if needed
-  const scaledStrike = strike.mul(parseWei('1', scaleFactorStable))
 
   /// call create on the router contract
   let tx: any
   try {
     tx = await contracts.router
       .connect(signer)
-      .create(scaledStrike.raw, sigma.raw, maturity.raw, parseWei(delta, 18).raw, parseWei('1', 18).raw, HashZero)
+      .create(strike.raw, sigma.raw, maturity.raw, parseWei(delta, 18).raw, parseWei('1', 18).raw, HashZero)
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call create() on the router in usePool()`, err)
   }
