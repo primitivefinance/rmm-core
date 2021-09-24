@@ -159,6 +159,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity));
 
+        if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
         if (delta > PRECISION || delta == 0) revert DeltaError(delta); // 0 < delta < 1, <= 18 decimals
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma); // 1% <= sigma <= 1000%, precision of 4
