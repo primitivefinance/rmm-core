@@ -3,7 +3,6 @@ pragma solidity 0.8.6;
 
 /// @title  Primitive Create Callback
 /// @author Primitive
-
 interface IPrimitiveCreateCallback {
     /// @notice              Triggered when creating a new pool for an Engine
     /// @param  delRisky     Amount of risky tokens required to initialize risky reserve

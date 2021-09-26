@@ -13,7 +13,7 @@ interface IPrimitiveEngineView {
 
     // ===== Constants =====
 
-    /// @return Precision units to scale to when doing calculations
+    /// @return Precision units to scale to when doing token related calculations
     function PRECISION() external view returns (uint256);
 
     /// @return Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %
@@ -68,7 +68,7 @@ interface IPrimitiveEngineView {
 
     /// @notice             Fetches `Calibration` pool parameters
     /// @param  poolId      Pool Identifier
-    /// @return strike      Strike price of the pool with `stable.decimal()` precision
+    /// @return strike      Strike price of the pool with stable token decimals
     /// sigma               Volatility of the pool scaled to a percentage integer with a precision of 1e4
     /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
@@ -87,7 +87,7 @@ interface IPrimitiveEngineView {
     /// @return liquidity   Liquidity owned by `account` in `poolId`
     function liquidity(address account, bytes32 poolId) external view returns (uint256 liquidity);
 
-    /// @notice             Fetches the margin position of `account`
+    /// @notice             Fetches the margin balances of `account`
     /// @param  account     Margin account to fetch
     /// @return balanceRisky Balance of the risky token
     /// balanceStable       Balance of the stable token

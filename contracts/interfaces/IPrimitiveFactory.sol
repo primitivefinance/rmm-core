@@ -3,7 +3,6 @@ pragma solidity 0.8.6;
 
 /// @title   Primitive Factory interface
 /// @author  Primitive
-
 interface IPrimitiveFactory {
     /// @notice         Created a new engine contract!
     /// @param  from    Calling `msg.sender` of deploy
@@ -45,13 +44,13 @@ interface IPrimitiveFactory {
             uint256 minLiquidity
         );
 
-    /// @notice         Fetches engine address of a token pair
+    /// @notice         Fetches engine address of a token pair which has been deployed from this factory
     /// @param risky    Risky token, the underlying token
     /// @param stable   Stable token, the quote token
     /// @return engine  Engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);
 
     /// @notice         Owner does not have any access controls to wield
-    /// @return         Controlling address of this factory contract
+    /// @return         Deployer of this factory contract
     function owner() external view returns (address);
 }
