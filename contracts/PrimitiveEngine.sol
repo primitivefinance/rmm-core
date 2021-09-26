@@ -236,17 +236,20 @@ contract PrimitiveEngine is IPrimitiveEngine {
     function allocate(
         bytes32 poolId,
         address recipient,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bool fromMargin,
         bytes calldata data
-    ) external override lock returns (uint256 delRisky, uint256 delStable) {
+    ) external override lock returns (uint256 delLiquidity) {
         uint32 timestamp = _blockTimestamp();
         Reserve.Data storage reserve = reserves[poolId];
 
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         if (timestamp > calibrations[poolId].maturity) revert PoolExpiredError();
 
-        (delRisky, delStable) = reserve.getAmounts(delLiquidity); // amounts to allocate
+        uint256 liquidity0 = (delRisky * reserve.liquidity) / uint256(reserve.reserveRisky);
+        uint256 liquidity1 = (delStable * reserve.liquidity) / uint256(reserve.reserveStable);
+        delLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
 
         if (delRisky == 0 || delStable == 0) revert ZeroDeltasError();
 

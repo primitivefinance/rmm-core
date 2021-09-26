@@ -65,18 +65,19 @@ interface IPrimitiveEngineActions {
     /// @notice             Allocates risky and stable tokens to a specific curve with `poolId`
     /// @param  poolId      Pool Identifier
     /// @param  recipient   Address to give the allocated liquidity to
-    /// @param  delLiquidity  Quantity of liquidity units to allocate
+    /// @param  delRisky    Quantity of risky tokens to remove
+    /// @param  delStable   Quantity of stable tokens to remove
     /// @param  fromMargin  Whether the `msg.sender` pays with their margin balance, or must send tokens
     /// @param  data        Arbitrary data that is passed to the allocateCallback function
-    /// @return delRisky    Amount of risky tokens allocated
-    /// delStable           Amount of stable tokens allocated
+    /// @return delLiquidity Amount of liquidity created
     function allocate(
         bytes32 poolId,
         address recipient,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bool fromMargin,
         bytes calldata data
-    ) external returns (uint256 delRisky, uint256 delStable);
+    ) external returns (uint256 delLiquidity);
 
     /// @notice             Unallocates risky and stable tokens from a specific curve with `poolId`
     /// @param  poolId      Pool Identifier

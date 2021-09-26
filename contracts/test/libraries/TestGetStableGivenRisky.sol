@@ -98,7 +98,7 @@ contract TestGetStableGivenRisky {
         reserveStable = step5(K, input, invariantLast);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "TestGetStableGivenRisky";
     }
 }

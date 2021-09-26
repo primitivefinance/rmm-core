@@ -49,8 +49,18 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('when calling allocate in the allocate callback', function () {
       it('reverts the transaction', async function () {
+        const amount = parseWei('1')
+        const res = await this.contracts.engine.reserves(poolId)
+        const delRisky = amount.mul(res.reserveRisky).div(res.liquidity)
+        const delStable = amount.mul(res.reserveStable).div(res.liquidity)
         await expect(
-          this.contracts.router.allocateFromExternalReentrancy(poolId, this.signers[0].address, parseWei('1').raw, HashZero)
+          this.contracts.router.allocateFromExternalReentrancy(
+            poolId,
+            this.signers[0].address,
+            delRisky.raw,
+            delStable.raw,
+            HashZero
+          )
         ).to.be.reverted
       })
     })

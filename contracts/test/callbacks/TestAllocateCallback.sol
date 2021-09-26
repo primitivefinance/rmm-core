@@ -26,7 +26,7 @@ abstract contract TestAllocateCallback is Scenarios {
         } else if (scenario == Scenario.STABLE_ONLY) {
             IERC20(token1).transferFrom(from, msg.sender, delStable);
         } else if (scenario == Scenario.REENTRANCY) {
-            IPrimitiveEngine(msg.sender).allocate(bytes32(0), address(0x0), 1, false, new bytes(0));
+            IPrimitiveEngine(msg.sender).allocate(bytes32(0), address(0x0), 1, 1, false, new bytes(0));
         }
         scenario = Scenario.SUCCESS;
         from = address(0x0);
