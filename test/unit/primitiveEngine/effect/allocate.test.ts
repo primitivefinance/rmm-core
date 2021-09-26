@@ -1,7 +1,7 @@
 import expect from '../../.../../../shared/expect'
 import { waffle } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { parseWei, Time } from 'web3-units'
+import { parseWei, Time, Wei } from 'web3-units'
 
 import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
 import { computePoolId, computePositionId } from '../../.../../../shared/utils'
@@ -9,6 +9,7 @@ import { PrimitiveFixture, primitiveFixture } from '../../.../../../shared/fixtu
 import { testContext } from '../../.../../../shared/testContext'
 import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../.../../../shared/hooks'
 import { Fixture } from '@ethereum-waffle/provider'
+import { parseEther } from '@ethersproject/units'
 const { HashZero } = constants
 
 // for each calibration, run the tests
@@ -27,7 +28,7 @@ TestPools.forEach(function (pool: PoolState) {
       scaleFactorStable,
     } = pool.calibration
     // environment variables
-    let poolId: string
+    let poolId: string, delLiquidity: Wei, delRisky: Wei, delStable: Wei
 
     beforeEach(async function () {
       // modifies engine contract if testing different tokens with different decimals
@@ -46,65 +47,109 @@ TestPools.forEach(function (pool: PoolState) {
         return fix
       }
 
-      const fixture = await this.loadFixture(primitiveFixture)
+      const fixture = await this.loadFixture(poolFixture)
       this.contracts = fixture.contracts
 
       await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
       await useApproveAll(this.signers[0], this.contracts) // approves tokens
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration)) // calls create()
       await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address) // allocates liq
+
+      const amount = parseWei('1000', 18)
+      const res = await this.contracts.engine.reserves(poolId)
+      delLiquidity = amount
+      delRisky = amount.mul(res.reserveRisky).div(res.liquidity)
+      delStable = amount.mul(res.reserveStable).div(res.liquidity)
     })
 
     describe('when allocating from margin', function () {
       beforeEach(async function () {
-        await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
+        await useMargin(
+          this.signers[0],
+          this.contracts,
+          parseWei('1000').add(delRisky),
+          parseWei('1000').add(delStable),
+          this.contracts.router.address
+        )
         poolId = pool.calibration.poolId(this.contracts.engine.address)
       })
 
       describe('success cases', function () {
         it('increases position liquidity', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
+          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('increases position liquidity of another recipient', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.signers[1].address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromMargin(poolId, this.signers[1].address, delRisky.raw, delStable.raw, HashZero)
+          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, delLiquidity.raw)
         })
 
         it('emits the Allocate event', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.emit(this.contracts.engine, 'Allocate')
         })
 
         it('increases reserve liquidity', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increaseReserveLiquidity(this.contracts.engine, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
+          ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
         })
 
         it('increases reserve risky', async function () {
-          const res = await this.contracts.engine.reserves(poolId)
-          const delRisky = parseWei('1').mul(res.reserveRisky).div(res.liquidity)
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.increaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
         })
 
         it('increases reserve stable', async function () {
-          const res = await this.contracts.engine.reserves(poolId)
-          const delStable = parseWei('1').mul(res.reserveStable).div(res.liquidity)
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.increaseReserveStable(this.contracts.engine, poolId, delStable.raw)
         })
 
         it('updates reserve timestamp', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
         })
       })
@@ -115,7 +160,8 @@ TestPools.forEach(function (pool: PoolState) {
             this.contracts.router.allocateFromMargin(
               HashZero,
               this.contracts.router.address,
-              parseWei('10000000').raw,
+              delRisky.raw,
+              delStable.raw,
               HashZero
             )
           ).to.be.reverted
@@ -126,7 +172,8 @@ TestPools.forEach(function (pool: PoolState) {
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
-              parseWei('10000000').raw,
+              parseEther('1000000000'),
+              delStable.raw,
               HashZero
             )
           ).to.be.reverted
@@ -134,17 +181,27 @@ TestPools.forEach(function (pool: PoolState) {
 
         it('reverts if there is no liquidity', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(HashZero, this.signers[0].address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              HashZero,
+              this.signers[0].address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.be.reverted
         })
 
         it('reverts if the deltas are 0', async function () {
-          await expect(this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)).to.reverted
+          await expect(
+            this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', '0', HashZero)
+          ).to.reverted
         })
 
         it('reverts if pool is expired', async function () {
           await this.contracts.engine.advanceTime(Time.YearInSeconds + 1)
-          await expect(this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', HashZero)).to.reverted
+          await expect(
+            this.contracts.router.allocateFromMargin(poolId, this.signers[0].address, '0', '0', HashZero)
+          ).to.reverted
         })
       })
     })
@@ -153,33 +210,63 @@ TestPools.forEach(function (pool: PoolState) {
       describe('success cases', function () {
         it('increases liquidity', async function () {
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
+          ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('increases position liquidity of another recipient', async function () {
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.signers[1].address, parseWei('1').raw, HashZero)
-          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.signers[1].address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
+          ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, delLiquidity.raw)
         })
 
         it('emits the Allocate event', async function () {
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.emit(this.contracts.engine, 'Allocate')
         })
 
         it('increases reserve liquidity', async function () {
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
-          ).to.increaseReserveLiquidity(this.contracts.engine, poolId, parseWei('1').raw)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
+          ).to.increaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
         })
 
         it('increases reserve risky', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = parseWei('1').mul(res.reserveRisky).div(res.liquidity)
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.increaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
         })
 
@@ -187,13 +274,25 @@ TestPools.forEach(function (pool: PoolState) {
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = parseWei('1').mul(res.reserveStable).div(res.liquidity)
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.increaseReserveStable(this.contracts.engine, poolId, delStable.raw)
         })
 
         it('updates reserve timestamp', async function () {
           await expect(
-            this.contracts.router.allocateFromExternal(poolId, this.contracts.router.address, parseWei('1').raw, HashZero)
+            this.contracts.router.allocateFromExternal(
+              poolId,
+              this.contracts.router.address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
         })
 
@@ -209,12 +308,13 @@ TestPools.forEach(function (pool: PoolState) {
           await this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
-            parseWei('1').raw,
+            delRisky.raw,
+            delStable.raw,
             HashZero
           )
 
-          expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(riskyBalance.sub(deltaX.raw))
-          expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(stableBalance.sub(deltaY.raw))
+          expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(riskyBalance.sub(delRisky.raw))
+          expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(stableBalance.sub(delStable.raw))
         })
       })
 
@@ -225,6 +325,7 @@ TestPools.forEach(function (pool: PoolState) {
               poolId,
               this.contracts.router.address,
               parseWei('10').raw,
+              delStable.raw,
               HashZero
             )
           ).to.be.reverted
@@ -235,6 +336,7 @@ TestPools.forEach(function (pool: PoolState) {
             this.contracts.router.allocateFromExternalNoStable(
               poolId,
               this.contracts.router.address,
+              delRisky.raw,
               parseWei('10000').raw,
               HashZero
             )
@@ -246,7 +348,8 @@ TestPools.forEach(function (pool: PoolState) {
             this.contracts.router.allocateFromExternalReentrancy(
               poolId,
               this.contracts.router.address,
-              parseWei('10000').raw,
+              parseWei('1').raw,
+              parseWei('1').raw,
               HashZero
             )
           ).to.be.reverted

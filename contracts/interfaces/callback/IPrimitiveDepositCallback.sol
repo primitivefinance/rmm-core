@@ -3,7 +3,6 @@ pragma solidity 0.8.6;
 
 /// @title  Primitive Deposit Callback
 /// @author Primitive
-
 interface IPrimitiveDepositCallback {
     /// @notice              Triggered when depositing tokens to an Engine
     /// @param  delRisky     Amount of risky tokens required to deposit to risky margin balance

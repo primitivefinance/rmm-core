@@ -64,15 +64,13 @@ const DEBUG = false
 ;[18, 8, 6].forEach((decimals) =>
   testContext(`Swapping risky in with ${decimals} decimals`, function () {
     let poolId: string, deployer: Wallet, engine: MockEngine, router: TestRouter
-    swap0.decimalsRisky = decimals
-    swap0.decimalsStable = decimals
 
     beforeEach(async function () {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         let fix = await primitiveFixture([wallet], provider)
         // if using a custom engine, create it and replace the default contracts
 
-        const { risky, stable, engine } = await fix.createEngine(swap0.decimalsRisky, swap0.decimalsStable)
+        const { risky, stable, engine } = await fix.createEngine(decimals, decimals)
 
         fix.contracts.risky = risky
         fix.contracts.stable = stable
@@ -91,16 +89,7 @@ const DEBUG = false
       let cal0: Calibration
       beforeEach(async function () {
         const maturity = swap0.t * Time.YearInSeconds
-        cal0 = new Calibration(
-          swap0.k,
-          swap0.v,
-          maturity,
-          0,
-          swap0.s,
-          parsePercentage(swap0.fee),
-          swap0.decimalsRisky,
-          swap0.decimalsStable
-        )
+        cal0 = new Calibration(swap0.k, swap0.v, maturity, 0, swap0.s, parsePercentage(swap0.fee), decimals, decimals)
         await useTokens(deployer, this.contracts, cal0)
         await useApproveAll(deployer, this.contracts)
         ;({ poolId } = await usePool(deployer, this.contracts, cal0))
@@ -117,7 +106,9 @@ const DEBUG = false
       // to get expected stable reserve post swap
       it(`swaps in ${swap0.in0} risky and outputs ${swap0.out0} stable`, async function () {
         const deltaIn = scaleUp(swap0.in0, cal0.decimalsRisky)
-        await expect(router.swap(poolId, true, deltaIn.raw, false, false, HashZero)).to.decreaseSwapOutBalance(
+        await expect(
+          router.swap(router.address, poolId, true, deltaIn.raw, false, false, HashZero)
+        ).to.decreaseSwapOutBalance(
           engine,
           [this.contracts.risky, this.contracts.stable],
           router.address,
@@ -164,12 +155,14 @@ const DEBUG = false
           const deltaIn = scaleUp(swap0.in0 * amountIn, cal0.decimalsRisky)
           const currentRisky = (await engine.reserves(poolId)).reserveRisky
           if (deltaIn.raw.gt(parseWei('1', cal0.decimalsRisky).sub(currentRisky).raw)) {
-            await expect(router.swap(poolId, true, deltaIn.raw, false, false, HashZero)).to.be.reverted
+            await expect(router.swap(router.address, poolId, true, deltaIn.raw, false, false, HashZero)).to.be.reverted
             return
           }
 
           const simulated = pool.swapAmountInRisky(deltaIn)
-          await expect(router.swap(poolId, true, deltaIn.raw, false, false, HashZero)).to.decreaseSwapOutBalance(
+          await expect(
+            router.swap(router.address, poolId, true, deltaIn.raw, false, false, HashZero)
+          ).to.decreaseSwapOutBalance(
             engine,
             [this.contracts.risky, this.contracts.stable],
             router.address,
@@ -210,16 +203,7 @@ const DEBUG = false
       let cal0: Calibration
       beforeEach(async function () {
         const maturity = swap0.t * Time.YearInSeconds
-        cal0 = new Calibration(
-          swap0.k,
-          swap0.v,
-          maturity,
-          0,
-          swap0.s,
-          parsePercentage(swap0.fee),
-          swap0.decimalsRisky,
-          swap0.decimalsStable
-        )
+        cal0 = new Calibration(swap0.k, swap0.v, maturity, 0, swap0.s, parsePercentage(swap0.fee), decimals, decimals)
         await useTokens(deployer, this.contracts, cal0)
         await useApproveAll(deployer, this.contracts)
         ;({ poolId } = await usePool(deployer, this.contracts, cal0))
@@ -249,12 +233,14 @@ const DEBUG = false
           const currentStable = (await engine.reserves(poolId)).reserveStable
           if (deltaIn.raw.gt(cal0.strike.sub(currentStable).raw)) {
             console.log('this swap will revert because its too large')
-            await expect(router.swap(poolId, false, deltaIn.raw, false, false, HashZero)).to.be.reverted
+            await expect(router.swap(router.address, poolId, false, deltaIn.raw, false, false, HashZero)).to.be.reverted
             return
           }
 
           const simulated = pool.swapAmountInStable(deltaIn)
-          await expect(router.swap(poolId, false, deltaIn.raw, false, false, HashZero)).to.decreaseSwapOutBalance(
+          await expect(
+            router.swap(router.address, poolId, false, deltaIn.raw, false, false, HashZero)
+          ).to.decreaseSwapOutBalance(
             engine,
             [this.contracts.risky, this.contracts.stable],
             router.address,
