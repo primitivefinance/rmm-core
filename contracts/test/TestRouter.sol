@@ -12,12 +12,12 @@ contract TestRouter is TestBase {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 delta,
+        uint256 riskyPerLp,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPerLp, delLiquidity, data);
     }
 
     // ===== Margin =====

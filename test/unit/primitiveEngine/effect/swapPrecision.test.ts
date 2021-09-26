@@ -64,15 +64,13 @@ const DEBUG = false
 ;[18, 8, 6].forEach((decimals) =>
   testContext(`Swapping risky in with ${decimals} decimals`, function () {
     let poolId: string, deployer: Wallet, engine: MockEngine, router: TestRouter
-    swap0.decimalsRisky = decimals
-    swap0.decimalsStable = decimals
 
     beforeEach(async function () {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         let fix = await primitiveFixture([wallet], provider)
         // if using a custom engine, create it and replace the default contracts
 
-        const { risky, stable, engine } = await fix.createEngine(swap0.decimalsRisky, swap0.decimalsStable)
+        const { risky, stable, engine } = await fix.createEngine(decimals, decimals)
 
         fix.contracts.risky = risky
         fix.contracts.stable = stable
@@ -91,16 +89,7 @@ const DEBUG = false
       let cal0: Calibration
       beforeEach(async function () {
         const maturity = swap0.t * Time.YearInSeconds
-        cal0 = new Calibration(
-          swap0.k,
-          swap0.v,
-          maturity,
-          0,
-          swap0.s,
-          parsePercentage(swap0.fee),
-          swap0.decimalsRisky,
-          swap0.decimalsStable
-        )
+        cal0 = new Calibration(swap0.k, swap0.v, maturity, 0, swap0.s, parsePercentage(swap0.fee), decimals, decimals)
         await useTokens(deployer, this.contracts, cal0)
         await useApproveAll(deployer, this.contracts)
         ;({ poolId } = await usePool(deployer, this.contracts, cal0))
@@ -210,16 +199,7 @@ const DEBUG = false
       let cal0: Calibration
       beforeEach(async function () {
         const maturity = swap0.t * Time.YearInSeconds
-        cal0 = new Calibration(
-          swap0.k,
-          swap0.v,
-          maturity,
-          0,
-          swap0.s,
-          parsePercentage(swap0.fee),
-          swap0.decimalsRisky,
-          swap0.decimalsStable
-        )
+        cal0 = new Calibration(swap0.k, swap0.v, maturity, 0, swap0.s, parsePercentage(swap0.fee), decimals, decimals)
         await useTokens(deployer, this.contracts, cal0)
         await useApproveAll(deployer, this.contracts)
         ;({ poolId } = await usePool(deployer, this.contracts, cal0))

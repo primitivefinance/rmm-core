@@ -34,7 +34,7 @@ TestPools.forEach(function (pool: PoolState) {
         cal.strike.raw,
         cal.sigma.raw,
         cal.maturity.raw,
-        parseWei(cal.delta).raw,
+        parseWei(1, cal.decimalsRisky).sub(parseWei(cal.delta)).raw,
         parseWei('1').raw,
         constants.HashZero
       )
