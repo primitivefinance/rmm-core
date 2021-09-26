@@ -12,12 +12,12 @@ contract TestRouter is TestBase {
         uint256 strike,
         uint256 sigma,
         uint256 maturity,
-        uint256 delta,
+        uint256 riskyPerLp,
         uint256 delLiquidity,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), delta, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPerLp, delLiquidity, data);
     }
 
     // ===== Margin =====
@@ -99,62 +99,68 @@ contract TestRouter is TestBase {
     function allocate(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromMargin(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, true, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, true, data);
     }
 
     function allocateFromExternal(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalNoRisky(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.STABLE_ONLY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalNoStable(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.RISKY_ONLY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalReentrancy(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.REENTRANCY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     // ===== Remove =====
@@ -190,6 +196,7 @@ contract TestRouter is TestBase {
     // ===== Swaps =====
 
     function swap(
+        address recipient,
         bytes32 pid,
         bool riskyForStable,
         uint256 deltaOut,
@@ -198,7 +205,7 @@ contract TestRouter is TestBase {
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
+        IPrimitiveEngine(engine).swap(recipient, pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
     }
 
     function name() public pure override(TestBase) returns (string memory) {
