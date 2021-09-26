@@ -99,62 +99,68 @@ contract TestRouter is TestBase {
     function allocate(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromMargin(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, true, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, true, data);
     }
 
     function allocateFromExternal(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalNoRisky(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.STABLE_ONLY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalNoStable(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.RISKY_ONLY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     function allocateFromExternalReentrancy(
         bytes32 poolId,
         address owner,
-        uint256 delLiquidity,
+        uint256 delRisky,
+        uint256 delStable,
         bytes calldata data
     ) public {
         caller = msg.sender;
         scenario = Scenario.REENTRANCY;
-        IPrimitiveEngine(engine).allocate(poolId, owner, delLiquidity, false, data);
+        IPrimitiveEngine(engine).allocate(poolId, owner, delRisky, delStable, false, data);
     }
 
     // ===== Remove =====
