@@ -196,6 +196,7 @@ contract TestRouter is TestBase {
     // ===== Swaps =====
 
     function swap(
+        address recipient,
         bytes32 pid,
         bool riskyForStable,
         uint256 deltaOut,
@@ -204,7 +205,7 @@ contract TestRouter is TestBase {
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).swap(pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
+        IPrimitiveEngine(engine).swap(recipient, pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
     }
 
     function name() public pure override(TestBase) returns (string memory) {

@@ -284,6 +284,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     struct SwapDetails {
+        address recipient;
         bytes32 poolId;
         uint256 deltaIn;
         bool riskyForStable;
@@ -294,6 +295,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function swap(
+        address recipient,
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
@@ -304,6 +306,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (deltaIn == 0) revert DeltaInError();
 
         SwapDetails memory details = SwapDetails({
+            recipient: recipient,
             poolId: poolId,
             deltaIn: deltaIn,
             riskyForStable: riskyForStable,
@@ -325,7 +328,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
 
             if (details.riskyForStable) {
-                uint256 res0 = ((reserve.reserveRisky + deltaInWithFee) * PRECISION) / liq; // per liquidity
+                uint256 res0 = (uint256(reserve.reserveRisky + deltaInWithFee) * PRECISION) / liq; // per liquidity
                 uint256 res1 = invariantX64.getStableGivenRisky(
                     scaleFactorRisky,
                     scaleFactorStable,
@@ -336,7 +339,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
                 ); // native precision, per liquidity
                 deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
             } else {
-                uint256 res1 = ((reserve.reserveStable + deltaInWithFee) * PRECISION) / liq; // per liquidity
+                uint256 res1 = (uint256(reserve.reserveStable + deltaInWithFee) * PRECISION) / liq; // per liquidity
                 uint256 res0 = invariantX64.getRiskyGivenStable(
                     scaleFactorRisky,
                     scaleFactorStable,
@@ -358,9 +361,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         if (details.riskyForStable) {
             if (details.toMargin) {
-                margins[msg.sender].deposit(0, deltaOut);
+                margins[details.recipient].deposit(0, deltaOut);
             } else {
-                IERC20(stable).safeTransfer(msg.sender, deltaOut); // send proceeds, for callback if needed
+                IERC20(stable).safeTransfer(details.recipient, deltaOut); // send proceeds, for callback if needed
             }
 
             if (details.fromMargin) {
@@ -372,9 +375,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
         } else {
             if (details.toMargin) {
-                margins[msg.sender].deposit(deltaOut, 0);
+                margins[details.recipient].deposit(deltaOut, 0);
             } else {
-                IERC20(risky).safeTransfer(msg.sender, deltaOut); // send proceeds first, for callback if needed
+                IERC20(risky).safeTransfer(details.recipient, deltaOut); // send proceeds first, for callback if needed
             }
 
             if (details.fromMargin) {
@@ -386,7 +389,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
         }
 
-        emit Swap(msg.sender, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
+        emit Swap(msg.sender, details.recipient, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
     }
 
     // ===== View =====
