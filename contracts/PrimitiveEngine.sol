@@ -141,7 +141,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 strike,
         uint64 sigma,
         uint32 maturity,
-        uint256 delta,
+        uint256 riskyPerLp,
         uint256 delLiquidity,
         bytes calldata data
     )
@@ -156,12 +156,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
 
-        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity));
-
         if (strike == 0) revert StrikeError(strike);
-        if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
-        if (delta > PRECISION || delta == 0) revert DeltaError(delta); // 0 < delta < 1, <= 18 decimals
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma); // 1% <= sigma <= 1000%, precision of 4
+        if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
+        if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp); // 0 < delta < 1, <= 18 decimals
+
+        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
 
         Calibration memory cal = Calibration({
@@ -174,10 +174,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();
 
         uint32 tau = cal.maturity - cal.lastTimestamp; // time until expiry
-        delRisky = PRECISION - delta; // delta should have 18 precision, 0 < delta < 1e18
-        delRisky = delRisky.scaleDown(factor0); // 18 -> native precision
-        delStable = ReplicationMath.getStableGivenRisky(0, factor0, factor1, delRisky, cal.strike, cal.sigma, tau);
-        delRisky = (delRisky * delLiquidity) / PRECISION; // liquidity has 1e18 precision, delRisky has native precision
+        delStable = ReplicationMath.getStableGivenRisky(0, factor0, factor1, riskyPerLp, cal.strike, cal.sigma, tau);
+        delRisky = (riskyPerLp * delLiquidity) / PRECISION; // liquidity has 1e18 precision, riskyPerLp has native precision
         delStable = (delStable * delLiquidity) / PRECISION;
 
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
