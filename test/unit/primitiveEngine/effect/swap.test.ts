@@ -162,21 +162,6 @@ const FailCases: SwapTestCase[] = [
 
 const TestCases: SwapTestCase[] = [...SuccessCases, ...FailCases]
 
-async function doSwap(
-  signers: Wallet[],
-  engine: MockEngine,
-  router: TestRouter,
-  poolId: BytesLike,
-  testCase: SwapTestCase
-): Promise<ContractTransaction> {
-  if (DEBUG_MODE) console.log(`\n   Executing a swap`)
-  const { riskyForStable, fromMargin, deltaIn, toMargin } = testCase
-  const signerIndex = testCase.signer ? testCase.signer : 0
-  const signer = signers[signerIndex]
-  const target = testCase.fromMargin ? engine : router
-  return await target.connect(signer).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
-}
-
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
   if (DEBUG_MODE) console.log(`\n   Simulating a swap`)
   const { riskyForStable, deltaIn } = testCase
@@ -239,7 +224,16 @@ TestPools.forEach(function (pool: PoolState) {
       it('reverts when expired beyond the buffer', async function () {
         await engine.advanceTime(lastTimestamp.raw) // go to
         await engine.advanceTime(120) // go pass the buffer
-        const tx = doSwap(this.signers, engine, router, poolId, TestCases[0])
+        const tx = target
+          .connect(swapper)
+          .swap(
+            poolId,
+            TestCases[0].riskyForStable,
+            TestCases[0].deltaIn.raw,
+            TestCases[0].fromMargin,
+            TestCases[0].toMargin,
+            HashZero
+          )
         await expect(tx).to.be.reverted
       })
     } else {
@@ -259,28 +253,38 @@ TestPools.forEach(function (pool: PoolState) {
 
           if (revertMsg) {
             it(`fails with msg ${revertMsg}`, async function () {
-              tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              tx = target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.be.reverted
             })
           } else {
             it('emits the Swap event', async function () {
-              tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              tx = target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.emit(engine, 'Swap')
             })
 
             it('matches the actual deltaOut', async function () {
-              tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              tx = target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               const tokens = [this.contracts.risky, this.contracts.stable]
               await expect(tx).to.decreaseSwapOutBalance(engine, tokens, receiver, poolId, testCase)
             })
 
             it('invariant has increased', async function () {
-              tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              tx = target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.increaseInvariant(engine, poolId)
             })
 
             it('spot price has increased/decreased in the correct direction', async function () {
-              tx = target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              tx = target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.updateSpotPrice(engine, pool.calibration, testCase.riskyForStable)
             })
 
@@ -298,7 +302,9 @@ TestPools.forEach(function (pool: PoolState) {
                 new Wei(reserveStable, decimalsStable)
               )
               const simulated = simulateSwap(virtualPool, testCase)
-              await target.connect(swapper).swap(poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+              await target
+                .connect(swapper)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
               const postInvariant = await engine.invariantOf(poolId)
               expect(simulated.nextInvariant?.parsed).to.be.closeTo(new FixedPointX64(postInvariant).parsed, 1)
             })

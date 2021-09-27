@@ -83,6 +83,7 @@ contract TestGetRiskyGivenStable {
         uint256 sigma,
         uint256 tau
     ) public view returns (int128 reserveRisky) {
+        precRisky;
         int128 K = step0(strike);
         int128 vol = step1(sigma, tau);
         int128 reserve = step2(reserveStable);
@@ -91,7 +92,7 @@ contract TestGetRiskyGivenStable {
         reserveRisky = step5(input);
     }
 
-    function name() public view returns (string memory) {
+    function name() public pure returns (string memory) {
         return "TestGetRiskyGivenStable";
     }
 }

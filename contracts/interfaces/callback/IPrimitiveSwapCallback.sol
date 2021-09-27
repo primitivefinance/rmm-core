@@ -3,7 +3,6 @@ pragma solidity 0.8.6;
 
 /// @title  Primitive Swap Callback
 /// @author Primitive
-
 interface IPrimitiveSwapCallback {
     /// @notice              Triggered when swapping tokens in an Engine
     /// @param  delRisky     Amount of risky tokens required to pay the swap with

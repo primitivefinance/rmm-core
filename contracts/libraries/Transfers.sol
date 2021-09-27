@@ -8,16 +8,14 @@ library Transfers {
     /// @param  token   ERC20 token to transfer
     /// @param  to      Recipient of the ERC20 token
     /// @param  value   Amount of ERC20 to transfer
-    /// @return         Always true, revert in case of failed transfer
     function safeTransfer(
         IERC20 token,
         address to,
         uint256 value
-    ) internal returns (bool) {
+    ) internal {
         (bool success, bytes memory returnData) = address(token).call(
             abi.encodeWithSelector(token.transfer.selector, to, value)
         );
         require(success && (returnData.length == 0 || abi.decode(returnData, (bool))), "Transfer fail");
-        return success;
     }
 }

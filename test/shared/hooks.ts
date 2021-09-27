@@ -1,5 +1,5 @@
 import { Wallet } from '@ethersproject/wallet'
-import { Calibration, computePoolId, computePositionId } from '.'
+import { Calibration, computePoolId, computePositionId, scaleUp } from '.'
 import { Contracts } from '../../types'
 import { parseWei, toBN, Wei } from 'web3-units'
 import { ethers } from 'ethers'
@@ -35,15 +35,20 @@ export async function usePool(
     decimalsStable,
     MIN_LIQUIDITY,
   } = config
-  // since strike is in native precision, scale to 18 decimals if needed
-  const scaledStrike = strike.mul(parseWei('1', scaleFactorStable))
 
   /// call create on the router contract
   let tx: any
   try {
     tx = await contracts.router
       .connect(signer)
-      .create(scaledStrike.raw, sigma.raw, maturity.raw, parseWei(delta, 18).raw, parseWei('1', 18).raw, HashZero)
+      .create(
+        strike.raw,
+        sigma.raw,
+        maturity.raw,
+        scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+        parseWei('1', 18).raw,
+        HashZero
+      )
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call create() on the router in usePool()`, err)
   }
@@ -76,10 +81,13 @@ export async function useLiquidity(
 ): Promise<UseLiquidity> {
   const poolId = config.poolId(contracts.engine.address)
   const amount = parseWei('1000', 18)
+  const res = await contracts.engine.reserves(poolId)
+  const delRisky = amount.mul(res.reserveRisky).div(res.liquidity)
+  const delStable = amount.mul(res.reserveStable).div(res.liquidity)
   /// call create on the router contract
   let tx: any
   try {
-    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, amount.raw, HashZero)
+    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, delRisky.raw, delStable.raw, HashZero)
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call allocateFromExternal() on the router`)
   }
