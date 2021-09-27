@@ -31,7 +31,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     using Transfers for IERC20;
 
     /// @dev            Parameters of each pool
-    /// @param strike   Stable token decimals
+    /// @param strike   Strike price of pool with stable token decimals
     /// @param sigma    Implied volatility, with 1e4 decimals
     /// @param maturity Timestamp of pool expiration, in seconds
     /// @param lastTimestamp Timestamp of the pool's last update, in seconds
@@ -249,8 +249,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         delLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
-        liquidity[recipient][poolId] += delLiquidity; // state update
-        reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase reserves and liquidity state
+        liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
+        reserve.allocate(delRisky, delStable, delLiquidity, timestamp); // increase reserves and liquidity
 
         if (fromMargin) {
             margins.withdraw(delRisky, delStable); // removes tokens from `msg.sender` margin account
