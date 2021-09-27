@@ -35,7 +35,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @inheritdoc IPrimitiveFactory
     uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
     /// @inheritdoc IPrimitiveFactory
-    address public override owner;
+    address public immutable override owner;
     /// @inheritdoc IPrimitiveFactory
     mapping(address => mapping(address => address)) public override getEngine;
     /// @inheritdoc IPrimitiveFactory
