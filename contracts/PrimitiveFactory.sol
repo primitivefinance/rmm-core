@@ -19,6 +19,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @notice Thrown on attempting to deploy an already deployed Engine
     error DeployedError();
 
+    /// @notice Thrown on attempting to deploy a pool using a token with unsupported decimals
+    error DecimalsError(uint256 decimals);
+
     /// @notice Engine will use these variables for its immutable variables
     struct Args {
         address factory;
@@ -32,7 +35,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @inheritdoc IPrimitiveFactory
     uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
     /// @inheritdoc IPrimitiveFactory
-    address public override owner;
+    address public immutable override owner;
     /// @inheritdoc IPrimitiveFactory
     mapping(address => mapping(address => address)) public override getEngine;
     /// @inheritdoc IPrimitiveFactory
@@ -53,7 +56,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
         emit Deployed(msg.sender, risky, stable, engine);
     }
 
-    /// @notice         Deploys an engine contract with a `salt`.
+    /// @notice         Deploys an engine contract with a `salt`. Only supports tokens with 6 <= decimals <= 18
     /// @dev            Engine contract should have no constructor args, because this affects the deployed address
     ///                 From solidity docs:
     ///                 "It will compute the address from the address of the creating contract,
@@ -71,6 +74,9 @@ contract PrimitiveFactory is IPrimitiveFactory {
         address stable
     ) internal returns (address engine) {
         (uint256 riskyDecimals, uint256 stableDecimals) = (IERC20(risky).decimals(), IERC20(stable).decimals());
+        if (riskyDecimals > 18 || riskyDecimals < 6) revert DecimalsError(riskyDecimals);
+        if (stableDecimals > 18 || stableDecimals < 6) revert DecimalsError(riskyDecimals);
+
         uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
         uint256 scaleFactorStable = 10**(18 - stableDecimals);
         uint256 lowestDecimals = (riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals);

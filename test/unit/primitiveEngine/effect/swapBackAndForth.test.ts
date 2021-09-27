@@ -98,7 +98,7 @@ testContext('Swap stable to risky back and forth', function () {
         if (DEBUG) console.log(`\n Swapping: ${amount.float} stable`)
         let res = await logRes(this.contracts.engine, poolId)
 
-        await this.contracts.router.swap(poolId, false, amount.raw, false, false, HashZero)
+        await this.contracts.router.swap(this.contracts.router.address, poolId, false, amount.raw, false, false, HashZero)
         const amountOut = res.risky.sub((await this.contracts.engine.reserves(poolId)).reserveRisky)
 
         let invariant = await this.contracts.engine.invariantOf(poolId)
@@ -110,7 +110,7 @@ testContext('Swap stable to risky back and forth', function () {
         }
         res = await logRes(this.contracts.engine, poolId)
 
-        await this.contracts.router.swap(poolId, true, amountOut.raw, false, false, HashZero)
+        await this.contracts.router.swap(this.contracts.router.address, poolId, true, amountOut.raw, false, false, HashZero)
         const amountOut2 = res.stable.sub((await this.contracts.engine.reserves(poolId)).reserveStable)
         invariant = await this.contracts.engine.invariantOf(poolId)
 

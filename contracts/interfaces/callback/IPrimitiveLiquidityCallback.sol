@@ -3,7 +3,6 @@ pragma solidity 0.8.6;
 
 /// @title  Primitive Liquidity Callback
 /// @author Primitive
-
 interface IPrimitiveLiquidityCallback {
     /// @notice              Triggered when providing liquidity to an Engine
     /// @param  delRisky     Amount of risky tokens required to provide to risky reserve
