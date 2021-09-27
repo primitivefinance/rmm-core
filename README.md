@@ -58,6 +58,8 @@ In the `/test/shared/poolConfigs.ts` file is an array of different curve paramet
 
 All audits are located in the audits/ folder.
 
+The core contracts are audited by three teams: Chainsecurity, ABDK Consulting, Sherlock, and Dedaub.
+
 # Deployed Addresses
 
 The deployed contract addresses for all of Primitive are located here: [Contract Database](https://www.notion.so/primitivefi/dc3b883ff9d94044b6738701b2826f7a?v=9e56507d430d4f4fb1939242cfb23736)
