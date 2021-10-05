@@ -8,7 +8,8 @@ import "../../libraries/ReplicationMath.sol";
 /// @dev     Tests each step in ReplicationMath.getStableGivenRisky. For testing ONLY
 
 contract TestGetStableGivenRisky {
-    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
+    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for uint256;
     using CumulativeNormalDistribution for int128;
     using Units for int128;
     using Units for uint256;

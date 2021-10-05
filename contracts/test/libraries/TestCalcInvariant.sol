@@ -8,7 +8,8 @@ import "../../libraries/ReplicationMath.sol";
 /// @dev     For testing purposes ONLY
 
 contract TestCalcInvariant {
-    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64.
+    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for uint256;
     using CumulativeNormalDistribution for int128;
     using Units for int128;
     using Units for uint256;
@@ -28,8 +29,8 @@ contract TestCalcInvariant {
         uint256 tau
     ) public view returns (int128 reserve2) {
         reserve2 = ReplicationMath
-        .getStableGivenRisky(0, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
-        .scaleToX64(scaleFactorStable);
+            .getStableGivenRisky(0, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
+            .scaleToX64(scaleFactorStable);
     }
 
     function step1(uint256 reserveStable, int128 reserve2) public view returns (int128 invariant) {
