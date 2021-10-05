@@ -6,7 +6,8 @@ import "./ABDKMath64x64.sol";
 /// @title   Cumulative Normal Distribution Math Library
 /// @author  Primitive
 library CumulativeNormalDistribution {
-    using ABDKMath64x64 for *;
+    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for uint256;
 
     /// @notice Thrown on passing an arg that is out of the input range for these math functions
     error InverseOutOfBounds(int128 value);
