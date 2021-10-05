@@ -10,9 +10,12 @@ import "../../libraries/CumulativeNormalDistribution.sol";
 import "../../libraries/Units.sol";
 
 contract TestCumulativeNormalDistribution {
-    using Units for *;
-    using ABDKMath64x64 for *;
-    using CumulativeNormalDistribution for *;
+    using Units for int128;
+    using Units for uint256;
+    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for uint256;
+    using CumulativeNormalDistribution for int128;
+    using CumulativeNormalDistribution for uint256;
 
     uint256 public constant PRECISION = 1e18;
 
