@@ -10,7 +10,8 @@ import "./Units.sol";
 /// @notice  Alex Evans, Guillermo Angeris, and Tarun Chitra. Replicating Market Makers.
 ///          https://stanford.edu/~guillean/papers/rmms.pdf
 library ReplicationMath {
-    using ABDKMath64x64 for *; // stores numerators as int128, denominator is 2^64
+    using ABDKMath64x64 for int128;
+    using ABDKMath64x64 for uint256;
     using CumulativeNormalDistribution for int128;
     using Units for int128;
     using Units for uint256;
@@ -36,7 +37,7 @@ library ReplicationMath {
     /// @param   strike         Unsigned 256-bit integer value with precision equal to 10^(18 - scaleFactorStable)
     /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
     /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
-    /// @return  stablePerLiquidity = K*CDF(CDF^-1(1 - riskyPerLiquidity) - sigma*sqrt(tau)) as an unsigned 256-bit int
+    /// @return  stablePerLiquidity = K*CDF(CDF^-1(1 - riskyPerLiquidity) - sigma*sqrt(tau)) + invariantLastX64 as uint
     function getStableGivenRisky(
         int128 invariantLastX64,
         uint256 scaleFactorRisky,
@@ -89,7 +90,7 @@ library ReplicationMath {
     /// @param   scaleFactorStable  Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
     /// @param   riskyPerLiquidity  Unsigned 256-bit integer of Pool's risky reserves *per liquidity*, 0 <= x <= 1
     /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
-    /// @return  invariantX64      = stablePerLiquidity - K * CDF(CDF^-1(1 - riskyPerLiquidity) - sigma * sqrt(tau))
+    /// @return  invariantX64       = stablePerLiquidity - K * CDF(CDF^-1(1 - riskyPerLiquidity) - sigma * sqrt(tau))
     function calcInvariant(
         uint256 scaleFactorRisky,
         uint256 scaleFactorStable,
