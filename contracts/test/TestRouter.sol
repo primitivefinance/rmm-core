@@ -199,16 +199,20 @@ contract TestRouter is TestBase {
         address recipient,
         bytes32 pid,
         bool riskyForStable,
+        uint256 deltaIn,
         uint256 deltaOut,
         bool fromMargin,
         bool toMargin,
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).swap(recipient, pid, riskyForStable, deltaOut, fromMargin, toMargin, data);
+        console.log("got to calling");
+        IPrimitiveEngine(engine).swap(recipient, pid, riskyForStable, deltaIn, deltaOut, fromMargin, toMargin, data);
     }
 
     function name() public pure override(TestBase) returns (string memory) {
         return "TestRouter";
     }
 }
+
+import "hardhat/console.sol";

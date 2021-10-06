@@ -4,6 +4,7 @@ pragma solidity 0.8.6;
 import "../../interfaces/IPrimitiveEngine.sol";
 import "../../interfaces/IERC20.sol";
 import "./Scenarios.sol";
+import "hardhat/console.sol";
 
 abstract contract TestSwapCallback is Scenarios {
     function swapCallback(
@@ -17,6 +18,7 @@ abstract contract TestSwapCallback is Scenarios {
         address token0 = risky();
         address token1 = stable();
         address from = getCaller();
+        console.log("got to clalback");
         if (delRisky > 0) IERC20(token0).transferFrom(from, msg.sender, delRisky);
         if (delStable > 0) IERC20(token1).transferFrom(from, msg.sender, delStable);
     }

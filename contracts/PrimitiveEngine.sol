@@ -20,6 +20,8 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+import "hardhat/console.sol";
+
 contract PrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
@@ -84,7 +86,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
         (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
-            .args();
+        .args();
     }
 
     /// @return Risky token balance of this contract
@@ -290,6 +292,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         address recipient;
         bytes32 poolId;
         uint256 deltaIn;
+        uint256 deltaOut;
         bool riskyForStable;
         bool fromMargin;
         bool toMargin;
@@ -302,16 +305,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
+        uint256 deltaOut,
         bool fromMargin,
         bool toMargin,
         bytes calldata data
-    ) external override lock returns (uint256 deltaOut) {
+    ) external override lock {
         if (deltaIn == 0) revert DeltaInError();
+        if (deltaOut == 0) revert DeltaOutError();
 
         SwapDetails memory details = SwapDetails({
             recipient: recipient,
             poolId: poolId,
             deltaIn: deltaIn,
+            deltaOut: deltaOut,
             riskyForStable: riskyForStable,
             fromMargin: fromMargin,
             toMargin: toMargin,
@@ -330,43 +336,39 @@ contract PrimitiveEngine is IPrimitiveEngine {
             uint32 tau = cal.maturity - cal.lastTimestamp;
             uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
 
+            uint256 riskyReserveAdjusted;
+            uint256 stableReserveAdjusted;
             if (details.riskyForStable) {
-                uint256 res0 = (uint256(reserve.reserveRisky + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                uint256 res1 = invariantX64.getStableGivenRisky(
-                    scaleFactorRisky,
-                    scaleFactorStable,
-                    res0,
-                    cal.strike,
-                    cal.sigma,
-                    tau
-                ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
+                riskyReserveAdjusted = uint256(reserve.reserveRisky) + deltaInWithFee;
+                stableReserveAdjusted = uint256(reserve.reserveStable) - deltaOut;
             } else {
-                uint256 res1 = (uint256(reserve.reserveStable + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                uint256 res0 = invariantX64.getRiskyGivenStable(
-                    scaleFactorRisky,
-                    scaleFactorStable,
-                    res1,
-                    cal.strike,
-                    cal.sigma,
-                    tau
-                ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
+                riskyReserveAdjusted = uint256(reserve.reserveRisky) - deltaOut;
+                stableReserveAdjusted = uint256(reserve.reserveStable) + deltaInWithFee;
             }
 
-            reserve.swap(details.riskyForStable, details.deltaIn, deltaOut, details.timestamp); // state update
-
-            int128 invariantAfter = invariantOf(details.poolId);
+            int128 invariantAfter = ReplicationMath.calcInvariant(
+                scaleFactorRisky,
+                scaleFactorStable,
+                (riskyReserveAdjusted * PRECISION) / liq,
+                (stableReserveAdjusted * PRECISION) / liq,
+                cal.strike,
+                cal.sigma,
+                tau
+            );
+            console.log("got to invarian check");
+            console.logInt(invariantX64);
+            console.logInt(invariantAfter);
             if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
-        }
+            console.log("passed invairnat check");
 
-        if (deltaOut == 0) revert DeltaOutError();
+            reserve.swap(details.riskyForStable, details.deltaIn, details.deltaOut, details.timestamp); // state update
+        }
 
         if (details.riskyForStable) {
             if (details.toMargin) {
-                margins[details.recipient].deposit(0, deltaOut);
+                margins[details.recipient].deposit(0, details.deltaOut);
             } else {
-                IERC20(stable).safeTransfer(details.recipient, deltaOut); // send proceeds, for callback if needed
+                IERC20(stable).safeTransfer(details.recipient, details.deltaOut); // send proceeds, for callback if needed
             }
 
             if (details.fromMargin) {
@@ -378,9 +380,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
         } else {
             if (details.toMargin) {
-                margins[details.recipient].deposit(deltaOut, 0);
+                margins[details.recipient].deposit(details.deltaOut, 0);
             } else {
-                IERC20(risky).safeTransfer(details.recipient, deltaOut); // send proceeds first, for callback if needed
+                IERC20(risky).safeTransfer(details.recipient, details.deltaOut); // send proceeds first, for callback if needed
             }
 
             if (details.fromMargin) {
@@ -392,7 +394,14 @@ contract PrimitiveEngine is IPrimitiveEngine {
             }
         }
 
-        emit Swap(msg.sender, details.recipient, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
+        emit Swap(
+            msg.sender,
+            details.recipient,
+            details.poolId,
+            details.riskyForStable,
+            details.deltaIn,
+            details.deltaOut
+        );
     }
 
     // ===== View =====
