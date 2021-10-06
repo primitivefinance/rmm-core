@@ -35,11 +35,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @param sigma    Implied volatility, with 1e4 decimals
     /// @param maturity Timestamp of pool expiration, in seconds
     /// @param lastTimestamp Timestamp of the pool's last update, in seconds
+    /// @param creationTimestamp Timestamp of the `create()` call for this pool
     struct Calibration {
         uint128 strike;
         uint64 sigma;
         uint32 maturity;
         uint32 lastTimestamp;
+        uint32 creationTimestamp;
     }
 
     /// @inheritdoc IPrimitiveEngineView
@@ -170,7 +172,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             strike: strike.toUint128(),
             sigma: sigma,
             maturity: maturity,
-            lastTimestamp: _blockTimestamp()
+            lastTimestamp: _blockTimestamp(),
+            creationTimestamp: _blockTimestamp()
         });
 
         if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();

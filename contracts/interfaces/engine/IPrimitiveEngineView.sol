@@ -72,6 +72,7 @@ interface IPrimitiveEngineView {
     /// sigma               Volatility of the pool scaled to a percentage integer with a precision of 1e4
     /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
+    /// creationTimestamp   Timestamp of the pool creation, immutable and used for on-chain swap fee calculations
     function calibrations(bytes32 poolId)
         external
         view
@@ -79,7 +80,8 @@ interface IPrimitiveEngineView {
             uint128 strike,
             uint64 sigma,
             uint32 maturity,
-            uint32 lastTimestamp
+            uint32 lastTimestamp,
+            uint32 creationTimestamp
         );
 
     /// @notice             Fetches position liquidity an account address and poolId

@@ -11,11 +11,11 @@ contract MockFactory is IPrimitiveFactory {
     /// @inheritdoc IPrimitiveFactory
     uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
     /// @inheritdoc IPrimitiveFactory
-    address public override owner;
+    address public immutable override deployer;
     mapping(address => mapping(address => address)) public override getEngine;
 
     constructor() {
-        owner = msg.sender;
+        deployer = msg.sender;
     }
 
     struct Args {
@@ -47,7 +47,7 @@ contract MockFactory is IPrimitiveFactory {
         }); // Engines call this to get constructor args
         engine = address(new MockEngine{salt: keccak256(abi.encode(risky, stable))}());
         getEngine[risky][stable] = engine;
-        emit Deployed(msg.sender, risky, stable, engine);
+        emit DeployEngine(msg.sender, risky, stable, engine);
         delete args;
     }
 }
