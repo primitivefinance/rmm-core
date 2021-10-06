@@ -72,7 +72,7 @@ interface IPrimitiveEngineView {
     /// sigma               Volatility of the pool scaled to a percentage integer with a precision of 1e4
     /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
-    /// creationTimestamp   Timestamp of the pool creation, immutable and used for on-chain fee calculations
+    /// creationTimestamp   Timestamp of the pool creation, immutable and used for on-chain swap fee calculations
     function calibrations(bytes32 poolId)
         external
         view
