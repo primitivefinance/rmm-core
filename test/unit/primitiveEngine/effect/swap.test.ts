@@ -62,7 +62,7 @@ export const SuccessCases: SwapTestCase[] = [
     fromMargin: false,
     toMargin: false,
   },
-  // 2e3
+  /* // 2e3
   {
     riskyForStable: true,
     deltaIn: new Wei(toBN(2000)),
@@ -136,7 +136,7 @@ export const SuccessCases: SwapTestCase[] = [
     deltaIn: parseWei(10), // investigate
     fromMargin: false,
     toMargin: true,
-  },
+  }, */
 ]
 
 const FailCases: SwapTestCase[] = [
@@ -165,8 +165,8 @@ const TestCases: SwapTestCase[] = [...SuccessCases, ...FailCases]
 function simulateSwap(pool: Pool, testCase: SwapTestCase): DebugReturn {
   if (DEBUG_MODE) console.log(`\n   Simulating a swap`)
   const { riskyForStable, deltaIn } = testCase
-  if (riskyForStable) return pool.swapAmountInRisky(deltaIn)
-  else return pool.swapAmountInStable(deltaIn)
+  if (riskyForStable) return pool.virtualSwapAmountInRisky(deltaIn)
+  else return pool.virtualSwapAmountInStable(deltaIn)
 }
 
 const DEBUG_MODE = false
@@ -188,6 +188,7 @@ TestPools.forEach(function (pool: PoolState) {
     let deployer: Wallet
     let engine: MockEngine, router: TestRouter
     let tx: any, receiver: string, target: any, swapper
+
     beforeEach(async function () {
       const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
         let fix = await primitiveFixture([wallet], provider)
@@ -240,36 +241,64 @@ TestPools.forEach(function (pool: PoolState) {
       for (const testCase of TestCases) {
         describe(swapTestCaseDescription(testCase), async function () {
           let { riskyForStable, deltaIn, fromMargin, toMargin, signer, revertMsg } = testCase
+          let virtualPool: Pool
+          let deltaOut: Wei
+
           before(async function () {
             const dec = riskyForStable ? decimalsRisky : decimalsStable
             const prec = riskyForStable ? scaleFactorRisky : scaleFactorStable
             deltaIn = new Wei(deltaIn.div(parseWei('1', prec)).raw, dec)
           })
+
           beforeEach(async function () {
             swapper = this.signers[signer ? signer : 0]
             target = fromMargin ? engine : router
             receiver = fromMargin ? swapper.address : router.address
+
+            const res = await engine.reserves(poolId)
+            const { reserveRisky, reserveStable, liquidity } = res
+            virtualPool = new Pool(
+              new Wei(reserveRisky, decimalsRisky),
+              new Wei(liquidity, 18),
+              strike,
+              sigma,
+              maturity,
+              lastTimestamp,
+              fee.float,
+              new Wei(reserveStable, decimalsStable)
+            )
+
+            virtualPool.setInvariant(await engine.invariantOf(poolId))
+
+            const result = simulateSwap(virtualPool, testCase)
+            deltaOut = result.deltaOut
+            console.log(deltaOut.toString())
           })
 
           if (revertMsg) {
             it(`fails with msg ${revertMsg}`, async function () {
               tx = target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.be.reverted
             })
           } else {
             it('emits the Swap event', async function () {
+              virtualPool.setInvariant(await engine.invariantOf(poolId))
+
+              const result = simulateSwap(virtualPool, testCase)
+              deltaOut = result.deltaOut
+              console.log(deltaOut.toString())
               tx = target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.emit(engine, 'Swap')
             })
 
             it('matches the actual deltaOut', async function () {
               tx = target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               const tokens = [this.contracts.risky, this.contracts.stable]
               await expect(tx).to.decreaseSwapOutBalance(engine, tokens, receiver, poolId, testCase)
             })
@@ -277,14 +306,14 @@ TestPools.forEach(function (pool: PoolState) {
             it('invariant has increased', async function () {
               tx = target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.increaseInvariant(engine, poolId)
             })
 
             it('spot price has increased/decreased in the correct direction', async function () {
               tx = target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               await expect(tx).to.updateSpotPrice(engine, pool.calibration, testCase.riskyForStable)
             })
 
@@ -304,7 +333,7 @@ TestPools.forEach(function (pool: PoolState) {
               const simulated = simulateSwap(virtualPool, testCase)
               await target
                 .connect(swapper)
-                .swap(target.address, poolId, riskyForStable, deltaIn.raw, fromMargin, toMargin, HashZero)
+                .swap(target.address, poolId, riskyForStable, deltaIn.raw, deltaOut.raw, fromMargin, toMargin, HashZero)
               const postInvariant = await engine.invariantOf(poolId)
               expect(simulated.nextInvariant?.parsed).to.be.closeTo(new FixedPointX64(postInvariant).parsed, 1)
             })
