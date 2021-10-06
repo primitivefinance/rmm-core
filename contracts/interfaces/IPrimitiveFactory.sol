@@ -9,7 +9,7 @@ interface IPrimitiveFactory {
     /// @param  risky   Risky token of Engine to deploy
     /// @param  stable  Stable token of Engine to deploy
     /// @param  engine  Deployed engine address
-    event Deployed(address indexed from, address indexed risky, address indexed stable, address engine);
+    event DeployEngine(address indexed from, address indexed risky, address indexed stable, address engine);
 
     /// @notice         Deploys a new Engine contract and sets the `getEngine` mapping for the tokens
     /// @param  risky   Risky token, the underlying token
@@ -50,7 +50,7 @@ interface IPrimitiveFactory {
     /// @return engine  Engine address for a risky and stable token
     function getEngine(address risky, address stable) external view returns (address engine);
 
-    /// @notice         Owner does not have any access controls to wield
+    /// @notice         Deployer does not have any access controls to wield
     /// @return         Deployer of this factory contract
-    function owner() external view returns (address);
+    function deployer() external view returns (address);
 }

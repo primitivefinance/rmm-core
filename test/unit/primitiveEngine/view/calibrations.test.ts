@@ -30,7 +30,7 @@ TestPools.forEach(function (pool: PoolState) {
       )
       expect(
         await this.contracts.engine.calibrations('0x6de0b49963079e3aead2278c2be4a58cc6afe973061c653ee98b527d1161a3c5')
-      ).to.deep.equal([toBN('0'), toBN('0'), 0, 0])
+      ).to.deep.equal([toBN('0'), toBN('0'), 0, 0, 0])
     })
   })
 })

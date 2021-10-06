@@ -46,7 +46,7 @@ TestPools.forEach(function (pool: PoolState) {
         await this.contracts.factoryDeploy.deploy(mockRisky.address, mockStable.address)
       })
 
-      it('emits the Deployed event', async function () {
+      it('emits the DeployEngine event', async function () {
         const [deployer] = this.signers
 
         let mockRisky = await deployMockContract(deployer, TestToken)
@@ -61,7 +61,7 @@ TestPools.forEach(function (pool: PoolState) {
         )
 
         await expect(this.contracts.factoryDeploy.deploy(mockRisky.address, mockStable.address))
-          .to.emit(this.contracts.factory, 'Deployed')
+          .to.emit(this.contracts.factory, 'DeployEngine')
           .withArgs(this.contracts.factoryDeploy.address, mockRisky.address, mockStable.address, engineAddress)
       })
     })
