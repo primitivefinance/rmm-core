@@ -3,7 +3,7 @@ pragma solidity 0.8.6;
 
 /// @title   Primitive Factory
 /// @author  Primitive
-/// @notice  No access controls are available to owner
+/// @notice  No access controls are available to deployer
 /// @dev     Deploy new PrimitiveEngine contracts
 
 import "./interfaces/IPrimitiveFactory.sol";
@@ -35,14 +35,14 @@ contract PrimitiveFactory is IPrimitiveFactory {
     /// @inheritdoc IPrimitiveFactory
     uint256 public constant override MIN_LIQUIDITY_FACTOR = 6;
     /// @inheritdoc IPrimitiveFactory
-    address public immutable override owner;
+    address public immutable override deployer;
     /// @inheritdoc IPrimitiveFactory
     mapping(address => mapping(address => address)) public override getEngine;
     /// @inheritdoc IPrimitiveFactory
     Args public override args; // Used instead of an initializer in Engine contract
 
     constructor() {
-        owner = msg.sender;
+        deployer = msg.sender;
     }
 
     /// @inheritdoc IPrimitiveFactory
@@ -53,7 +53,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
 
         engine = deploy(address(this), risky, stable);
         getEngine[risky][stable] = engine;
-        emit Deployed(msg.sender, risky, stable, engine);
+        emit DeployEngine(msg.sender, risky, stable, engine);
     }
 
     /// @notice         Deploys an engine contract with a `salt`. Only supports tokens with 6 <= decimals <= 18
