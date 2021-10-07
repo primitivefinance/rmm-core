@@ -85,7 +85,7 @@ declare global {
         tokens: any[],
         receiver: string,
         poolId: string,
-        testCase: SwapTestCase,
+        { riskyForStable, toMargin }: { riskyForStable: boolean; toMargin: boolean },
         amountOut?: Wei
       ): AsyncAssertion
       increaseInvariant(engine: EngineTypes, poolId: string): AsyncAssertion

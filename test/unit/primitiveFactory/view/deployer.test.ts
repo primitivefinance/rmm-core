@@ -1,6 +1,6 @@
 import expect from '../../../shared/expect'
-import { primitiveFixture } from '../../../shared/fixtures'
 import { testContext } from '../../../shared/testContext'
+import { primitiveFixture } from '../../../shared/fixtures'
 
 testContext('deployer', async function () {
   beforeEach(async function () {

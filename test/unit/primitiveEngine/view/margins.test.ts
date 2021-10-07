@@ -1,27 +1,28 @@
-import expect from '../../../shared/expect'
-import { waffle } from 'hardhat'
-import { constants } from 'ethers'
-import { parseWei, Time, toBN } from 'web3-units'
+import { Wallet } from 'ethers'
+import { toBN } from 'web3-units'
 
-import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { computePoolId, computePositionId } from '../../../shared/utils'
-import { primitiveFixture } from '../../../shared/fixtures'
+import expect from '../../../shared/expect'
 import { testContext } from '../../../shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
-const { HashZero } = constants
+import { PoolState, TestPools } from '../../../shared/poolConfigs'
+import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`margins of ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
-    let poolId: string, posId: string
+    const { decimalsRisky, decimalsStable } = pool.calibration
+
+    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    before(async function () {
+      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+    })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(primitiveFixture)
+      const fixture = await this.loadFixture(fixtureToLoad)
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
-      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await usePool(this.signers[0], this.contracts, pool.calibration)
+      await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address)
     })
 
     it('returns 0 for all fields when the margin account is uninitialized', async function () {

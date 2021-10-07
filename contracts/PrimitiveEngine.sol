@@ -3,7 +3,8 @@ pragma solidity 0.8.6;
 
 /// @title   Primitive Engine
 /// @author  Primitive
-/// @dev     Replicating Market Maker
+/// @notice  Replicating Market Maker
+/// @dev     RMM-01
 
 import "./libraries/Margin.sol";
 import "./libraries/ReplicationMath.sol";
@@ -290,6 +291,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         address recipient;
         bytes32 poolId;
         uint256 deltaIn;
+        uint256 deltaOut;
         bool riskyForStable;
         bool fromMargin;
         bool toMargin;
@@ -302,16 +304,19 @@ contract PrimitiveEngine is IPrimitiveEngine {
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
+        uint256 deltaOut,
         bool fromMargin,
         bool toMargin,
         bytes calldata data
-    ) external override lock returns (uint256 deltaOut) {
+    ) external override lock {
         if (deltaIn == 0) revert DeltaInError();
+        if (deltaOut == 0) revert DeltaOutError();
 
         SwapDetails memory details = SwapDetails({
             recipient: recipient,
             poolId: poolId,
             deltaIn: deltaIn,
+            deltaOut: deltaOut,
             riskyForStable: riskyForStable,
             fromMargin: fromMargin,
             toMargin: toMargin,
@@ -323,76 +328,76 @@ contract PrimitiveEngine is IPrimitiveEngine {
         int128 invariantX64 = invariantOf(details.poolId); // stored in memory to perform the invariant check
 
         {
-            // reserve scope
+            // swap scope, avoids stack too deep errors
             Calibration memory cal = calibrations[details.poolId];
             Reserve.Data storage reserve = reserves[details.poolId];
-            uint256 liq = reserve.liquidity;
             uint32 tau = cal.maturity - cal.lastTimestamp;
             uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
 
+            uint256 adjustedRisky;
+            uint256 adjustedStable;
             if (details.riskyForStable) {
-                uint256 res0 = (uint256(reserve.reserveRisky + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                uint256 res1 = invariantX64.getStableGivenRisky(
-                    scaleFactorRisky,
-                    scaleFactorStable,
-                    res0,
-                    cal.strike,
-                    cal.sigma,
-                    tau
-                ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveStable) - (res1 * liq) / PRECISION; // res1 for all liquidity
+                adjustedRisky = uint256(reserve.reserveRisky) + deltaInWithFee;
+                adjustedStable = uint256(reserve.reserveStable) - deltaOut;
             } else {
-                uint256 res1 = (uint256(reserve.reserveStable + deltaInWithFee) * PRECISION) / liq; // per liquidity
-                uint256 res0 = invariantX64.getRiskyGivenStable(
-                    scaleFactorRisky,
-                    scaleFactorStable,
-                    res1,
-                    cal.strike,
-                    cal.sigma,
-                    tau
-                ); // native precision, per liquidity
-                deltaOut = uint256(reserve.reserveRisky) - (res0 * liq) / PRECISION; // res0 for all liquidity
+                adjustedRisky = uint256(reserve.reserveRisky) - deltaOut;
+                adjustedStable = uint256(reserve.reserveStable) + deltaInWithFee;
             }
+            adjustedRisky = (adjustedRisky * PRECISION) / reserve.liquidity;
+            adjustedStable = (adjustedStable * PRECISION) / reserve.liquidity;
 
-            reserve.swap(details.riskyForStable, details.deltaIn, deltaOut, details.timestamp); // state update
+            int128 invariantAfter = ReplicationMath.calcInvariant(
+                scaleFactorRisky,
+                scaleFactorStable,
+                adjustedRisky,
+                adjustedStable,
+                cal.strike,
+                cal.sigma,
+                tau
+            );
 
-            int128 invariantAfter = invariantOf(details.poolId);
             if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
+            reserve.swap(details.riskyForStable, details.deltaIn, details.deltaOut, details.timestamp); // state update
         }
-
-        if (deltaOut == 0) revert DeltaOutError();
 
         if (details.riskyForStable) {
             if (details.toMargin) {
-                margins[details.recipient].deposit(0, deltaOut);
+                margins[details.recipient].deposit(0, details.deltaOut);
             } else {
-                IERC20(stable).safeTransfer(details.recipient, deltaOut); // send proceeds, for callback if needed
+                IERC20(stable).safeTransfer(details.recipient, details.deltaOut); // optimistic transfer out
             }
 
             if (details.fromMargin) {
-                margins.withdraw(deltaIn, 0); // pay for swap
+                margins.withdraw(details.deltaIn, 0); // pay for swap
             } else {
                 uint256 balRisky = balanceRisky();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic payment
+                IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic transfer in
                 checkRiskyBalance(balRisky + details.deltaIn);
             }
         } else {
             if (details.toMargin) {
-                margins[details.recipient].deposit(deltaOut, 0);
+                margins[details.recipient].deposit(details.deltaOut, 0);
             } else {
-                IERC20(risky).safeTransfer(details.recipient, deltaOut); // send proceeds first, for callback if needed
+                IERC20(risky).safeTransfer(details.recipient, details.deltaOut); // optimistic transfer out
             }
 
             if (details.fromMargin) {
-                margins.withdraw(0, deltaIn); // pay for swap
+                margins.withdraw(0, details.deltaIn); // pay for swap
             } else {
                 uint256 balStable = balanceStable();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic payment
+                IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic transfer in
                 checkStableBalance(balStable + details.deltaIn);
             }
         }
 
-        emit Swap(msg.sender, details.recipient, details.poolId, details.riskyForStable, details.deltaIn, deltaOut);
+        emit Swap(
+            msg.sender,
+            details.recipient,
+            details.poolId,
+            details.riskyForStable,
+            details.deltaIn,
+            details.deltaOut
+        );
     }
 
     // ===== View =====

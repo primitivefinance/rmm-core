@@ -60,7 +60,7 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       tokens: any[],
       receiver: string,
       poolId: string,
-      testCase: SwapTestCase,
+      { riskyForStable, toMargin }: { riskyForStable: boolean; toMargin: boolean },
       amountOut?: Wei
     ) {
       const oldMargin = await engine.margins(receiver)
@@ -72,17 +72,17 @@ export default function supportSwap(Assertion: Chai.AssertionStatic) {
       const newMargin = await engine.margins(receiver)
       const newBalances = [await tokens[0].balanceOf(engine.address), await tokens[1].balanceOf(engine.address)]
 
-      const preBalStable = testCase.toMargin ? oldMargin.balanceStable : oldBalances[1]
-      const preBalRisky = testCase.toMargin ? oldMargin.balanceRisky : oldBalances[0]
-      const postBalStable = testCase.toMargin ? newMargin.balanceStable : newBalances[1]
-      const postBalRisky = testCase.toMargin ? newMargin.balanceRisky : newBalances[0]
+      const preBalStable = toMargin ? oldMargin.balanceStable : oldBalances[1]
+      const preBalRisky = toMargin ? oldMargin.balanceRisky : oldBalances[0]
+      const postBalStable = toMargin ? newMargin.balanceStable : newBalances[1]
+      const postBalRisky = toMargin ? newMargin.balanceRisky : newBalances[0]
 
-      let balanceOut = testCase.riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
-      if (testCase.toMargin) balanceOut = balanceOut.mul(-1)
+      let balanceOut = riskyForStable ? preBalStable.sub(postBalStable) : preBalRisky.sub(postBalRisky)
+      if (toMargin) balanceOut = balanceOut.mul(-1)
 
       const deltaOut = amountOut
         ? amountOut.raw
-        : testCase.riskyForStable
+        : riskyForStable
         ? oldReserves.reserveStable.sub(newReserves.reserveStable)
         : oldReserves.reserveRisky.sub(newReserves.reserveRisky)
 

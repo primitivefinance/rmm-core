@@ -93,17 +93,18 @@ interface IPrimitiveEngineActions {
     /// @param  poolId      Pool Identifier
     /// @param  riskyForStable If true, swap risky to stable, else swap stable to risky
     /// @param  deltaIn     Amount of tokens to swap in
+    /// @param  deltaOut    Amount of tokens to swap out
     /// @param  fromMargin  Whether the `msg.sender` uses their margin balance, or must send tokens
     /// @param  toMargin    Whether the `deltaOut` amount is transferred or deposited into margin
     /// @param  data        Arbitrary data that is passed to the swapCallback function
-    /// @return deltaOut    Amount of either stable or risky tokens that were sent out of this contract as payment
     function swap(
         address recipient,
         bytes32 poolId,
         bool riskyForStable,
         uint256 deltaIn,
+        uint256 deltaOut,
         bool fromMargin,
         bool toMargin,
         bytes calldata data
-    ) external returns (uint256 deltaOut);
+    ) external;
 }

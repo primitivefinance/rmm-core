@@ -1,8 +1,7 @@
 import expect from '../../../shared/expect'
-
-import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { primitiveFixture } from '../../../shared/fixtures'
 import { testContext } from '../../../shared/testContext'
+import { primitiveFixture } from '../../../shared/fixtures'
+import { PoolState, TestPools } from '../../../shared/poolConfigs'
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`constructor of ${pool.description} pool`, function () {
