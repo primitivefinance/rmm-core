@@ -2,6 +2,7 @@
 pragma solidity 0.8.6;
 
 import "./TestBase.sol";
+import "../libraries/ReplicationMath.sol";
 
 contract TestRouter is TestBase {
     constructor(address engine_) TestBase(engine_) {}
@@ -206,13 +207,98 @@ contract TestRouter is TestBase {
         bytes calldata data
     ) public {
         caller = msg.sender;
-        console.log("got to calling");
         IPrimitiveEngine(engine).swap(recipient, pid, riskyForStable, deltaIn, deltaOut, fromMargin, toMargin, data);
+    }
+
+    function getStableOutGivenRiskyIn(bytes32 poolId, uint256 deltaIn) public view returns (uint256) {
+        IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
+        uint256 amountInWithFee = (deltaIn * lens.GAMMA()) / 1e4;
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
+        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        int128 invariant = lens.invariantOf(poolId);
+
+        uint256 nextRisky = ((uint256(reserveRisky) + amountInWithFee) * lens.PRECISION()) / liquidity;
+        uint256 nextStable = ReplicationMath.getStableGivenRisky(
+            invariant,
+            lens.scaleFactorRisky(),
+            lens.scaleFactorStable(),
+            nextRisky,
+            strike,
+            sigma,
+            maturity - lastTimestamp
+        );
+
+        uint256 deltaOut = uint256(reserveStable) - (nextStable * liquidity) / lens.PRECISION();
+        return deltaOut;
+    }
+
+    function getRiskyOutGivenStableIn(bytes32 poolId, uint256 deltaIn) public view returns (uint256) {
+        IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
+        uint256 amountInWithFee = (deltaIn * lens.GAMMA()) / 1e4;
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
+        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        int128 invariant = lens.invariantOf(poolId);
+
+        uint256 nextStable = ((uint256(reserveStable) + amountInWithFee) * lens.PRECISION()) / liquidity;
+        uint256 nextRisky = ReplicationMath.getRiskyGivenStable(
+            invariant,
+            lens.scaleFactorRisky(),
+            lens.scaleFactorStable(),
+            nextStable,
+            strike,
+            sigma,
+            maturity - lastTimestamp
+        );
+
+        uint256 deltaOut = uint256(reserveRisky) - (nextRisky * liquidity) / lens.PRECISION();
+        return deltaOut;
+    }
+
+    function getStableInGivenRiskyOut(bytes32 poolId, uint256 deltaOut) public view returns (uint256) {
+        IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
+        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        int128 invariant = lens.invariantOf(poolId);
+
+        uint256 nextRisky = ((uint256(reserveRisky) - deltaOut) * lens.PRECISION()) / liquidity;
+        uint256 nextStable = ReplicationMath.getStableGivenRisky(
+            invariant,
+            lens.scaleFactorRisky(),
+            lens.scaleFactorStable(),
+            nextRisky,
+            strike,
+            sigma,
+            maturity - lastTimestamp
+        );
+
+        uint256 deltaIn = (nextStable * liquidity) / lens.PRECISION() - uint256(reserveStable);
+        uint256 deltaInWithFee = (deltaIn * 1e4) / lens.GAMMA() + 1;
+        return deltaInWithFee;
+    }
+
+    function getRiskyInGivenStableOut(bytes32 poolId, uint256 deltaOut) public view returns (uint256) {
+        IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
+        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        int128 invariant = lens.invariantOf(poolId);
+
+        uint256 nextStable = ((uint256(reserveStable) - deltaOut) * lens.PRECISION()) / liquidity;
+        uint256 nextRisky = ReplicationMath.getRiskyGivenStable(
+            invariant,
+            lens.scaleFactorRisky(),
+            lens.scaleFactorStable(),
+            nextStable,
+            strike,
+            sigma,
+            maturity - lastTimestamp
+        );
+
+        uint256 deltaIn = (nextRisky * liquidity) / lens.PRECISION() - uint256(reserveRisky);
+        uint256 deltaInWithFee = (deltaIn * 1e4) / lens.GAMMA() + 1;
+        return deltaInWithFee;
     }
 
     function name() public pure override(TestBase) returns (string memory) {
         return "TestRouter";
     }
 }
-
-import "hardhat/console.sol";

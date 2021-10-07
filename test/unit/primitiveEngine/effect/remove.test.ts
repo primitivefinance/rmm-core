@@ -1,42 +1,32 @@
-import expect from '../../../shared/expect'
-import { waffle } from 'hardhat'
+import { parseWei } from 'web3-units'
 import { constants, Wallet } from 'ethers'
-import { parseWei, Time } from 'web3-units'
 
-import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { computePoolId, computePositionId } from '../../../shared/utils'
-import { primitiveFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import expect from '../../../shared/expect'
+import { computePoolId } from '../../../shared/utils'
 import { testContext } from '../../../shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
+import { PoolState, TestPools } from '../../../shared/poolConfigs'
+import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
+
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`remove from ${pool.description} pool`, function () {
     const { strike, sigma, maturity, lastTimestamp, delta, decimalsRisky, decimalsStable } = pool.calibration
-    let poolId: string, posId: string
+    let poolId: string
+
+    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    before(async function () {
+      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+    })
 
     beforeEach(async function () {
-      const poolFixture = async ([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> => {
-        const fix = await primitiveFixture([wallet], provider)
-        // if using a custom engine, create it and replace the default contracts
-        if (decimalsRisky != 18 || decimalsStable != 18) {
-          const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
-          fix.contracts.risky = risky
-          fix.contracts.stable = stable
-          fix.contracts.engine = engine
-          await fix.contracts.router.setEngine(engine.address) // set the router's engine
-          return fix
-        }
-
-        return fix
-      }
-
-      const fixture = await this.loadFixture(poolFixture)
+      const fixture = await this.loadFixture(fixtureToLoad)
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address)
     })
 
     const delLiquidity = parseWei('1')
@@ -44,7 +34,6 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when removing to margin', function () {
       beforeEach(async function () {
         poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-        posId = await this.contracts.router.getPosition(poolId)
       })
 
       describe('success cases', function () {
@@ -147,7 +136,6 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when removing to external', function () {
       beforeEach(async function () {
         poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
-        posId = await this.contracts.router.getPosition(poolId)
       })
 
       describe('success cases', function () {

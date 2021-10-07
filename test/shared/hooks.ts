@@ -1,8 +1,9 @@
-import { Wallet } from '@ethersproject/wallet'
-import { Calibration, computePoolId, computePositionId, scaleUp } from '.'
-import { Contracts } from '../../types'
-import { parseWei, toBN, Wei } from 'web3-units'
 import { ethers } from 'ethers'
+import { parseWei, Wei } from 'web3-units'
+import { Wallet } from '@ethersproject/wallet'
+import { Contracts } from '../../types'
+import { Calibration } from './calibration'
+import { computePoolId, computePositionId, scaleUp } from './utils'
 const { HashZero, MaxUint256 } = ethers.constants
 
 export interface Tx {
@@ -122,7 +123,7 @@ export async function useTokens(
   signer: Wallet,
   contracts: Contracts,
   config: Calibration,
-  amount: Wei = parseWei('10000'),
+  amount: Wei = parseWei('1000000'),
   debug: boolean = false
 ): Promise<{ tx: any }> {
   // if config precision is not 18, set the tokens to it

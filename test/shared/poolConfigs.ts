@@ -1,10 +1,9 @@
-import { Calibration } from '.'
-import { Time, parsePercentage, Percentage, toBN } from 'web3-units'
+import { Calibration } from './calibration'
+import { Time, parsePercentage } from 'web3-units'
 
 export interface PoolState {
   description: string
   calibration: Calibration
-  customEngine?: boolean
 }
 
 export const DEFAULT_CONFIG: Calibration = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015))
@@ -12,8 +11,6 @@ export const calibrations: any = {
   ['expired']: new Calibration(10, 1, Time.YearInSeconds, Time.YearInSeconds + 1, 10),
   ['itm']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5),
   ['otm']: new Calibration(5, 1, Time.YearInSeconds + 1, 1, 10),
-  ['highfee']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.1)),
-  ['feeless']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, new Percentage(toBN(0))),
   ['riskyprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015), 6, 18),
   ['stableprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015), 18, 6),
   ['bothprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(0.0015), 6, 6),
@@ -25,39 +22,27 @@ export const calibrations: any = {
 export const TestPools: PoolState[] = [
   { description: 'default', calibration: DEFAULT_CONFIG },
   /* {
-    description: `expired pool`,
+    description: `expired`,
     calibration: calibrations.expired,
   }, */
   /* {
-    description: `in the money pool`,
+    description: `in the money`,
     calibration: calibrations.itm,
-  }, */
-  /* {
-    description: `out of the money pool`,
+  },
+  {
+    description: `out of the money`,
     calibration: calibrations.otm,
   },
-
   {
-    description: `6 decimal risky pool`,
+    description: `6 decimal risky`,
     calibration: calibrations.riskyprecision,
-    customEngine: true,
   },
   {
-    description: `6 decimal stable pool`,
+    description: `6 decimal stable`,
     calibration: calibrations.stableprecision,
-    customEngine: true,
-  },
+  }, */
   {
-    description: `6 decimal risky and stable pool`,
+    description: `6 decimal risky and stable`,
     calibration: calibrations.bothprecision,
-    customEngine: true,
-  }, */
-  /* {
-    description: `high fee pool`,
-    calibration: calibrations.highfee,
   },
-  {
-    description: `feeless pool`,
-    calibration: calibrations.feeless,
-  }, */
 ]

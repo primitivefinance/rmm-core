@@ -20,8 +20,6 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
-import "hardhat/console.sol";
-
 contract PrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
@@ -86,7 +84,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
     constructor() {
         (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
-        .args();
+            .args();
     }
 
     /// @return Risky token balance of this contract
@@ -329,38 +327,35 @@ contract PrimitiveEngine is IPrimitiveEngine {
         int128 invariantX64 = invariantOf(details.poolId); // stored in memory to perform the invariant check
 
         {
-            // reserve scope
-            Calibration memory cal = calibrations[details.poolId];
+            // swap scope, avoids stack too deep errors
             Reserve.Data storage reserve = reserves[details.poolId];
-            uint256 liq = reserve.liquidity;
-            uint32 tau = cal.maturity - cal.lastTimestamp;
-            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
+            Calibration memory cal = calibrations[details.poolId];
 
-            uint256 riskyReserveAdjusted;
-            uint256 stableReserveAdjusted;
+            uint256 adjustedRisky;
+            uint256 adjustedStable;
+            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE;
             if (details.riskyForStable) {
-                riskyReserveAdjusted = uint256(reserve.reserveRisky) + deltaInWithFee;
-                stableReserveAdjusted = uint256(reserve.reserveStable) - deltaOut;
+                adjustedRisky = uint256(reserve.reserveRisky) + deltaInWithFee;
+                adjustedStable = uint256(reserve.reserveStable) - deltaOut;
             } else {
-                riskyReserveAdjusted = uint256(reserve.reserveRisky) - deltaOut;
-                stableReserveAdjusted = uint256(reserve.reserveStable) + deltaInWithFee;
+                adjustedRisky = uint256(reserve.reserveRisky) - deltaOut;
+                adjustedStable = uint256(reserve.reserveStable) + deltaInWithFee;
             }
+            adjustedRisky = (adjustedRisky * PRECISION) / reserve.liquidity;
+            adjustedStable = (adjustedStable * PRECISION) / reserve.liquidity;
 
+            uint32 tau = cal.maturity - cal.lastTimestamp;
             int128 invariantAfter = ReplicationMath.calcInvariant(
                 scaleFactorRisky,
                 scaleFactorStable,
-                (riskyReserveAdjusted * PRECISION) / liq,
-                (stableReserveAdjusted * PRECISION) / liq,
+                adjustedRisky,
+                adjustedStable,
                 cal.strike,
                 cal.sigma,
                 tau
             );
-            console.log("got to invarian check");
-            console.logInt(invariantX64);
-            console.logInt(invariantAfter);
-            if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
-            console.log("passed invairnat check");
 
+            if (invariantX64 > invariantAfter) revert InvariantError(invariantX64, invariantAfter);
             reserve.swap(details.riskyForStable, details.deltaIn, details.deltaOut, details.timestamp); // state update
         }
 
@@ -368,28 +363,28 @@ contract PrimitiveEngine is IPrimitiveEngine {
             if (details.toMargin) {
                 margins[details.recipient].deposit(0, details.deltaOut);
             } else {
-                IERC20(stable).safeTransfer(details.recipient, details.deltaOut); // send proceeds, for callback if needed
+                IERC20(stable).safeTransfer(details.recipient, details.deltaOut); // optimistic transfer out
             }
 
             if (details.fromMargin) {
-                margins.withdraw(deltaIn, 0); // pay for swap
+                margins.withdraw(details.deltaIn, 0); // pay for swap
             } else {
                 uint256 balRisky = balanceRisky();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic payment
+                IPrimitiveSwapCallback(msg.sender).swapCallback(details.deltaIn, 0, data); // agnostic transfer in
                 checkRiskyBalance(balRisky + details.deltaIn);
             }
         } else {
             if (details.toMargin) {
                 margins[details.recipient].deposit(details.deltaOut, 0);
             } else {
-                IERC20(risky).safeTransfer(details.recipient, details.deltaOut); // send proceeds first, for callback if needed
+                IERC20(risky).safeTransfer(details.recipient, details.deltaOut); // optimistic transfer out
             }
 
             if (details.fromMargin) {
-                margins.withdraw(0, deltaIn); // pay for swap
+                margins.withdraw(0, details.deltaIn); // pay for swap
             } else {
                 uint256 balStable = balanceStable();
-                IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic payment
+                IPrimitiveSwapCallback(msg.sender).swapCallback(0, details.deltaIn, data); // agnostic transfer in
                 checkStableBalance(balStable + details.deltaIn);
             }
         }
