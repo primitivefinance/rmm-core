@@ -3,7 +3,8 @@ pragma solidity 0.8.6;
 
 /// @title   Primitive Engine
 /// @author  Primitive
-/// @dev     Replicating Market Maker
+/// @notice  Replicating Market Maker
+/// @dev     RMM-01
 
 import "./libraries/Margin.sol";
 import "./libraries/ReplicationMath.sol";
