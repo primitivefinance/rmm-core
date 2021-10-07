@@ -2,6 +2,7 @@ import { Wei, Percentage, Time, FixedPointX64, parseFixedPointX64, parseWei, toB
 import { quantilePrime, std_n_pdf, std_n_cdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
 import { scaleUp } from '.'
+import { BigNumber } from 'ethers'
 
 export const clonePool = (poolToClone: Pool, newRisky: Wei, newStable: Wei): Pool => {
   return new Pool(
@@ -75,6 +76,10 @@ export class Pool {
     this.tau = this.calcTau() // maturity - lastTimestamp
     this.invariant = parseFixedPointX64(0)
     this.reserveStable = overrideStable ? overrideStable : this.getStableGivenRisky(this.reserveRisky)
+  }
+
+  setInvariant(i: BigNumber) {
+    this.invariant = new FixedPointX64(i)
   }
 
   /**
@@ -212,7 +217,7 @@ export class Pool {
     const gamma = 1 - this.fee
     const reserveRiskyLast = this.reserveRisky
     const reserveStableLast = this.reserveStable
-    const invariantLast: FixedPointX64 = this.calcInvariant()
+    const invariantLast: FixedPointX64 = this.invariant
     const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
 
     const newReserveRisky = reserveRiskyLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)
@@ -265,7 +270,7 @@ export class Pool {
     const gamma = 1 - this.fee
     const reserveRiskyLast = this.reserveRisky
     const reserveStableLast = this.reserveStable
-    const invariantLast: FixedPointX64 = this.calcInvariant()
+    const invariantLast: FixedPointX64 = this.invariant
     const deltaInWithFee = deltaIn.mul(gamma * Math.pow(10, Percentage.Mantissa)).div(Math.pow(10, Percentage.Mantissa))
 
     const newStableReserve = reserveStableLast.add(deltaInWithFee).mul(parseWei(1)).div(this.liquidity)

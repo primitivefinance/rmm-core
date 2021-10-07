@@ -1,9 +1,10 @@
-import expect from '../../shared/expect'
-import { waffle } from 'hardhat'
-import { TestMargin } from '../../../typechain'
 import { parseWei } from 'web3-units'
+
+import expect from '../../shared/expect'
 import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
+
+import { TestMargin } from '../../../typechain'
 
 testContext('testMargin', function () {
   beforeEach(async function () {

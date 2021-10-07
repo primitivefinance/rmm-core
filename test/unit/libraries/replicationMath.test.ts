@@ -1,7 +1,5 @@
-import expect from '../../shared/expect'
-import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-import { FixedPointX64, parseWei, Time, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
+import { FixedPointX64, parseWei, Time, Wei } from 'web3-units'
 import {
   getProportionalVol,
   getStableGivenRisky,
@@ -10,10 +8,13 @@ import {
   inverse_std_n_cdf,
   std_n_cdf,
 } from '@primitivefinance/v2-math'
+
+import { testContext } from '../../shared/testContext'
+import { maxError, scaleUp } from '../../shared/utils'
 import { TestPools, PoolState } from '../../shared/poolConfigs'
 import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
-import { testContext } from '../../shared/testContext'
-import { maxError } from '../../shared/utils'
+
+import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
 
 interface TestTradingFunctionFixture {
   getStableGivenRisky: TestGetStableGivenRisky
@@ -136,7 +137,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 10000,
         increment: 100,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses strike
         expected: (val: Wei) => parseX64(val).parsed, // parses strike to fixed point
       },
       ['step1']: {
@@ -154,7 +155,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 10000,
         increment: 100,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        parse: (val: number) => scaleUp(val, decimalsRisky), // parses risky
         expected: (val: Wei) => parseX64(val).parsed,
       },
       ['testStep3']: {
@@ -163,7 +164,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 0.98,
         increment: 0.01,
         error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsRisky),
+        parse: (val: number) => scaleUp(val, decimalsRisky),
         expected: riskySwapStep3,
       },
       ['testStep4']: {
@@ -172,7 +173,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 0.98,
         increment: 0.01,
         error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        parse: (val: number) => scaleUp(val, decimalsRisky), // parses risky
         expected: (val: Wei) => riskySwapStep4(val, sigma.float, tau),
       },
       ['testStep5']: {
@@ -181,7 +182,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 0.99,
         increment: 0.01,
         error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        parse: (val: number) => scaleUp(val, decimalsRisky), // parses risky
         expected: (val: Wei) => riskySwapStep5(val, strike, sigma.float, tau),
       },
       ['getStableGivenRisky']: {
@@ -190,7 +191,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 0.98,
         increment: 0.01,
         error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        parse: (val: number) => scaleUp(val, decimalsRisky), // parses risky
         expected: (val: Wei) => getStableGivenRisky(val.float, strike.float, sigma.float, tau.years),
       },
     }
@@ -203,7 +204,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 10000,
         increment: 100,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses strike
         expected: (val: Wei) => parseX64(val).parsed,
       },
       ['step1']: {
@@ -221,7 +222,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 10000,
         increment: 100,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses stable
         expected: (val: Wei) => parseX64(val).parsed,
       },
       ['testStep3']: {
@@ -230,7 +231,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 9.9,
         increment: 0.1,
         error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses stable
         expected: (val: Wei) => stableSwapStep3(val, strike),
       },
       ['testStep4']: {
@@ -239,7 +240,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 9.9,
         increment: 0.1,
         error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses stable
         expected: (val: Wei) => stableSwapStep4(val, strike, sigma.float, tau),
       },
       ['testStep5']: {
@@ -248,7 +249,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 9.9,
         increment: 0.1,
         error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses stable
         expected: (val: Wei) => stableSwapStep5(val, strike, sigma.float, tau),
       },
       ['getRiskyGivenStable']: {
@@ -257,7 +258,7 @@ TestPools.forEach(function (pool: PoolState) {
         max: 9.9,
         increment: 0.1,
         error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses stable
         expected: (val: Wei) => getRiskyGivenStable(val.float, strike.float, sigma.float, tau.years),
       },
     }
@@ -269,17 +270,18 @@ TestPools.forEach(function (pool: PoolState) {
         max: 0.99,
         increment: 0.1,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsRisky), // parses risky
+        parse: (val: number) => scaleUp(val, decimalsRisky), // parses risky
         expected: (val: Wei) => calcInvariant(val.float, strike.div(2).float, strike.float, sigma.float, tau.years),
       },
       ['calcInvariantStable']: {
-        params: [parseWei(0.5).raw, 0, strike.raw, sigma.raw, tau.raw],
+        params: [scaleUp(0.5, decimalsRisky).raw, 0, strike.raw, sigma.raw, tau.raw],
         min: 0.1,
         max: 9.9,
         increment: 0.1,
         error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
-        expected: (val: Wei) => calcInvariant(parseWei(0.5).float, val.float, strike.float, sigma.float, tau.years),
+        parse: (val: number) => scaleUp(val, decimalsStable), // parses strike
+        expected: (val: Wei) =>
+          calcInvariant(scaleUp(0.5, decimalsRisky).float, val.float, strike.float, sigma.float, tau.years),
       },
     }
 

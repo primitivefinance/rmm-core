@@ -1,33 +1,32 @@
-import expect from '../../.../../../shared/expect'
-import { waffle } from 'hardhat'
-import { constants } from 'ethers'
-import { parseWei, Time } from 'web3-units'
-
-import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
-import { computePoolId, computePositionId } from '../../.../../../shared/utils'
-import { primitiveFixture } from '../../.../../../shared/fixtures'
-import { testContext } from '../../.../../../shared/testContext'
-import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../.../../../shared/hooks'
-const { HashZero } = constants
-
+import { constants, Wallet } from 'ethers'
 import { deployMockContract } from 'ethereum-waffle'
+
+import expect from '../../.../../../shared/expect'
+import { computeEngineAddress } from '../../../shared'
+import { testContext } from '../../.../../../shared/testContext'
+import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
+import { customDecimalsFixture, PrimitiveFixture } from '../../.../../../shared/fixtures'
+import { usePool, useLiquidity, useTokens, useApproveAll } from '../../.../../../shared/hooks'
+
 import { abi as TestToken } from '../../../../artifacts/contracts/test/TestToken.sol/TestToken.json'
 import { bytecode } from '../../../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
-import { computeEngineAddress } from '../../../shared'
-
 TestPools.forEach(function (pool: PoolState) {
   testContext(`deploy engines`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta } = pool.calibration
-    let poolId: string, posId: string
+    const { decimalsRisky, decimalsStable } = pool.calibration
+
+    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    before(async function () {
+      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+    })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(primitiveFixture)
+      const fixture = await this.loadFixture(fixtureToLoad)
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
-      ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
-      ;({ posId } = await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address))
+      await usePool(this.signers[0], this.contracts, pool.calibration)
+      await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address)
     })
 
     describe('when the parameters are valid', function () {
