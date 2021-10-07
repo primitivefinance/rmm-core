@@ -330,7 +330,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
             // swap scope, avoids stack too deep errors
             Calibration memory cal = calibrations[details.poolId];
             Reserve.Data storage reserve = reserves[details.poolId];
-            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE;
+            uint32 tau = cal.maturity - cal.lastTimestamp;
+            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
 
             uint256 adjustedRisky;
             uint256 adjustedStable;
@@ -344,7 +345,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
             adjustedRisky = (adjustedRisky * PRECISION) / reserve.liquidity;
             adjustedStable = (adjustedStable * PRECISION) / reserve.liquidity;
 
-            uint32 tau = cal.maturity - cal.lastTimestamp;
             int128 invariantAfter = ReplicationMath.calcInvariant(
                 scaleFactorRisky,
                 scaleFactorStable,
