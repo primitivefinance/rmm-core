@@ -1,10 +1,11 @@
-import expect from '../../shared/expect'
-import { waffle } from 'hardhat'
-import { BigNumber, BytesLike, constants } from 'ethers'
 import { parseWei } from 'web3-units'
-import { TestReserve } from '../../../typechain'
+import { BigNumber, BytesLike, constants } from 'ethers'
+
+import expect from '../../shared/expect'
 import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
+
+import { TestReserve } from '../../../typechain'
 
 testContext('testReserve', function () {
   beforeEach(async function () {

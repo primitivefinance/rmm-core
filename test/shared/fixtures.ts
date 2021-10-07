@@ -94,6 +94,27 @@ export async function primitiveFixture([wallet]: Wallet[], provider: any): Promi
   return await createTestContracts(wallet)
 }
 
+export function customDecimalsFixture(
+  decimalsRisky: number,
+  decimalsStable: number
+): ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture> {
+  async function fixture([wallet]: Wallet[], provider: any): Promise<PrimitiveFixture> {
+    let fix = await primitiveFixture([wallet], provider)
+    // if using a custom engine, create it and replace the default contracts
+    if (decimalsRisky != 18 || decimalsStable != 18) {
+      const { risky, stable, engine } = await fix.createEngine(decimalsRisky, decimalsStable)
+      fix.contracts.risky = risky
+      fix.contracts.stable = stable
+      fix.contracts.engine = engine
+      await fix.contracts.router.setEngine(engine.address) // set the router's engine
+    }
+
+    return fix
+  }
+
+  return fixture
+}
+
 export async function createTestLibraries(deployer: Wallet): Promise<Libraries> {
   const libraries: Libraries = {} as Libraries
 

@@ -1,10 +1,12 @@
-import expect from '../../shared/expect'
-import { TestCumulativeNormalDistribution } from '../../../typechain'
+import { parseEther } from '@ethersproject/units'
 import { FixedPointX64, parseFixedPointX64 } from 'web3-units'
+
+import expect from '../../shared/expect'
+import { maxError } from '../../shared/utils'
 import { libraryFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
-import { parseEther } from '@ethersproject/units'
-import { maxError } from '../../shared/utils'
+
+import { TestCumulativeNormalDistribution } from '../../../typechain'
 
 // array values below calculated with https://keisan.casio.com/calculator
 const cdfs = {

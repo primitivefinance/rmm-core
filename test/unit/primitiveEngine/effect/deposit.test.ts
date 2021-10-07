@@ -1,17 +1,25 @@
-import expect from '../../../shared/expect'
-import { constants } from 'ethers'
 import { parseWei } from 'web3-units'
+import { constants, Wallet } from 'ethers'
 
-import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { primitiveFixture } from '../../../shared/fixtures'
+import expect from '../../../shared/expect'
 import { testContext } from '../../../shared/testContext'
+import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
+import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`deposit to engine`, function () {
+    const { decimalsRisky, decimalsStable } = pool.calibration
+
+    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    before(async function () {
+      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+    })
+
     beforeEach(async function () {
-      const fixture = await this.loadFixture(primitiveFixture)
+      const fixture = await this.loadFixture(fixtureToLoad)
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
