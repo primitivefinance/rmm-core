@@ -328,12 +328,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         {
             // swap scope, avoids stack too deep errors
-            Reserve.Data storage reserve = reserves[details.poolId];
             Calibration memory cal = calibrations[details.poolId];
+            Reserve.Data storage reserve = reserves[details.poolId];
+            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE;
 
             uint256 adjustedRisky;
             uint256 adjustedStable;
-            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE;
             if (details.riskyForStable) {
                 adjustedRisky = uint256(reserve.reserveRisky) + deltaInWithFee;
                 adjustedStable = uint256(reserve.reserveStable) - deltaOut;
