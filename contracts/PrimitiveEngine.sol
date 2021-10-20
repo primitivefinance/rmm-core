@@ -33,13 +33,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @dev            Parameters of each pool
     /// @param strike   Strike price of pool with stable token decimals
-    /// @param sigma    Implied volatility, with 1e4 decimals
+    /// @param sigma    Implied volatility, with 1e4 decimals such that 10000 = 100%
     /// @param maturity Timestamp of pool expiration, in seconds
     /// @param lastTimestamp Timestamp of the pool's last update, in seconds
     /// @param creationTimestamp Timestamp of the `create()` call for this pool
     struct Calibration {
         uint128 strike;
-        uint64 sigma;
+        uint32 sigma;
         uint32 maturity;
         uint32 lastTimestamp;
         uint32 creationTimestamp;
@@ -146,7 +146,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineActions
     function create(
         uint256 strike,
-        uint64 sigma,
+        uint32 sigma,
         uint32 maturity,
         uint256 riskyPerLp,
         uint256 delLiquidity,
@@ -162,7 +162,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
-        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity));
+        poolId = keccak256(abi.encodePacked(address(this), strike.toUint128(), sigma, maturity));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
         if (strike > type(uint128).max || strike == 0) revert StrikeError(strike);
