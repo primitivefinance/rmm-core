@@ -14,7 +14,7 @@ export function computePoolId(
   sigma: string | BigNumber,
   strike: string | BigNumber
 ): string {
-  return keccak256(solidityPack(['address', 'uint256', 'uint64', 'uint32'], [engine, strike, sigma, maturity]))
+  return keccak256(solidityPack(['address', 'uint128', 'uint32', 'uint32'], [engine, strike, sigma, maturity]))
 }
 
 export function computePositionId(account: string, poolId: string): string {
