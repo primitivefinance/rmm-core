@@ -8,9 +8,10 @@ interface IPrimitiveEngineEvents {
     /// @dev                Keccak256 hash of the engine address and the parameters is the `poolId`
     /// @param  from        Calling `msg.sender` of the create function
     /// @param  strike      Strike price of the pool, with precision of stable token
-    /// @param  sigma       Volatility of the pool
+    /// @param  sigma       Implied Volatility of the pool
     /// @param  maturity    Maturity timestamp of the pool
-    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity);
+    /// @param  gamma       1 - Fee % of the pool, as an integer with precision of 1e4
+    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity, uint256 gamma);
 
     /// @notice             Updates the time until expiry of the pool with `poolId`
     /// @param  poolId      Pool Identifier

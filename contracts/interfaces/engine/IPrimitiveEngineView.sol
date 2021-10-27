@@ -16,9 +16,6 @@ interface IPrimitiveEngineView {
     /// @return Precision units to scale to when doing token related calculations
     function PRECISION() external view returns (uint256);
 
-    /// @return Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %
-    function GAMMA() external view returns (uint256);
-
     /// @return Amount of seconds after pool expiry which allows swaps, no swaps after buffer
     function BUFFER() external view returns (uint256);
 
@@ -69,19 +66,19 @@ interface IPrimitiveEngineView {
     /// @notice             Fetches `Calibration` pool parameters
     /// @param  poolId      Pool Identifier
     /// @return strike      Strike price of the pool with stable token decimals
-    /// sigma               Volatility of the pool scaled to a percentage integer with a precision of 1e4
+    /// sigma               Implied Volatility as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
     /// maturity            Timestamp of maturity in seconds
     /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
-    /// creationTimestamp   Timestamp of the pool creation, immutable and used for on-chain swap fee calculations
+    /// gamma               = 1 - fee %, as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
     function calibrations(bytes32 poolId)
         external
         view
         returns (
             uint128 strike,
-            uint64 sigma,
+            uint32 sigma,
             uint32 maturity,
             uint32 lastTimestamp,
-            uint32 creationTimestamp
+            uint32 gamma
         );
 
     /// @notice             Fetches position liquidity an account address and poolId
