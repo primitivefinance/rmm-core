@@ -14,7 +14,7 @@ const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`create ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta, spot, decimalsRisky, decimalsStable } = pool.calibration
+    const { strike, sigma, maturity, lastTimestamp, gamma, delta, spot, decimalsRisky, decimalsStable } = pool.calibration
     let poolId: string
     const delLiquidity = parseWei('1', 18)
 
@@ -38,6 +38,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -51,6 +52,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -65,6 +67,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -83,6 +86,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -96,6 +100,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -109,6 +114,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -127,13 +133,14 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
         )
           .to.emit(this.contracts.engine, 'Create')
-          .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw)
+          .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw, gamma.raw)
       })
 
       it('updates the reserves of the engine with create, but not cumulative reserves', async function () {
@@ -141,6 +148,7 @@ TestPools.forEach(function (pool: PoolState) {
           strike.raw,
           sigma.raw,
           maturity.raw,
+          gamma.raw,
           scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
           delLiquidity.raw,
           HashZero
@@ -165,6 +173,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -183,6 +192,7 @@ TestPools.forEach(function (pool: PoolState) {
           strike.raw,
           sigma.raw,
           maturity.raw,
+          gamma.raw,
           scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
           delLiquidity.raw,
           HashZero
@@ -192,6 +202,7 @@ TestPools.forEach(function (pool: PoolState) {
             strike.raw,
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
@@ -206,6 +217,7 @@ TestPools.forEach(function (pool: PoolState) {
             fig.strike.raw,
             fig.sigma.raw,
             fig.maturity.raw,
+            fig.gamma.raw,
             parseWei(fig.delta).raw,
             delLiquidity.raw,
             HashZero
@@ -220,6 +232,7 @@ TestPools.forEach(function (pool: PoolState) {
             fig.strike.raw,
             fig.sigma.raw,
             fig.maturity.raw,
+            fig.gamma.raw,
             parseWei(fig.delta).raw,
             delLiquidity.raw,
             HashZero
@@ -234,6 +247,7 @@ TestPools.forEach(function (pool: PoolState) {
             fig.strike.raw,
             fig.sigma.raw,
             fig.maturity.raw,
+            fig.gamma.raw,
             parseWei(fig.delta).raw,
             delLiquidity.raw,
             HashZero
@@ -247,6 +261,7 @@ TestPools.forEach(function (pool: PoolState) {
             BigNumber.from(2).pow(128).add(1),
             sigma.raw,
             maturity.raw,
+            gamma.raw,
             scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero

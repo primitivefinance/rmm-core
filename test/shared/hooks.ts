@@ -30,6 +30,7 @@ export async function usePool(
     sigma,
     maturity,
     delta,
+    gamma,
     scaleFactorStable,
     scaleFactorRisky,
     decimalsRisky,
@@ -46,6 +47,7 @@ export async function usePool(
         strike.raw,
         sigma.raw,
         maturity.raw,
+        gamma.raw,
         scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
         parseWei('1', 18).raw,
         HashZero
@@ -61,7 +63,7 @@ export async function usePool(
   const receipt = await tx.wait()
   const args = receipt?.events?.[0].args
   if (args) {
-    const actualPoolId = computePoolId(contracts.engine.address, args.maturity, args.sigma, args.strike)
+    const actualPoolId = computePoolId(contracts.engine.address, args.maturity, args.sigma, args.strike, args.gamma)
     if (actualPoolId !== poolId) throw Error(`\n  PoolIds do not match: ${poolId} != ${actualPoolId}`)
   }
 

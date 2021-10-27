@@ -12,7 +12,7 @@ const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`remove from ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, delta, decimalsRisky, decimalsStable } = pool.calibration
+    const { strike, sigma, maturity, lastTimestamp, gamma, delta, decimalsRisky, decimalsStable } = pool.calibration
     let poolId: string
 
     let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
@@ -33,7 +33,7 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('when removing to margin', function () {
       beforeEach(async function () {
-        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw, gamma.raw)
       })
 
       describe('success cases', function () {
@@ -135,7 +135,7 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('when removing to external', function () {
       beforeEach(async function () {
-        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw)
+        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw, gamma.raw)
       })
 
       describe('success cases', function () {
