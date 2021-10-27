@@ -20,7 +20,7 @@ import { useTokens, useLiquidity, useMargin, useApproveAll, usePool } from '../.
  * Therefore, to calculate a precise trade in the inverse direction, a numerical method should be used
  * on the forward math function that has the approximations.
  */
-const INVERSE_DIRECTION_ERROR = 0.0075
+const INVERSE_DIRECTION_ERROR = 0.01 //0.0075
 const BOOL_CASES = [true, false]
 const { HashZero } = constants
 
