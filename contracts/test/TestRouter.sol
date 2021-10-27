@@ -18,7 +18,7 @@ contract TestRouter is TestBase {
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).create(strike, uint64(sigma), uint32(maturity), riskyPerLp, delLiquidity, data);
+        IPrimitiveEngine(engine).create(strike, uint32(sigma), uint32(maturity), riskyPerLp, delLiquidity, data);
     }
 
     // ===== Margin =====
@@ -214,7 +214,7 @@ contract TestRouter is TestBase {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         uint256 amountInWithFee = (deltaIn * lens.GAMMA()) / 1e4;
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
-        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        (uint128 strike, uint32 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextRisky = ((uint256(reserveRisky) + amountInWithFee) * lens.PRECISION()) / liquidity;
@@ -236,7 +236,7 @@ contract TestRouter is TestBase {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         uint256 amountInWithFee = (deltaIn * lens.GAMMA()) / 1e4;
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
-        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        (uint128 strike, uint32 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextStable = ((uint256(reserveStable) + amountInWithFee) * lens.PRECISION()) / liquidity;
@@ -257,7 +257,7 @@ contract TestRouter is TestBase {
     function getStableInGivenRiskyOut(bytes32 poolId, uint256 deltaOut) public view returns (uint256) {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
-        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        (uint128 strike, uint32 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextRisky = ((uint256(reserveRisky) - deltaOut) * lens.PRECISION()) / liquidity;
@@ -279,7 +279,7 @@ contract TestRouter is TestBase {
     function getRiskyInGivenStableOut(bytes32 poolId, uint256 deltaOut) public view returns (uint256) {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
-        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
+        (uint128 strike, uint32 sigma, uint32 maturity, uint32 lastTimestamp, ) = lens.calibrations(poolId);
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextStable = ((uint256(reserveStable) - deltaOut) * lens.PRECISION()) / liquidity;

@@ -22,7 +22,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100,
+        runs: 1000,
       },
       metadata: {
         bytecodeHash: 'none',
@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: 'USD',
     gasPrice: 100,
-    enabled: false,
+    enabled: true,
   },
   contractSizer: {
     alphaSort: true,

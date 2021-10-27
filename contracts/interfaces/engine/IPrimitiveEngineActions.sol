@@ -23,7 +23,7 @@ interface IPrimitiveEngineActions {
     /// delStable           Total amount of stable tokens provided to reserves
     function create(
         uint256 strike,
-        uint64 sigma,
+        uint32 sigma,
         uint32 maturity,
         uint256 riskyPerLp,
         uint256 delLiquidity,
