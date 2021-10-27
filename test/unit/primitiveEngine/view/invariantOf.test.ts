@@ -29,7 +29,7 @@ TestPools.forEach(function (pool: PoolState) {
     })
 
     it('does not revert if expired', async function () {
-      const cal = new Calibration(10, 1, 1, 0, 10, parsePercentage(0.0015), decimalsRisky, decimalsStable)
+      const cal = new Calibration(10, 1, 1, 0, 10, parsePercentage(1 - 0.0015), decimalsRisky, decimalsStable)
       const account = this.signers[0].address
       await this.contracts.risky.mint(account, parseWei('1000').raw)
       await this.contracts.stable.mint(account, parseWei('1000').raw)
@@ -37,12 +37,13 @@ TestPools.forEach(function (pool: PoolState) {
         cal.strike.raw,
         cal.sigma.raw,
         cal.maturity.raw,
+        cal.gamma.raw,
         scaleUp(1, cal.decimalsRisky).sub(scaleUp(cal.delta, cal.decimalsRisky)).raw,
         parseWei('1').raw,
         constants.HashZero
       )
       await this.contracts.engine.advanceTime(10)
-      poolId = computePoolId(this.contracts.engine.address, cal.maturity.raw, cal.sigma.raw, cal.strike.raw)
+      poolId = computePoolId(this.contracts.engine.address, cal.maturity.raw, cal.sigma.raw, cal.strike.raw, cal.gamma.raw)
       await this.contracts.router.swap(this.contracts.router.address, poolId, true, 2000, 1, false, true, constants.HashZero)
       await expect(this.contracts.engine.invariantOf(poolId)).to.not.be.reverted
     })
