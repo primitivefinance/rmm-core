@@ -28,7 +28,7 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when strike is not valid, i.e. equal to 0 or greater than 2^128
     error StrikeError(uint256 value);
 
-    /// @notice Thrown when gamma, 1 - fee %, is outside its bounds, 9000 <= gamma < 10000, 1000 = 10% fee
+    /// @notice Thrown when gamma, equal to 1 - fee %, is outside its bounds, 9000 <= gamma < 10000, 1000 = 10% fee
     error GammaError(uint256 value);
 
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0

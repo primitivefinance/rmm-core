@@ -33,7 +33,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @dev            Parameters of each pool
     /// @param strike   Strike price of pool with stable token decimals
-    /// @param sigma    Implied volatility, integer with 1e4 decimals such that 10000 = 100%
+    /// @param sigma    Implied volatility, with 1e4 decimals such that 10000 = 100%
     /// @param maturity Timestamp of pool expiration, in seconds
     /// @param lastTimestamp Timestamp of the pool's last update, in seconds
     /// @param gamma    Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %, scaled up by 1e4
@@ -166,9 +166,9 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         if (strike == 0) revert StrikeError(strike);
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
-        if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
-        if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
+        if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);
+        if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
             strike: scaledStrike,
@@ -333,7 +333,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Calibration memory cal = calibrations[details.poolId];
             Reserve.Data storage reserve = reserves[details.poolId];
             uint32 tau = cal.maturity - cal.lastTimestamp;
-            uint256 deltaInWithFee = (details.deltaIn * cal.gamma) / Units.PERCENTAGE; // amount * (1 - gamma %)
+            uint256 deltaInWithFee = (details.deltaIn * cal.gamma) / Units.PERCENTAGE; // amount * (1 - fee %)
 
             uint256 adjustedRisky;
             uint256 adjustedStable;
