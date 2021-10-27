@@ -10,7 +10,7 @@ import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixture
 const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
-  testContext(`deposit to engine`, function () {
+  testContext(`deposit to engine for ${pool.description}`, function () {
     const { decimalsRisky, decimalsStable } = pool.calibration
 
     let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>

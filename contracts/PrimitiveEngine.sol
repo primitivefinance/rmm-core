@@ -36,19 +36,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @param sigma    Implied volatility, with 1e4 decimals such that 10000 = 100%
     /// @param maturity Timestamp of pool expiration, in seconds
     /// @param lastTimestamp Timestamp of the pool's last update, in seconds
-    /// @param creationTimestamp Timestamp of the `create()` call for this pool
+    /// @param gamma    Multiplied against deltaIn amounts to apply swap fee, gamma = 1 - fee %, scaled up by 1e4
     struct Calibration {
         uint128 strike;
         uint32 sigma;
         uint32 maturity;
         uint32 lastTimestamp;
-        uint32 creationTimestamp;
+        uint32 gamma;
     }
 
     /// @inheritdoc IPrimitiveEngineView
     uint256 public constant override PRECISION = 10**18;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public constant override GAMMA = 9985;
     /// @inheritdoc IPrimitiveEngineView
     uint256 public constant override BUFFER = 120 seconds;
     /// @inheritdoc IPrimitiveEngineView
@@ -148,6 +146,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         uint256 strike,
         uint32 sigma,
         uint32 maturity,
+        uint32 gamma,
         uint256 riskyPerLp,
         uint256 delLiquidity,
         bytes calldata data
@@ -162,19 +161,21 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
-        poolId = keccak256(abi.encodePacked(address(this), strike.toUint128(), sigma, maturity));
+        uint128 scaledStrike = strike.toUint128();
+        poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity, gamma));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
-        if (strike > type(uint128).max || strike == 0) revert StrikeError(strike);
+        if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
         if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);
+        if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
-            strike: strike.toUint128(),
+            strike: scaledStrike,
             sigma: sigma,
             maturity: maturity,
             lastTimestamp: _blockTimestamp(),
-            creationTimestamp: _blockTimestamp()
+            gamma: gamma
         });
 
         if (cal.lastTimestamp > cal.maturity) revert PoolExpiredError();
@@ -193,7 +194,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         checkRiskyBalance(balRisky + delRisky);
         checkStableBalance(balStable + delStable);
 
-        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity);
+        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity, cal.gamma);
     }
 
     // ===== Margin =====
@@ -332,7 +333,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             Calibration memory cal = calibrations[details.poolId];
             Reserve.Data storage reserve = reserves[details.poolId];
             uint32 tau = cal.maturity - cal.lastTimestamp;
-            uint256 deltaInWithFee = (details.deltaIn * GAMMA) / Units.PERCENTAGE; // amount * (1 - fee %)
+            uint256 deltaInWithFee = (details.deltaIn * cal.gamma) / Units.PERCENTAGE; // amount * (1 - fee %)
 
             uint256 adjustedRisky;
             uint256 adjustedStable;
