@@ -2,7 +2,7 @@
 
 Several auditing teams were engaged with to review this repository's smart contracts:
 
-- Chainsecurity
+- ChainSecurity
 - Dedaub
 - ABDK
 - Sherlock Protocol Security Team
