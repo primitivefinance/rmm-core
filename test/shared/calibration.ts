@@ -27,9 +27,9 @@ export class Calibration {
    */
   public readonly spot: Wei
   /**
-   * @notice Swap fee charged on pool swaps
+   * @notice Gamma is applied on input amounts to apply the swap fee, equal to 1 - fee %
    */
-  public readonly fee: Percentage
+  public readonly gamma: Percentage
   /**
    * @notice Decimals of risky asset
    */
@@ -53,7 +53,7 @@ export class Calibration {
     maturity: number,
     lastTimestamp: number,
     spot: number,
-    fee: Percentage = new Percentage(toBN(0)),
+    gamma: Percentage = new Percentage(toBN(0)),
     decimalsRisky: number = 18,
     decimalsStable: number = 18
   ) {
@@ -62,7 +62,7 @@ export class Calibration {
     this.maturity = new Time(maturity) // in seconds, because `block.timestamp` is in seconds
     this.lastTimestamp = new Time(lastTimestamp) // in seconds, because `block.timestamp` is in seconds
     this.spot = parseWei(spot, decimalsStable)
-    this.fee = fee
+    this.gamma = gamma
     this.decimalsRisky = decimalsRisky
     this.decimalsStable = decimalsStable
   }
@@ -114,6 +114,6 @@ export class Calibration {
   }
 
   poolId(engine: string): string {
-    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.raw)
+    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.raw, this.gamma.raw)
   }
 }
