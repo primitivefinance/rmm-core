@@ -268,6 +268,48 @@ TestPools.forEach(function (pool: PoolState) {
           )
         ).to.reverted
       })
+
+      it('reverts if gamma is greater or equal to 10000', async function () {
+        const tenThousand = 1e4
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            sigma.raw,
+            maturity.raw,
+            tenThousand,
+            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            sigma.raw,
+            maturity.raw,
+            tenThousand + 1,
+            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
+
+      it('reverts if gamma is less than 9000', async function () {
+        const nineThousand = 9000
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            sigma.raw,
+            maturity.raw,
+            nineThousand - 1,
+            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
     })
   })
 })
