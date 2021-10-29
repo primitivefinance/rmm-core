@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity 0.8.6;
+pragma solidity >=0.8.4;
 
 /// @title  Errors for the Primitive Engine contract
 /// @author Primitive
