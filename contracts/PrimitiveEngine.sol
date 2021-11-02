@@ -142,7 +142,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function create(
-        uint256 strike,
+        uint128 strike,
         uint32 sigma,
         uint32 maturity,
         uint32 gamma,
@@ -160,8 +160,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
-        uint128 scaledStrike = strike.toUint128();
-        poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity, gamma));
+        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity, gamma));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
         if (strike == 0) revert StrikeError(strike);
@@ -170,7 +169,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
-            strike: scaledStrike,
+            strike: strike,
             sigma: sigma,
             maturity: maturity,
             lastTimestamp: _blockTimestamp(),
