@@ -51,15 +51,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override MIN_LIQUIDITY;
     /// @inheritdoc IPrimitiveEngineView
+    uint256 public immutable override scaleFactorRisky;
+    /// @inheritdoc IPrimitiveEngineView
+    uint256 public immutable override scaleFactorStable;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public immutable override scaleFactorRisky;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public immutable override scaleFactorStable;
+    /// @dev Reentrancy guard initialized to state
+    uint8 private unlocked = 1;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override calibrations;
     /// @inheritdoc IPrimitiveEngineView
@@ -68,8 +70,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public override reserves;
     /// @inheritdoc IPrimitiveEngineView
     mapping(address => mapping(bytes32 => uint256)) public override liquidity;
-
-    uint8 private unlocked = 1;
 
     modifier lock() {
         if (unlocked != 1) revert LockedError();
@@ -288,13 +288,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     struct SwapDetails {
         address recipient;
-        bytes32 poolId;
-        uint256 deltaIn;
-        uint256 deltaOut;
         bool riskyForStable;
         bool fromMargin;
         bool toMargin;
         uint32 timestamp;
+        bytes32 poolId;
+        uint256 deltaIn;
+        uint256 deltaOut;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
