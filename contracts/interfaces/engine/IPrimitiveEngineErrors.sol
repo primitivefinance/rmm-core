@@ -16,13 +16,13 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when calling an expired pool, where block.timestamp > maturity, + BUFFER if swap
     error PoolExpiredError();
 
-    /// @notice Thrown when liquidity is lower than the minimum amount of liquidity
+    /// @notice Thrown when liquidity is lower than or equal to the minimum amount of liquidity
     error MinLiquidityError(uint256 value);
 
     /// @notice Thrown when riskyPerLp is outside the range of acceptable values, 0 < riskyPerLp < 1eRiskyDecimals
     error RiskyPerLpError(uint256 value);
 
-    /// @notice Thrown when sigma is outside the range of acceptable values, 100 < sigma < 1e7 with 4 precision
+    /// @notice Thrown when sigma is outside the range of acceptable values, 100 <= sigma <= 1e7 with 4 precision
     error SigmaError(uint256 value);
 
     /// @notice Thrown when strike is not valid, i.e. equal to 0 or greater than 2^128
