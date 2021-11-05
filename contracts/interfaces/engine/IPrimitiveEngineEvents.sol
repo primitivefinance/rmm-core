@@ -11,7 +11,7 @@ interface IPrimitiveEngineEvents {
     /// @param  sigma       Implied Volatility of the pool
     /// @param  maturity    Maturity timestamp of the pool
     /// @param  gamma       1 - Fee % of the pool, as an integer with precision of 1e4
-    event Create(address indexed from, uint256 indexed strike, uint256 sigma, uint256 indexed maturity, uint256 gamma);
+    event Create(address indexed from, uint128 indexed strike, uint32 sigma, uint32 indexed maturity, uint32 gamma);
 
     /// @notice             Updates the time until expiry of the pool with `poolId`
     /// @param  poolId      Pool Identifier

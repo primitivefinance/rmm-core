@@ -75,7 +75,7 @@ contract PrimitiveFactory is IPrimitiveFactory {
     ) internal returns (address engine) {
         (uint256 riskyDecimals, uint256 stableDecimals) = (IERC20(risky).decimals(), IERC20(stable).decimals());
         if (riskyDecimals > 18 || riskyDecimals < 6) revert DecimalsError(riskyDecimals);
-        if (stableDecimals > 18 || stableDecimals < 6) revert DecimalsError(riskyDecimals);
+        if (stableDecimals > 18 || stableDecimals < 6) revert DecimalsError(stableDecimals);
 
         uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
         uint256 scaleFactorStable = 10**(18 - stableDecimals);

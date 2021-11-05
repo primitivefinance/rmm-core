@@ -20,7 +20,7 @@ contract TestRouter is TestBase {
     ) public {
         caller = msg.sender;
         IPrimitiveEngine(engine).create(
-            strike,
+            uint128(strike),
             uint32(sigma),
             uint32(maturity),
             uint32(gamma),
