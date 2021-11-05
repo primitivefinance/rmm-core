@@ -20,8 +20,8 @@ interface IPrimitiveEngineActions {
     /// @param  delLiquidity Amount of liquidity to allocate to the curve, wei value with 18 decimals of precision
     /// @param  data        Arbitrary data that is passed to the createCallback function
     /// @return poolId      Pool Identifier
-    /// delRisky            Total amount of risky tokens provided to reserves
-    /// delStable           Total amount of stable tokens provided to reserves
+    /// @return delRisky    Total amount of risky tokens provided to reserves
+    /// @return delStable   Total amount of stable tokens provided to reserves
     function create(
         uint128 strike,
         uint32 sigma,
@@ -81,11 +81,11 @@ interface IPrimitiveEngineActions {
         bytes calldata data
     ) external returns (uint256 delLiquidity);
 
-    /// @notice             Unallocates risky and stable tokens from a specific curve with `poolId`
-    /// @param  poolId      Pool Identifier
-    /// @param  delLiquidity Amount of liquidity to remove
-    /// @return delRisky    Amount of risky tokens received from removed liquidity
-    /// delStable           Amount of stable tokens received from removed liquidity
+    /// @notice               Unallocates risky and stable tokens from a specific curve with `poolId`
+    /// @param  poolId        Pool Identifier
+    /// @param  delLiquidity  Amount of liquidity to remove
+    /// @return delRisky      Amount of risky tokens received from removed liquidity
+    /// @return delStable     Amount of stable tokens received from removed liquidity
     function remove(bytes32 poolId, uint256 delLiquidity) external returns (uint256 delRisky, uint256 delStable);
 
     // ===== Swaps =====

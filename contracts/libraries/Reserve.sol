@@ -109,7 +109,7 @@ library Reserve {
     /// @param reserve          Reserve in memory to use reserves and liquidity of
     /// @param delLiquidity     Amount of liquidity to fetch underlying tokens of
     /// @return delRisky        Amount of risky tokens controlled by `delLiquidity`
-    /// delStable               Amount of stable tokens controlled by `delLiquidity`
+    /// @return delStable       Amount of stable tokens controlled by `delLiquidity`
     function getAmounts(Data memory reserve, uint256 delLiquidity)
         internal
         pure

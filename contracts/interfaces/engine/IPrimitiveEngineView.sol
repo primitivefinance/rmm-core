@@ -41,15 +41,15 @@ interface IPrimitiveEngineView {
 
     // ===== Pool State =====
 
-    /// @notice             Fetches the global reserve state for a pool with `poolId`
-    /// @param  poolId      Pool Identifier
-    /// @return reserveRisky Risky token balance in the reserve
-    /// reserveStable       Stable token balance in the reserve
-    /// liquidity           Total supply of liquidity for the curve
-    /// blockTimestamp      Timestamp when the cumulative reserve values were last updated
-    /// cumulativeRisky     Cumulative sum of risky token reserves of the previous update
-    /// cumulativeStable    Cumulative sum of stable token reserves of the previous update
-    /// cumulativeLiquidity Cumulative sum of total supply of liquidity of the previous update
+    /// @notice                      Fetches the global reserve state for a pool with `poolId`
+    /// @param  poolId               Pool Identifier
+    /// @return reserveRisky         Risky token balance in the reserve
+    /// @return reserveStable        Stable token balance in the reserve
+    /// @return liquidity            Total supply of liquidity for the curve
+    /// @return blockTimestamp       Timestamp when the cumulative reserve values were last updated
+    /// @return cumulativeRisky      Cumulative sum of risky token reserves of the previous update
+    /// @return cumulativeStable     Cumulative sum of stable token reserves of the previous update
+    /// @return cumulativeLiquidity  Cumulative sum of total supply of liquidity of the previous update
     function reserves(bytes32 poolId)
         external
         view
@@ -63,13 +63,13 @@ interface IPrimitiveEngineView {
             uint256 cumulativeLiquidity
         );
 
-    /// @notice             Fetches `Calibration` pool parameters
-    /// @param  poolId      Pool Identifier
-    /// @return strike      Strike price of the pool with stable token decimals
-    /// sigma               Implied Volatility as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
-    /// maturity            Timestamp of maturity in seconds
-    /// lastTimestamp       Last timestamp used to calculate time until expiry, aka "tau"
-    /// gamma               = 1 - fee %, as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
+    /// @notice                 Fetches `Calibration` pool parameters
+    /// @param  poolId          Pool Identifier
+    /// @return strike          Strike price of the pool with stable token decimals
+    /// @return sigma           Implied Volatility as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
+    /// @return maturity        Timestamp of maturity in seconds
+    /// @return lastTimestamp   Last timestamp used to calculate time until expiry, aka "tau"
+    /// @return gamma           = 1 - fee %, as an unsigned 32-bit integer constant w/ precision of 1e4, 10000 = 100%
     function calibrations(bytes32 poolId)
         external
         view
@@ -86,9 +86,9 @@ interface IPrimitiveEngineView {
     /// @return liquidity   Liquidity owned by `account` in `poolId`
     function liquidity(address account, bytes32 poolId) external view returns (uint256 liquidity);
 
-    /// @notice             Fetches the margin balances of `account`
-    /// @param  account     Margin account to fetch
-    /// @return balanceRisky Balance of the risky token
-    /// balanceStable       Balance of the stable token
+    /// @notice                 Fetches the margin balances of `account`
+    /// @param  account         Margin account to fetch
+    /// @return balanceRisky    Balance of the risky token
+    /// @return balanceStable   Balance of the stable token
     function margins(address account) external view returns (uint128 balanceRisky, uint128 balanceStable);
 }
