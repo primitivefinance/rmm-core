@@ -51,15 +51,17 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override MIN_LIQUIDITY;
     /// @inheritdoc IPrimitiveEngineView
+    uint256 public immutable override scaleFactorRisky;
+    /// @inheritdoc IPrimitiveEngineView
+    uint256 public immutable override scaleFactorStable;
+    /// @inheritdoc IPrimitiveEngineView
     address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public immutable override scaleFactorRisky;
-    /// @inheritdoc IPrimitiveEngineView
-    uint256 public immutable override scaleFactorStable;
+    /// @dev Reentrancy guard initialized to state
+    uint8 private unlocked = 1;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override calibrations;
     /// @inheritdoc IPrimitiveEngineView
@@ -68,8 +70,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(bytes32 => Reserve.Data) public override reserves;
     /// @inheritdoc IPrimitiveEngineView
     mapping(address => mapping(bytes32 => uint256)) public override liquidity;
-
-    uint8 private unlocked = 1;
 
     modifier lock() {
         if (unlocked != 1) revert LockedError();
@@ -142,7 +142,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     /// @inheritdoc IPrimitiveEngineActions
     function create(
-        uint256 strike,
+        uint128 strike,
         uint32 sigma,
         uint32 maturity,
         uint32 gamma,
@@ -160,8 +160,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         )
     {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
-        uint128 scaledStrike = strike.toUint128();
-        poolId = keccak256(abi.encodePacked(address(this), scaledStrike, sigma, maturity, gamma));
+        poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity, gamma));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
         if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
         if (strike == 0) revert StrikeError(strike);
@@ -170,7 +169,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
-            strike: scaledStrike,
+            strike: strike,
             sigma: sigma,
             maturity: maturity,
             lastTimestamp: _blockTimestamp(),
@@ -289,13 +288,13 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
     struct SwapDetails {
         address recipient;
-        bytes32 poolId;
-        uint256 deltaIn;
-        uint256 deltaOut;
         bool riskyForStable;
         bool fromMargin;
         bool toMargin;
         uint32 timestamp;
+        bytes32 poolId;
+        uint256 deltaIn;
+        uint256 deltaOut;
     }
 
     /// @inheritdoc IPrimitiveEngineActions
