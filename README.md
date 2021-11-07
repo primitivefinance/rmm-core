@@ -6,7 +6,9 @@
 ![Twitter Follow](https://img.shields.io/twitter/follow/primitivefi?style=social)
 [![Discord](https://img.shields.io/discord/168831573876015105.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/rzRwJ4K)
 
-This repository is for the core contracts of the Primitive Protocol's Automated Market Maker named "RMM-01". These are low-level contracts which are designed to be interacted through higher-level smart contracts.
+This repository is for the core contracts of the Primitive Protocol's Automated Market Maker named "RMM-01".
+
+These are low-level contracts which are designed to be interacted through higher-level smart contracts.
 
 The low-level contracts are missing important checks that should be implemented by smart contracts. Keep this in mind when interacting with them.
 
