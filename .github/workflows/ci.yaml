@@ -54,4 +54,4 @@ jobs:
       - name: Test
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: yarn test
+        run: yarn test:fast
