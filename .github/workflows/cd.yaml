@@ -48,4 +48,6 @@ jobs:
       - name: Semantic Release
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
+          github_token: ${{ secrets.github_token }}
         run: npx semantic-release
