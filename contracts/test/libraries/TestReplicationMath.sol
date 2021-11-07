@@ -32,8 +32,8 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 reserveStable) {
         reserveStable = ReplicationMath
-        .getStableGivenRisky(invariantLast, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
-        .scaleToX64(scaleFactorStable);
+            .getStableGivenRisky(invariantLast, scaleFactorRisky, scaleFactorStable, reserveRisky, strike, sigma, tau)
+            .scaleToX64(scaleFactorStable);
     }
 
     /// @return reserveRisky The calculated risky reserve, using the stable reserve
@@ -45,8 +45,8 @@ contract TestReplicationMath {
         uint256 tau
     ) public view returns (int128 reserveRisky) {
         reserveRisky = ReplicationMath
-        .getRiskyGivenStable(invariantLast, scaleFactorRisky, scaleFactorStable, reserveStable, strike, sigma, tau)
-        .scaleToX64(scaleFactorRisky);
+            .getRiskyGivenStable(invariantLast, scaleFactorRisky, scaleFactorStable, reserveStable, strike, sigma, tau)
+            .scaleToX64(scaleFactorRisky);
     }
 
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
