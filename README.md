@@ -1,12 +1,12 @@
 ![](https://pbs.twimg.com/profile_banners/1241234631707381760/1588727988/1500x500)
 
-# Primitive V2
+# Primitive Replicating Market Maker
 
 [![](https://img.shields.io/github/stars/primitivefinance/primitive-v2-core?style=social)](https://img.shields.io/github/stars/primitivefinance/primitive-v2-core?style=social)
 ![Twitter Follow](https://img.shields.io/twitter/follow/primitivefi?style=social)
 [![Discord](https://img.shields.io/discord/168831573876015105.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/rzRwJ4K)
 
-This repository is for the core contracts of the Primitive V2 Protocol. These are low-level contracts which are designed to be interacted through higher-level smart contracts.
+This repository is for the core contracts of the Primitive Protocol's Automated Market Maker named "RMM-01". These are low-level contracts which are designed to be interacted through higher-level smart contracts.
 
 The low-level contracts are missing important checks that should be implemented by smart contracts. Keep this in mind when interacting with them.
 
@@ -32,11 +32,15 @@ The Engine contract contains two tokens in immutable state called risky and stab
 
 # Testing
 
-The testing environment is unique. Make sure that typechain has been run first, or else there could be typescript compilation issues.
+Running tests using the default `yarn test` will run it through hardhat, it takes approximately 10 minutes on a good CPU.
 
-The test function makes use of the `parallel` tag, which will take up a considerable amount of CPU power. It makes the tests run faster.
+The testing environment is unique. Make sure that `yarn typechain` has been run first, or else there could be typescript compilation issues.
+
+The `test:fast` script makes use of the `parallel` tag, which will take up a considerable amount of CPU power. It makes the tests run faster.
 
 In the `/test/shared/poolConfigs.ts` file is an array of different curve parameters. Each of these pools will go through the entire test suite.
+
+**Note**: When running tests with parallel, the `swap` tests will not be logged. If the tests are frozen, it means the swap tests are the last tests to be run.
 
 ## Compile contracts
 
@@ -56,7 +60,7 @@ In the `/test/shared/poolConfigs.ts` file is an array of different curve paramet
 
 # Security
 
-All audits are located in the audits/ folder.
+All audits are located in the `audits/` folder.
 
 The core contracts are audited by three teams: Chainsecurity, ABDK Consulting, Sherlock, and Dedaub.
 
