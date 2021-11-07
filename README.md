@@ -72,7 +72,7 @@ The core contracts are audited by three teams: Chainsecurity, ABDK Consulting, S
 
 # Deployed Addresses
 
-The deployed contract addresses for all of Primitive are located here: [Contract Database](https://www.notion.so/primitivefi/dc3b883ff9d94044b6738701b2826f7a?v=9e56507d430d4f4fb1939242cfb23736)
+To be deployed...
 
 # Access Control
 
