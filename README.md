@@ -56,6 +56,10 @@ In the `/test/shared/poolConfigs.ts` file is an array of different curve paramet
 
 `yarn test`
 
+## Run the tests using parallel
+
+`yarn test:fast`
+
 ## Compile and run typechain with
 
 `yarn compile:all`
