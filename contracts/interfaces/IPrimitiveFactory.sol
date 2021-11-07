@@ -25,13 +25,14 @@ interface IPrimitiveFactory {
     ///                 MIN_LIQUIDITY = 10 ^ (Decimals / MIN_LIQUIDITY_FACTOR)
     function MIN_LIQUIDITY_FACTOR() external pure returns (uint256);
 
-    /// @notice         Called within Engine constructor so Engine can set immutable variables without constructor args
-    /// @return factory Smart contract deploying the Engine contract
-    /// risky           Risky token
-    /// stable          Stable token
-    /// scaleFactorRisky  Scale factor of the risky token, 10^(18 - riskyTokenDecimals)
-    /// scaleFactorStable Scale factor of the stable token, 10^(18 - stableTokenDecimals)
-    /// minLiquidity    Minimum amount of liquidity on pool creation
+    /// @notice                    Called within Engine constructor so Engine can set immutable
+    ///                            variables without constructor args
+    /// @return factory            Smart contract deploying the Engine contract
+    /// @return risky              Risky token
+    /// @return stable             Stable token
+    /// @return scaleFactorRisky   Scale factor of the risky token, 10^(18 - riskyTokenDecimals)
+    /// @return scaleFactorStable  Scale factor of the stable token, 10^(18 - stableTokenDecimals)
+    /// @return minLiquidity       Minimum amount of liquidity on pool creation
     function args()
         external
         view

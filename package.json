@@ -1,7 +1,7 @@
 {
-  "name": "@primitivefinance/v2-core",
-  "version": "0.1.4",
-  "description": "Primitive V2 core smart contracts",
+  "name": "@primitivefinance/rmm-core",
+  "version": "1.12.1",
+  "description": "Primitive Replicating Market Maker",
   "main": "index.js",
   "repository": {
     "type": "git",
@@ -13,6 +13,10 @@
   "keywords": [
     "primitive",
     "v2",
+    "amm",
+    "defi",
+    "arbitrum",
+    "swap",
     "ethereum"
   ],
   "files": [
@@ -24,15 +28,12 @@
     "typechain"
   ],
   "scripts": {
-    "typechain": "hardhat typechain",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "compile:all": "hardhat clean && hardhat compile && hardhat typechain",
-    "test": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
-    "test:engine": "npx mocha ./test/unit/primitiveEngine/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
-    "test:factory": "npx mocha ./test/unit/primitiveFactory/**/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
-    "test:libraries": "npx mocha ./test/unit/libraries/*.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
-    "test:swapStable": "npx mocha ./test/unit/primitiveEngine/effect/swapStable.test.ts --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
+    "test": "hardhat test",
+    "test:fast": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
+    "typechain": "hardhat typechain",
     "prepare": "husky install"
   },
   "devDependencies": {
@@ -47,21 +48,17 @@
     "@types/mocha": "^8.2.3",
     "@types/node": "^16.4.0",
     "chai": "^4.3.4",
-    "defender-relay-client": "^1.10.0",
     "dotenv": "^10.0.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.4.1",
     "hardhat": "^2.4.3",
-    "hardhat-contract-sizer": "^2.0.3",
     "hardhat-gas-reporter": "^1.0.4",
-    "hardhat-tracer": "^1.0.0-alpha.6",
     "husky": "^6.0.0",
-    "lint-staged": "^11.0.0",
+    "mocha": "^9.1.3",
     "prettier": "^2.2.1",
     "prettier-plugin-solidity": "^1.0.0-beta.6",
     "solhint": "^3.3.6",
     "solhint-plugin-prettier": "^0.0.5",
-    "solidity-coverage": "^0.7.16",
     "ts-generator": "^0.1.1",
     "ts-node": "^9.1.1",
     "typechain": "^5.1.2",
@@ -69,9 +66,6 @@
     "web3-units": "^1.0.0"
   },
   "postinstall": "typechain",
-  "lint-staged": {
-    "*.{js,ts,sol,md}": "prettier --write"
-  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
@@ -80,7 +74,5 @@
       "main"
     ]
   },
-  "dependencies": {
-    "mocha": "^9.0.3"
-  }
+  "dependencies": {}
 }
