@@ -2,10 +2,7 @@ import '@typechain/hardhat'
 import '@nomiclabs/hardhat-ethers'
 import '@nomiclabs/hardhat-waffle'
 import 'prettier-plugin-solidity'
-import 'hardhat-tracer'
 import 'hardhat-gas-reporter'
-import 'solidity-coverage'
-import 'hardhat-contract-sizer'
 import { HardhatUserConfig } from 'hardhat/config'
 
 const config: HardhatUserConfig = {
@@ -34,16 +31,11 @@ const config: HardhatUserConfig = {
     gasPrice: 100,
     enabled: true,
   },
-  contractSizer: {
-    alphaSort: true,
-    runOnCompile: false,
-    disambiguatePaths: true,
-  },
   paths: {
+    artifacts: './artifacts',
+    cache: './cache',
     sources: './contracts',
     tests: './test',
-    cache: './cache',
-    artifacts: './artifacts',
   },
 }
 
