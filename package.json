@@ -31,8 +31,8 @@
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "compile:all": "hardhat clean && hardhat compile && hardhat typechain",
-    "test:hardhat": "hardhat test",
-    "test": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
+    "test": "hardhat test",
+    "test:fast": "npx mocha --require hardhat/register --recursive --parallel --exit --extension ts --timeout 100000000",
     "typechain": "hardhat typechain",
     "prepare": "husky install"
   },
