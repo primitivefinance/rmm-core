@@ -32,11 +32,15 @@ The Engine contract contains two tokens in immutable state called risky and stab
 
 # Testing
 
+Running tests using the default `yarn test` will run it through hardhat, it takes approximately 10 minutes on a good CPU.
+
 The testing environment is unique. Make sure that `yarn typechain` has been run first, or else there could be typescript compilation issues.
 
-The test function makes use of the `parallel` tag, which will take up a considerable amount of CPU power. It makes the tests run faster.
+The `test:fast` script makes use of the `parallel` tag, which will take up a considerable amount of CPU power. It makes the tests run faster.
 
 In the `/test/shared/poolConfigs.ts` file is an array of different curve parameters. Each of these pools will go through the entire test suite.
+
+**Note**: When running tests with parallel, the `swap` tests will not be logged. If the tests are frozen, it means the swap tests are the last tests to be run.
 
 ## Compile contracts
 
