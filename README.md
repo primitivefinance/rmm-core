@@ -20,6 +20,10 @@ This repository has a **$250,000** bug bounty through Immunefi. Details are on t
 
 The contract documentation is hosted here: [Primitive Docs](https://docs.primitive.finance)
 
+# Specification
+
+The math and smart contract specification is detailed in this paper: [RMM-01](https://primitive.finance/whitepaper-rmm-01.pdf)
+
 # Contracts
 
 This repository has two contracts: PrimitiveFactory and PrimitiveEngine
