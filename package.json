@@ -1,23 +1,21 @@
 {
   "name": "@primitivefinance/rmm-core",
-  "version": "1.12.1",
+  "version": "2.0.0-beta.1",
   "description": "Primitive Replicating Market Maker",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/primitivefinance/primitive-v2-core.git"
+    "url": "https://github.com/primitivefinance/rmm-core.git"
   },
   "author": "Primitive",
   "license": "GPL-3.0-or-later",
   "homepage": "https://primitive.finance",
   "keywords": [
     "primitive",
-    "v2",
     "amm",
-    "defi",
-    "arbitrum",
     "swap",
-    "ethereum"
+    "ethereum",
+    "smart contracts"
   ],
   "files": [
     "contracts",
@@ -71,7 +69,16 @@
   },
   "release": {
     "branches": [
-      "main"
+      "+([0-9])?(.{+([0-9]),x}).x",
+      "main",
+      {
+        "name": "beta",
+        "prerelease": true
+      },
+      {
+        "name": "alpha",
+        "prerelease": true
+      }
     ]
   },
   "dependencies": {}
