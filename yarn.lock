@@ -666,10 +666,10 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
-"@primitivefinance/v2-math@1.3.0":
-  version "1.3.0"
-  resolved "https://npm.pkg.github.com/download/@primitivefinance/v2-math/1.3.0/d17086c777d688a097021f1bf6d9466cc50923b4f47a1b7ea507698cc5d467c9#b9885deedc7923a5ae7a948f063d8974023490c6"
-  integrity sha512-A48cuGax4drUhiqfgZtrtE9Ec8ArZC6JfElasl+OBBm+zX9pVypW+MZ3y5vf2atPTe9NwvixWKMOxLAD4vEEpw==
+"@primitivefinance/rmm-math@2.0.0-beta.1":
+  version "2.0.0-beta.1"
+  resolved "https://npm.pkg.github.com/download/@primitivefinance/rmm-math/2.0.0-beta.1/809d0e6f1ee61941e7198c11932cd7ea1d75bf0bbde6302fb926fdc85b30dfa7#b6465d13684738b6bfa3ce944f0ec19e391b31ff"
+  integrity sha512-JKnGiHe9mXQtk3Zmfr0ecJgGKTIiRwKhaR+gO8ki1+lBJRwmCyp26lrCwPitLtx1yvysZscV+pudc4LXpNexMg==
   dependencies:
     gaussian "^1.2.0"
     numeric "^1.2.6"

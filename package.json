@@ -1,7 +1,7 @@
 {
   "name": "@primitivefinance/rmm-core",
   "version": "2.0.0-beta.1",
-  "description": "Primitive Replicating Market Maker",
+  "description": "Primitive Replicating Market Maker smart contracts",
   "main": "index.js",
   "repository": {
     "type": "git",
@@ -39,7 +39,7 @@
     "@commitlint/config-conventional": "^12.1.4",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@primitivefinance/v2-math": "1.3.0",
+    "@primitivefinance/rmm-math": "2.0.0-beta.1",
     "@typechain/ethers-v5": "^7.0.1",
     "@typechain/hardhat": "^2.2.0",
     "@types/chai": "^4.2.21",
@@ -69,16 +69,7 @@
   },
   "release": {
     "branches": [
-      "+([0-9])?(.{+([0-9]),x}).x",
-      "main",
-      {
-        "name": "beta",
-        "prerelease": true
-      },
-      {
-        "name": "alpha",
-        "prerelease": true
-      }
+      "main"
     ]
   },
   "dependencies": {}
