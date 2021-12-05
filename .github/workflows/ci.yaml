@@ -24,21 +24,10 @@ jobs:
           scope: '@primitivefinance'
           always-auth: true
 
-      - name: Authenticate with GitHub package registry
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: echo "//npm.pkg.github.com:_authToken=${{ secrets.GH_TOKEN }}" >
-          ~/.npmrc
-
       - run: yarn install --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_TOKEN }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Lint
         uses: wearerequired/lint-action@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           github_token: ${{ secrets.github_token }}
           prettier: true
@@ -46,11 +35,7 @@ jobs:
           prettier_extensions: 'css,html,js,json,jsx,md,sass,scss,ts,tsx,vue,yaml,yml,sol'
 
       - name: Typechain
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: yarn typechain
 
       - name: Test
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: yarn test:fast
