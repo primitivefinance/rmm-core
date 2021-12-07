@@ -1,5 +1,5 @@
 import { parseWei, Percentage, Time, Wei, toBN, parsePercentage } from 'web3-units'
-import { callDelta, callPremium } from '@primitivefinance/rmm-math'
+import { callDelta, callPremium } from '@primitivefi/rmm-math'
 import { computePoolId } from './utils'
 
 /**
