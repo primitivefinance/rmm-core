@@ -25,8 +25,14 @@ jobs:
           always-auth: true
 
       - run: yarn install --ignore-scripts
+        env:
+          github_token: ${{ secrets.github_token }}
+        run: echo "//npm.pkg.github.com:_authToken=${{ secrets.github_token }}" >
+          ~/.npmrc
 
       - name: Lint
+        env:
+          github_token: ${{ secrets.github_token }}
         uses: wearerequired/lint-action@v1
         with:
           github_token: ${{ secrets.github_token }}
@@ -35,7 +41,11 @@ jobs:
           prettier_extensions: 'css,html,js,json,jsx,md,sass,scss,ts,tsx,vue,yaml,yml,sol'
 
       - name: Typechain
+        env:
+          github_token: ${{ secrets.github_token }}
         run: yarn typechain
 
       - name: Test
+        env:
+          github_token: ${{ secrets.github_token }}
         run: yarn test:fast
