@@ -666,10 +666,10 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
-"@primitivefinance/rmm-math@2.0.0-beta.1":
+"@primitivefi/rmm-math@2.0.0-beta.1":
   version "2.0.0-beta.1"
-  resolved "https://npm.pkg.github.com/download/@primitivefinance/rmm-math/2.0.0-beta.1/809d0e6f1ee61941e7198c11932cd7ea1d75bf0bbde6302fb926fdc85b30dfa7#b6465d13684738b6bfa3ce944f0ec19e391b31ff"
-  integrity sha512-JKnGiHe9mXQtk3Zmfr0ecJgGKTIiRwKhaR+gO8ki1+lBJRwmCyp26lrCwPitLtx1yvysZscV+pudc4LXpNexMg==
+  resolved "https://registry.yarnpkg.com/@primitivefi/rmm-math/-/rmm-math-2.0.0-beta.1.tgz#11c5f26e3cf05c31fa2c3470f36b54d31228c67e"
+  integrity sha512-yWy5ndaZYj2TjFBT4PFUG6ojzFinx2xsqB666biumW/1OIElkmVJiaMiEjCAhg6pxyBpBWsroKo7lf/oUwcZCA==
   dependencies:
     gaussian "^1.2.0"
     numeric "^1.2.6"

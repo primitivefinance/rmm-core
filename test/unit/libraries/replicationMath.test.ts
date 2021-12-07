@@ -7,7 +7,7 @@ import {
   calcInvariant,
   inverse_std_n_cdf,
   std_n_cdf,
-} from '@primitivefinance/rmm-math'
+} from '@primitivefi/rmm-math'
 
 import { testContext } from '../../shared/testContext'
 import { maxError, scaleUp } from '../../shared/utils'
