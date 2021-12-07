@@ -1,6 +1,6 @@
 import { Wei, Time, FixedPointX64, parseFixedPointX64, parseWei, toBN, Percentage } from 'web3-units'
-import { quantilePrime, std_n_pdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/v2-math'
-import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/v2-math'
+import { quantilePrime, std_n_pdf, inverse_std_n_cdf, nonNegative } from '@primitivefinance/rmm-math'
+import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefinance/rmm-math'
 import { Calibration } from './calibration'
 import { scaleUp } from './utils'
 
