@@ -24,11 +24,15 @@ jobs:
           scope: '@primitivefinance'
           always-auth: true
 
-      - run: yarn install --ignore-scripts
+      - name: Authenticate with GitHub package registry
         env:
           github_token: ${{ secrets.github_token }}
         run: echo "//npm.pkg.github.com:_authToken=${{ secrets.github_token }}" >
           ~/.npmrc
+
+      - run: yarn install --ignore-scripts
+        env:
+          github_token: ${{ secrets.github_token }}
 
       - name: Lint
         env:
