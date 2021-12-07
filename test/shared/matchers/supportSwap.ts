@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers'
 import { EngineTypes } from '../../../types'
-import { getSpotPrice } from '@primitivefinance/v2-math'
+import { getSpotPrice } from '@primitivefinance/rmm-math'
 import { parseWei, Wei } from 'web3-units'
 import { Calibration } from '..'
 import { SwapTestCase } from '../../unit/primitiveEngine/effect/swap.test'

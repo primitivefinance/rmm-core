@@ -1,6 +1,6 @@
 import { parseWei } from 'web3-units'
 import { constants, BigNumber, Wallet } from 'ethers'
-import { getStableGivenRisky } from '@primitivefinance/v2-math'
+import { getStableGivenRisky } from '@primitivefinance/rmm-math'
 
 import expect from '../../../shared/expect'
 import { Calibration } from '../../../shared'
