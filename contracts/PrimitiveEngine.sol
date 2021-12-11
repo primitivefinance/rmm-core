@@ -210,11 +210,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint256 balRisky;
         uint256 balStable;
-        if (delRisky > 0) balRisky = balanceRisky();
-        if (delStable > 0) balStable = balanceStable();
+        if (delRisky != 0) balRisky = balanceRisky();
+        if (delStable != 0) balStable = balanceStable();
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
-        if (delRisky > 0) checkRiskyBalance(balRisky + delRisky);
-        if (delStable > 0) checkStableBalance(balStable + delStable);
+        if (delRisky != 0) checkRiskyBalance(balRisky + delRisky);
+        if (delStable != 0) checkStableBalance(balStable + delStable);
         emit Deposit(msg.sender, recipient, delRisky, delStable);
     }
 
@@ -226,8 +226,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     ) external override lock {
         if (delRisky == 0 && delStable == 0) revert ZeroDeltasError();
         margins.withdraw(delRisky, delStable); // state update
-        if (delRisky > 0) IERC20(risky).safeTransfer(recipient, delRisky);
-        if (delStable > 0) IERC20(stable).safeTransfer(recipient, delStable);
+        if (delRisky != 0) IERC20(risky).safeTransfer(recipient, delRisky);
+        if (delStable != 0) IERC20(stable).safeTransfer(recipient, delStable);
         emit Withdraw(msg.sender, recipient, delRisky, delStable);
     }
 
