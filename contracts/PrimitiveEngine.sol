@@ -62,7 +62,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
     /// @dev Reentrancy guard initialized to state
-    uint8 private unlocked = 1;
+    uint256 private locked = 1;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override calibrations;
     /// @inheritdoc IPrimitiveEngineView
@@ -73,11 +73,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(address => mapping(bytes32 => uint256)) public override liquidity;
 
     modifier lock() {
-        if (unlocked == 1) revert LockedError();
+        if (locked == 1) revert LockedError();
 
-        unlocked = 2;
+        locked = 2;
         _;
-        unlocked = 1;
+        locked = 1;
     }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
