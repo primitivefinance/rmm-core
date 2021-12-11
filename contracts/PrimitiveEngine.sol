@@ -73,7 +73,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(address => mapping(bytes32 => uint256)) public override liquidity;
 
     modifier lock() {
-        if (locked == 1) revert LockedError();
+        if (locked != 1) revert LockedError();
 
         locked = 2;
         _;
