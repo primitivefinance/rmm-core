@@ -708,10 +708,9 @@ library ABDKMath64x64 {
      * @param x unsigned 256-bit integer number
      * @return unsigned 128-bit integer number
      */
-    function sqrtu(uint256 x) private pure returns (uint128 result) {
+    function sqrtu(uint256 x) private pure returns (uint128) {
         if (x == 0) return 0;
-        result = 1;
-
+        uint256 result = 1;
         uint256 x2 = x;
         if (x2 >= 0x100000000000000000000000000000000) {
             x2 >>= 128;
@@ -749,7 +748,7 @@ library ABDKMath64x64 {
             result = (result + x / result) >> 1;
 
             uint256 roundedDownResult = x / result;
-            if (result > roundedDownResult) result = roundedDownResult;
+            return uint128(result > roundedDownResult ? roundedDownResult : result);
         }
     }
 }
