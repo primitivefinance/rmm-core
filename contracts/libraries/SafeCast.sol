@@ -5,6 +5,7 @@ pragma solidity >=0.5.0;
 library SafeCast {
     /// @notice reverts if x > type(uint128).max
     function toUint128(uint256 x) internal pure returns (uint128 z) {
-        require((z = uint128(x)) == x);
+        require(x <= type(uint128).max);
+        z = uint128(x);
     }
 }
