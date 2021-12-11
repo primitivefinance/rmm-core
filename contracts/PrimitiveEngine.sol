@@ -91,7 +91,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (bool success, bytes memory data) = risky.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
         );
-        if (!success || data.length < 32) revert BalanceError();
+        if (!success || data.length != 32) revert BalanceError();
         return abi.decode(data, (uint256));
     }
 
@@ -100,7 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (bool success, bytes memory data) = stable.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
         );
-        if (!success || data.length < 32) revert BalanceError();
+        if (!success || data.length != 32) revert BalanceError();
         return abi.decode(data, (uint256));
     }
 
