@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-/// @title   Primitive Engine
-/// @author  Primitive
-/// @notice  Replicating Market Maker
-/// @dev     RMM-01
-
 import "./libraries/Margin.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
@@ -21,6 +16,10 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+/// @title   Primitive Engine
+/// @author  Primitive
+/// @notice  Replicating Market Maker
+/// @dev     RMM-01
 contract PrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;

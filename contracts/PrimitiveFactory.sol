@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
+import "./interfaces/IPrimitiveFactory.sol";
+import "./PrimitiveEngine.sol";
+
 /// @title   Primitive Factory
 /// @author  Primitive
 /// @notice  No access controls are available to deployer
 /// @dev     Deploy new PrimitiveEngine contracts
-
-import "./interfaces/IPrimitiveFactory.sol";
-import "./PrimitiveEngine.sol";
-
 contract PrimitiveFactory is IPrimitiveFactory {
     /// @notice Thrown when the risky and stable tokens are the same
     error SameTokenError();
