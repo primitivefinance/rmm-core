@@ -12,3 +12,5 @@ dist
 .vscode/
 
 .npmrc
+
+docs/
