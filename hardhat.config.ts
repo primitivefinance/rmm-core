@@ -4,8 +4,13 @@ import '@nomiclabs/hardhat-waffle'
 import 'prettier-plugin-solidity'
 import 'hardhat-gas-reporter'
 import { HardhatUserConfig } from 'hardhat/config'
+import '@primitivefi/hardhat-dodoc'
 
 const config: HardhatUserConfig = {
+  dodoc: {
+    runOnCompile: true,
+    outputDir: 'docs',
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
