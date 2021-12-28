@@ -10,6 +10,28 @@ const config: HardhatUserConfig = {
   dodoc: {
     runOnCompile: true,
     outputDir: 'docs',
+    templatePath: './docusaurus.sqrl',
+    include: [
+      'PrimitiveEngine',
+      'PrimitiveFactory',
+      'IPrimitiveEngine',
+      'IPrimitiveFactory',
+      'IPrimitiveCreateCallback',
+      'IPrimitiveDepositCallback',
+      'IPrimitiveLiquidityCallback',
+      'IPrimitiveSwapCallback',
+      'IPrimitiveEngineActions',
+      'IPrimitiveEngineErrors',
+      'IPrimitiveEngineEvents',
+      'IPrimitiveEngineView',
+      'CumulativeNormalDistribution',
+      'Margin',
+      'ReplicationMath',
+      'Reserve',
+      'SafeCast',
+      'Transfers',
+      'Units'
+    ],
   },
   networks: {
     hardhat: {
