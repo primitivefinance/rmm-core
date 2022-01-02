@@ -1,6 +1,7 @@
 {
   "plugins": ["prettier"],
   "rules": {
-    "prettier/prettier": "error"
+    "prettier/prettier": "error",
+    "max-line-length": ["warn", 120]
   }
 }
