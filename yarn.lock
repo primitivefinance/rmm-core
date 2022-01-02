@@ -666,10 +666,6 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
-"@primitivefi/rmm-math@2.0.0-beta.1":
-  version "2.0.0-beta.1"
-  resolved "https://registry.yarnpkg.com/@primitivefi/rmm-math/-/rmm-math-2.0.0-beta.1.tgz#11c5f26e3cf05c31fa2c3470f36b54d31228c67e"
-  integrity sha512-yWy5ndaZYj2TjFBT4PFUG6ojzFinx2xsqB666biumW/1OIElkmVJiaMiEjCAhg6pxyBpBWsroKo7lf/oUwcZCA==
 "@primitivefi/hardhat-dodoc@^0.1.3":
   version "0.1.3"
   resolved "https://registry.yarnpkg.com/@primitivefi/hardhat-dodoc/-/hardhat-dodoc-0.1.3.tgz#338ecff24b93d3b43fa35a98909f6840af86c27c"
@@ -677,6 +673,13 @@
   dependencies:
     squirrelly "^8.0.8"
 
+"@primitivefi/rmm-math@2.0.0-beta.1":
+  version "2.0.0-beta.1"
+  resolved "https://registry.yarnpkg.com/@primitivefi/rmm-math/-/rmm-math-2.0.0-beta.1.tgz#11c5f26e3cf05c31fa2c3470f36b54d31228c67e"
+  integrity sha512-yWy5ndaZYj2TjFBT4PFUG6ojzFinx2xsqB666biumW/1OIElkmVJiaMiEjCAhg6pxyBpBWsroKo7lf/oUwcZCA==
+  dependencies:
+    gaussian "^1.2.0"
+    numeric "^1.2.6"
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
@@ -4385,11 +4388,6 @@ ganache-core@^2.13.2:
     ethereumjs-wallet "0.6.5"
     web3 "1.2.11"
 
-gaussian@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/gaussian/-/gaussian-1.2.0.tgz#5b081744008c1b0a8eb510da695ed7328fb8913a"
-  integrity sha512-Pz/InFmDZ6VqCbXF+2+O6USIbPUPWhJ7DnqrZKfo9mMHszCd4pBad3WCVa9ruzzrBizYonsv0ZBmuv4rR8NRQg==
-
 get-caller-file@^1.0.1:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/get-caller-file/-/get-caller-file-1.0.3.tgz#f978fa4c90d1dfe7ff2d6beda2a515e713bdcf4a"
@@ -6537,11 +6535,6 @@ number-to-bn@1.7.0:
   dependencies:
     bn.js "4.11.6"
     strip-hex-prefix "1.0.0"
-
-numeric@^1.2.6:
-  version "1.2.6"
-  resolved "https://registry.yarnpkg.com/numeric/-/numeric-1.2.6.tgz#765b02bef97988fcf880d4eb3f36b80fa31335aa"
-  integrity sha1-dlsCvvl5iPz4gNTrPza4D6MTNao=
 
 oauth-sign@~0.9.0:
   version "0.9.0"
