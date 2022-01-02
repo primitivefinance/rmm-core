@@ -2,7 +2,7 @@
 
 # Primitive Replicating Market Maker
 
-[![Tests](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yml/badge.svg)](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yml)
+[![Tests](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yaml/badge.svg)](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yaml)
 [![npm version](https://img.shields.io/npm/v/@primitivefi/rmm-core/latest.svg)](https://www.npmjs.com/package/@primitivefi/rmm-core/v/latest)
 [![](https://img.shields.io/github/stars/primitivefinance/primitive-v2-core?style=social)](https://img.shields.io/github/stars/primitivefinance/primitive-v2-core?style=social)
 ![Twitter Follow](https://img.shields.io/twitter/follow/primitivefi?style=social)
