@@ -57,8 +57,18 @@ declare global {
       revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
       increaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       decreaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
-      increasePositionLiquidity(engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber): AsyncAssertion
-      decreasePositionLiquidity(engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber): AsyncAssertion
+      increasePositionLiquidity(
+        engine: EngineTypes,
+        account: string,
+        poolId: string,
+        liquidity: BigNumber
+      ): AsyncAssertion
+      decreasePositionLiquidity(
+        engine: EngineTypes,
+        account: string,
+        poolId: string,
+        liquidity: BigNumber
+      ): AsyncAssertion
       increaseReserveRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       decreaseReserveRisky(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
       increaseReserveStable(engine: EngineTypes, poolId: string, amount: BigNumber): AsyncAssertion
