@@ -2,7 +2,6 @@ import { Wei, Time, FixedPointX64, parseFixedPointX64, parseWei, toBN, Percentag
 import { quantilePrime, std_n_pdf, inverse_std_n_cdf, nonNegative } from '@primitivefi/rmm-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefi/rmm-math'
 import { Calibration } from './calibration'
-import { scaleUp } from './utils'
 
 export const PERCENTAGE = 10 ** Percentage.Mantissa
 export const PRECISION: Wei = parseWei('1', 18)
@@ -111,7 +110,7 @@ export class VirtualPool {
     )
 
     if (isNaN(stable)) return parseWei(0, decimals)
-    return scaleUp(stable, decimals)
+    return parseWei(stable, decimals)
   }
 
   /**
@@ -132,7 +131,7 @@ export class VirtualPool {
     )
 
     if (isNaN(risky)) return parseWei(0, decimals)
-    return scaleUp(risky, decimals)
+    return parseWei(risky, decimals)
   }
 
   /**
