@@ -4,8 +4,35 @@ import '@nomiclabs/hardhat-waffle'
 import 'prettier-plugin-solidity'
 import 'hardhat-gas-reporter'
 import { HardhatUserConfig } from 'hardhat/config'
+import '@primitivefi/hardhat-dodoc'
 
 const config: HardhatUserConfig = {
+  dodoc: {
+    runOnCompile: true,
+    outputDir: 'docs',
+    templatePath: './docusaurus.sqrl',
+    include: [
+      'PrimitiveEngine',
+      'PrimitiveFactory',
+      'IPrimitiveEngine',
+      'IPrimitiveFactory',
+      'IPrimitiveCreateCallback',
+      'IPrimitiveDepositCallback',
+      'IPrimitiveLiquidityCallback',
+      'IPrimitiveSwapCallback',
+      'IPrimitiveEngineActions',
+      'IPrimitiveEngineErrors',
+      'IPrimitiveEngineEvents',
+      'IPrimitiveEngineView',
+      'CumulativeNormalDistribution',
+      'Margin',
+      'ReplicationMath',
+      'Reserve',
+      'SafeCast',
+      'Transfers',
+      'Units',
+    ],
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,

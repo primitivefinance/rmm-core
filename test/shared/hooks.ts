@@ -3,7 +3,7 @@ import { parseWei, Wei } from 'web3-units'
 import { Wallet } from '@ethersproject/wallet'
 import { Contracts } from '../../types'
 import { Calibration } from './calibration'
-import { computePoolId, computePositionId, scaleUp } from './utils'
+import { computePoolId } from './utils'
 const { HashZero, MaxUint256 } = ethers.constants
 
 export interface Tx {
@@ -25,18 +25,7 @@ export async function usePool(
   debug: boolean = false
 ): Promise<UsePool> {
   /// get the parameters from the config
-  const {
-    strike,
-    sigma,
-    maturity,
-    delta,
-    gamma,
-    scaleFactorStable,
-    scaleFactorRisky,
-    decimalsRisky,
-    decimalsStable,
-    MIN_LIQUIDITY,
-  } = config
+  const { strike, sigma, maturity, delta, gamma, decimalsRisky } = config
 
   /// call create on the router contract
   let tx: any
@@ -48,7 +37,7 @@ export async function usePool(
         sigma.raw,
         maturity.raw,
         gamma.raw,
-        scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+        parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
         parseWei('1', 18).raw,
         HashZero
       )
@@ -63,7 +52,7 @@ export async function usePool(
   const receipt = await tx.wait()
   const args = receipt?.events?.[0].args
   if (args) {
-    const actualPoolId = computePoolId(contracts.engine.address, args.maturity, args.sigma, args.strike, args.gamma)
+    const actualPoolId = computePoolId(contracts.engine.address, args.strike, args.sigma, args.maturity, args.gamma)
     if (actualPoolId !== poolId) throw Error(`\n  PoolIds do not match: ${poolId} != ${actualPoolId}`)
   }
 
@@ -90,12 +79,14 @@ export async function useLiquidity(
   /// call create on the router contract
   let tx: any
   try {
-    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, delRisky.raw, delStable.raw, HashZero)
+    tx = await contracts.router
+      .connect(signer)
+      .allocateFromExternal(poolId, target, delRisky.raw, delStable.raw, HashZero)
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call allocateFromExternal() on the router`)
   }
 
-  const posId = computePositionId(target, poolId)
+  const posId = poolId
 
   if (debug) console.log(`\n   Provided ${amount.float} liquidity to ${poolId.slice(0, 6)}`)
   return { tx, poolId, posId }
