@@ -23,6 +23,7 @@ export const calibrations: any = {
   ['bothprecision']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(1 - 0.0015), 6, 6),
   ['med']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(1 - 0.01)),
   ['high']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(1 - 0.1)),
+  ['sigma']: new Calibration(10, 0.0001, Time.YearInSeconds + 1, 1, 10, parsePercentage(1 - 0.0015)),
 }
 
 /**
@@ -32,6 +33,7 @@ export const TestPools: PoolState[] = [
   { description: 'default', calibration: DEFAULT_CONFIG },
   { description: '1% fee', calibration: calibrations.med },
   { description: '10% fee', calibration: calibrations.high },
+  { description: '0.01% sigma', calibration: calibrations.sigma },
   /* {
     description: `expired`,
     calibration: calibrations.expired,

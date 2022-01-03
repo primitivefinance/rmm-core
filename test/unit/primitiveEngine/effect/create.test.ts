@@ -270,6 +270,36 @@ TestPools.forEach(function (pool: PoolState) {
         ).to.reverted
       })
 
+      it('reverts if sigma is 0', async function () {
+        const iv = 0
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            iv,
+            maturity.raw,
+            gamma.raw,
+            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
+
+      it('reverts if sigma is gt 1e7', async function () {
+        const iv = 1e7 + 1
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            iv,
+            maturity.raw,
+            gamma.raw,
+            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
+
       it('reverts if gamma is greater or equal to 10000', async function () {
         const tenThousand = 1e4
         await expect(
