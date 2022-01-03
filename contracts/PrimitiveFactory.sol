@@ -77,18 +77,21 @@ contract PrimitiveFactory is IPrimitiveFactory {
         if (riskyDecimals > 18 || riskyDecimals < 6) revert DecimalsError(riskyDecimals);
         if (stableDecimals > 18 || stableDecimals < 6) revert DecimalsError(stableDecimals);
 
-        uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
-        uint256 scaleFactorStable = 10**(18 - stableDecimals);
-        uint256 lowestDecimals = (riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals);
-        uint256 minLiquidity = 10**(lowestDecimals / MIN_LIQUIDITY_FACTOR);
-        args = Args({
-            factory: factory,
-            risky: risky,
-            stable: stable,
-            scaleFactorRisky: scaleFactorRisky,
-            scaleFactorStable: scaleFactorStable,
-            minLiquidity: minLiquidity
-        }); // Engines call this to get constructor args
+        unchecked {
+            uint256 scaleFactorRisky = 10**(18 - riskyDecimals);
+            uint256 scaleFactorStable = 10**(18 - stableDecimals);
+            uint256 lowestDecimals = (riskyDecimals > stableDecimals ? stableDecimals : riskyDecimals);
+            uint256 minLiquidity = 10**(lowestDecimals / MIN_LIQUIDITY_FACTOR);
+            args = Args({
+                factory: factory,
+                risky: risky,
+                stable: stable,
+                scaleFactorRisky: scaleFactorRisky,
+                scaleFactorStable: scaleFactorStable,
+                minLiquidity: minLiquidity
+            }); // Engines call this to get constructor args
+        }
+        
         engine = address(new PrimitiveEngine{salt: keccak256(abi.encode(risky, stable))}());
         delete args;
     }
