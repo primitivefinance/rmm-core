@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity >=0.8.4;
 
-/// @title   Primitive Factory interface
+/// @title   Primitive Factory Interface
 /// @author  Primitive
 interface IPrimitiveFactory {
     /// @notice         Created a new engine contract!

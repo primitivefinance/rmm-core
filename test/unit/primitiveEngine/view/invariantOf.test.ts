@@ -2,9 +2,9 @@ import { constants, Wallet } from 'ethers'
 import { parsePercentage, parseWei } from 'web3-units'
 
 import expect from '../../../shared/expect'
-import { Calibration } from '../../../shared'
+import { Calibration, parseCalibration } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
-import { computePoolId, scaleUp } from '../../../shared/utils'
+import { computePoolId } from '../../../shared/utils'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
@@ -29,7 +29,7 @@ TestPools.forEach(function (pool: PoolState) {
     })
 
     it('does not revert if expired', async function () {
-      const cal = new Calibration(10, 1, 1, 0, 10, parsePercentage(1 - 0.0015), decimalsRisky, decimalsStable)
+      const cal = parseCalibration(10, 1, 1, 1 - 0.0015, 0, 10, decimalsRisky, decimalsStable)
       const account = this.signers[0].address
       await this.contracts.risky.mint(account, parseWei('1000').raw)
       await this.contracts.stable.mint(account, parseWei('1000').raw)
@@ -38,13 +38,28 @@ TestPools.forEach(function (pool: PoolState) {
         cal.sigma.raw,
         cal.maturity.raw,
         cal.gamma.raw,
-        scaleUp(1, cal.decimalsRisky).sub(scaleUp(cal.delta, cal.decimalsRisky)).raw,
+        parseWei(1, cal.decimalsRisky).sub(parseWei(cal.delta, cal.decimalsRisky)).raw,
         parseWei('1').raw,
         constants.HashZero
       )
       await this.contracts.engine.advanceTime(10)
-      poolId = computePoolId(this.contracts.engine.address, cal.maturity.raw, cal.sigma.raw, cal.strike.raw, cal.gamma.raw)
-      await this.contracts.router.swap(this.contracts.router.address, poolId, true, 2000, 1, false, true, constants.HashZero)
+      poolId = computePoolId(
+        this.contracts.engine.address,
+        cal.strike.toString(),
+        cal.sigma.toString(),
+        cal.maturity.toString(),
+        cal.gamma.toString()
+      )
+      await this.contracts.router.swap(
+        this.contracts.router.address,
+        poolId,
+        true,
+        2000,
+        1,
+        false,
+        true,
+        constants.HashZero
+      )
       await expect(this.contracts.engine.invariantOf(poolId)).to.not.be.reverted
     })
   })

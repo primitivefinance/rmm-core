@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-/// @title   Primitive Engine
-/// @author  Primitive
-/// @notice  Replicating Market Maker
-/// @dev     RMM-01
-
 import "./libraries/Margin.sol";
 import "./libraries/ReplicationMath.sol";
 import "./libraries/Reserve.sol";
@@ -17,10 +12,15 @@ import "./interfaces/callback/IPrimitiveCreateCallback.sol";
 import "./interfaces/callback/IPrimitiveDepositCallback.sol";
 import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
 import "./interfaces/callback/IPrimitiveSwapCallback.sol";
+
 import "./interfaces/IERC20.sol";
 import "./interfaces/IPrimitiveEngine.sol";
 import "./interfaces/IPrimitiveFactory.sol";
 
+/// @title   Primitive Engine
+/// @author  Primitive
+/// @notice  Replicating Market Maker
+/// @dev     RMM-01
 contract PrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
@@ -163,7 +163,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (uint256 factor0, uint256 factor1) = (scaleFactorRisky, scaleFactorStable);
         poolId = keccak256(abi.encodePacked(address(this), strike, sigma, maturity, gamma));
         if (calibrations[poolId].lastTimestamp != 0) revert PoolDuplicateError();
-        if (sigma > 1e7 || sigma < 100) revert SigmaError(sigma);
+        if (sigma > 1e7 || sigma < 1) revert SigmaError(sigma);
         if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
         if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);

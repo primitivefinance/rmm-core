@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import "./SafeCast.sol";
 
-/// @notice  Margin Library
+/// @title   Margin Library
 /// @author  Primitive
 /// @dev     Uses a data struct with two uint128s to optimize for one storage slot
 library Margin {

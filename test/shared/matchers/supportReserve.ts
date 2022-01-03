@@ -55,7 +55,8 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       const expectedReserveStable = oldReserve.reserveStable.add(amount)
 
       this.assert(
-        newReserve.reserveStable.eq(expectedReserveStable) || newReserve.reserveStable.sub(expectedReserveStable).lt(1000),
+        newReserve.reserveStable.eq(expectedReserveStable) ||
+          newReserve.reserveStable.sub(expectedReserveStable).lt(1000),
         `Expected ${expectedReserveStable} to be ${newReserve.reserveStable}`,
         `Expected ${expectedReserveStable} NOT to be ${newReserve.reserveStable}`,
         expectedReserveStable,

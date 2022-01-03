@@ -1,14 +1,14 @@
+.vscode/
 artifacts/
 cache/
+docs/
+dist/
 node_modules/
 typechain/
 
-# dotenv environment variables file
 .env
 .env.test
-
-dist
-
-.vscode/
-
 .npmrc
+
+
+
