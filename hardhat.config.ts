@@ -30,7 +30,7 @@ const config: HardhatUserConfig = {
       'Reserve',
       'SafeCast',
       'Transfers',
-      'Units'
+      'Units',
     ],
   },
   networks: {

@@ -6,7 +6,14 @@ export interface PoolState {
   calibration: Calibration
 }
 
-export const DEFAULT_CONFIG: Calibration = new Calibration(10, 1, Time.YearInSeconds + 1, 1, 10, parsePercentage(1 - 0.0015))
+export const DEFAULT_CONFIG: Calibration = new Calibration(
+  10,
+  1,
+  Time.YearInSeconds + 1,
+  1,
+  10,
+  parsePercentage(1 - 0.0015)
+)
 export const calibrations: any = {
   ['expired']: new Calibration(10, 1, Time.YearInSeconds, Time.YearInSeconds + 1, 10, parsePercentage(1 - 0.0015)),
   ['itm']: new Calibration(10, 1, Time.YearInSeconds + 1, 1, 5, parsePercentage(1 - 0.0015)),

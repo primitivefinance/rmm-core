@@ -14,7 +14,8 @@ const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`create ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, gamma, delta, spot, decimalsRisky, decimalsStable } = pool.calibration
+    const { strike, sigma, maturity, lastTimestamp, gamma, delta, spot, decimalsRisky, decimalsStable } =
+      pool.calibration
     let poolId: string
     const delLiquidity = parseWei('1', 18)
 

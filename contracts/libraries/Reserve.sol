@@ -3,7 +3,7 @@ pragma solidity >=0.8.0;
 
 import "./SafeCast.sol";
 
-/// @notice  Reserves Library
+/// @title   Reserves Library
 /// @author  Primitive
 /// @dev     Data structure library for an Engine's Reserves
 library Reserve {

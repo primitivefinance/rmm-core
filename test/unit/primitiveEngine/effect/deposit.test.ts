@@ -23,7 +23,13 @@ TestPools.forEach(function (pool: PoolState) {
       this.contracts = fixture.contracts
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
-      await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
+      await useMargin(
+        this.signers[0],
+        this.contracts,
+        parseWei('1000'),
+        parseWei('1000'),
+        this.contracts.router.address
+      )
     })
 
     describe('success cases', function () {
@@ -35,8 +41,18 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('adds to the margin account of another address when specified', async function () {
         await expect(
-          this.contracts.router.deposit(this.contracts.router.address, parseWei('101').raw, parseWei('100').raw, HashZero)
-        ).to.increaseMargin(this.contracts.engine, this.contracts.router.address, parseWei('101').raw, parseWei('100').raw)
+          this.contracts.router.deposit(
+            this.contracts.router.address,
+            parseWei('101').raw,
+            parseWei('100').raw,
+            HashZero
+          )
+        ).to.increaseMargin(
+          this.contracts.engine,
+          this.contracts.router.address,
+          parseWei('101').raw,
+          parseWei('100').raw
+        )
       })
 
       it('increases the balances of the engine contract', async function () {
@@ -55,8 +71,18 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('increases the previous margin when called another time', async function () {
-        await this.contracts.router.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, HashZero)
-        await this.contracts.router.deposit(this.signers[0].address, parseWei('999').raw, parseWei('1001').raw, HashZero)
+        await this.contracts.router.deposit(
+          this.signers[0].address,
+          parseWei('1001').raw,
+          parseWei('999').raw,
+          HashZero
+        )
+        await this.contracts.router.deposit(
+          this.signers[0].address,
+          parseWei('999').raw,
+          parseWei('1001').raw,
+          HashZero
+        )
 
         const margin = await this.contracts.engine.margins(this.signers[0].address)
 
@@ -109,7 +135,12 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('reverts when the callback did not transfer the risky or the stable', async function () {
         await expect(
-          this.contracts.router.depositFail(this.signers[0].address, parseWei('1000').raw, parseWei('1000').raw, HashZero)
+          this.contracts.router.depositFail(
+            this.signers[0].address,
+            parseWei('1000').raw,
+            parseWei('1000').raw,
+            HashZero
+          )
         ).to.be.reverted
       })
     })

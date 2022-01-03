@@ -67,7 +67,13 @@ TestPools.forEach(function (pool: PoolState) {
 
         it('increases position liquidity of another recipient', async function () {
           await expect(
-            this.contracts.router.allocateFromMargin(poolId, this.signers[1].address, delRisky.raw, delStable.raw, HashZero)
+            this.contracts.router.allocateFromMargin(
+              poolId,
+              this.signers[1].address,
+              delRisky.raw,
+              delStable.raw,
+              HashZero
+            )
           ).to.increasePositionLiquidity(this.contracts.engine, this.signers[1].address, poolId, delLiquidity.raw)
         })
 
@@ -292,7 +298,9 @@ TestPools.forEach(function (pool: PoolState) {
           )
 
           expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(riskyBalance.sub(delRisky.raw))
-          expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(stableBalance.sub(delStable.raw))
+          expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(
+            stableBalance.sub(delStable.raw)
+          )
         })
       })
 

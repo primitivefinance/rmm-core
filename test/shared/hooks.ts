@@ -90,7 +90,9 @@ export async function useLiquidity(
   /// call create on the router contract
   let tx: any
   try {
-    tx = await contracts.router.connect(signer).allocateFromExternal(poolId, target, delRisky.raw, delStable.raw, HashZero)
+    tx = await contracts.router
+      .connect(signer)
+      .allocateFromExternal(poolId, target, delRisky.raw, delStable.raw, HashZero)
   } catch (err) {
     console.log(`\n   Error thrown on attempting to call allocateFromExternal() on the router`)
   }
