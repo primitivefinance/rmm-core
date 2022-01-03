@@ -53,7 +53,13 @@ export class VirtualPool {
    * @param liquidity Total liquidity supply to initialize the pool with
    * @param overrideStable The initial stable reserve value
    */
-  constructor(cal: Calibration, initialRisky: Wei, liquidity: Wei, overrideStable?: Wei, overrideInvariant?: FixedPointX64) {
+  constructor(
+    cal: Calibration,
+    initialRisky: Wei,
+    liquidity: Wei,
+    overrideStable?: Wei,
+    overrideInvariant?: FixedPointX64
+  ) {
     // ===== State =====
     this._reserveRisky = initialRisky
     this.liquidity = liquidity

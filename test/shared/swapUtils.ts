@@ -148,7 +148,8 @@ export class Pool {
       this.tau.years,
       noInvariant ? 0 : invariant
     )
-    if (this.debug) console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
+    if (this.debug)
+      console.log(`\n   Pool: got risky: ${risky} given stable: ${reserveStable.float / this.liquidity.float}`)
     if (isNaN(risky)) return parseWei(0, decimals)
     return scaleUp(risky, decimals)
   }

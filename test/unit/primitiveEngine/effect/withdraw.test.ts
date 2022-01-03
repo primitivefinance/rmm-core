@@ -23,7 +23,13 @@ TestPools.forEach(function (pool: PoolState) {
       await useApproveAll(this.signers[0], this.contracts)
       await usePool(this.signers[0], this.contracts, pool.calibration)
       await useLiquidity(this.signers[0], this.contracts, pool.calibration, this.contracts.router.address)
-      await useMargin(this.signers[0], this.contracts, parseWei('1000'), parseWei('1000'), this.contracts.router.address)
+      await useMargin(
+        this.signers[0],
+        this.contracts,
+        parseWei('1000'),
+        parseWei('1000'),
+        this.contracts.router.address
+      )
     })
 
     describe('success cases', function () {
@@ -68,7 +74,9 @@ TestPools.forEach(function (pool: PoolState) {
 
         await this.contracts.router.withdraw(parseWei('500').raw, parseWei('250').raw)
 
-        expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(riskyBalance.add(parseWei('500').raw))
+        expect(await this.contracts.risky.balanceOf(this.signers[0].address)).to.equal(
+          riskyBalance.add(parseWei('500').raw)
+        )
 
         expect(await this.contracts.stable.balanceOf(this.signers[0].address)).to.equal(
           stableBalance.add(parseWei('250').raw)
@@ -85,7 +93,9 @@ TestPools.forEach(function (pool: PoolState) {
         ).to.changeTokenBalances(this.contracts.risky, [recipient], [parseWei('500').raw])
 
         expect(await this.contracts.risky.balanceOf(recipient.address)).to.equal(riskyBalance.add(parseWei('500').raw))
-        expect(await this.contracts.stable.balanceOf(recipient.address)).to.equal(stableBalance.add(parseWei('250').raw))
+        expect(await this.contracts.stable.balanceOf(recipient.address)).to.equal(
+          stableBalance.add(parseWei('250').raw)
+        )
       })
 
       it('emits the Withdraw event', async function () {
@@ -97,7 +107,9 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('fail cases', function () {
       it('reverts when attempting to withdraw more than is in margin', async function () {
-        await expect(this.contracts.router.withdraw(constants.MaxUint256.div(2), constants.MaxUint256.div(2))).to.be.reverted
+        await expect(
+          this.contracts.router.withdraw(constants.MaxUint256.div(2), constants.MaxUint256.div(2))
+        ).to.be.reverted
       })
     })
   })

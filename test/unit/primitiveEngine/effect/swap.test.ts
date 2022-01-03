@@ -49,7 +49,13 @@ export interface SwapTestCase {
   signerIndex: number
 }
 
-function swapTestCaseDescription({ riskyForStable, fromMargin, toMargin, exactOut, signerIndex = 0 }: SwapTestCase): string {
+function swapTestCaseDescription({
+  riskyForStable,
+  fromMargin,
+  toMargin,
+  exactOut,
+  signerIndex = 0,
+}: SwapTestCase): string {
   const signer = signerIndex ? `signer[${signerIndex}]` : 'signer[0]'
   const receiver = toMargin ? (fromMargin ? ` to ${signer} account` : ` to router account`) : ``
   const payee = fromMargin ? `from ${signer} Margin account` : 'from Callee Balance'
@@ -65,7 +71,7 @@ function swapTestCaseDescription({ riskyForStable, fromMargin, toMargin, exactOu
 
 // For each pool parameter set
 TestPools.forEach(function (pool: PoolState) {
-  testContext(`Swap in ${pool.description} pool`, function () {
+  testContext(`Swap in ${pool.description} pool. This will take awhile...`, function () {
     const { maturity, lastTimestamp, decimalsRisky, decimalsStable } = pool.calibration
 
     let deployer: Wallet
@@ -131,7 +137,10 @@ TestPools.forEach(function (pool: PoolState) {
                         ? this.contracts.router.getRiskyInGivenStableOut
                         : this.contracts.router.getStableInGivenRiskyOut
                       deltaOut = maxOut.mul(1).div(2) // use half the max trade size in, arbitrary amount
-                      deltaIn = new Wei(await method(poolId, deltaOut.raw), riskyForStable ? decimalsRisky : decimalsStable)
+                      deltaIn = new Wei(
+                        await method(poolId, deltaOut.raw),
+                        riskyForStable ? decimalsRisky : decimalsStable
+                      )
                       // apply the error if the trade is going in the inverse direction
                       if (riskyForStable)
                         deltaIn = deltaIn.mul(parseWei(1 - INVERSE_DIRECTION_ERROR)).div(VirtualPool.PRECISION)
@@ -141,7 +150,10 @@ TestPools.forEach(function (pool: PoolState) {
                         ? this.contracts.router.getStableOutGivenRiskyIn
                         : this.contracts.router.getRiskyOutGivenStableIn
                       deltaIn = maxIn.mul(1).div(2) // use half the max trade size in, arbitrary amount
-                      deltaOut = new Wei(await method(poolId, deltaIn.raw), riskyForStable ? decimalsStable : decimalsRisky)
+                      deltaOut = new Wei(
+                        await method(poolId, deltaIn.raw),
+                        riskyForStable ? decimalsStable : decimalsRisky
+                      )
                       // apply the error if the trade is going in the inverse direction
                       if (!riskyForStable)
                         deltaOut = deltaOut.mul(parseWei(1 - INVERSE_DIRECTION_ERROR)).div(VirtualPool.PRECISION)

@@ -41,7 +41,9 @@ TestPools.forEach(function (pool: PoolState) {
         let mockStable = await deployMockContract(deployer, TestToken)
         await mockRisky.mock.decimals.returns(18)
         await mockStable.mock.decimals.returns(18)
-        expect(await this.contracts.factory.getEngine(mockRisky.address, mockStable.address)).to.equal(constants.AddressZero)
+        expect(await this.contracts.factory.getEngine(mockRisky.address, mockStable.address)).to.equal(
+          constants.AddressZero
+        )
         await this.contracts.factoryDeploy.deploy(mockRisky.address, mockStable.address)
       })
 

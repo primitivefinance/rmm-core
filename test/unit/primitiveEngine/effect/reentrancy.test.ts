@@ -31,7 +31,12 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when calling deposit in the deposit callback', function () {
       it('reverts the transaction', async function () {
         await expect(
-          this.contracts.router.depositReentrancy(this.signers[0].address, parseWei('1').raw, parseWei('1').raw, HashZero)
+          this.contracts.router.depositReentrancy(
+            this.signers[0].address,
+            parseWei('1').raw,
+            parseWei('1').raw,
+            HashZero
+          )
         ).to.be.reverted
       })
     })
