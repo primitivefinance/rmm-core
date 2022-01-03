@@ -288,10 +288,9 @@ TestPools.forEach(function (pool: PoolState) {
     // load the fixtures
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
-      const scalars = [Math.pow(10, scaleFactorRisky), Math.pow(10, scaleFactorStable)]
-      await fixture.calcInvariant.set(scalars[0], scalars[1])
-      await fixture.getRiskyGivenStable.set(scalars[0], scalars[1])
-      await fixture.getStableGivenRisky.set(scalars[0], scalars[1])
+      await fixture.calcInvariant.set(scaleFactorRisky, scaleFactorStable)
+      await fixture.getRiskyGivenStable.set(scaleFactorRisky, scaleFactorStable)
+      await fixture.getStableGivenRisky.set(scaleFactorRisky, scaleFactorStable)
       this.libraries = fixture.libraries
     })
 
