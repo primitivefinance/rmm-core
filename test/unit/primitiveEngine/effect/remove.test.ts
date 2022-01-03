@@ -33,7 +33,13 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('when removing to margin', function () {
       beforeEach(async function () {
-        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw, gamma.raw)
+        poolId = computePoolId(
+          this.contracts.engine.address,
+          strike.toString(),
+          sigma.toString(),
+          maturity.toString(),
+          gamma.toString()
+        )
       })
 
       describe('success cases', function () {
@@ -127,7 +133,13 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('when removing to external', function () {
       beforeEach(async function () {
-        poolId = computePoolId(this.contracts.engine.address, maturity.raw, sigma.raw, strike.raw, gamma.raw)
+        poolId = computePoolId(
+          this.contracts.engine.address,
+          strike.toString(),
+          sigma.toString(),
+          maturity.toString(),
+          gamma.toString()
+        )
       })
 
       describe('success cases', function () {
