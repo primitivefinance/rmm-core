@@ -6,9 +6,12 @@ import "./engine/IPrimitiveEngineEvents.sol";
 import "./engine/IPrimitiveEngineView.sol";
 import "./engine/IPrimitiveEngineErrors.sol";
 
+/// @title Primitive Engine Interface
 interface IPrimitiveEngine is
     IPrimitiveEngineActions,
     IPrimitiveEngineEvents,
     IPrimitiveEngineView,
     IPrimitiveEngineErrors
-{}
+{
+
+}

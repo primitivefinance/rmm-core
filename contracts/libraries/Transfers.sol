@@ -3,6 +3,7 @@ pragma solidity >=0.6.0;
 
 import "../interfaces/IERC20.sol";
 
+/// @title  Transfers
 library Transfers {
     /// @notice         Performs an ERC20 `transfer` call and checks return data
     /// @param  token   ERC20 token to transfer

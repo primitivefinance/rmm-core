@@ -288,9 +288,10 @@ TestPools.forEach(function (pool: PoolState) {
     // load the fixtures
     beforeEach(async function () {
       fixture = await this.loadFixture(testStepFixture)
-      await fixture.calcInvariant.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
-      await fixture.getRiskyGivenStable.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
-      await fixture.getStableGivenRisky.set(parseWei('1', scaleFactorRisky).raw, parseWei('1', scaleFactorStable).raw)
+      const scalars = [Math.pow(10, scaleFactorRisky), Math.pow(10, scaleFactorStable)]
+      await fixture.calcInvariant.set(scalars[0], scalars[1])
+      await fixture.getRiskyGivenStable.set(scalars[0], scalars[1])
+      await fixture.getStableGivenRisky.set(scalars[0], scalars[1])
       this.libraries = fixture.libraries
     })
 
@@ -380,7 +381,8 @@ TestPools.forEach(function (pool: PoolState) {
               const result = await fixture.calcInvariant[step](...params) // smart contract call
               const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
 
-              if (DEBUG) console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
+              if (DEBUG)
+                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
               //expect(actual).to.be.closeTo(+exp, error)
             }
           })
