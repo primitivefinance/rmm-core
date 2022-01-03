@@ -155,8 +155,9 @@ TestPools.forEach(function (pool: PoolState) {
                         riskyForStable ? decimalsStable : decimalsRisky
                       )
                       // apply the error if the trade is going in the inverse direction
+                      const ON_CHAIN_SWAP_ERROR = 0.02 // to-do: fix this by using a more accurate method of computing delta in/out amounts
                       if (!riskyForStable)
-                        deltaOut = deltaOut.mul(parseWei(1 - INVERSE_DIRECTION_ERROR)).div(VirtualPool.PRECISION)
+                        deltaOut = deltaOut.mul(parseWei(1 - ON_CHAIN_SWAP_ERROR)).div(VirtualPool.PRECISION)
                     }
 
                     if (deltaOut.gt(maxOut)) console.log('out more than max') // warning

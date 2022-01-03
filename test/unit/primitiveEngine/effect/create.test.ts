@@ -3,8 +3,7 @@ import { constants, BigNumber, Wallet } from 'ethers'
 import { getStableGivenRisky } from '@primitivefi/rmm-math'
 
 import expect from '../../../shared/expect'
-import { Calibration } from '../../../shared'
-import { scaleUp } from '../../../shared/utils'
+import { Calibration, parseCalibration } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
 import { useTokens, useApproveAll } from '../../../shared/hooks'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
@@ -14,7 +13,7 @@ const { HashZero } = constants
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`create ${pool.description} pool`, function () {
-    const { strike, sigma, maturity, lastTimestamp, gamma, delta, spot, decimalsRisky, decimalsStable } =
+    const { strike, sigma, maturity, lastTimestamp, gamma, delta, referencePrice, decimalsRisky, decimalsStable } =
       pool.calibration
     let poolId: string
     const delLiquidity = parseWei('1', 18)
@@ -40,7 +39,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -54,7 +53,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -62,14 +61,14 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('res.allocate: increases reserve risky', async function () {
-        const delRisky = scaleUp(1 - delta, decimalsRisky)
+        const delRisky = parseWei(1 - delta, decimalsRisky)
         await expect(
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -77,8 +76,8 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('res.allocate: increases reserve stable', async function () {
-        const delRisky = scaleUp(1 - delta, decimalsRisky)
-        const delStable = scaleUp(
+        const delRisky = parseWei(1 - delta, decimalsRisky)
+        const delStable = parseWei(
           getStableGivenRisky(delRisky.float, strike.float, sigma.float, maturity.sub(lastTimestamp).years),
           decimalsStable
         )
@@ -88,7 +87,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -102,7 +101,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -116,7 +115,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -135,7 +134,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -150,7 +149,7 @@ TestPools.forEach(function (pool: PoolState) {
           sigma.raw,
           maturity.raw,
           gamma.raw,
-          scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+          parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
           delLiquidity.raw,
           HashZero
         )
@@ -175,7 +174,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -194,7 +193,7 @@ TestPools.forEach(function (pool: PoolState) {
           sigma.raw,
           maturity.raw,
           gamma.raw,
-          scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+          parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
           delLiquidity.raw,
           HashZero
         )
@@ -204,7 +203,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -212,7 +211,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('reverts if strike is 0', async function () {
-        let fig = new Calibration(0, sigma.float, maturity.seconds, 1, spot.float)
+        let fig = parseCalibration(0, sigma.float, maturity.seconds, 0.99, 1, referencePrice.float)
         await expect(
           this.contracts.engine.create(
             fig.strike.raw,
@@ -227,7 +226,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('reverts if maturity is 0', async function () {
-        let fig = new Calibration(strike.float, sigma.float, 0, 1, spot.float)
+        let fig = parseCalibration(strike.float, sigma.float, 0, 0.99, 1, referencePrice.float)
         await expect(
           this.contracts.engine.create(
             fig.strike.raw,
@@ -242,7 +241,14 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('reverts if pool is expired (maturity is less than current block timestamp)', async function () {
-        let fig = new Calibration(strike.float, sigma.float, +(await this.contracts.engine.time()) + 1, 1, spot.float)
+        let fig = parseCalibration(
+          strike.float,
+          sigma.float,
+          +(await this.contracts.engine.time()) + 1,
+          0.99,
+          1,
+          referencePrice.float
+        )
         await expect(
           this.contracts.engine.create(
             fig.strike.raw,
@@ -263,7 +269,37 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             gamma.raw,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
+
+      it('reverts if sigma is 0', async function () {
+        const iv = 0
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            iv,
+            maturity.raw,
+            gamma.raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
+            delLiquidity.raw,
+            HashZero
+          )
+        ).to.reverted
+      })
+
+      it('reverts if sigma is gt 1e7', async function () {
+        const iv = 1e7 + 1
+        await expect(
+          this.contracts.router.create(
+            strike.raw,
+            iv,
+            maturity.raw,
+            gamma.raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -278,7 +314,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             tenThousand,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -290,7 +326,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             tenThousand + 1,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )
@@ -305,7 +341,7 @@ TestPools.forEach(function (pool: PoolState) {
             sigma.raw,
             maturity.raw,
             nineThousand - 1,
-            scaleUp(1, decimalsRisky).sub(scaleUp(delta, decimalsRisky)).raw,
+            parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
           )

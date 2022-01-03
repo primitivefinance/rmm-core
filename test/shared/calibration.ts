@@ -3,65 +3,96 @@ import { callDelta, callPremium } from '@primitivefi/rmm-math'
 import { computePoolId } from './utils'
 
 /**
+ * Constructs a Calibration entity from floating point decimal numbers.
+ *
+ * @remarks
+ * Converts to proper units, e.g. a floating point number to a wei value for the strike price.
+ *
+ * @returns calibration entity of the parameters.
+ *
+ * @beta
+ */
+export function parseCalibration(
+  strike: number,
+  sigma: number,
+  maturity: number,
+  gamma: number,
+  lastTimestamp: number,
+  referencePrice = 0,
+  decimalsRisky = 18,
+  decimalsStable = 18
+): Calibration {
+  const cal = {
+    strike: parseWei(strike, decimalsStable),
+    sigma: parsePercentage(sigma),
+    maturity: new Time(maturity), // in seconds, because `block.timestamp` is in seconds
+    lastTimestamp: new Time(lastTimestamp), // in seconds, because `block.timestamp` is in seconds
+    gamma: parsePercentage(gamma),
+    referencePrice: parseWei(referencePrice, decimalsStable),
+  }
+  return new Calibration(
+    cal.strike,
+    cal.sigma,
+    cal.maturity,
+    cal.lastTimestamp,
+    cal.referencePrice,
+    cal.gamma,
+    decimalsRisky,
+    decimalsStable
+  )
+}
+
+/**
  * @notice Calibration Struct; Class representation of each Curve's parameters
  */
 export class Calibration {
-  /**
-   * @notice Strike price with decimals = stable decimals
-   */
-  public readonly strike: Wei
-  /**
-   * @notice Volatility as a Percentage instance with 4 decimals
-   */
-  public readonly sigma: Percentage
-  /**
-   * @notice Time class with a raw value in seconds
-   */
-  public readonly maturity: Time
-  /**
-   * @notice Time until expiry is calculated from the difference of current timestamp and this
-   */
+  /** Strike price with the same precision as the stable asset. */
+  readonly strike: Wei
+
+  /** Volatility as a Percentage instance with 4 precision. */
+  readonly sigma: Percentage
+
+  /** Time class with a raw value in seconds. */
+  readonly maturity: Time
+
+  /** Gamma, equal to 1 - fee %, as a Percentage instance with 4 precision. */
+  readonly gamma: Percentage
+
+  /** Time until expiry is calculated from the difference of current timestamp and this. */
   public readonly lastTimestamp: Time
-  /**
-   * @notice Price of risky token in stable token units with precision stable decimals
-   */
-  public readonly spot: Wei
-  /**
-   * @notice Gamma is applied on input amounts to apply the swap fee, equal to 1 - fee %
-   */
-  public readonly gamma: Percentage
-  /**
-   * @notice Decimals of risky asset
-   */
+
+  /** Price of risky token in stable token units with precision stable decimals. */
+  public readonly referencePrice: Wei
+
+  /** Decimals of risky asset. */
   public readonly decimalsRisky: number
-  /**
-   * @notice Decimals of stable asset
-   */
+
+  /** Decimals of stable asset. */
   public readonly decimalsStable: number
 
   /**
    *
-   * @param strike Strike price as a float
-   * @param sigma Volatility percentage as a float, e.g. 1 = 100%
-   * @param maturity Timestamp in seconds
-   * @param lastTimestamp Timestamp in seconds
-   * @param spot Value of risky asset in units of riskless asset
+   * @param strike          Strike price as a float
+   * @param sigma           Volatility percentage as a float, e.g. 1 = 100%
+   * @param maturity        Timestamp in seconds
+   * @param lastTimestamp   Timestamp in seconds
+   * @param referencePrice  Value of risky asset in units of stable asset
    */
   constructor(
-    strike: number,
-    sigma: number,
-    maturity: number,
-    lastTimestamp: number,
-    spot: number,
-    gamma: Percentage = new Percentage(toBN(0)),
+    strike: Wei,
+    sigma: Percentage,
+    maturity: Time,
+    lastTimestamp: Time,
+    referencePrice: Wei,
+    gamma: Percentage,
     decimalsRisky: number = 18,
     decimalsStable: number = 18
   ) {
-    this.strike = parseWei(strike, decimalsStable)
-    this.sigma = parsePercentage(sigma)
-    this.maturity = new Time(maturity) // in seconds, because `block.timestamp` is in seconds
-    this.lastTimestamp = new Time(lastTimestamp) // in seconds, because `block.timestamp` is in seconds
-    this.spot = parseWei(spot, decimalsStable)
+    this.strike = strike
+    this.sigma = sigma
+    this.maturity = maturity
+    this.lastTimestamp = lastTimestamp
+    this.referencePrice = referencePrice
     this.gamma = gamma
     this.decimalsRisky = decimalsRisky
     this.decimalsStable = decimalsStable
@@ -71,14 +102,14 @@ export class Calibration {
    * @notice Scaling factor of risky asset, 18 - risky decimals
    */
   get scaleFactorRisky(): number {
-    return 18 - this.decimalsRisky
+    return Math.pow(10, 18 - this.decimalsRisky)
   }
 
   /**
    * @notice Scaling factor of stable asset, 18 - stable decimals
    */
   get scaleFactorStable(): number {
-    return 18 - this.decimalsStable
+    return Math.pow(10, 18 - this.decimalsStable)
   }
 
   get MIN_LIQUIDITY(): number {
@@ -93,27 +124,33 @@ export class Calibration {
   }
 
   /**
-   * @returns Change in pool premium wrt change in underlying spot price
+   * @returns Change in pool premium wrt change in underlying referencePrice price
    */
   get delta(): number {
-    return callDelta(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
+    return callDelta(this.strike.float, this.sigma.float, this.tau.years, this.referencePrice.float)
   }
 
   /**
    * @returns Black-Scholes implied premium
    */
   get premium(): number {
-    return callPremium(this.strike.float, this.sigma.float, this.tau.years, this.spot.float)
+    return callPremium(this.strike.float, this.sigma.float, this.tau.years, this.referencePrice.float)
   }
 
   /**
    * @returns Spot price is above strike price
    */
   get inTheMoney(): boolean {
-    return this.strike.float >= this.spot.float
+    return this.strike.float >= this.referencePrice.float
   }
 
   poolId(engine: string): string {
-    return computePoolId(engine, this.maturity.raw, this.sigma.raw, this.strike.raw, this.gamma.raw)
+    return computePoolId(
+      engine,
+      this.strike.toString(),
+      this.sigma.toString(),
+      this.maturity.toString(),
+      this.gamma.toString()
+    )
   }
 }
