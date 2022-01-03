@@ -34,7 +34,7 @@ library Reserve {
     function update(Data storage res, uint32 blockTimestamp) internal {
         uint32 deltaTime = blockTimestamp - res.blockTimestamp;
         // overflow is desired
-        if (deltaTime > 0) {
+        if (deltaTime != 0) {
             unchecked {
                 res.cumulativeRisky += uint256(res.reserveRisky) * deltaTime;
                 res.cumulativeStable += uint256(res.reserveStable) * deltaTime;

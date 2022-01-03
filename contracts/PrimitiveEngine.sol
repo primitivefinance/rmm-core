@@ -62,7 +62,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override stable;
     /// @dev Reentrancy guard initialized to state
-    uint8 private unlocked = 1;
+    uint256 private locked = 1;
     /// @inheritdoc IPrimitiveEngineView
     mapping(bytes32 => Calibration) public override calibrations;
     /// @inheritdoc IPrimitiveEngineView
@@ -73,11 +73,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
     mapping(address => mapping(bytes32 => uint256)) public override liquidity;
 
     modifier lock() {
-        if (unlocked != 1) revert LockedError();
+        if (locked != 1) revert LockedError();
 
-        unlocked = 0;
+        locked = 2;
         _;
-        unlocked = 1;
+        locked = 1;
     }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
@@ -91,7 +91,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (bool success, bytes memory data) = risky.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
         );
-        if (!success || data.length < 32) revert BalanceError();
+        if (!success || data.length != 32) revert BalanceError();
         return abi.decode(data, (uint256));
     }
 
@@ -100,7 +100,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         (bool success, bytes memory data) = stable.staticcall(
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(this))
         );
-        if (!success || data.length < 32) revert BalanceError();
+        if (!success || data.length != 32) revert BalanceError();
         return abi.decode(data, (uint256));
     }
 
@@ -210,11 +210,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
 
         uint256 balRisky;
         uint256 balStable;
-        if (delRisky > 0) balRisky = balanceRisky();
-        if (delStable > 0) balStable = balanceStable();
+        if (delRisky != 0) balRisky = balanceRisky();
+        if (delStable != 0) balStable = balanceStable();
         IPrimitiveDepositCallback(msg.sender).depositCallback(delRisky, delStable, data); // agnostic payment
-        if (delRisky > 0) checkRiskyBalance(balRisky + delRisky);
-        if (delStable > 0) checkStableBalance(balStable + delStable);
+        if (delRisky != 0) checkRiskyBalance(balRisky + delRisky);
+        if (delStable != 0) checkStableBalance(balStable + delStable);
         emit Deposit(msg.sender, recipient, delRisky, delStable);
     }
 
@@ -226,8 +226,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
     ) external override lock {
         if (delRisky == 0 && delStable == 0) revert ZeroDeltasError();
         margins.withdraw(delRisky, delStable); // state update
-        if (delRisky > 0) IERC20(risky).safeTransfer(recipient, delRisky);
-        if (delStable > 0) IERC20(stable).safeTransfer(recipient, delStable);
+        if (delRisky != 0) IERC20(risky).safeTransfer(recipient, delRisky);
+        if (delStable != 0) IERC20(stable).safeTransfer(recipient, delStable);
         emit Withdraw(msg.sender, recipient, delRisky, delStable);
     }
 

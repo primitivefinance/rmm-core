@@ -17,7 +17,7 @@ abstract contract TestSwapCallback is Scenarios {
         address token0 = risky();
         address token1 = stable();
         address from = getCaller();
-        if (delRisky > 0) IERC20(token0).transferFrom(from, msg.sender, delRisky);
-        if (delStable > 0) IERC20(token1).transferFrom(from, msg.sender, delStable);
+        if (delRisky != 0) IERC20(token0).transferFrom(from, msg.sender, delRisky);
+        if (delStable != 0) IERC20(token1).transferFrom(from, msg.sender, delStable);
     }
 }
