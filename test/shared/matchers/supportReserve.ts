@@ -1,7 +1,6 @@
 import { BigNumber } from 'ethers'
-import { EngineTypes } from '../../../types'
+import { Awaited, EngineTypes } from '../../../types'
 
-type Awaited<T> = T extends PromiseLike<infer U> ? U : T
 type EngineReservesType = Awaited<ReturnType<EngineTypes['reserves']>>
 
 async function getReserveChange(
