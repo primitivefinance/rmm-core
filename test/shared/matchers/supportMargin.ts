@@ -27,19 +27,19 @@ export default function supportMargin(Assertion: Chai.AssertionStatic) {
         const expectedStable = before.balanceStable.add(delStable) // INCREASE
 
         this.assert(
-          before.balanceRisky.eq(expectedRisky),
-          `Expected ${before.balanceRisky} to be ${expectedRisky}`,
-          `Expected ${before.balanceRisky} NOT to be ${expectedRisky}`,
+          after.balanceRisky.eq(expectedRisky),
+          `Expected ${after.balanceRisky} to be ${expectedRisky}`,
+          `Expected ${after.balanceRisky} NOT to be ${expectedRisky}`,
           expectedRisky,
-          before.balanceRisky
+          after.balanceRisky
         )
 
         this.assert(
-          before.balanceStable.eq(expectedStable),
-          `Expected ${before.balanceStable} to be ${expectedStable}`,
-          `Expected ${before.balanceStable} NOT to be ${expectedStable}`,
+          after.balanceStable.eq(expectedStable),
+          `Expected ${after.balanceStable} to be ${expectedStable}`,
+          `Expected ${after.balanceStable} NOT to be ${expectedStable}`,
           expectedStable,
-          before.balanceStable
+          after.balanceStable
         )
       })
 
@@ -60,19 +60,19 @@ export default function supportMargin(Assertion: Chai.AssertionStatic) {
         const expectedStable = before.balanceStable.sub(delStable) // DECREASE
 
         this.assert(
-          before.balanceRisky.eq(expectedRisky),
-          `Expected ${before.balanceRisky} to be ${expectedRisky}`,
-          `Expected ${before.balanceRisky} NOT to be ${expectedRisky}`,
+          after.balanceRisky.eq(expectedRisky),
+          `Expected ${after.balanceRisky} to be ${expectedRisky}`,
+          `Expected ${after.balanceRisky} NOT to be ${expectedRisky}`,
           expectedRisky,
-          before.balanceRisky
+          after.balanceRisky
         )
 
         this.assert(
-          before.balanceStable.eq(expectedStable),
-          `Expected ${before.balanceStable} to be ${expectedStable}`,
-          `Expected ${before.balanceStable} NOT to be ${expectedStable}`,
+          after.balanceStable.eq(expectedStable),
+          `Expected ${after.balanceStable} to be ${expectedStable}`,
+          `Expected ${after.balanceStable} NOT to be ${expectedStable}`,
           expectedStable,
-          before.balanceStable
+          after.balanceStable
         )
       })
 
