@@ -1,4 +1,4 @@
-import { waffle } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 import { Contracts } from '../../types'
 const { createFixtureLoader } = waffle
 
@@ -11,8 +11,8 @@ export function testContext(description: string, hooks: () => void): void {
   describe(description, function () {
     before(async function () {
       this.contracts = {} as Contracts
-      this.signers = await waffle.provider.getWallets()
-      this.loadFixture = createFixtureLoader(this.signers, waffle.provider)
+      this.signers = await (ethers as any).getSigners()
+      this.loadFixture = createFixtureLoader(this.signers)
     })
 
     hooks()

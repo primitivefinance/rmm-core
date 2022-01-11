@@ -10,18 +10,19 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
     'increasePositionLiquidity',
     async function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
       const oldPosition = await engine.liquidity(account, poolId)
-      await this._obj
-      const newPosition = await engine.liquidity(account, poolId)
+      this._obj.then(async () => {
+        const newPosition = await engine.liquidity(account, poolId)
 
-      const expectedLiquidity = oldPosition.add(liquidity)
+        const expectedLiquidity = oldPosition.add(liquidity)
 
-      this.assert(
-        newPosition.eq(expectedLiquidity),
-        `Expected ${newPosition} to be ${expectedLiquidity}`,
-        `Expected ${newPosition} NOT to be ${expectedLiquidity}`,
-        expectedLiquidity,
-        newPosition
-      )
+        this.assert(
+          newPosition.eq(expectedLiquidity),
+          `Expected ${newPosition} to be ${expectedLiquidity}`,
+          `Expected ${newPosition} NOT to be ${expectedLiquidity}`,
+          expectedLiquidity,
+          newPosition
+        )
+      })
     }
   )
 
