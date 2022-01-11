@@ -23,13 +23,11 @@ testContext(`allocate to ${pool.description} pool`, function () {
   // environment variables
   let poolId: string, delLiquidity: Wei, delRisky: Wei, delStable: Wei
 
-  let fixtureToLoad: ([wallet]: Wallet[], provider?: any) => Promise<PrimitiveFixture>
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let signer: Wallet, other: Wallet
   before(async function () {
     ;[signer, other] = await (ethers as any).getSigners()
     loadFixture = createFixtureLoader([signer, other])
-    fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
   })
 
   beforeEach(async function () {
@@ -37,7 +35,6 @@ testContext(`allocate to ${pool.description} pool`, function () {
     const { factory, factoryDeploy, router } = fixture
     const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
     this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
-    assert((await router.engine()) === engine.address)
 
     await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
     await useApproveAll(this.signers[0], this.contracts) // approves tokens

@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 import { constants, Wallet } from 'ethers'
 
@@ -5,7 +6,8 @@ import expect from '../../../shared/expect'
 import { testContext } from '../../../shared/testContext'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
 import { useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
-import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 const { HashZero } = constants
 
@@ -13,14 +15,19 @@ TestPools.forEach(function (pool: PoolState) {
   testContext(`deposit to engine for ${pool.description}`, function () {
     const { decimalsRisky, decimalsStable } = pool.calibration
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       await useMargin(
@@ -34,13 +41,13 @@ TestPools.forEach(function (pool: PoolState) {
 
     describe('success cases', function () {
       it('adds to the user margin account', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.deposit(this.signers[0].address, parseWei('1001').raw, parseWei('999').raw, HashZero)
         ).to.increaseMargin(this.contracts.engine, this.signers[0].address, parseWei('1001').raw, parseWei('999').raw)
       })
 
       it('adds to the margin account of another address when specified', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.deposit(
             this.contracts.router.address,
             parseWei('101').raw,
