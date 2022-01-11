@@ -1,6 +1,18 @@
 import { BigNumber } from 'ethers'
 import { EngineTypes } from '../../../types'
 
+async function getPositionChange(
+  transaction: () => Promise<void> | void,
+  engine: EngineTypes,
+  account: string,
+  poolId: string
+): Promise<{ balanceAfter: BigNumber; balanceBefore: BigNumber }> {
+  const balanceBefore = await engine.liquidity(account, poolId)
+  await transaction()
+  const balanceAfter = await engine.liquidity(account, poolId)
+  return { balanceAfter, balanceBefore }
+}
+
 // Chai matchers for the positions of the PrimitiveEngine
 
 export default function supportPosition(Assertion: Chai.AssertionStatic) {
@@ -8,40 +20,51 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
 
   Assertion.addMethod(
     'increasePositionLiquidity',
-    async function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
-      const oldPosition = await engine.liquidity(account, poolId)
-      this._obj.then(async () => {
-        const newPosition = await engine.liquidity(account, poolId)
+    function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
+      const subject = this._obj
 
-        const expectedLiquidity = oldPosition.add(liquidity)
+      const derivedPromise = Promise.all([getPositionChange(subject, engine, account, poolId)]).then(
+        ([{ balanceAfter, balanceBefore }]) => {
+          const expectedLiquidity = balanceBefore.add(liquidity)
+          this.assert(
+            balanceAfter.eq(expectedLiquidity),
+            `Expected ${balanceAfter} to be ${expectedLiquidity}`,
+            `Expected ${balanceAfter} NOT to be ${expectedLiquidity}`,
+            expectedLiquidity,
+            balanceAfter
+          )
+        }
+      )
 
-        this.assert(
-          newPosition.eq(expectedLiquidity),
-          `Expected ${newPosition} to be ${expectedLiquidity}`,
-          `Expected ${newPosition} NOT to be ${expectedLiquidity}`,
-          expectedLiquidity,
-          newPosition
-        )
-      })
+      this.then = derivedPromise.then.bind(derivedPromise)
+      this.catch = derivedPromise.catch.bind(derivedPromise)
+      this.promise = derivedPromise
+      return this
     }
   )
 
   Assertion.addMethod(
     'decreasePositionLiquidity',
-    async function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
-      const oldPosition = await engine.liquidity(account, poolId)
-      await this._obj
-      const newPosition = await engine.liquidity(account, poolId)
+    function (this: any, engine: EngineTypes, account: string, poolId: string, liquidity: BigNumber) {
+      const subject = this._obj
 
-      const expectedLiquidity = oldPosition.sub(liquidity)
-
-      this.assert(
-        newPosition.eq(expectedLiquidity),
-        `Expected ${newPosition} to be ${expectedLiquidity}`,
-        `Expected ${newPosition} NOT to be ${expectedLiquidity}`,
-        expectedLiquidity,
-        newPosition
+      const derivedPromise = Promise.all([getPositionChange(subject, engine, account, poolId)]).then(
+        ([{ balanceAfter, balanceBefore }]) => {
+          const expectedLiquidity = balanceBefore.sub(liquidity)
+          this.assert(
+            balanceAfter.eq(expectedLiquidity),
+            `Expected ${balanceAfter} to be ${expectedLiquidity}`,
+            `Expected ${balanceAfter} NOT to be ${expectedLiquidity}`,
+            expectedLiquidity,
+            balanceAfter
+          )
+        }
       )
+
+      this.then = derivedPromise.then.bind(derivedPromise)
+      this.catch = derivedPromise.catch.bind(derivedPromise)
+      this.promise = derivedPromise
+      return this
     }
   )
 }

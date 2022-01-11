@@ -37,7 +37,6 @@ testContext(`allocate to ${pool.description} pool`, function () {
     const { factory, factoryDeploy, router } = fixture
     const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
     this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
-    console.log((await router.engine()) === engine.address)
     assert((await router.engine()) === engine.address)
 
     await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
@@ -66,19 +65,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
 
     describe('success cases', function () {
       it('increases position liquidity', async function () {
-        console.log(delLiquidity.display)
-        console.log(
-          'before',
-          await (await this.contracts.engine.liquidity(this.contracts.router.address, poolId)).toString()
-        )
-        /* await this.contracts.router.allocateFromMargin(
-          poolId,
-          this.contracts.router.address,
-          delRisky.raw,
-          delStable.raw,
-          HashZero
-        ) */
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.contracts.router.address,
@@ -87,11 +74,10 @@ testContext(`allocate to ${pool.description} pool`, function () {
             HashZero
           )
         ).to.increasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
-        console.log('after', (await this.contracts.engine.liquidity(this.contracts.router.address, poolId)).toString())
       })
 
       it('increases position liquidity of another recipient', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.signers[1].address,
@@ -115,7 +101,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('increases reserve liquidity', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.contracts.router.address,
@@ -127,7 +113,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('increases reserve risky', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.contracts.router.address,
@@ -139,7 +125,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('increases reserve stable', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.contracts.router.address,
@@ -151,7 +137,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('updates reserve timestamp', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromMargin(
             poolId,
             this.contracts.router.address,
@@ -218,7 +204,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
   describe('when allocating from external', function () {
     describe('success cases', function () {
       it('increases liquidity', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
@@ -230,7 +216,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('increases position liquidity of another recipient', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.signers[1].address,
@@ -254,7 +240,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('increases reserve liquidity', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
@@ -268,7 +254,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       it('increases reserve risky', async function () {
         const res = await this.contracts.engine.reserves(poolId)
         const delRisky = parseWei('1').mul(res.reserveRisky).div(res.liquidity)
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
@@ -282,7 +268,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       it('increases reserve stable', async function () {
         const res = await this.contracts.engine.reserves(poolId)
         const delStable = parseWei('1').mul(res.reserveStable).div(res.liquidity)
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
@@ -294,7 +280,7 @@ testContext(`allocate to ${pool.description} pool`, function () {
       })
 
       it('updates reserve timestamp', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.allocateFromExternal(
             poolId,
             this.contracts.router.address,
