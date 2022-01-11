@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 import { constants, Wallet } from 'ethers'
 
@@ -5,8 +6,9 @@ import expect from '../../../shared/expect'
 import { computePoolId } from '../../../shared/utils'
 import { testContext } from '../../../shared/testContext'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 const { HashZero } = constants
 
@@ -15,14 +17,19 @@ TestPools.forEach(function (pool: PoolState) {
     const { strike, sigma, maturity, lastTimestamp, gamma, delta, decimalsRisky, decimalsStable } = pool.calibration
     let poolId: string
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
@@ -48,25 +55,22 @@ TestPools.forEach(function (pool: PoolState) {
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-          await expect(this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)).to.increaseMargin(
-            this.contracts.engine,
-            this.contracts.router.address,
-            delRisky.raw,
-            delStable.raw
-          )
+          await expect(() =>
+            this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
+          ).to.increaseMargin(this.contracts.engine, this.contracts.router.address, delRisky.raw, delStable.raw)
           const margin = await this.contracts.engine.margins(this.contracts.router.address)
           expect(margin.balanceRisky).to.equal(delRisky.raw)
           expect(margin.balanceStable).to.equal(delStable.raw)
         })
 
         it('pos.remove: decreases position liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.decreasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('res.remove: decreases reserve liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
         })
@@ -74,7 +78,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('res.remove: decrease reserve risky', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
         })
@@ -82,13 +86,13 @@ TestPools.forEach(function (pool: PoolState) {
         it('res.remove: decrease reserve stable', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveStable(this.contracts.engine, poolId, delStable.raw)
         })
 
         it('res.remove: updates reserve block timestamp', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
         })
@@ -98,7 +102,7 @@ TestPools.forEach(function (pool: PoolState) {
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
 
@@ -160,13 +164,13 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('pos.remove: decreases position liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.decreasePositionLiquidity(this.contracts.engine, this.contracts.router.address, poolId, delLiquidity.raw)
         })
 
         it('res.remove: decreases reserve liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
         })
@@ -174,7 +178,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('res.remove: decrease reserve risky', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveRisky(this.contracts.engine, poolId, delRisky.raw)
         })
@@ -182,13 +186,13 @@ TestPools.forEach(function (pool: PoolState) {
         it('res.remove: decrease reserve stable', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveStable(this.contracts.engine, poolId, delStable.raw)
         })
 
         it('res.remove: updates reserve block timestamp', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.updateReserveBlockTimestamp(this.contracts.engine, poolId, +(await this.contracts.engine.time()))
         })
@@ -198,7 +202,7 @@ TestPools.forEach(function (pool: PoolState) {
           const delRisky = delLiquidity.mul(res.reserveRisky).div(res.liquidity)
           const delStable = delLiquidity.mul(res.reserveStable).div(res.liquidity)
 
-          await expect(
+          await expect(() =>
             this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero)
           ).to.decreaseReserveLiquidity(this.contracts.engine, poolId, delLiquidity.raw)
 
