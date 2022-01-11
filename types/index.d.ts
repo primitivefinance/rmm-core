@@ -5,6 +5,8 @@ import { Fixture } from '@ethereum-waffle/provider'
 import { SwapTestCase } from '../test/unit/primitiveEngine/effect/swap.test'
 import { Wei } from 'web3-units'
 
+export type Awaited<T> = T extends PromiseLike<infer U> ? U : T
+
 export interface Libraries {
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin

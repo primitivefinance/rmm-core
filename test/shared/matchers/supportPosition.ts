@@ -6,11 +6,11 @@ async function getPositionChange(
   engine: EngineTypes,
   account: string,
   poolId: string
-): Promise<{ balanceAfter: BigNumber; balanceBefore: BigNumber }> {
-  const balanceBefore = await engine.liquidity(account, poolId)
+): Promise<{ after: BigNumber; before: BigNumber }> {
+  const before = await engine.liquidity(account, poolId)
   await transaction()
-  const balanceAfter = await engine.liquidity(account, poolId)
-  return { balanceAfter, balanceBefore }
+  const after = await engine.liquidity(account, poolId)
+  return { after, before }
 }
 
 // Chai matchers for the positions of the PrimitiveEngine
@@ -24,14 +24,14 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
       const subject = this._obj
 
       const derivedPromise = Promise.all([getPositionChange(subject, engine, account, poolId)]).then(
-        ([{ balanceAfter, balanceBefore }]) => {
-          const expectedLiquidity = balanceBefore.add(liquidity)
+        ([{ after, before }]) => {
+          const expectedLiquidity = before.add(liquidity)
           this.assert(
-            balanceAfter.eq(expectedLiquidity),
-            `Expected ${balanceAfter} to be ${expectedLiquidity}`,
-            `Expected ${balanceAfter} NOT to be ${expectedLiquidity}`,
+            after.eq(expectedLiquidity),
+            `Expected ${after} to be ${expectedLiquidity}`,
+            `Expected ${after} NOT to be ${expectedLiquidity}`,
             expectedLiquidity,
-            balanceAfter
+            after
           )
         }
       )
@@ -49,14 +49,14 @@ export default function supportPosition(Assertion: Chai.AssertionStatic) {
       const subject = this._obj
 
       const derivedPromise = Promise.all([getPositionChange(subject, engine, account, poolId)]).then(
-        ([{ balanceAfter, balanceBefore }]) => {
-          const expectedLiquidity = balanceBefore.sub(liquidity)
+        ([{ after, before }]) => {
+          const expectedLiquidity = before.sub(liquidity)
           this.assert(
-            balanceAfter.eq(expectedLiquidity),
-            `Expected ${balanceAfter} to be ${expectedLiquidity}`,
-            `Expected ${balanceAfter} NOT to be ${expectedLiquidity}`,
+            after.eq(expectedLiquidity),
+            `Expected ${after} to be ${expectedLiquidity}`,
+            `Expected ${after} NOT to be ${expectedLiquidity}`,
             expectedLiquidity,
-            balanceAfter
+            after
           )
         }
       )
