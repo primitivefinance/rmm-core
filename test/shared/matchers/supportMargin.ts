@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers'
 import { Awaited, EngineTypes } from '../../../types'
 
-type EngineMarginsType = Awaited<ReturnType<EngineTypes['margins']>>
+export type EngineMarginsType = Awaited<ReturnType<EngineTypes['margins']>>
 
 async function getMarginChange(
   transaction: () => Promise<void> | void,
