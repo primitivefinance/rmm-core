@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 import { constants, BigNumber, Wallet } from 'ethers'
 import { getStableGivenRisky } from '@primitivefi/rmm-math'
@@ -20,12 +20,14 @@ TestPools.forEach(function (pool: PoolState) {
       pool.calibration
     let poolId: string
     const delLiquidity = parseWei('1', 18)
+    let chainId: number
 
     let loadFixture: ReturnType<typeof createFixtureLoader>
     let signer: Wallet, other: Wallet
     before(async function () {
       ;[signer, other] = await (ethers as any).getSigners()
       loadFixture = createFixtureLoader([signer, other])
+      chainId = +(await hre.network.provider.send('eth_chainId')).toString()
     })
 
     beforeEach(async function () {
@@ -218,7 +220,7 @@ TestPools.forEach(function (pool: PoolState) {
             delLiquidity.raw,
             HashZero
           )
-        ).to.be.revertWithCustomError('PoolDuplicateError()')
+        ).to.be.revertWithCustomError('PoolDuplicateError()', undefined, chainId)
       })
 
       it('reverts if strike is 0', async function () {
