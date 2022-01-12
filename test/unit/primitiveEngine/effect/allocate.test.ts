@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat'
 import { constants, Wallet } from 'ethers'
 import { parseWei, Time, Wei } from 'web3-units'
 import { parseEther } from '@ethersproject/units'
@@ -5,8 +6,9 @@ import { parseEther } from '@ethersproject/units'
 import expect from '../../.../../../shared/expect'
 import { testContext } from '../../.../../../shared/testContext'
 import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../.../../../shared/fixtures'
+import { engineFixture } from '../../.../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../.../../../shared/hooks'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 const { HashZero } = constants
 
@@ -18,15 +20,18 @@ TestPools.forEach(function (pool: PoolState) {
     // environment variables
     let poolId: string, delLiquidity: Wei, delRisky: Wei, delStable: Wei
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
 
       await useTokens(this.signers[0], this.contracts, pool.calibration) // mints tokens
       await useApproveAll(this.signers[0], this.contracts) // approves tokens
@@ -54,7 +59,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       describe('success cases', function () {
         it('increases position liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
@@ -66,7 +71,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases position liquidity of another recipient', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.signers[1].address,
@@ -90,7 +95,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases reserve liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
@@ -102,7 +107,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases reserve risky', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
@@ -114,7 +119,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases reserve stable', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
@@ -126,7 +131,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('updates reserve timestamp', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromMargin(
               poolId,
               this.contracts.router.address,
@@ -193,7 +198,7 @@ TestPools.forEach(function (pool: PoolState) {
     describe('when allocating from external', function () {
       describe('success cases', function () {
         it('increases liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.contracts.router.address,
@@ -205,7 +210,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases position liquidity of another recipient', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.signers[1].address,
@@ -229,7 +234,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('increases reserve liquidity', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.contracts.router.address,
@@ -243,7 +248,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('increases reserve risky', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delRisky = parseWei('1').mul(res.reserveRisky).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.contracts.router.address,
@@ -257,7 +262,7 @@ TestPools.forEach(function (pool: PoolState) {
         it('increases reserve stable', async function () {
           const res = await this.contracts.engine.reserves(poolId)
           const delStable = parseWei('1').mul(res.reserveStable).div(res.liquidity)
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.contracts.router.address,
@@ -269,7 +274,7 @@ TestPools.forEach(function (pool: PoolState) {
         })
 
         it('updates reserve timestamp', async function () {
-          await expect(
+          await expect(() =>
             this.contracts.router.allocateFromExternal(
               poolId,
               this.contracts.router.address,
