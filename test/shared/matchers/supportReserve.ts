@@ -1,7 +1,7 @@
 import { BigNumber } from 'ethers'
 import { Awaited, EngineTypes } from '../../../types'
 
-type EngineReservesType = Awaited<ReturnType<EngineTypes['reserves']>>
+export type EngineReservesType = Awaited<ReturnType<EngineTypes['reserves']>>
 
 async function getReserveChange(
   transaction: () => Promise<void> | void,
@@ -81,20 +81,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-
-      const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedReserveRisky = oldReserve.reserveRisky.sub(amount)
-
-      this.assert(
-        newReserve.reserveRisky.eq(expectedReserveRisky),
-        `Expected ${expectedReserveRisky} to be ${newReserve.reserveRisky}`,
-        `Expected ${expectedReserveRisky} NOT to be ${newReserve.reserveRisky}`,
-        expectedReserveRisky,
-        newReserve.reserveRisky
-      )
     }
   )
 
@@ -126,20 +112,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedReserveStable = oldReserve.reserveStable.add(amount)
-
-      this.assert(
-        newReserve.reserveStable.eq(expectedReserveStable) ||
-          newReserve.reserveStable.sub(expectedReserveStable).lt(1000),
-        `Expected ${expectedReserveStable} to be ${newReserve.reserveStable}`,
-        `Expected ${expectedReserveStable} NOT to be ${newReserve.reserveStable}`,
-        expectedReserveStable,
-        newReserve.reserveStable
-      ) */
     }
   )
 
@@ -169,19 +141,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedReserveStable = oldReserve.reserveStable.sub(amount)
-
-      this.assert(
-        newReserve.reserveStable.eq(expectedReserveStable),
-        `Expected ${expectedReserveStable} to be ${newReserve.reserveStable}`,
-        `Expected ${expectedReserveStable} NOT to be ${newReserve.reserveStable}`,
-        expectedReserveStable,
-        newReserve.reserveStable
-      ) */
     }
   )
 
@@ -213,19 +172,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedLiquidity = oldReserve.liquidity.add(amount)
-
-      this.assert(
-        newReserve.liquidity.eq(expectedLiquidity),
-        `Expected ${expectedLiquidity} to be ${newReserve.liquidity}`,
-        `Expected ${expectedLiquidity} NOT to be ${newReserve.liquidity}`,
-        expectedLiquidity,
-        newReserve.liquidity
-      ) */
     }
   )
 
@@ -255,19 +201,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const expectedLiquidity = oldReserve.liquidity.sub(amount)
-
-      this.assert(
-        newReserve.liquidity.eq(expectedLiquidity),
-        `Expected ${expectedLiquidity} to be ${newReserve.liquidity}`,
-        `Expected ${expectedLiquidity} NOT to be ${newReserve.liquidity}`,
-        expectedLiquidity,
-        newReserve.liquidity
-      ) */
     }
   )
 
@@ -297,16 +230,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      this.assert(
-        newReserve.blockTimestamp == blockTimestamp,
-        `Expected ${blockTimestamp} to be ${newReserve.blockTimestamp}`,
-        `Expected ${blockTimestamp} NOT to be ${newReserve.blockTimestamp}`,
-        blockTimestamp,
-        newReserve.blockTimestamp
-      ) */
     }
   )
 
@@ -332,20 +255,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const deltaTime = blockTimestamp - oldReserve.blockTimestamp
-      const expectedCumulativeRisky = oldReserve.cumulativeRisky.add(newReserve.reserveRisky.mul(deltaTime))
-
-      this.assert(
-        newReserve.cumulativeRisky.eq(expectedCumulativeRisky),
-        `Expected ${expectedCumulativeRisky} to be ${newReserve.cumulativeRisky}`,
-        `Expected ${expectedCumulativeRisky} NOT to be ${newReserve.cumulativeRisky}`,
-        expectedCumulativeRisky,
-        newReserve.cumulativeRisky
-      ) */
     }
   )
 
@@ -371,20 +280,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const deltaTime = blockTimestamp - oldReserve.blockTimestamp
-      const expectedCumulativeStable = oldReserve.cumulativeStable.add(newReserve.reserveRisky.mul(deltaTime))
-
-      this.assert(
-        newReserve.cumulativeStable.eq(expectedCumulativeStable),
-        `Expected ${expectedCumulativeStable} to be ${newReserve.cumulativeStable}`,
-        `Expected ${expectedCumulativeStable} NOT to be ${newReserve.cumulativeStable}`,
-        expectedCumulativeStable,
-        newReserve.cumulativeStable
-      ) */
     }
   )
 
@@ -410,20 +305,6 @@ export default function supportReserve(Assertion: Chai.AssertionStatic) {
       this.catch = derivedPromise.catch.bind(derivedPromise)
       this.promise = derivedPromise
       return this
-      /* const oldReserve = await engine.reserves(poolId)
-      await this._obj
-      const newReserve = await engine.reserves(poolId)
-
-      const deltaTime = blockTimestamp - oldReserve.blockTimestamp
-      const expectedCumulativeLiquidity = oldReserve.cumulativeLiquidity.add(newReserve.liquidity.mul(deltaTime))
-
-      this.assert(
-        newReserve.cumulativeLiquidity.eq(expectedCumulativeLiquidity),
-        `Expected ${expectedCumulativeLiquidity} to be ${newReserve.cumulativeLiquidity}`,
-        `Expected ${expectedCumulativeLiquidity} NOT to be ${newReserve.cumulativeLiquidity}`,
-        expectedCumulativeLiquidity,
-        newReserve.cumulativeLiquidity
-      ) */
     }
   )
 }
