@@ -202,3 +202,23 @@ export const engineFixture: Fixture<EngineFixture> = async function (): Promise<
     },
   }
 }
+
+export const librariesFixture: Fixture<LibraryFixture> = async function (): Promise<LibraryFixture> {
+  const libraries: Libraries = {} as Libraries
+
+  const reserveFactory = await ethers.getContractFactory('TestReserve')
+  const marginFactory = await ethers.getContractFactory('TestMargin')
+  const replicationFactory = await ethers.getContractFactory('TestReplicationMath')
+  const cdfFactory = await ethers.getContractFactory('TestCumulativeNormalDistribution')
+
+  libraries.testReserve = (await reserveFactory.deploy()) as ContractTypes.TestReserve
+
+  libraries.testMargin = (await marginFactory.deploy()) as ContractTypes.TestMargin
+
+  libraries.testReplicationMath = (await replicationFactory.deploy()) as ContractTypes.TestReplicationMath
+
+  libraries.testCumulativeNormalDistribution =
+    (await cdfFactory.deploy()) as ContractTypes.TestCumulativeNormalDistribution
+
+  return { libraries }
+}
