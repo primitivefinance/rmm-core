@@ -56,7 +56,7 @@ export type EngineTypes = ContractTypes.PrimitiveEngine | ContractTypes.MockEngi
 declare global {
   export namespace Chai {
     interface Assertion {
-      revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
+      revertWithCustomError(errorName: string, params?: any[]): AsyncAssertion
       increaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       decreaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       increasePositionLiquidity(
