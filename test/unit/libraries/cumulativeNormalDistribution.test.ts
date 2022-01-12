@@ -4,7 +4,7 @@ import { FixedPointX64, parseFixedPointX64 } from 'web3-units'
 
 import expect from '../../shared/expect'
 import { maxError } from '../../shared/utils'
-import { librariesFixture, libraryFixture } from '../../shared/fixtures'
+import { librariesFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 
 import { TestCumulativeNormalDistribution } from '../../../typechain'
