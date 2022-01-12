@@ -694,10 +694,10 @@
   dependencies:
     squirrelly "^8.0.8"
 
-"@primitivefi/rmm-math@^2.0.0-beta.2":
-  version "2.0.0-beta.2"
-  resolved "https://registry.yarnpkg.com/@primitivefi/rmm-math/-/rmm-math-2.0.0-beta.2.tgz#97fed84c645c0cd0e8a00c47936ba413d532057a"
-  integrity sha512-88bEYPHCHD3f2y1KvyoVr67ydTZli7NnORT+SAhKsXD8n2UnmfrowNNvHWfDpnx84B0UXscEJZGGYiyxa7UYQg==
+"@primitivefi/rmm-math@^2.0.0-beta.3":
+  version "2.0.0-beta.3"
+  resolved "https://registry.yarnpkg.com/@primitivefi/rmm-math/-/rmm-math-2.0.0-beta.3.tgz#07427901672105ee5b462fe9746b55590747fc38"
+  integrity sha512-zyZHNQHwM1GOzmNWWPwvndq/xOSqQKRMXmmaVljxJPJqpdzliLB2O074dYttwMX1972csn0ZfsWQk+hiDo67Cw==
   dependencies:
     gaussian "^1.2.0"
     numeric "^1.2.6"
