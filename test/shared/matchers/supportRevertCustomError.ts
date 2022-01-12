@@ -2,11 +2,23 @@
 
 export default function supportRevertCustomError(Assertion: Chai.AssertionStatic) {
   Assertion.addMethod('revertWithCustomError', async function (this: any, errorName: string, params?: any[]) {
-    try {
-      await this._obj
-    } catch (e: any) {
-      const msg: string = e?.message
-      const [, revertMsg] = msg?.split("'")
+    const promise = this._obj
+
+    const onSuccess = (value: any) => {
+      this.assert(
+        false,
+        'Expected transaction to be reverted',
+        'Expected transaction NOT to be reverted',
+        'Transaction reverted.',
+        'Transaction NOT reverted.'
+      )
+      return value
+    }
+
+    const onError = (error: any) => {
+      const message = error instanceof Object && 'message' in error ? (error.message as string) : JSON.stringify(error)
+      const delimiter = 'revert'
+      const [, revertMsg] = message?.split(delimiter)
 
       const [actualErrorName, actualParamsRaw] = revertMsg.split('(')
       const actualParams = actualParamsRaw
@@ -14,25 +26,36 @@ export default function supportRevertCustomError(Assertion: Chai.AssertionStatic
         .replace(/ /g, '')
         .split(',')
 
+      const expectedError = errorName.split('(')[0]
       this.assert(
-        actualErrorName === errorName,
-        `Expected ${actualErrorName} to be ${errorName}`,
-        `Expected ${actualErrorName} NOT to be ${errorName}`,
-        errorName,
+        actualErrorName.trim() === expectedError.trim(),
+        `Expected ${actualErrorName} to be ${expectedError}`,
+        `Expected ${actualErrorName} NOT to be ${expectedError}`,
+        expectedError,
         actualErrorName
       )
 
-      if (params) {
+      if (params && params.length > 0) {
         for (let i = 0; i < actualParams.length; i += 1) {
+          if (typeof actualParams[i] === 'undefined') continue
+          const actual = actualParams[i].trim()
+          const expected = params[i].trim()
           this.assert(
-            actualParams[i] === params[i],
-            `Expected ${actualParams[i]} to be ${params[i]}`,
-            `Expected ${actualParams[i]} NOT to be ${params[i]}`,
-            params[i],
-            actualParams[i]
+            actual === expected,
+            `Expected ${actual} to be ${expected}`,
+            `Expected ${actual} NOT to be ${expected}`,
+            expected,
+            actual
           )
         }
       }
     }
+
+    const derivedPromise = promise.then(onSuccess, onError)
+
+    this.then = derivedPromise.then.bind(derivedPromise)
+    this.catch = derivedPromise.catch.bind(derivedPromise)
+    this.promise = derivedPromise
+    return this
   })
 }

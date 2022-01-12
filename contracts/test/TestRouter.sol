@@ -3,9 +3,17 @@ pragma solidity 0.8.6;
 
 import "./TestBase.sol";
 import "../libraries/ReplicationMath.sol";
+import "hardhat/console.sol";
+import "../interfaces/engine/IPrimitiveEngineErrors.sol";
 
 contract TestRouter is TestBase {
     constructor(address engine_) TestBase(engine_) {}
+
+    string public expectedError;
+
+    function expect(string memory errorString) public {
+        expectedError = errorString;
+    }
 
     // ===== Create =====
 
@@ -19,15 +27,23 @@ contract TestRouter is TestBase {
         bytes calldata data
     ) public {
         caller = msg.sender;
-        IPrimitiveEngine(engine).create(
-            uint128(strike),
-            uint32(sigma),
-            uint32(maturity),
-            uint32(gamma),
-            riskyPerLp,
-            delLiquidity,
-            data
-        );
+        try
+            IPrimitiveEngine(engine).create(
+                uint128(strike),
+                uint32(sigma),
+                uint32(maturity),
+                uint32(gamma),
+                riskyPerLp,
+                delLiquidity,
+                data
+            )
+        {} catch (bytes memory err) {
+            if (keccak256(abi.encodeWithSignature(expectedError)) == keccak256(err)) {
+                revert(expectedError);
+            } else {
+                revert("Unknown()");
+            }
+        }
     }
 
     // ===== Margin =====
