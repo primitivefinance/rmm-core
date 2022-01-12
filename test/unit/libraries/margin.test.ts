@@ -2,7 +2,7 @@ import { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 
 import expect from '../../shared/expect'
-import { librariesFixture, libraryFixture } from '../../shared/fixtures'
+import { librariesFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 
 import { TestMargin } from '../../../typechain'

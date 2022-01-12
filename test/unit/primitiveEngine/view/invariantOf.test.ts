@@ -1,27 +1,34 @@
+import { ethers } from 'hardhat'
 import { constants, Wallet } from 'ethers'
 import { parsePercentage, parseWei } from 'web3-units'
 
 import expect from '../../../shared/expect'
-import { Calibration, parseCalibration } from '../../../shared'
+import { parseCalibration } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
 import { computePoolId } from '../../../shared/utils'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll } from '../../../shared/hooks'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`invariant of ${pool.description} pool`, function () {
     const { decimalsRisky, decimalsStable } = pool.calibration
     let poolId: string
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       ;({ poolId } = await usePool(this.signers[0], this.contracts, pool.calibration))
