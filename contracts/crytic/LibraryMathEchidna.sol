@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-import "./libraries/ReplicationMath.sol";
-import "./libraries/Units.sol";
+import "../libraries/ReplicationMath.sol";
+import "../libraries/Units.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract LibraryMathEchidna --test-mode assertion
 contract LibraryMathEchidna { 

@@ -49,15 +49,15 @@ export const calibrations: any = {
  * @notice Array of pool calibrations to test per test file
  */
 export const TestPools: PoolState[] = [
-  { description: '0.01% sigma', calibration: calibrations.minsigma },
+  // { description: '0.01% sigma', calibration: calibrations.minsigma },
   { description: 'default', calibration: DEFAULT_CONFIG },
-  { description: '1% fee', calibration: calibrations.mingamma },
-  { description: '10% fee', calibration: calibrations.maxgamma },
-  { description: '0.01% sigma', calibration: calibrations.minsigma },
-  {
-    description: `6 decimal risky and stable`,
-    calibration: calibrations.lowdecimals,
-  },
+  // { description: '1% fee', calibration: calibrations.mingamma },
+  // { description: '10% fee', calibration: calibrations.maxgamma },
+  // { description: '0.01% sigma', calibration: calibrations.minsigma },
+  // {
+  //   description: `6 decimal risky and stable`,
+  //   calibration: calibrations.lowdecimals,
+  // },
   /* {
     description: `exp`,
     calibration: calibrations.exp,

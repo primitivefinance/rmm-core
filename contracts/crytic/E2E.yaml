@@ -3,7 +3,10 @@ initialize: contracts/crytic/init.json
 # testMode: benchmark
 # testMode: optimization
 testMode: assertion 
-testLimit: 10000
-shrinkLimit: 3000
+testLimit: 100000
+shrinkLimit: 500
+propMaxGas: 800003000
+testMaxGas: 800003000
 sender: ["0x1e2f9e10d02a6b8f8f69fcbf515e75039d2ea30d"]
 filterFunctions: ["createCallback", "allocateCallback", "depositCallback"]
+timeout: 3600 # 1 hour
