@@ -1,15 +1,24 @@
+import { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
-import { BigNumber, BytesLike, constants } from 'ethers'
+import { BigNumber, BytesLike, constants, Wallet } from 'ethers'
 
 import expect from '../../shared/expect'
-import { libraryFixture } from '../../shared/fixtures'
+import { librariesFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 
 import { TestReserve } from '../../../typechain'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 testContext('testReserve', function () {
+  let loadFixture: ReturnType<typeof createFixtureLoader>
+  let signer: Wallet, other: Wallet
+  before(async function () {
+    ;[signer, other] = await (ethers as any).getSigners()
+    loadFixture = createFixtureLoader([signer, other])
+  })
+
   beforeEach(async function () {
-    const fixture = await this.loadFixture(libraryFixture)
+    const fixture = await loadFixture(librariesFixture)
     this.libraries = fixture.libraries
   })
 

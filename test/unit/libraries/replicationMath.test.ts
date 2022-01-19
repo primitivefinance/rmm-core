@@ -1,4 +1,6 @@
+import { ethers } from 'hardhat'
 import { Wallet } from '@ethersproject/wallet'
+import { createFixtureLoader } from 'ethereum-waffle'
 import { FixedPointX64, parseWei, Time, Wei } from 'web3-units'
 import {
   getProportionalVol,
@@ -12,58 +14,7 @@ import {
 import { testContext } from '../../shared/testContext'
 import { maxError } from '../../shared/utils'
 import { TestPools, PoolState } from '../../shared/poolConfigs'
-import { LibraryFixture, libraryFixture, deploy } from '../../shared/fixtures'
-
-import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../../typechain'
-
-interface TestTradingFunctionFixture {
-  getStableGivenRisky: TestGetStableGivenRisky
-}
-
-async function testGetStableGivenRisky([wallet]: Wallet[], provider): Promise<TestTradingFunctionFixture> {
-  return {
-    getStableGivenRisky: (await deploy('TestGetStableGivenRisky', wallet)) as unknown as TestGetStableGivenRisky,
-  }
-}
-
-interface TestGetRiskyGivenStableFixture {
-  getRiskyGivenStable: TestGetRiskyGivenStable
-}
-
-async function testGetRiskyGivenStable([wallet]: Wallet[], provider): Promise<TestGetRiskyGivenStableFixture> {
-  return {
-    getRiskyGivenStable: (await deploy('TestGetRiskyGivenStable', wallet)) as unknown as TestGetRiskyGivenStable,
-  }
-}
-
-interface TestCalcInvariantFixture {
-  calcInvariant: TestCalcInvariant
-}
-
-async function testCalcInvariant([wallet]: Wallet[], provider): Promise<TestCalcInvariantFixture> {
-  return {
-    calcInvariant: (await deploy('TestCalcInvariant', wallet)) as unknown as TestCalcInvariant,
-  }
-}
-
-interface TestStepFixture extends LibraryFixture {
-  getRiskyGivenStable: TestGetRiskyGivenStable
-  getStableGivenRisky: TestGetStableGivenRisky
-  calcInvariant: TestCalcInvariant
-}
-
-async function testStepFixture([wallet]: Wallet[], provider): Promise<TestStepFixture> {
-  const libraries = await libraryFixture([wallet], provider)
-  const { getRiskyGivenStable } = await testGetRiskyGivenStable([wallet], provider)
-  const { getStableGivenRisky } = await testGetStableGivenRisky([wallet], provider)
-  const { calcInvariant } = await testCalcInvariant([wallet], provider)
-  return {
-    getRiskyGivenStable: getRiskyGivenStable,
-    getStableGivenRisky: getStableGivenRisky,
-    calcInvariant: calcInvariant,
-    ...libraries,
-  }
-}
+import { TestStepFixture, replicationLibrariesFixture } from '../../shared/fixtures'
 
 function riskySwapStep3(reserve: Wei) {
   let inside = 1 - reserve.float
@@ -285,9 +236,16 @@ TestPools.forEach(function (pool: PoolState) {
       },
     }
 
-    // load the fixtures
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
+    before(async function () {
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
+    })
+
     beforeEach(async function () {
-      fixture = await this.loadFixture(testStepFixture)
+      fixture = await loadFixture(replicationLibrariesFixture)
+
       await fixture.calcInvariant.set(scaleFactorRisky, scaleFactorStable)
       await fixture.getRiskyGivenStable.set(scaleFactorRisky, scaleFactorStable)
       await fixture.getStableGivenRisky.set(scaleFactorRisky, scaleFactorStable)

@@ -1,12 +1,15 @@
+import { ethers } from 'hardhat'
 import { parseEther } from '@ethersproject/units'
 import { FixedPointX64, parseFixedPointX64 } from 'web3-units'
 
 import expect from '../../shared/expect'
 import { maxError } from '../../shared/utils'
-import { libraryFixture } from '../../shared/fixtures'
+import { librariesFixture } from '../../shared/fixtures'
 import { testContext } from '../../shared/testContext'
 
 import { TestCumulativeNormalDistribution } from '../../../typechain'
+import { createFixtureLoader } from 'ethereum-waffle'
+import { Wallet } from 'ethers'
 
 // array values below calculated with https://keisan.casio.com/calculator
 const cdfs = {
@@ -58,8 +61,15 @@ const icdfs = {
 const DEBUG = false
 
 testContext('testCumulativeNormalDistribution', function () {
+  let loadFixture: ReturnType<typeof createFixtureLoader>
+  let signer: Wallet, other: Wallet
+  before(async function () {
+    ;[signer, other] = await (ethers as any).getSigners()
+    loadFixture = createFixtureLoader([signer, other])
+  })
+
   beforeEach(async function () {
-    const fixture = await this.loadFixture(libraryFixture)
+    const fixture = await loadFixture(librariesFixture)
     this.libraries = fixture.libraries
   })
 

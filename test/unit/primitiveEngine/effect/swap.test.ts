@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat'
 import { constants, Wallet } from 'ethers'
 import { Wei, parseWei, FixedPointX64 } from 'web3-units'
 
@@ -7,8 +8,9 @@ import { Calibration } from '../../../shared/calibration'
 import { testContext } from '../../../shared/testContext'
 import { VirtualPool } from '../../../shared/virtualPool'
 import { TestPools, PoolState } from '../../../shared/poolConfigs'
-import { PrimitiveFixture, customDecimalsFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
 import { useTokens, useLiquidity, useMargin, useApproveAll, usePool } from '../../../shared/hooks'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 /**
  * @dev The forward math function for calculating the stable reserves given a risky
@@ -69,22 +71,55 @@ function swapTestCaseDescription({
   }
 }
 
+function spotPriceTestCaseDescription({
+  riskyForStable,
+  deltaIn,
+  deltaOut,
+  exactOut,
+}: {
+  riskyForStable: boolean
+  deltaIn: Wei
+  deltaOut: Wei
+  exactOut: boolean
+}): string {
+  const tradeType = exactOut
+    ? `${
+        riskyForStable
+          ? `${deltaIn.display} risky in for exact ${deltaOut.display} stable out`
+          : `${deltaIn.display} stable in for exact ${deltaOut.display} risky out`
+      }`
+    : `${
+        riskyForStable
+          ? `exact ${deltaIn.display} risky in for ${deltaOut.display} stable out`
+          : `exact ${deltaIn.display} stable in for ${deltaOut.display} risky out`
+      }`
+  if (riskyForStable) {
+    return `spot price +/- in the correct direction for swapping ` + tradeType
+  } else {
+    return `spot price +/- in the correct direction for swapping ` + tradeType
+  }
+}
+
 // For each pool parameter set
 TestPools.forEach(function (pool: PoolState) {
   testContext(`Swap in ${pool.description} pool. This will take awhile...`, function () {
     const { maturity, lastTimestamp, decimalsRisky, decimalsStable } = pool.calibration
-
-    let deployer: Wallet
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
-    before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
-    })
-
     let poolId: string
     let virtualPool: VirtualPool
+
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let deployer: Wallet, other: Wallet
+    before(async function () {
+      ;[deployer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([deployer, other])
+    })
+
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       deployer = this.signers[0]
       poolId = await setup(deployer, this.contracts, pool.calibration)
     })
@@ -194,7 +229,7 @@ TestPools.forEach(function (pool: PoolState) {
                         HashZero
                       )
                     const tokens = [this.contracts.risky, this.contracts.stable]
-                    await expect(tx).to.decreaseSwapOutBalance(this.contracts.engine, tokens, receiver, poolId, {
+                    await expect(() => tx).to.decreaseSwapOutBalance(this.contracts.engine, tokens, receiver, poolId, {
                       riskyForStable,
                       toMargin,
                     })
@@ -213,7 +248,7 @@ TestPools.forEach(function (pool: PoolState) {
                         toMargin,
                         HashZero
                       )
-                    await expect(tx).to.increaseInvariant(this.contracts.engine, poolId)
+                    await expect(() => tx).to.increaseInvariant(this.contracts.engine, poolId)
                   })
 
                   it('spot price has increased/decreased in the correct direction', async function () {
@@ -229,7 +264,7 @@ TestPools.forEach(function (pool: PoolState) {
                         toMargin,
                         HashZero
                       )
-                    await expect(tx).to.updateSpotPrice(this.contracts.engine, pool.calibration, riskyForStable)
+                    await expect(() => tx).to.updateSpotPrice(this.contracts.engine, pool.calibration, riskyForStable)
                   })
                 }
               )

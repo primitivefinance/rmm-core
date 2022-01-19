@@ -1,24 +1,31 @@
+import { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 import { constants, Wallet } from 'ethers'
 
 import expect from '../../../shared/expect'
 import { testContext } from '../../../shared/testContext'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll, useMargin } from '../../../shared/hooks'
+import { createFixtureLoader } from 'ethereum-waffle'
 
 TestPools.forEach(function (pool: PoolState) {
   testContext(`withdraw from ${pool.description} pool`, function () {
     const { decimalsRisky, decimalsStable } = pool.calibration
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       await usePool(this.signers[0], this.contracts, pool.calibration)
@@ -35,7 +42,7 @@ TestPools.forEach(function (pool: PoolState) {
     describe('success cases', function () {
       it('withdraws from stable tokens from margin', async function () {
         const [delRisky, delStable] = [parseWei('0'), parseWei('998')]
-        await expect(this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        await expect(() => this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
           this.contracts.engine,
           this.contracts.router.address,
           delRisky.raw,
@@ -45,7 +52,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('withdraws from risky tokens from margin', async function () {
         const [delRisky, delStable] = [parseWei('998'), parseWei('0')]
-        await expect(this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        await expect(() => this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
           this.contracts.engine,
           this.contracts.router.address,
           delRisky.raw,
@@ -55,7 +62,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('withdraws both tokens from the margin account', async function () {
         const [delRisky, delStable] = [parseWei('999'), parseWei('998')]
-        await expect(this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
+        await expect(() => this.contracts.router.withdraw(delRisky.raw, delStable.raw)).to.decreaseMargin(
           this.contracts.engine,
           this.contracts.router.address,
           delRisky.raw,
