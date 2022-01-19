@@ -19,7 +19,7 @@ interface IPrimitiveEngineEvents {
 
     // ===== Margin ====
 
-    /// @notice             Added stable and/or risky tokens to a margin accouynt
+    /// @notice             Added stable and/or risky tokens to a margin account
     /// @param  from        Method caller `msg.sender`
     /// @param  recipient   Margin account recieving deposits
     /// @param  delRisky    Amount of risky tokens deposited
