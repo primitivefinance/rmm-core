@@ -3,10 +3,10 @@ initialize: contracts/crytic/init.json
 # testMode: benchmark
 # testMode: optimization
 testMode: assertion 
-testLimit: 100000
+testLimit: 10000
 shrinkLimit: 500
 propMaxGas: 800003000
 testMaxGas: 800003000
 sender: ["0x1e2f9e10d02a6b8f8f69fcbf515e75039d2ea30d"]
-filterFunctions: ["createCallback", "allocateCallback", "depositCallback"]
+filterFunctions: ["EchidnaE2E.createCallback(uint256,uint256,bytes)", "EchidnaE2E.allocateCallback(uint256,uint256,bytes)", "EchidnaE2E.depositCallback(uint256,uint256,bytes)", "EchidnaE2E.swapCallback(uint256,uint256,bytes)"]
 timeout: 3600 # 1 hour
