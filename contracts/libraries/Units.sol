@@ -58,13 +58,6 @@ library Units {
         return denorm.divu(PERCENTAGE);
     }
 
-    /// @notice         Converts signed 64.64 fixed point percentage to a denormalized percetage integer
-    /// @param denorm   Signed 64.64 fixed point percentage
-    /// @return         Unsigned percentage denormalized with precision of 1e4
-    function percentage(int128 denorm) internal pure returns (uint256) {
-        return denorm.mulu(PERCENTAGE);
-    }
-
     /// @notice         Converts unsigned seconds integer into years as a signed 64.64 fixed point number
     /// @dev            Convert unsigned 256-bit integer number into signed 64.64 fixed point number
     /// @param s        Unsigned 256-bit integer amount of seconds to convert into year units
