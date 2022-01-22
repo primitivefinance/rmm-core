@@ -13,3 +13,4 @@ typechain/
 crytic-export/
 corpus
 e2e_swap_corpus/
+e2e_swap_2_corpus/
