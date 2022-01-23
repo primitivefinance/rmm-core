@@ -203,7 +203,7 @@ contract E2E_swap_2 {
         uint256 adjustedStable;
         {
             uint256 deltaInWithFee = (i.amountIn * i.gamma) / 1e4; // amount * (1 - fee %)
-            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + deltaInWithFee - 1; // total
+            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + deltaInWithFee; // total
 
             // compute delta out
             adjustedRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity; // per
@@ -216,6 +216,7 @@ contract E2E_swap_2 {
                 i.sigma,
                 i.tau
             );
+            adjustedStable += 1; // round up on output reserve
         }
 
         require(i.tau == 0 ? adjustedRisky >= 0 : adjustedRisky > 0);
@@ -236,7 +237,7 @@ contract E2E_swap_2 {
         emit InvariantCheck(invariantBefore, invariantAfter);
         assert(invariantAfter >= invariantBefore);
 
-        uint256 upscaledAdjustedStable = (adjustedStable * i.reserveLiquidity) / 1e18 + 1; // total
+        uint256 upscaledAdjustedStable = (adjustedStable * i.reserveLiquidity) / 1e18 + 1; // round up on output reserve
         deltaOut = uint256(i.reserveStable) - upscaledAdjustedStable; // total
         return deltaOut;
     }
