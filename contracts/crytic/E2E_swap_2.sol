@@ -126,6 +126,7 @@ contract E2E_swap_2 {
         });
 
         swap_precondition_1(exactIn.maturity);
+        require(tau == maturity - lastTimestamp);
         require(risky.balanceOf(address(this)) > exactIn.amountIn);
 
         uint256 amountOut = simulate_exact_risky_in(exactIn);
@@ -143,52 +144,101 @@ contract E2E_swap_2 {
     // Utils
 
     function swap_pre_condition_2(uint256 input, uint256 output) internal {
-        /// #pre2
         require(input != 0 && output != 0);
     }
+
+    //function simulate_exact_risky_in(ExactInput memory i) internal returns (uint256) {
+    //    // riskyDecimals, stableDecinmals = 18 for now
+    //    // Need timestamp updated
+    //    int128 invariantBefore = engine.invariantOf(i.poolId);
+    //    uint256 upscaledAdjustedStable;
+    //    {
+    //        uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4; // 1. apply fee
+    //        uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + amountInWithFee; // 2. Adjust input reset
+
+    //        uint256 downscaledRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity;
+    //        uint256 downscaledStable = ReplicationMath.getStableGivenRisky(
+    //            invariantBefore,
+    //            engine.scaleFactorRisky(),
+    //            engine.scaleFactorStable(),
+    //            downscaledRisky,
+    //            i.strike,
+    //            i.sigma,
+    //            i.tau
+    //        );
+
+    //        upscaledAdjustedStable = (downscaledStable * i.reserveLiquidity) / 1e18;
+    //    }
+
+    //    uint256 amountStableOut = uint256(i.reserveStable) - upscaledAdjustedStable;
+
+    //    uint256 downscaledRes0 = (uint256(i.reserveRisky + i.amountIn) * 1e18) / i.reserveLiquidity;
+    //    uint256 downscaledRes1 = (uint256(i.reserveStable - amountStableOut) * 1e18) / i.reserveLiquidity;
+
+    //    require(downscaledRes0 <= 10**risky.decimals() || downscaledRes0 >= 0);
+    //    require(downscaledRes1 <= i.strike || downscaledRes1 >= 0);
+
+    //    int128 invariantAfter = ReplicationMath.calcInvariant(
+    //        engine.scaleFactorRisky(),
+    //        engine.scaleFactorStable(),
+    //        downscaledRes0,
+    //        downscaledRes1,
+    //        i.strike,
+    //        i.sigma,
+    //        i.tau
+    //    );
+    //    assert(invariantAfter >= invariantBefore);
+    //    return amountStableOut;
+    //}
+
+    event InvariantCheck(int128 pre, int128 post);
 
     function simulate_exact_risky_in(ExactInput memory i) internal returns (uint256) {
         // riskyDecimals, stableDecinmals = 18 for now
         // Need timestamp updated
         int128 invariantBefore = engine.invariantOf(i.poolId);
-        uint256 upscaledAdjustedStable;
-        {
-            uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4; // 1. apply fee
-            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + amountInWithFee; // 2. Adjust input reset
 
-            uint256 downscaledRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity;
-            uint256 downscaledStable = ReplicationMath.getStableGivenRisky(
+        uint256 deltaOut;
+        uint256 adjustedRisky;
+        uint256 adjustedStable;
+        {
+            uint256 deltaInWithFee = (i.amountIn * i.gamma) / 1e4; // amount * (1 - fee %)
+            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + deltaInWithFee - 1; // total
+
+            // compute delta out
+            adjustedRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity; // per
+            adjustedStable = ReplicationMath.getStableGivenRisky(
                 invariantBefore,
                 engine.scaleFactorRisky(),
                 engine.scaleFactorStable(),
-                downscaledRisky,
+                adjustedRisky,
                 i.strike,
                 i.sigma,
                 i.tau
             );
-
-            upscaledAdjustedStable = (downscaledStable * i.reserveLiquidity) / 1e18;
         }
 
-        uint256 amountStableOut = uint256(i.reserveStable) - upscaledAdjustedStable;
-
-        uint256 downscaledRes0 = (uint256(i.reserveRisky + i.amountIn) * 1e18) / i.reserveLiquidity;
-        uint256 downscaledRes1 = (uint256(i.reserveStable - amountStableOut) * 1e18) / i.reserveLiquidity;
-
-        require(downscaledRes0 <= 10**risky.decimals() || downscaledRes0 >= 0);
-        require(downscaledRes1 <= i.strike || downscaledRes1 >= 0);
+        require(i.tau == 0 ? adjustedRisky >= 0 : adjustedRisky > 0);
+        require(i.tau == 0 ? adjustedStable >= 0 : adjustedStable > 0);
+        require(adjustedRisky <= 10**risky.decimals());
+        require(adjustedStable <= i.strike);
 
         int128 invariantAfter = ReplicationMath.calcInvariant(
             engine.scaleFactorRisky(),
             engine.scaleFactorStable(),
-            downscaledRes0,
-            downscaledRes1,
+            adjustedRisky,
+            adjustedStable,
             i.strike,
             i.sigma,
             i.tau
         );
+
+        emit InvariantCheck(invariantBefore, invariantAfter);
         assert(invariantAfter >= invariantBefore);
-        return amountStableOut;
+
+        uint256 upscaledAdjustedStable = (adjustedStable * i.reserveLiquidity) / 1e18 + 1; // total
+        deltaOut = uint256(i.reserveStable) - upscaledAdjustedStable; // total
+        return deltaOut;
     }
 
     // parameters for a swap
@@ -414,9 +464,10 @@ contract E2E_swap_2 {
         uint256 amountOut
     );
 
-    event InvariantError();
-    event PoolExpiredError();
+    event KnownError(string msg);
     event UnknownError(string msg);
+    event Panicked(uint256 val);
+    event ErrorSig(bytes32 s);
 
     function swap_helper(SwapHelper memory s) internal {
         swap_pre_condition_2(s.deltaIn, s.deltaOut);
@@ -438,13 +489,18 @@ contract E2E_swap_2 {
             )
         {
             check_swap_invariants(s.poolId, s.riskyForStable, pre_invariant, pre_risky, pre_stable);
+        } catch Error(string memory reason) {
+            emit KnownError(reason);
+        } catch Panic(uint256 code) {
+            emit Panicked(code);
         } catch (bytes memory err) {
             // better logging
-            if (keccak256(abi.encodeWithSignature("InvariantError(int128,int128)")) == keccak256(err)) {
-                emit InvariantError();
-            } else if (keccak256(abi.encodeWithSignature("PoolExpiredError()")) == keccak256(err)) {
-                emit PoolExpiredError();
+            if (bytes4(keccak256("InvariantError(int128,int128)")) == bytes4(err)) {
+                emit KnownError("InvariantError(int128,int128)");
+            } else if (bytes4(keccak256(("PoolExpiredError()"))) == bytes4(err)) {
+                emit KnownError("PoolExpiredError");
             } else {
+                emit ErrorSig(keccak256(err));
                 emit UnknownError("UK");
             }
 
@@ -511,7 +567,16 @@ contract E2E_swap_2 {
         }
     }
 
-    event AddedPool(bytes32 poolId, uint128 strike, uint32 sigma, uint32 maturity, uint32 gamma, uint32 timestamp);
+    event AddedPool(
+        bytes32 poolId,
+        uint256 riskyPerLiquidity,
+        uint256 delLiquidity,
+        uint128 strike,
+        uint32 sigma,
+        uint32 maturity,
+        uint32 gamma,
+        uint32 timestamp
+    );
     event FailedCreating(
         uint128 strike,
         uint32 sigma,
@@ -550,6 +615,8 @@ contract E2E_swap_2 {
             assert(calibrationMaturity == maturity);
             emit AddedPool(
                 poolId,
+                riskyPerLp,
+                delLiquidity,
                 calibrationStrike,
                 calibrationSigma,
                 calibrationMaturity,
