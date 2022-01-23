@@ -62,7 +62,7 @@ contract E2E_swap_2 {
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
         {
             uint256 maxDeltaIn = compute_max_swap_input(true, reserveRisky, reserveStable, liquidity, strike);
-            _amountIn = uint128(1 + ((_amountIn) % maxDeltaIn)); // add 1 so its always > 0
+            _amountIn = uint128(1 + (_amountIn % (maxDeltaIn - 1))); // add 1 so its always > 0
         }
 
         ExactInput memory exactIn = ExactInput({
@@ -80,7 +80,7 @@ contract E2E_swap_2 {
 
         // Step 3 - conditions
         swap_precondition_1(exactIn.maturity);
-        require(risky.balanceOf(address(this)) > exactIn.amountIn);
+        require(risky.balanceOf(address(this)) >= exactIn.amountIn);
 
         // Step 4
         uint256 amountOut = simulate_exact_risky_in(exactIn);
@@ -100,12 +100,16 @@ contract E2E_swap_2 {
 
     function getSwapHelper(uint128 _amountIn) internal returns (SwapHelper memory s) {
         bytes32 poolId = poolIds[0];
-        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
+        (uint128 strike, uint32 sigma, uint32 maturity, uint32 lastTimestamp, uint32 gamma) = engine.calibrations(
+            poolId
+        );
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
+        require(lastTimestamp > 0); // must be inited
+
         {
             uint256 maxDeltaIn = compute_max_swap_input(true, reserveRisky, reserveStable, liquidity, strike);
-            _amountIn = uint128(1 + ((_amountIn) % maxDeltaIn)); // add 1 so its always > 0
+            _amountIn = uint128(1 + (_amountIn % (maxDeltaIn - 1))); // add 1 so its always > 0
         }
 
         ExactInput memory exactIn = ExactInput({
@@ -140,7 +144,7 @@ contract E2E_swap_2 {
 
     function swap_pre_condition_2(uint256 input, uint256 output) internal {
         /// #pre2
-        require(input * output > 0);
+        require(input != 0 && output != 0);
     }
 
     function simulate_exact_risky_in(ExactInput memory i) internal returns (uint256) {
@@ -161,15 +165,15 @@ contract E2E_swap_2 {
                 i.strike,
                 i.sigma,
                 i.tau
-            ); // 3. compute output reserve per liquidity
+            );
 
             upscaledAdjustedStable = (downscaledStable * i.reserveLiquidity) / 1e18;
         }
 
-        uint256 amountStableOut = i.reserveStable - upscaledAdjustedStable;
+        uint256 amountStableOut = uint256(i.reserveStable) - upscaledAdjustedStable;
 
-        uint256 downscaledRes0 = (i.reserveRisky + i.amountIn) / i.reserveLiquidity;
-        uint256 downscaledRes1 = (i.reserveStable - amountStableOut) / i.reserveLiquidity;
+        uint256 downscaledRes0 = (uint256(i.reserveRisky + i.amountIn) * 1e18) / i.reserveLiquidity;
+        uint256 downscaledRes1 = (uint256(i.reserveStable - amountStableOut) * 1e18) / i.reserveLiquidity;
 
         require(downscaledRes0 <= 10**risky.decimals() || downscaledRes0 >= 0);
         require(downscaledRes1 <= i.strike || downscaledRes1 >= 0);
@@ -401,11 +405,26 @@ contract E2E_swap_2 {
         state.liquidity = liq;
     }
 
+    event FailedSwap(
+        bytes32 poolId,
+        bool riskyForStable,
+        uint256 reserveRisky,
+        uint256 reserveStable,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
+    event InvariantError();
+    event PoolExpiredError();
+    event UnknownError(string msg);
+
     function swap_helper(SwapHelper memory s) internal {
         swap_pre_condition_2(s.deltaIn, s.deltaOut);
 
         int128 pre_invariant = engine.invariantOf(s.poolId);
         (uint128 pre_risky, uint128 pre_stable, , , , , ) = engine.reserves(s.poolId);
+
+        require(s.riskyForStable ? pre_stable >= s.deltaOut : pre_risky >= s.deltaOut);
         try
             engine.swap(
                 address(this),
@@ -419,9 +438,23 @@ contract E2E_swap_2 {
             )
         {
             check_swap_invariants(s.poolId, s.riskyForStable, pre_invariant, pre_risky, pre_stable);
-        } catch {
+        } catch (bytes memory err) {
+            // better logging
+            if (keccak256(abi.encodeWithSignature("InvariantError(int128,int128)")) == keccak256(err)) {
+                emit InvariantError();
+            } else if (keccak256(abi.encodeWithSignature("PoolExpiredError()")) == keccak256(err)) {
+                emit PoolExpiredError();
+            } else {
+                emit UnknownError("UK");
+            }
+
+            emit FailedSwap(s.poolId, s.riskyForStable, pre_risky, pre_stable, s.deltaIn, s.deltaOut);
             assert(false);
         }
+        //catch {
+        //    emit FailedSwap(s.poolId, s.riskyForStable, s.deltaIn, s.deltaOut);
+        //    assert(false);
+        //}
     }
 
     function swap_helper_2(SwapHelper memory s) internal returns (SwapState memory pre, SwapState memory post) {
