@@ -104,6 +104,120 @@ contract E2E_swap {
         _swap_helper(swapHelper);
     }
 
+    function test_reverse_swap(uint128 _amountIn) public {
+        // Step 1 - conditions
+        require(_amountIn != 0);
+
+        // Step 2
+        if (!inited) _init(_amountIn);
+
+        // Step 3
+        bytes32 poolId = poolIds[0];
+        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
+        uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
+        {
+            uint256 maxDeltaIn = _compute_max_swap_input(true, reserveRisky, reserveStable, liquidity, strike);
+            _amountIn = uint128(1 + (_amountIn % (maxDeltaIn - 1))); // add 1 so its always > 0
+        }
+
+        ExactInput memory exactIn = ExactInput({
+            poolId: poolId,
+            amountIn: uint128(_amountIn),
+            reserveRisky: reserveRisky,
+            reserveStable: reserveStable,
+            reserveLiquidity: liquidity,
+            strike: strike,
+            sigma: sigma,
+            gamma: gamma,
+            maturity: maturity,
+            tau: tau
+        });
+
+        // Step 3 - conditions
+        _swap_precondition_1(exactIn.maturity);
+
+        // Step 4
+        uint256 amountOut = _simulate_exact_risky_in(exactIn);
+
+        SwapHelper memory swapHelper = SwapHelper({
+            poolId: poolId,
+            riskyForStable: true,
+            deltaIn: exactIn.amountIn,
+            deltaOut: amountOut,
+            fromMargin: false,
+            toMargin: false
+        });
+
+        // Step 5 - Swap some amount in forward direction
+        _swap_pre_condition_2(swapHelper.deltaIn, swapHelper.deltaOut);
+        if (risky.balanceOf(address(this)) < exactIn.amountIn) risky.mint(address(this), exactIn.amountIn);
+        _swap_helper(swapHelper);
+
+        // Step 6 - Then swap it back
+        require(exactIn.gamma < 10000); // fee is non-zero
+        swapHelper = SwapHelper({
+            poolId: poolId,
+            riskyForStable: false,
+            deltaIn: amountOut,
+            deltaOut: exactIn.amountIn, // should not be getting same amount out, since fees were paid
+            fromMargin: false,
+            toMargin: false
+        });
+        _reverting_swap_helper(swapHelper);
+    }
+
+    function test_swap_stable_in(uint128 _amountIn) public {
+        // Step 1 - conditions
+        require(_amountIn != 0);
+
+        // Step 2
+        if (!inited) _init(_amountIn);
+
+        // Step 3
+        bytes32 poolId = poolIds[0];
+        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
+        uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
+        {
+            uint256 maxDeltaIn = _compute_max_swap_input(false, reserveRisky, reserveStable, liquidity, strike);
+            _amountIn = uint128(1 + (_amountIn % (maxDeltaIn - 1))); // add 1 so its always > 0
+        }
+
+        ExactInput memory exactIn = ExactInput({
+            poolId: poolId,
+            amountIn: uint128(_amountIn),
+            reserveRisky: reserveRisky,
+            reserveStable: reserveStable,
+            reserveLiquidity: liquidity,
+            strike: strike,
+            sigma: sigma,
+            gamma: gamma,
+            maturity: maturity,
+            tau: tau
+        });
+
+        // Step 3 - conditions
+        _swap_precondition_1(exactIn.maturity);
+
+        // Step 4
+        uint256 amountOut = _simulate_exact_stable_in(exactIn);
+
+        SwapHelper memory swapHelper = SwapHelper({
+            poolId: poolId,
+            riskyForStable: false,
+            deltaIn: exactIn.amountIn,
+            deltaOut: amountOut,
+            fromMargin: false,
+            toMargin: false
+        });
+
+        // Step 5
+        _swap_pre_condition_2(swapHelper.deltaIn, swapHelper.deltaOut);
+        if (stable.balanceOf(address(this)) < exactIn.amountIn) stable.mint(address(this), exactIn.amountIn);
+        _swap_helper(swapHelper);
+    }
+
     // Utils
 
     function check_swap_invariants(
@@ -208,6 +322,56 @@ contract E2E_swap {
 
         uint256 upscaledAdjustedStable = (adjustedStable * i.reserveLiquidity) / 1e18 + 1; // round up on output reserve
         deltaOut = uint256(i.reserveStable) - upscaledAdjustedStable; // total
+        return deltaOut;
+    }
+
+    function _simulate_exact_stable_in(ExactInput memory i) internal returns (uint256) {
+        // riskyDecimals, stableDecinmals = 18 for now
+        // Need timestamp updated
+        int128 invariantBefore = engine.invariantOf(i.poolId);
+
+        uint256 deltaOut;
+        uint256 adjustedRisky;
+        uint256 adjustedStable;
+        {
+            uint256 deltaInWithFee = (i.amountIn * i.gamma) / 1e4; // amount * (1 - fee %)
+            uint256 upscaledAdjustedStable = uint256(i.reserveStable) + deltaInWithFee; // total
+
+            // compute delta out
+            adjustedStable = (upscaledAdjustedStable * 1e18) / i.reserveLiquidity; // per
+            adjustedRisky = get_risky_given_stable_bisection(adjustedStable, i.strike, i.sigma, i.tau);
+            //adjustedRisky = ReplicationMath.getRiskyGivenStable(
+            //    invariantBefore,
+            //    engine.scaleFactorRisky(),
+            //    engine.scaleFactorStable(),
+            //    adjustedStable,
+            //    i.strike,
+            //    i.sigma,
+            //    i.tau
+            //);
+            adjustedRisky += 1; // round up on output reserve
+        }
+
+        require(i.tau == 0 ? adjustedRisky >= 0 : adjustedRisky > 0);
+        require(i.tau == 0 ? adjustedStable >= 0 : adjustedStable > 0);
+        require(adjustedRisky <= 10**risky.decimals());
+        require(adjustedStable <= i.strike);
+
+        int128 invariantAfter = ReplicationMath.calcInvariant(
+            engine.scaleFactorRisky(),
+            engine.scaleFactorStable(),
+            adjustedRisky,
+            adjustedStable,
+            i.strike,
+            i.sigma,
+            i.tau
+        );
+
+        emit InvariantCheck(invariantBefore, invariantAfter);
+        assert(invariantAfter >= invariantBefore);
+
+        uint256 upscaleAdjustedRisky = (adjustedRisky * i.reserveLiquidity) / 1e18 + 1; // round up on output reserve
+        deltaOut = uint256(i.reserveRisky) - upscaleAdjustedRisky; // total
         return deltaOut;
     }
 
@@ -411,6 +575,27 @@ contract E2E_swap {
         }
     }
 
+    function _reverting_swap_helper(SwapHelper memory s) internal {
+        (uint128 pre_risky, uint128 pre_stable, , , , , ) = engine.reserves(s.poolId);
+        require(s.riskyForStable ? pre_stable >= s.deltaOut : pre_risky >= s.deltaOut);
+        try
+            engine.swap(
+                address(this),
+                s.poolId,
+                s.riskyForStable,
+                s.deltaIn,
+                s.deltaOut,
+                s.fromMargin,
+                s.toMargin,
+                abi.encode(0)
+            )
+        {
+            assert(false);
+        } catch {
+            assert(true);
+        }
+    }
+
     event AddedPool(
         bytes32 poolId,
         uint256 riskyPerLiquidity,
@@ -510,5 +695,88 @@ contract E2E_swap {
         if (delStable > 0) {
             stable.transfer(address(engine), delStable);
         }
+    }
+
+    // Bisection
+    function epsilon() internal view returns (uint256) {
+        return 10**(risky.decimals() - 3);
+    }
+
+    function max_precision() internal view returns (uint256) {
+        return 10**(risky.decimals() - 5);
+    }
+
+    function get_risky_given_stable_bisection(
+        uint256 res_stable,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) internal returns (uint256) {
+        uint256 scale_risky = engine.scaleFactorRisky();
+        uint256 scale_stable = engine.scaleFactorStable();
+
+        bargs = BisectionArgs({
+            scale_risky: scale_risky,
+            scale_stable: scale_stable,
+            res_stable: res_stable,
+            strike: strike,
+            sigma: sigma,
+            tau: tau
+        });
+
+        uint256 precision = max_precision(); // 5 decimal places
+        uint256 max_risky = 10**risky.decimals(); // 1
+        int128 i_max_precision = bisection_method(precision);
+        int128 i_max_risky_less_precision = bisection_method(max_risky - precision);
+
+        // if max precision is positive, and max risky less precision is negative, true
+        // else max precision is negative, if max risky less precision is position, true
+        uint256 optimal_out;
+        if (i_max_precision >= 0 ? i_max_risky_less_precision < 0 : i_max_risky_less_precision >= 0) {
+            optimal_out = bisection(precision, max_risky - precision);
+        } else {
+            optimal_out = max_risky;
+        }
+
+        return optimal_out;
+    }
+
+    struct BisectionArgs {
+        uint256 scale_risky;
+        uint256 scale_stable;
+        uint256 res_stable;
+        uint256 strike;
+        uint256 sigma;
+        uint256 tau;
+    }
+
+    BisectionArgs internal bargs;
+
+    function bisection_method(uint256 v) internal returns (int128) {
+        BisectionArgs memory b = bargs;
+        return ReplicationMath.calcInvariant(b.scale_risky, b.scale_stable, v, b.res_stable, b.strike, b.sigma, b.tau);
+    }
+
+    function bisection(uint256 a, uint256 b) internal returns (uint256) {
+        require(bisection_method(a) * bisection_method(b) < 0);
+
+        uint256 EPSILON = epsilon();
+
+        uint256 c = a;
+
+        uint256 diff;
+        unchecked {
+            diff = b - a;
+        }
+
+        while (diff >= EPSILON) {
+            c = (a + b) / 2;
+
+            if (bisection_method(c) == 0) break;
+            else if (bisection_method(c) * bisection_method(a) < 0) b = c;
+            else a = c;
+        }
+
+        return c;
     }
 }
