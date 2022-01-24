@@ -3,7 +3,7 @@ initialize: contracts/crytic/init.json
 # testMode: benchmark
 # testMode: optimization
 testMode: assertion
-testLimit: 200
+testLimit: 500
 shrinkLimit: 500
 propMaxGas: 800003000
 testMaxGas: 800003000
