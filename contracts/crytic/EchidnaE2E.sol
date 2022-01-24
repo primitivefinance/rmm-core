@@ -6,7 +6,7 @@ import "../test/TestRouter.sol";
 import "../test/TestToken.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2E.yaml
-contract EchidnaE2E1 {
+contract EchidnaE2E2 {
     struct PoolData {
         Reserve.Data reserve;
         Margin.Data margin;
@@ -25,6 +25,7 @@ contract EchidnaE2E1 {
     function one_to_max_uint64(uint256 random) internal returns (uint256) {
         return 1 + (random % (type(uint64).max - 1));
     }
+
     function retrieve_current_pool_data(bytes32 poolId, bool isPrecall) private {
         PoolData storage data;
         if (isPrecall) {
@@ -247,20 +248,30 @@ contract EchidnaE2E1 {
         }
     }
 
+    event AllocateRemoveDifference(uint256 delRisky, uint256 removeRisky);
+    event AllocateDelLiquidity(uint256 delLiquidity);
+
     function check_allocate_remove_inverses(
         uint256 randomId,
-        uint256 delRisky,
-        uint256 delStable,
+        uint256 unboundedRisky,
+        uint256 unboundedStable,
         bool fromMargin
     ) public {
-        bytes32 poolId = retrieve_created_pool(randomId);
-        allocate_should_succeed(poolId, delRisky, delStable, fromMargin);
+        (bytes32 poolId, uint256 delRisky, uint256 delStable, uint256 delLiquidity) = allocate_with_safe_range(
+            randomId,
+            unboundedRisky,
+            unboundedStable,
+            fromMargin
+        ); //these are actual amounts allocated 
 
-        (uint256 removeRisky, uint256 removeStable) = remove_should_succeed(poolId, allocate_delLiquidity);
+        // these are calculated the amount returned when remove is called 
+        (uint256 removeRisky, uint256 removeStable) = remove_should_succeed(poolId, delLiquidity);
+        emit AllocateRemoveDifference(delRisky, removeRisky);
+        emit AllocateRemoveDifference(delStable, removeStable);
+        emit AllocateDelLiquidity(delLiquidity);
 
         assert(delRisky == removeRisky);
         assert(delStable == removeStable);
-        allocate_delLiquidity = 0;
     }
 
     event AllocateFailed(string reason, uint256 risky, uint256 stable);
@@ -271,7 +282,14 @@ contract EchidnaE2E1 {
         uint256 delRisky,
         uint256 delStable,
         bool fromMargin
-    ) public {
+    )
+        public
+        returns (
+            bytes32,
+            uint256,
+            uint256, uint256
+        )
+    {
         if (fromMargin) {
             delRisky = one_to_max_uint64(delRisky);
             delStable = one_to_max_uint64(delStable);
@@ -281,26 +299,27 @@ contract EchidnaE2E1 {
         (, , uint32 maturity, , ) = engine.calibrations(poolId);
         require(maturity >= engine.time()); //pool must not be expired
 
-        if (fromMargin) {
-            (uint128 marginRisky, uint128 marginStable) = engine.margins(address(this));
-            if (marginRisky < delRisky || marginStable < delStable) {
-                deposit_should_succeed(address(this), delRisky, delStable);
-            }
-            allocate_should_succeed(poolId, delRisky, delStable, true);
-        } else {
-            allocate_should_succeed(poolId, delRisky, delStable, false);
-        }
+        uint256 delLiquidity = allocate_should_succeed(poolId, delRisky, delStable, fromMargin);
+        return (poolId, delRisky, delStable, delLiquidity);
     }
 
-    uint256 allocate_delLiquidity;
+    event AllocateMarginBalance(
+        uint128 riskyBefore,
+        uint128 stableBefore,
+        uint256 delRisky,
+        uint256 delStable,
+        bool fromMargin,
+        uint256 delLiquidity
+    );
 
     function allocate_should_succeed(
         bytes32 poolId,
         uint256 delRisky,
         uint256 delStable,
         bool fromMargin
-    ) internal {
+    ) internal returns (uint256) {
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(address(this));
+        require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
         retrieve_current_pool_data(poolId, true);
         uint256 preCalcLiquidity;
         {
@@ -309,7 +328,14 @@ contract EchidnaE2E1 {
             preCalcLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
             require(preCalcLiquidity > 0);
         }
-
+        emit AllocateMarginBalance(
+            marginRiskyBefore, //12982825685260963525
+            marginStableBefore, //31951231080592453286977
+            delRisky, //11690716499924447162
+            delStable, //15918890351946963036
+            fromMargin, //true
+            preCalcLiquidity //1618438288998869
+        );
         try engine.allocate(poolId, address(this), delRisky, delStable, fromMargin, abi.encode(0)) returns (
             uint256 delLiquidity
         ) {
@@ -323,7 +349,6 @@ contract EchidnaE2E1 {
                 assert(postcall.reserve.liquidity - precall.reserve.liquidity == delLiquidity);
                 // save delLiquidity
                 assert(preCalcLiquidity == delLiquidity);
-                allocate_delLiquidity = delLiquidity;
                 (uint128 marginRiskyAfter, uint128 marginStableAfter) = engine.margins(address(this));
                 if (fromMargin) {
                     assert(marginRiskyAfter == marginRiskyBefore - delRisky);
@@ -332,6 +357,7 @@ contract EchidnaE2E1 {
                     assert(marginRiskyAfter == marginRiskyBefore);
                     assert(marginStableAfter == marginStableBefore);
                 }
+                return delLiquidity;
             }
         } catch {
             assert(false);
@@ -490,8 +516,7 @@ contract EchidnaE2E1 {
         delRisky = one_to_max_uint64(delRisky);
         delStable = one_to_max_uint64(delStable);
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(recipient);
-        require(marginRiskyBefore >= delRisky);
-        require(marginStableBefore >= delStable);
+        require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
         withdraw_should_succeed(recipient, delRisky, delStable);
     }
 
@@ -507,12 +532,7 @@ contract EchidnaE2E1 {
         }
     }
 
-    event Withdraw(
-        uint128 marginRiskyBefore,
-        uint128 marginStableBefore,
-        uint256 delRisky,
-        uint256 delStable
-    );
+    event Withdraw(uint128 marginRiskyBefore, uint128 marginStableBefore, uint256 delRisky, uint256 delStable);
     event FailureReason(string reason);
 
     function withdraw_should_succeed(
@@ -577,34 +597,65 @@ contract EchidnaE2E1 {
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
         {
-            uint256 maxDeltaIn = get_max_deltaIn(riskyForStable % 2 == 0 ? true : false, reserveRisky, reserveStable, liquidity, strike);
-            deltaIn = 1 + deltaIn % maxDeltaIn;
+            uint256 maxDeltaIn = get_max_deltaIn(
+                riskyForStable % 2 == 0 ? true : false,
+                reserveRisky,
+                reserveStable,
+                liquidity,
+                strike
+            );
+            deltaIn = 1 + (deltaIn % maxDeltaIn);
         }
         ExactInput memory exactInput = ExactInput({
-            poolId: poolId, amountIn: deltaIn, reserveRisky: reserveRisky, reserveStable: reserveStable, reserveLiquidity: liquidity, strike: strike, sigma: sigma, gamma: gamma, tau: tau
+            poolId: poolId,
+            amountIn: deltaIn,
+            reserveRisky: reserveRisky,
+            reserveStable: reserveStable,
+            reserveLiquidity: liquidity,
+            strike: strike,
+            sigma: sigma,
+            gamma: gamma,
+            tau: tau
         });
-        uint256 deltaOut = (riskyForStable % 2 == 0 ? true : false) ? 
-            exactRiskyInput(exactInput) :
-            exactStableInput(exactInput);
-        
+        uint256 deltaOut = (riskyForStable % 2 == 0 ? true : false)
+            ? exactRiskyInput(exactInput)
+            : exactStableInput(exactInput);
+
         SwapHelper memory swapHelper = SwapHelper({
-            poolId: poolId, riskyForStable: riskyForStable % 2 == 0 ? true : false, deltaIn: deltaIn, deltaOut: deltaOut, fromMargin: false, toMargin: false
-        });
-        swap_helper(swapHelper);
-        
-        (reserveRisky, reserveStable, liquidity, , , , ) = engine.reserves(poolId);
-        exactInput = ExactInput({
-            poolId: poolId, amountIn: deltaOut, reserveRisky: reserveRisky, reserveStable: reserveStable, reserveLiquidity: liquidity, strike: strike, sigma: sigma, gamma: gamma, tau: tau
-        });
-        deltaOut = (riskyForStable % 2 == 1 ? true : false) ? 
-            exactRiskyInput(exactInput) :
-            exactStableInput(exactInput);
-        assert(deltaOut == deltaIn);
-        swapHelper = SwapHelper({
-            poolId: poolId, riskyForStable: riskyForStable % 2 == 1 ? true : false, deltaIn: deltaIn, deltaOut: deltaOut, fromMargin: false, toMargin: false
+            poolId: poolId,
+            riskyForStable: riskyForStable % 2 == 0 ? true : false,
+            deltaIn: deltaIn,
+            deltaOut: deltaOut,
+            fromMargin: false,
+            toMargin: false
         });
         swap_helper(swapHelper);
 
+        (reserveRisky, reserveStable, liquidity, , , , ) = engine.reserves(poolId);
+        exactInput = ExactInput({
+            poolId: poolId,
+            amountIn: deltaOut,
+            reserveRisky: reserveRisky,
+            reserveStable: reserveStable,
+            reserveLiquidity: liquidity,
+            strike: strike,
+            sigma: sigma,
+            gamma: gamma,
+            tau: tau
+        });
+        deltaOut = (riskyForStable % 2 == 1 ? true : false)
+            ? exactRiskyInput(exactInput)
+            : exactStableInput(exactInput);
+        assert(deltaOut == deltaIn);
+        swapHelper = SwapHelper({
+            poolId: poolId,
+            riskyForStable: riskyForStable % 2 == 1 ? true : false,
+            deltaIn: deltaIn,
+            deltaOut: deltaOut,
+            fromMargin: false,
+            toMargin: false
+        });
+        swap_helper(swapHelper);
     }
 
     struct SwapHelper {
@@ -618,7 +669,18 @@ contract EchidnaE2E1 {
 
     function swap_helper(SwapHelper memory s) internal {
         (uint128 reserveRiskyBefore, uint128 reserveStableBefore, , , , , ) = engine.reserves(s.poolId);
-        try engine.swap(address(this), s.poolId, s.riskyForStable, s.deltaIn, s.deltaOut, s.fromMargin, s.toMargin, abi.encode(0)) {
+        try
+            engine.swap(
+                address(this),
+                s.poolId,
+                s.riskyForStable,
+                s.deltaIn,
+                s.deltaOut,
+                s.fromMargin,
+                s.toMargin,
+                abi.encode(0)
+            )
+        {
             (uint128 reserveRiskyAfter, uint128 reserveStableAfter, , , , , ) = engine.reserves(s.poolId);
             if (s.riskyForStable) {
                 // This will fail if deltaInWithFee == 0
@@ -685,7 +747,7 @@ contract EchidnaE2E1 {
         // riskyDecimals, stableDecinmals = 18 for now
         // Need timestamp updated
         int128 invariantBefore = engine.invariantOf(i.poolId);
-        
+
         uint256 adjustedStable;
         {
             uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4;
