@@ -5,7 +5,7 @@ import "../interfaces/IERC20.sol";
 import "../test/TestRouter.sol";
 import "../test/TestToken.sol";
 
-// npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2E.yaml
+// npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract E2E_swap --config contracts/crytic/E2E_swap.yaml
 contract E2E_swap {
     TestToken risky = TestToken(0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48);
     TestToken stable = TestToken(0x1D7022f5B17d2F8B695918FB48fa1089C9f85401);
@@ -15,135 +15,98 @@ contract E2E_swap {
     MockEngine engine = MockEngine(0x871DD7C2B4b25E1Aa18728e9D5f2Af4C4e431f5c);
     // WETH = 0xcdb594a32b1cc3479d8746279712c39d18a07fc0
     bytes32[] poolIds;
+
     bool inited;
+    PoolParams params;
+    CreateArgs createArgs;
 
-    // --- Tests ---
-    function create_pools(
-        uint256 _liquidity,
-        uint256 _riskyPerLp,
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity,
-        uint32 _gamma
-    ) public {
-        PoolParams memory params = forgeCalibration(_strike, _sigma, _maturity, _gamma);
-
-        uint256 max_risky = 10**risky.decimals(); // one
-        uint256 min_risky = 1;
-        uint256 random_risky = min_risky + (_riskyPerLp % (max_risky - min_risky));
-        require(random_risky < max_risky);
-
-        uint256 random_liquidity = 1 ether + ((_liquidity % (type(uint64).max)) - 1 ether); // initial liquidity seeding
-        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(params, random_risky, random_liquidity);
-
-        mint_tokens(delRisky, delStable);
-
-        emit CreatingPool(random_risky, random_liquidity);
-        create_helper(params, random_risky, random_liquidity, abi.encode(0));
+    constructor() public {
+        risky.mint(address(this), 1e11 ether);
+        stable.mint(address(this), 1e11 ether);
     }
 
-    function test_swap_risky_in(
-        uint256 randomId,
-        uint256 deltaIn,
-        uint256 riskyForStable
-    ) public {
-        SwapHelper memory swapHelper;
+    // Tests
 
-        bytes32 poolId = retrieve_created_pool(randomId);
-        bool swapRiskyIn = riskyForStable % 2 == 0 ? true : false;
+    // just to stay sane
+    function test_init(uint128 _seed) public {
+        if (!inited) _init(_seed);
 
-        // swap forward
-        ExactInput memory forward = get_exact_input(poolId, deltaIn, swapRiskyIn);
-        uint256 forward_delta_out = swapRiskyIn ? simulate_exact_risky_in(forward) : simulate_exact_stable_in(forward);
-        int128 forward_invariant_cache = engine.invariantOf(poolId);
+        // Step 1
+        uint32 time = uint32(engine.time());
+        assert(params.strike > 0);
+        assert(params.sigma > 0);
+        assert(params.gamma > 0);
+        assert(params.maturity >= time);
+        assert(params.lastTimestamp >= time);
 
-        swapHelper = SwapHelper({
+        // Step 2
+        assert(createArgs.riskyPerLp > 0);
+        assert(createArgs.riskyPerLp <= _getMaxRisky());
+        assert(createArgs.delLiquidity >= engine.MIN_LIQUIDITY());
+
+        // Step 4
+        assert(poolIds.length > 0);
+        assert(risky.balanceOf(address(engine)) > 0);
+        assert(stable.balanceOf(address(engine)) > 0);
+
+        // Step 5
+        assert(inited);
+    }
+
+    function test_swap_risky_in(uint128 _amountIn) public {
+        // Step 1 - conditions
+        require(_amountIn != 0);
+
+        // Step 2
+        if (!inited) _init(_amountIn);
+
+        // Step 3
+        bytes32 poolId = poolIds[0];
+        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
+        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
+        uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
+        {
+            uint256 maxDeltaIn = _compute_max_swap_input(true, reserveRisky, reserveStable, liquidity, strike);
+            _amountIn = uint128(1 + (_amountIn % (maxDeltaIn - 1))); // add 1 so its always > 0
+        }
+
+        ExactInput memory exactIn = ExactInput({
             poolId: poolId,
-            riskyForStable: swapRiskyIn,
-            deltaIn: forward.amountIn,
-            deltaOut: forward_delta_out,
+            amountIn: uint128(_amountIn),
+            reserveRisky: reserveRisky,
+            reserveStable: reserveStable,
+            reserveLiquidity: liquidity,
+            strike: strike,
+            sigma: sigma,
+            gamma: gamma,
+            maturity: maturity,
+            tau: tau
+        });
+
+        // Step 3 - conditions
+        _swap_precondition_1(exactIn.maturity);
+
+        // Step 4
+        uint256 amountOut = _simulate_exact_risky_in(exactIn);
+
+        SwapHelper memory swapHelper = SwapHelper({
+            poolId: poolId,
+            riskyForStable: true,
+            deltaIn: exactIn.amountIn,
+            deltaOut: amountOut,
             fromMargin: false,
             toMargin: false
         });
 
-        check_swap_pre_condition_2(swapHelper.deltaIn, swapHelper.deltaOut);
-        mint_tokens(swapHelper.deltaIn, swapHelper.deltaOut);
-        swap_helper(swapHelper);
+        // Step 5
+        _swap_pre_condition_2(swapHelper.deltaIn, swapHelper.deltaOut);
+        if (risky.balanceOf(address(this)) < exactIn.amountIn) risky.mint(address(this), exactIn.amountIn);
+        _swap_helper(swapHelper);
     }
 
-    /// @notice Swap forward with `forward_delta_in` amount input, then swap backward using the output of the trade.
-    function check_reverse_swap(
-        uint256 randomId,
-        uint256 deltaIn,
-        uint256 riskyForStable
-    ) public {
-        SwapHelper memory swapHelper;
+    // Utils
 
-        bytes32 poolId = retrieve_created_pool(randomId);
-        bool swapRiskyIn = riskyForStable % 2 == 0 ? true : false;
-
-        // swap forward
-        ExactInput memory forward = get_exact_input(poolId, deltaIn, swapRiskyIn);
-        uint256 forward_delta_out = swapRiskyIn ? simulate_exact_risky_in(forward) : simulate_exact_stable_in(forward);
-        int128 forward_invariant_cache = engine.invariantOf(poolId);
-
-        swapHelper = SwapHelper({
-            poolId: poolId,
-            riskyForStable: swapRiskyIn,
-            deltaIn: forward.amountIn,
-            deltaOut: forward_delta_out,
-            fromMargin: false,
-            toMargin: false
-        });
-
-        check_swap_pre_condition_2(swapHelper.deltaIn, swapHelper.deltaOut);
-        mint_tokens(swapHelper.deltaIn, swapHelper.deltaOut);
-        swap_helper(swapHelper);
-
-        // swap backward
-        uint256 backward_delta_in = forward_delta_out;
-        ExactInput memory backward = get_exact_input(poolId, backward_delta_in, !swapRiskyIn);
-        uint256 backward_delta_out = forward.amountIn + 1;
-        int128 backward_invariant_cache = engine.invariantOf(poolId);
-
-        swapHelper = SwapHelper({
-            poolId: poolId,
-            riskyForStable: !swapRiskyIn,
-            deltaIn: backward_delta_in,
-            deltaOut: backward_delta_out,
-            fromMargin: false,
-            toMargin: false
-        });
-
-        mint_tokens(swapHelper.deltaIn, swapHelper.deltaOut);
-
-        // should revert
-        swap_should_revert(swapHelper);
-    }
-
-    // --- Checks ---
-    function check_swap_pre_conditions(
-        uint32 maturity,
-        uint256 input,
-        uint256 output
-    ) internal {
-        /// #pre1
-        require(maturity + engine.BUFFER() >= uint32(engine.time()));
-        /// #pre2
-        require(input * output > 0);
-    }
-
-    function check_swap_precondition_1(uint32 maturity) internal {
-        /// #pre1
-        require(maturity + engine.BUFFER() >= uint32(engine.time()));
-    }
-
-    function check_swap_pre_condition_2(uint256 input, uint256 output) internal {
-        /// #pre2
-        require(input * output > 0);
-    }
-
-    function check_post_swap_conditions(
+    function check_swap_invariants(
         bytes32 poolId,
         bool riskyForStable,
         int128 pre_invariant,
@@ -175,7 +138,15 @@ contract E2E_swap {
         }
     }
 
-    // --- Swap Utils ---
+    function _swap_precondition_1(uint32 maturity) internal {
+        require(maturity + engine.BUFFER() >= uint32(engine.time()));
+    }
+
+    function _swap_pre_condition_2(uint256 input, uint256 output) internal {
+        require(input != 0 && output != 0);
+    }
+
+    event InvariantCheck(int128 pre, int128 post);
 
     // parameters for a swap
     struct ExactInput {
@@ -187,164 +158,124 @@ contract E2E_swap {
         uint128 strike;
         uint32 sigma;
         uint32 gamma;
+        uint32 maturity;
         uint32 tau;
     }
 
-    function get_exact_input(
-        bytes32 poolId,
-        uint256 deltaIn,
-        bool riskyForStable
-    ) internal returns (ExactInput memory exactInput) {
-        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
-        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
-        uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
-
-        uint256 maxDeltaIn = get_max_deltaIn(riskyForStable, reserveRisky, reserveStable, liquidity, strike);
-        deltaIn = 1 + (deltaIn % maxDeltaIn); // add 1 so its always > 0
-
-        exactInput = ExactInput({
-            poolId: poolId,
-            amountIn: deltaIn,
-            reserveRisky: reserveRisky,
-            reserveStable: reserveStable,
-            reserveLiquidity: liquidity,
-            strike: strike,
-            sigma: sigma,
-            gamma: gamma,
-            tau: tau
-        });
-
-        check_swap_precondition_1(maturity);
-    }
-
-    /**
-        Simulating a swap guide
-
-        1. Apply Fee to amountIn
-        2. Adjust input reserve with amountInWithFeeApplied and normalize to per liquidity share
-        3. Compute output reserve per liquidity share given adjusted input reserve per liquidity share
-        4. Normalize output reserve per liquidity share to output reserve for total liquidity
-        5. Compute new reserves given amountIn (not amountInWithFeeApplied) and amountOut
-    */
-    function simulate_exact_risky_in(ExactInput memory i) internal returns (uint256) {
+    function _simulate_exact_risky_in(ExactInput memory i) internal returns (uint256) {
         // riskyDecimals, stableDecinmals = 18 for now
         // Need timestamp updated
         int128 invariantBefore = engine.invariantOf(i.poolId);
-        uint256 upscaledAdjustedStable;
-        {
-            uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4; // 1. apply fee
-            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + amountInWithFee; // 2. Adjust input reset
 
-            uint256 downscaledRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity;
-            uint256 downscaledStable = ReplicationMath.getStableGivenRisky(
+        uint256 deltaOut;
+        uint256 adjustedRisky;
+        uint256 adjustedStable;
+        {
+            uint256 deltaInWithFee = (i.amountIn * i.gamma) / 1e4; // amount * (1 - fee %)
+            uint256 upscaledAdjustedRisky = uint256(i.reserveRisky) + deltaInWithFee; // total
+
+            // compute delta out
+            adjustedRisky = (upscaledAdjustedRisky * 1e18) / i.reserveLiquidity; // per
+            adjustedStable = ReplicationMath.getStableGivenRisky(
                 invariantBefore,
                 engine.scaleFactorRisky(),
                 engine.scaleFactorStable(),
-                downscaledRisky,
-                i.strike,
-                i.sigma,
-                i.tau
-            ); // 3. compute output reserve per liquidity
-
-            upscaledAdjustedStable = (downscaledStable * i.reserveLiquidity) / 1e18;
-        }
-
-        uint256 amountStableOut = i.reserveStable - upscaledAdjustedStable;
-
-        uint256 downscaledRes0 = (i.reserveRisky + i.amountIn) / i.reserveLiquidity;
-        uint256 downscaledRes1 = (i.reserveStable - amountStableOut) / i.reserveLiquidity;
-
-        require(downscaledRes0 <= 10**risky.decimals() || downscaledRes0 >= 0);
-        require(downscaledRes1 <= i.strike || downscaledRes1 >= 0);
-
-        int128 invariantAfter = ReplicationMath.calcInvariant(
-            engine.scaleFactorRisky(),
-            engine.scaleFactorStable(),
-            downscaledRes0,
-            downscaledRes1,
-            i.strike,
-            i.sigma,
-            i.tau
-        );
-        assert(invariantAfter >= invariantBefore);
-        return amountStableOut;
-    }
-
-    event SimulatedStableIn(uint256 res0, uint256 res1);
-
-    function simulate_exact_stable_in(ExactInput memory i) internal returns (uint256) {
-        // riskyDecimals, stableDecimals = 18 for now
-        // Need timestamp updated
-        int128 invariantBefore = engine.invariantOf(i.poolId);
-
-        uint256 downscaledAdjustedStable;
-        {
-            uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4;
-            uint256 upscaledAdjustedStable = uint256(i.reserveStable) + amountInWithFee;
-            downscaledAdjustedStable = (upscaledAdjustedStable * 1e18) / i.reserveLiquidity;
-        }
-
-        uint256 amountRiskyOut;
-        {
-            uint256 downscaledRisky = ReplicationMath.getRiskyGivenStable(
-                invariantBefore,
-                engine.scaleFactorRisky(),
-                engine.scaleFactorStable(),
-                downscaledAdjustedStable,
+                adjustedRisky,
                 i.strike,
                 i.sigma,
                 i.tau
             );
-            uint256 upscaledAdjustedRisky = (downscaledRisky * i.reserveLiquidity) / 1e18;
-            amountRiskyOut = i.reserveRisky - upscaledAdjustedRisky;
+            adjustedStable += 1; // round up on output reserve
         }
 
-        uint256 downscaledRes0 = (i.reserveRisky - amountRiskyOut) / i.reserveLiquidity;
-        uint256 downscaledRes1 = (i.reserveStable + i.amountIn) / i.reserveLiquidity;
-
-        emit SimulatedStableIn(downscaledRes0, downscaledRes1);
+        require(i.tau == 0 ? adjustedRisky >= 0 : adjustedRisky > 0);
+        require(i.tau == 0 ? adjustedStable >= 0 : adjustedStable > 0);
+        require(adjustedRisky <= 10**risky.decimals());
+        require(adjustedStable <= i.strike);
 
         int128 invariantAfter = ReplicationMath.calcInvariant(
             engine.scaleFactorRisky(),
             engine.scaleFactorStable(),
-            downscaledRes0,
-            downscaledRes1,
+            adjustedRisky,
+            adjustedStable,
             i.strike,
             i.sigma,
             i.tau
         );
+
+        emit InvariantCheck(invariantBefore, invariantAfter);
         assert(invariantAfter >= invariantBefore);
-        return amountRiskyOut;
+
+        uint256 upscaledAdjustedStable = (adjustedStable * i.reserveLiquidity) / 1e18 + 1; // round up on output reserve
+        deltaOut = uint256(i.reserveStable) - upscaledAdjustedStable; // total
+        return deltaOut;
     }
 
-    // --- Utils ---
-
-    function retrieve_created_pool(uint256 id) private returns (bytes32) {
-        require(poolIds.length > 0);
-        uint256 index = id % (poolIds.length);
-        return poolIds[index];
+    function _getMaxRisky() internal returns (uint256) {
+        return 10**risky.decimals();
     }
 
-    function get_max_deltaIn(
+    function _compute_max_swap_input(
         bool riskyForStable,
         uint128 reserveRisky,
         uint128 reserveStable,
         uint128 liquidity,
         uint128 strike
     ) internal returns (uint256) {
-        // max risky reserve = 1
-        uint256 one = 10**risky.decimals();
         if (riskyForStable) {
             uint256 riskyPerLiquidity = (uint256(reserveRisky) * 1e18) / liquidity;
-            return ((one - riskyPerLiquidity) * liquidity) / 1e18;
+            return (uint256(_getMaxRisky() - riskyPerLiquidity) * liquidity) / 1e18;
         } else {
-            // max stable reserve = strike
             uint256 stablePerLiquidity = (uint256(reserveStable) * 1e18) / liquidity;
             return (uint256(strike - stablePerLiquidity) * liquidity) / 1e18;
         }
     }
 
-    // --- Setup ---
+    // Setup
+
+    function _init(uint128 _seed) internal {
+        // Step 1
+        params = _forgeCalibration(_seed);
+
+        // Step 2
+        createArgs = _forgeCreateArgs(_seed);
+        (uint256 delRisky, uint256 delStable) = _calculate_create_pool_payment(
+            createArgs.riskyPerLp,
+            createArgs.delLiquidity,
+            params.strike,
+            params.sigma,
+            params.maturity
+        );
+
+        // Step 3
+        _mint_tokens(delRisky, delStable);
+
+        // Step 4
+        _create_helper(createArgs.riskyPerLp, createArgs.delLiquidity, abi.encode(0));
+
+        // Step 5
+        inited = true;
+    }
+
+    // verifies create argument `riskyPerLp`, and condition for non-zero reserves
+    function _calculate_create_pool_payment(
+        uint256 riskyPerLp,
+        uint256 delLiquidity,
+        uint128 _strike,
+        uint32 _sigma,
+        uint32 _maturity
+    ) internal returns (uint256 delRisky, uint256 delStable) {
+        uint256 factor0 = engine.scaleFactorRisky();
+        uint256 factor1 = engine.scaleFactorStable();
+        uint32 tau = _maturity - uint32(engine.time()); // time until expiry
+        require(riskyPerLp <= engine.PRECISION() / factor0);
+
+        delStable = ReplicationMath.getStableGivenRisky(0, factor0, factor1, riskyPerLp, _strike, _sigma, tau);
+        delRisky = (riskyPerLp * delLiquidity) / engine.PRECISION(); // riskyDecimals * 1e18 decimals / 1e18 = riskyDecimals
+        require(delRisky > 0);
+        delStable = (delStable * delLiquidity) / engine.PRECISION();
+        require(delStable > 0);
+    }
 
     struct PoolBounds {
         uint128 min_strike;
@@ -355,16 +286,6 @@ contract E2E_swap {
         uint32 max_gamma;
     }
 
-    PoolBounds bounds =
-        PoolBounds({
-            min_strike: 1 ether,
-            max_strike: 10_000 ether,
-            min_sigma: 100, // 0.01%
-            max_sigma: 10_000_000, // 1000%
-            min_gamma: 9_000, // 90%
-            max_gamma: 10_000 // 99.99%
-        });
-
     struct PoolParams {
         uint128 strike;
         uint32 sigma;
@@ -373,50 +294,75 @@ contract E2E_swap {
         uint32 gamma;
     }
 
-    function forgeCalibration(
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity,
-        uint32 _gamma
-    ) internal returns (PoolParams memory calibration) {
-        calibration.strike = uint128(bounds.min_strike + (_strike % (bounds.max_strike - bounds.min_strike)));
-        calibration.sigma = uint32(bounds.min_sigma + (_sigma % (bounds.max_sigma - bounds.min_sigma)));
-        calibration.gamma = uint32(bounds.min_gamma + (_gamma % (bounds.max_gamma - bounds.min_gamma)));
-        calibration.maturity = uint32(31556952 + _maturity);
+    /// should always return valid calibration parameters
+    function _forgeCalibration(uint256 _seed) internal returns (PoolParams memory calibration) {
+        PoolBounds memory bounds = PoolBounds({
+            min_strike: 1 ether,
+            max_strike: 10_000 ether,
+            min_sigma: 100, // 0.01%
+            max_sigma: 10_000_000, // 1000%
+            min_gamma: 9_000, // 90%
+            max_gamma: 10_000 // 99.99%
+        });
+
+        calibration.strike = uint128(bounds.min_strike + (_seed % (bounds.max_strike - bounds.min_strike)));
+        calibration.sigma = uint32(bounds.min_sigma + (_seed % (bounds.max_sigma - bounds.min_sigma)));
+        calibration.gamma = uint32(bounds.min_gamma + (_seed % (bounds.max_gamma - bounds.min_gamma)));
+        calibration.maturity = uint32(31556952 + ((_seed % (type(uint32).max)) - 1));
         calibration.lastTimestamp = uint32(engine.time());
         require(calibration.maturity >= calibration.lastTimestamp);
     }
 
-    function calculate_del_risky_and_stable(
-        PoolParams memory params,
-        uint256 riskyPerLp,
-        uint256 delLiquidity
-    ) internal returns (uint256 delRisky, uint256 delStable) {
-        uint256 factor0 = engine.scaleFactorRisky();
-        uint256 factor1 = engine.scaleFactorStable();
-        uint32 tau = params.maturity - uint32(engine.time()); // time until expiry
-        require(riskyPerLp <= engine.PRECISION() / factor0); // at least 1 wei
-
-        delRisky = (riskyPerLp * delLiquidity) / engine.PRECISION(); // riskyDecimals * 1e18 decimals / 1e18 = riskyDecimals
-        require(delRisky > 0);
-
-        // 0 invariant, because we are trying to set reserves such that invariant is 0!
-        delStable = ReplicationMath.getStableGivenRisky(
-            0,
-            factor0,
-            factor1,
-            riskyPerLp,
-            params.strike,
-            params.sigma,
-            tau
-        );
-        delStable = (delStable * delLiquidity) / engine.PRECISION();
-        require(delStable > 0);
+    struct CreateBounds {
+        uint256 min_risky;
+        uint256 max_risky;
+        uint256 min_liquidity;
+        uint256 max_liquidity;
     }
 
-    event CreatingPool(uint256 riskyPerLp, uint256 delLiquidity);
+    struct CreateArgs {
+        uint256 riskyPerLp;
+        uint256 delLiquidity;
+    }
 
-    // --- Helpers ---
+    uint256 min_liquidity_override = 1 ether;
+
+    // should always return valid create args
+    function _forgeCreateArgs(uint256 _seed) internal returns (CreateArgs memory args) {
+        CreateBounds memory bounds = CreateBounds({
+            min_risky: 1,
+            max_risky: _getMaxRisky(),
+            min_liquidity: engine.MIN_LIQUIDITY(),
+            max_liquidity: type(uint64).max
+        });
+
+        args.riskyPerLp = bounds.min_risky + (_seed % (bounds.max_risky - bounds.min_risky));
+        args.delLiquidity = bounds.min_liquidity + (_seed % (bounds.max_liquidity - bounds.min_liquidity));
+        args.delLiquidity += min_liquidity_override; // for swaps, seed inital liquidity beyond min
+        require(args.riskyPerLp <= engine.PRECISION() / engine.scaleFactorRisky());
+    }
+
+    function retrieve_created_pool(uint256 id) private returns (bytes32) {
+        require(poolIds.length > 0);
+        uint256 index = id % (poolIds.length);
+        return poolIds[index];
+    }
+
+    // Helper
+
+    event FailedSwap(
+        bytes32 poolId,
+        bool riskyForStable,
+        uint256 reserveRisky,
+        uint256 reserveStable,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+
+    event KnownError(string msg);
+    event UnknownError(string msg);
+    event Panicked(uint256 val);
+    event ErrorSig(bytes32 s);
 
     struct SwapHelper {
         bytes32 poolId;
@@ -427,9 +373,11 @@ contract E2E_swap {
         bool riskyForStable;
     }
 
-    function swap_helper(SwapHelper memory s) internal {
+    function _swap_helper(SwapHelper memory s) internal {
         int128 pre_invariant = engine.invariantOf(s.poolId);
         (uint128 pre_risky, uint128 pre_stable, , , , , ) = engine.reserves(s.poolId);
+
+        require(s.riskyForStable ? pre_stable >= s.deltaOut : pre_risky >= s.deltaOut);
         try
             engine.swap(
                 address(this),
@@ -442,35 +390,47 @@ contract E2E_swap {
                 abi.encode(0)
             )
         {
-            check_post_swap_conditions(s.poolId, s.riskyForStable, pre_invariant, pre_risky, pre_stable);
-        } catch {
+            check_swap_invariants(s.poolId, s.riskyForStable, pre_invariant, pre_risky, pre_stable);
+        } catch Error(string memory reason) {
+            emit KnownError(reason);
+        } catch Panic(uint256 code) {
+            emit Panicked(code);
+        } catch (bytes memory err) {
+            // better logging
+            if (bytes4(keccak256("InvariantError(int128,int128)")) == bytes4(err)) {
+                emit KnownError("InvariantError(int128,int128)");
+            } else if (bytes4(keccak256(("PoolExpiredError()"))) == bytes4(err)) {
+                emit KnownError("PoolExpiredError");
+            } else {
+                emit ErrorSig(keccak256(err));
+                emit UnknownError("Unknown");
+            }
+
+            emit FailedSwap(s.poolId, s.riskyForStable, pre_risky, pre_stable, s.deltaIn, s.deltaOut);
             assert(false);
         }
     }
 
-    function swap_should_revert(SwapHelper memory s) internal {
-        try
-            engine.swap(
-                address(this),
-                s.poolId,
-                s.riskyForStable,
-                s.deltaIn,
-                s.deltaOut,
-                s.fromMargin,
-                s.toMargin,
-                abi.encode(0)
-            )
-        {
-            assert(false);
-        } catch {
-            assert(true);
-        }
-    }
+    event AddedPool(
+        bytes32 poolId,
+        uint256 riskyPerLiquidity,
+        uint256 delLiquidity,
+        uint128 strike,
+        uint32 sigma,
+        uint32 maturity,
+        uint32 gamma,
+        uint32 timestamp
+    );
+    event FailedCreating(
+        uint128 strike,
+        uint32 sigma,
+        uint32 maturity,
+        uint32 gamma,
+        uint256 riskyPerLp,
+        uint256 liquidity
+    );
 
-    event AddedPool(bytes32 poolId, uint128 strike, uint32 sigma, uint32 maturity, uint32 gamma, uint32 timestamp);
-
-    function create_helper(
-        PoolParams memory params,
+    function _create_helper(
         uint256 riskyPerLp,
         uint256 delLiquidity,
         bytes memory data
@@ -499,6 +459,8 @@ contract E2E_swap {
             assert(calibrationMaturity == maturity);
             emit AddedPool(
                 poolId,
+                riskyPerLp,
+                delLiquidity,
                 calibrationStrike,
                 calibrationSigma,
                 calibrationMaturity,
@@ -506,18 +468,15 @@ contract E2E_swap {
                 calibrationTimestamp
             );
         } catch {
+            emit FailedCreating(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity);
             assert(false);
         }
     }
 
-    // --- Mint tokens ---
-
-    function mint_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
+    function _mint_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
         risky.mint(address(this), riskyAmt);
         stable.mint(address(this), stableAmt);
     }
-
-    // --- Callbacks ---
 
     function createCallback(
         uint256 delRisky,
