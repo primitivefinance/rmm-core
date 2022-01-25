@@ -1,12 +1,10 @@
 pragma solidity 0.8.6;
-import "../test/engine/MockEngine.sol";
 import "../PrimitiveFactory.sol";
 import "../interfaces/IERC20.sol";
-import "../test/TestRouter.sol";
-import "../test/TestToken.sol";
+import "./Addresses.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2E.yaml
-contract EchidnaE2E2 {
+contract EchidnaE2E3 is Addresses{
     struct PoolData {
         Reserve.Data reserve;
         Margin.Data margin;
@@ -14,12 +12,6 @@ contract EchidnaE2E2 {
     }
     PoolData precall;
     PoolData postcall;
-    MockEngine engine = MockEngine(0x871DD7C2B4b25E1Aa18728e9D5f2Af4C4e431f5c);
-    TestToken risky = TestToken(0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48);
-    TestToken stable = TestToken(0x1D7022f5B17d2F8B695918FB48fa1089C9f85401);
-    address manager = 0x1E2F9E10D02a6b8F8f69fcBf515e75039D2EA30d;
-    TestRouter router = TestRouter(0x0B1ba0af832d7C05fD64161E0Db78E85978E8082);
-    // WETH = 0xcdb594a32b1cc3479d8746279712c39d18a07fc0
     bytes32[] poolIds;
 
     function one_to_max_uint64(uint256 random) internal returns (uint256) {
@@ -250,28 +242,35 @@ contract EchidnaE2E2 {
 
     event AllocateRemoveDifference(uint256 delRisky, uint256 removeRisky);
     event AllocateDelLiquidity(uint256 delLiquidity);
+    struct AllocateCall {
+        uint256 delRisky;
+        uint256 delStable;
+        bytes32 poolId;
+        bool fromMargin;
+    }
 
     function check_allocate_remove_inverses(
         uint256 randomId,
-        uint256 unboundedRisky,
-        uint256 unboundedStable,
+        uint256 intendedLiquidity,
         bool fromMargin
     ) public {
-        (bytes32 poolId, uint256 delRisky, uint256 delStable, uint256 delLiquidity) = allocate_with_safe_range(
-            randomId,
-            unboundedRisky,
-            unboundedStable,
-            fromMargin
-        ); //these are actual amounts allocated 
+        AllocateCall memory allocate;
+        allocate.poolId = retrieve_created_pool(randomId);
+        retrieve_current_pool_data(allocate.poolId, true);
+        intendedLiquidity = one_to_max_uint64(intendedLiquidity);
+        allocate.delRisky = (intendedLiquidity * precall.reserve.reserveRisky) / precall.reserve.liquidity;
+        allocate.delStable = (intendedLiquidity * precall.reserve.reserveStable) / precall.reserve.liquidity;
 
-        // these are calculated the amount returned when remove is called 
-        (uint256 removeRisky, uint256 removeStable) = remove_should_succeed(poolId, delLiquidity);
-        emit AllocateRemoveDifference(delRisky, removeRisky);
-        emit AllocateRemoveDifference(delStable, removeStable);
-        emit AllocateDelLiquidity(delLiquidity);
+        uint256 delLiquidity = allocate_helper(allocate);
 
-        assert(delRisky == removeRisky);
-        assert(delStable == removeStable);
+        // these are calculated the amount returned when remove is called
+        (uint256 removeRisky, uint256 removeStable) = remove_should_succeed(allocate.poolId, delLiquidity);
+        emit AllocateRemoveDifference(allocate.delRisky, removeRisky);
+        emit AllocateRemoveDifference(allocate.delStable, removeStable);
+
+        assert(allocate.delRisky == removeRisky);
+        assert(allocate.delStable == removeStable);
+        assert(intendedLiquidity == delLiquidity);
     }
 
     event AllocateFailed(string reason, uint256 risky, uint256 stable);
@@ -282,77 +281,69 @@ contract EchidnaE2E2 {
         uint256 delRisky,
         uint256 delStable,
         bool fromMargin
-    )
-        public
-        returns (
-            bytes32,
-            uint256,
-            uint256, uint256
-        )
-    {
+    ) public {
         if (fromMargin) {
             delRisky = one_to_max_uint64(delRisky);
             delStable = one_to_max_uint64(delStable);
         }
-        mint_tokens(delRisky, delStable);
         bytes32 poolId = retrieve_created_pool(randomId);
-        (, , uint32 maturity, , ) = engine.calibrations(poolId);
-        require(maturity >= engine.time()); //pool must not be expired
-
-        uint256 delLiquidity = allocate_should_succeed(poolId, delRisky, delStable, fromMargin);
-        return (poolId, delRisky, delStable, delLiquidity);
+        AllocateCall memory args = AllocateCall({
+            delRisky: delRisky,
+            delStable: delStable,
+            fromMargin: fromMargin,
+            poolId: poolId
+        });
+        allocate_helper(args);
     }
 
-    event AllocateMarginBalance(
-        uint128 riskyBefore,
-        uint128 stableBefore,
-        uint256 delRisky,
-        uint256 delStable,
-        bool fromMargin,
-        uint256 delLiquidity
-    );
+    function allocate_helper(AllocateCall memory params) internal returns (uint256) {
+        mint_tokens(params.delRisky, params.delStable);
+        (, , uint32 maturity, , ) = engine.calibrations(params.poolId);
+        require(maturity >= engine.time()); //pool must not be expired
 
-    function allocate_should_succeed(
-        bytes32 poolId,
-        uint256 delRisky,
-        uint256 delStable,
-        bool fromMargin
-    ) internal returns (uint256) {
+        return allocate_should_succeed(params);
+    }
+
+    event AllocateMarginBalance(uint128 riskyBefore, uint128 stableBefore, uint256 delRisky, uint256 delStable);
+    event ReserveStatus(string functionName, uint256 liquidity, uint256 reserveRisky, uint256 reserveStable);
+
+    function allocate_should_succeed(AllocateCall memory params) internal returns (uint256) {
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(address(this));
-        require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
-        retrieve_current_pool_data(poolId, true);
+        require(marginRiskyBefore >= params.delRisky && marginStableBefore >= params.delStable);
+        retrieve_current_pool_data(params.poolId, true);
         uint256 preCalcLiquidity;
         {
-            uint256 liquidity0 = (delRisky * precall.reserve.liquidity) / uint256(precall.reserve.reserveRisky);
-            uint256 liquidity1 = (delStable * precall.reserve.liquidity) / uint256(precall.reserve.reserveStable);
+            uint256 liquidity0 = (params.delRisky * precall.reserve.liquidity) / uint256(precall.reserve.reserveRisky);
+            uint256 liquidity1 = (params.delStable * precall.reserve.liquidity) /
+                uint256(precall.reserve.reserveStable);
             preCalcLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
             require(preCalcLiquidity > 0);
         }
-        emit AllocateMarginBalance(
-            marginRiskyBefore, //12982825685260963525
-            marginStableBefore, //31951231080592453286977
-            delRisky, //11690716499924447162
-            delStable, //15918890351946963036
-            fromMargin, //true
-            preCalcLiquidity //1618438288998869
-        );
-        try engine.allocate(poolId, address(this), delRisky, delStable, fromMargin, abi.encode(0)) returns (
-            uint256 delLiquidity
-        ) {
+        emit AllocateMarginBalance(marginRiskyBefore, marginStableBefore, params.delRisky, params.delStable);
+        try
+            engine.allocate(
+                params.poolId,
+                address(this),
+                params.delRisky,
+                params.delStable,
+                params.fromMargin,
+                abi.encode(0)
+            )
+        returns (uint256 delLiquidity) {
             {
-                retrieve_current_pool_data(poolId, false);
+                retrieve_current_pool_data(params.poolId, false);
                 assert(postcall.reserve.blockTimestamp == engine.time());
                 assert(postcall.reserve.blockTimestamp >= postcall.reserve.blockTimestamp);
                 // reserves increase by allocated amount
-                assert(postcall.reserve.reserveRisky - precall.reserve.reserveRisky == delRisky);
-                assert(postcall.reserve.reserveStable - precall.reserve.reserveStable == delStable);
+                assert(postcall.reserve.reserveRisky - precall.reserve.reserveRisky == params.delRisky);
+                assert(postcall.reserve.reserveStable - precall.reserve.reserveStable == params.delStable);
                 assert(postcall.reserve.liquidity - precall.reserve.liquidity == delLiquidity);
                 // save delLiquidity
                 assert(preCalcLiquidity == delLiquidity);
                 (uint128 marginRiskyAfter, uint128 marginStableAfter) = engine.margins(address(this));
-                if (fromMargin) {
-                    assert(marginRiskyAfter == marginRiskyBefore - delRisky);
-                    assert(marginStableAfter == marginStableBefore - delStable);
+                if (params.fromMargin) {
+                    assert(marginRiskyAfter == marginRiskyBefore - params.delRisky);
+                    assert(marginStableAfter == marginStableBefore - params.delStable);
                 } else {
                     assert(marginRiskyAfter == marginRiskyBefore);
                     assert(marginStableAfter == marginStableBefore);
@@ -374,7 +365,6 @@ contract EchidnaE2E2 {
     function remove_should_succeed(bytes32 poolId, uint256 delLiquidity) internal returns (uint256, uint256) {
         retrieve_current_pool_data(poolId, true);
         (uint256 calcRisky, uint256 calcStable) = Reserve.getAmounts(precall.reserve, delLiquidity);
-
         if (
             delLiquidity == 0 ||
             delLiquidity > precall.liquidity ||
@@ -507,6 +497,8 @@ contract EchidnaE2E2 {
         }
     }
 
+    event WithdrawMargins(uint128 risky, uint128 stable, uint256 delRisky, uint256 delStable);
+
     function withdraw_with_safe_range(
         address recipient,
         uint256 delRisky,
@@ -517,6 +509,7 @@ contract EchidnaE2E2 {
         delStable = one_to_max_uint64(delStable);
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(recipient);
         require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
+        emit WithdrawMargins(marginRiskyBefore, marginStableBefore, delRisky, delStable);
         withdraw_should_succeed(recipient, delRisky, delStable);
     }
 
@@ -564,222 +557,6 @@ contract EchidnaE2E2 {
         } catch {
             assert(false);
         }
-    }
-
-    //function advance_time(uint256 time) public {
-    //	engine.advanceTime(time);
-    //}
-
-    function get_max_deltaIn(
-        bool riskyForStable,
-        uint128 reserveRisky,
-        uint128 reserveStable,
-        uint128 liquidity,
-        uint128 strike
-    ) internal returns (uint256) {
-        if (riskyForStable) {
-            uint256 riskyPerLiquidity = (reserveRisky * 1e18) / liquidity;
-            return ((risky.decimals() - riskyPerLiquidity) * liquidity) / 1e18;
-        } else {
-            uint256 stablePerLiquidity = (reserveStable * 1e18) / liquidity;
-            return ((strike - stablePerLiquidity) * liquidity) / 1e18;
-        }
-    }
-
-    function check_reverse_swap(
-        uint256 randomId,
-        uint256 deltaIn,
-        uint256 riskyForStable
-    ) public {
-        bytes32 poolId = retrieve_created_pool(randomId);
-        (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
-        require(maturity + engine.BUFFER() >= uint32(engine.time()));
-        uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
-        (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
-        {
-            uint256 maxDeltaIn = get_max_deltaIn(
-                riskyForStable % 2 == 0 ? true : false,
-                reserveRisky,
-                reserveStable,
-                liquidity,
-                strike
-            );
-            deltaIn = 1 + (deltaIn % maxDeltaIn);
-        }
-        ExactInput memory exactInput = ExactInput({
-            poolId: poolId,
-            amountIn: deltaIn,
-            reserveRisky: reserveRisky,
-            reserveStable: reserveStable,
-            reserveLiquidity: liquidity,
-            strike: strike,
-            sigma: sigma,
-            gamma: gamma,
-            tau: tau
-        });
-        uint256 deltaOut = (riskyForStable % 2 == 0 ? true : false)
-            ? exactRiskyInput(exactInput)
-            : exactStableInput(exactInput);
-
-        SwapHelper memory swapHelper = SwapHelper({
-            poolId: poolId,
-            riskyForStable: riskyForStable % 2 == 0 ? true : false,
-            deltaIn: deltaIn,
-            deltaOut: deltaOut,
-            fromMargin: false,
-            toMargin: false
-        });
-        swap_helper(swapHelper);
-
-        (reserveRisky, reserveStable, liquidity, , , , ) = engine.reserves(poolId);
-        exactInput = ExactInput({
-            poolId: poolId,
-            amountIn: deltaOut,
-            reserveRisky: reserveRisky,
-            reserveStable: reserveStable,
-            reserveLiquidity: liquidity,
-            strike: strike,
-            sigma: sigma,
-            gamma: gamma,
-            tau: tau
-        });
-        deltaOut = (riskyForStable % 2 == 1 ? true : false)
-            ? exactRiskyInput(exactInput)
-            : exactStableInput(exactInput);
-        assert(deltaOut == deltaIn);
-        swapHelper = SwapHelper({
-            poolId: poolId,
-            riskyForStable: riskyForStable % 2 == 1 ? true : false,
-            deltaIn: deltaIn,
-            deltaOut: deltaOut,
-            fromMargin: false,
-            toMargin: false
-        });
-        swap_helper(swapHelper);
-    }
-
-    struct SwapHelper {
-        bytes32 poolId;
-        uint256 deltaIn;
-        uint256 deltaOut;
-        bool fromMargin;
-        bool toMargin;
-        bool riskyForStable;
-    }
-
-    function swap_helper(SwapHelper memory s) internal {
-        (uint128 reserveRiskyBefore, uint128 reserveStableBefore, , , , , ) = engine.reserves(s.poolId);
-        try
-            engine.swap(
-                address(this),
-                s.poolId,
-                s.riskyForStable,
-                s.deltaIn,
-                s.deltaOut,
-                s.fromMargin,
-                s.toMargin,
-                abi.encode(0)
-            )
-        {
-            (uint128 reserveRiskyAfter, uint128 reserveStableAfter, , , , , ) = engine.reserves(s.poolId);
-            if (s.riskyForStable) {
-                // This will fail if deltaInWithFee == 0
-                assert(reserveRiskyAfter > reserveRiskyBefore);
-                assert(reserveStableAfter < reserveStableBefore);
-            } else {
-                assert(reserveRiskyAfter < reserveRiskyBefore);
-                // This will fail if deltaInWithFee == 0
-                assert(reserveStableAfter > reserveStableBefore);
-            }
-        } catch {
-            assert(false);
-        }
-    }
-
-    struct ExactInput {
-        bytes32 poolId;
-        uint256 amountIn;
-        uint128 reserveRisky;
-        uint128 reserveStable;
-        uint128 reserveLiquidity;
-        uint128 strike;
-        uint32 sigma;
-        uint32 gamma;
-        uint32 tau;
-    }
-
-    function exactRiskyInput(ExactInput memory i) internal returns (uint256) {
-        // riskyDecimals, stableDecinmals = 18 for now
-        // Need timestamp updated
-        int128 invariantBefore = engine.invariantOf(i.poolId);
-        uint256 adjustedStable;
-        {
-            uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4;
-            uint256 adjustedRisky = (1e18 * (uint256(i.reserveRisky) + amountInWithFee)) / i.reserveLiquidity;
-            adjustedStable = ReplicationMath.getStableGivenRisky(
-                0,
-                engine.scaleFactorRisky(),
-                engine.scaleFactorStable(),
-                adjustedRisky,
-                i.strike,
-                i.sigma,
-                i.tau
-            );
-        }
-        uint256 outputStable = i.reserveStable - adjustedStable;
-
-        uint256 res0 = (i.reserveRisky + i.amountIn) / i.reserveLiquidity;
-        uint256 res1 = (i.reserveStable - outputStable) / i.reserveLiquidity;
-        int128 invariantAfter = ReplicationMath.calcInvariant(
-            engine.scaleFactorRisky(),
-            engine.scaleFactorStable(),
-            res0,
-            res1,
-            i.strike,
-            i.sigma,
-            i.tau
-        );
-        assert(invariantAfter >= invariantBefore);
-        return outputStable;
-    }
-
-    function exactStableInput(ExactInput memory i) internal returns (uint256) {
-        // riskyDecimals, stableDecinmals = 18 for now
-        // Need timestamp updated
-        int128 invariantBefore = engine.invariantOf(i.poolId);
-
-        uint256 adjustedStable;
-        {
-            uint256 amountInWithFee = (i.amountIn * i.gamma) / 1e4;
-            adjustedStable = (1e18 * (uint256(i.reserveStable) + amountInWithFee)) / i.reserveLiquidity;
-        }
-        uint256 outputRisky;
-        {
-            uint256 adjustedRisky = ReplicationMath.getRiskyGivenStable(
-                0,
-                engine.scaleFactorRisky(),
-                engine.scaleFactorStable(),
-                adjustedStable,
-                i.strike,
-                i.sigma,
-                i.tau
-            );
-            outputRisky = i.reserveRisky - adjustedRisky;
-        }
-        uint256 res0 = (i.reserveRisky - outputRisky) / i.reserveLiquidity;
-        uint256 res1 = (i.reserveStable + i.amountIn) / i.reserveLiquidity;
-
-        int128 invariantAfter = ReplicationMath.calcInvariant(
-            engine.scaleFactorRisky(),
-            engine.scaleFactorStable(),
-            res0,
-            res1,
-            i.strike,
-            i.sigma,
-            i.tau
-        );
-        assert(invariantAfter >= invariantBefore);
-        return outputRisky;
     }
 
     function createCallback(
