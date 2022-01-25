@@ -2,7 +2,7 @@ pragma solidity 0.8.6;
 import "./E2E_Helper.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract E2E_swap --config contracts/crytic/E2E_swap.yaml
-contract E2E_swap is E2E_Helper {
+contract E2E_Swap_Adjusted is E2E_Helper {
     bool inited;
     PoolParams params;
     CreateArgs createArgs;
