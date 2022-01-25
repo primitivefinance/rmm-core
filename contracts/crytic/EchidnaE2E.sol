@@ -1,10 +1,11 @@
 pragma solidity 0.8.6;
 import "../PrimitiveFactory.sol";
 import "../interfaces/IERC20.sol";
-import "./Addresses.sol";
+import "./E2E_Create.sol";
+import "./E2E_Global.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2E.yaml
-contract EchidnaE2E3 is Addresses{
+contract EchidnaE2E is E2E_Create,E2E_Global{
     struct PoolData {
         Reserve.Data reserve;
         Margin.Data margin;
@@ -12,7 +13,6 @@ contract EchidnaE2E3 is Addresses{
     }
     PoolData precall;
     PoolData postcall;
-    bytes32[] poolIds;
 
     function one_to_max_uint64(uint256 random) internal returns (uint256) {
         return 1 + (random % (type(uint64).max - 1));
@@ -56,190 +56,6 @@ contract EchidnaE2E3 is Addresses{
         delete postcall;
     }
 
-    function retrieve_created_pool(uint256 id) private returns (bytes32) {
-        require(poolIds.length > 0);
-        uint256 index = id % (poolIds.length);
-        return poolIds[index];
-    }
-
-    // Check proper deployments
-    function check_precision_and_liquidity() public {
-        uint256 precision = engine.PRECISION();
-        assert(precision == 10**18);
-
-        uint256 minimumLiquidity = engine.MIN_LIQUIDITY();
-        assert(minimumLiquidity > 0);
-    }
-
-    function check_proper_deployment_of_engine() public {
-        address engineRisky = engine.risky();
-        address engineStable = engine.stable();
-
-        assert(engineStable == address(stable));
-        assert(engineRisky == address(risky));
-    }
-
-    function check_proper_timestamp(uint256 id) public {
-        bytes32 poolId = retrieve_created_pool(id);
-
-        (, , , uint32 calibrationTimestamp, ) = engine.calibrations(poolId);
-        assert(calibrationTimestamp != 0);
-    }
-
-    function check_update_last_timestamp(uint256 id) public {
-        bytes32 poolId = retrieve_created_pool(id);
-
-        try engine.updateLastTimestamp(poolId) {
-            (, , uint32 maturity, uint32 lastTimestamp, ) = engine.calibrations(poolId);
-            if (maturity <= engine.time()) {
-                assert(lastTimestamp == maturity);
-            } else {
-                assert(lastTimestamp == engine.time());
-            }
-        } catch {
-            assert(false);
-        }
-    }
-
-    function check_maximuim_gamma(uint256 id) public {
-        bytes32 poolId = retrieve_created_pool(id);
-
-        (, , , , uint32 gamma) = engine.calibrations(poolId);
-        assert(gamma <= 10000);
-    }
-
-    function check_margin_of_zero_address(uint256 id) public {
-        (uint128 balanceRisky, uint128 balanceStable) = engine.margins(address(0));
-        assert(balanceRisky == 0);
-        assert(balanceStable == 0);
-    }
-
-    function check_liquidity_of_zero_address(uint256 id) public {
-        bytes32 poolId = retrieve_created_pool(id);
-
-        uint256 liquidityAmount = engine.liquidity(address(0), poolId);
-        assert(liquidityAmount == 0);
-    }
-
-    function mint_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
-        risky.mint(address(this), riskyAmt);
-        stable.mint(address(this), stableAmt);
-    }
-
-    function calculate_del_risky_and_stable(
-        uint256 riskyPerLp,
-        uint256 delLiquidity,
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity
-    ) internal returns (uint256 delRisky, uint256 delStable) {
-        uint256 factor0 = engine.scaleFactorRisky();
-        uint256 factor1 = engine.scaleFactorStable();
-        uint32 tau = _maturity - uint32(engine.time()); // time until expiry
-        require(riskyPerLp <= engine.PRECISION() / factor0);
-
-        delStable = ReplicationMath.getStableGivenRisky(0, factor0, factor1, riskyPerLp, _strike, _sigma, tau);
-        delRisky = (riskyPerLp * delLiquidity) / engine.PRECISION(); // riskyDecimals * 1e18 decimals / 1e18 = riskyDecimals
-        require(delRisky > 0);
-        delStable = (delStable * delLiquidity) / engine.PRECISION();
-        require(delStable > 0);
-        mint_tokens(delRisky, delStable);
-    }
-
-    function create_new_pool_should_not_revert(
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity,
-        uint32 _gamma,
-        uint256 riskyPerLp,
-        uint256 _delLiquidity
-    ) public {
-        uint128 strike = (1 ether + (_strike % (10000 ether - 1 ether)));
-        uint32 sigma = (100 + (_sigma % (1e7 - 100)));
-        uint32 gamma = (9000 + (_gamma % (10000 - 9000)));
-        uint256 delLiquidity = (engine.MIN_LIQUIDITY() + 1 + (_delLiquidity % (10 ether - engine.MIN_LIQUIDITY())));
-        uint32 maturity = (31556952 + _maturity);
-        require(maturity >= uint32(engine.time()));
-        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(
-            riskyPerLp,
-            delLiquidity,
-            strike,
-            sigma,
-            maturity
-        );
-
-        create_helper(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, abi.encode(0));
-    }
-
-    function create_new_pool_with_wrong_gamma_should_revert(
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity,
-        uint32 gamma,
-        uint256 riskyPerLp,
-        uint256 _delLiquidity
-    ) public {
-        uint128 strike = (1 ether + (_strike % (10000 ether - 1 ether)));
-        uint32 sigma = (100 + (_sigma % (1e7 - 100)));
-        uint256 delLiquidity = (engine.MIN_LIQUIDITY() + 1 + (_delLiquidity % (10 ether - engine.MIN_LIQUIDITY())));
-        uint32 maturity = (31556952 + _maturity);
-        require(maturity >= uint32(engine.time()));
-        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(
-            riskyPerLp,
-            delLiquidity,
-            strike,
-            sigma,
-            maturity
-        );
-
-        if (gamma > 10000 || gamma < 9000) {
-            try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, abi.encode(0)) {
-                assert(false);
-            } catch {
-                assert(true);
-            }
-        }
-    }
-
-    event AddedPool(bytes32 poolId, uint128 strike, uint32 sigma, uint32 maturity, uint32 gamma, uint32 timestamp);
-
-    function create_helper(
-        uint128 strike,
-        uint32 sigma,
-        uint32 maturity,
-        uint32 gamma,
-        uint256 riskyPerLp,
-        uint256 delLiquidity,
-        bytes memory data
-    ) internal {
-        try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, data) {
-            bytes32 poolId = keccak256(abi.encodePacked(address(engine), strike, sigma, maturity, gamma));
-            poolIds.push(poolId);
-            (
-                uint128 calibrationStrike,
-                uint32 calibrationSigma,
-                uint32 calibrationMaturity,
-                uint32 calibrationTimestamp,
-                uint32 calibrationGamma
-            ) = engine.calibrations(poolId);
-            assert(calibrationTimestamp == engine.time());
-            assert(calibrationGamma == gamma);
-            assert(calibrationStrike == strike);
-            assert(calibrationSigma == sigma);
-            assert(calibrationMaturity == maturity);
-            emit AddedPool(
-                poolId,
-                calibrationStrike,
-                calibrationSigma,
-                calibrationMaturity,
-                calibrationGamma,
-                calibrationTimestamp
-            );
-        } catch {
-            assert(false);
-        }
-    }
-
     event AllocateRemoveDifference(uint256 delRisky, uint256 removeRisky);
     event AllocateDelLiquidity(uint256 delLiquidity);
     struct AllocateCall {
@@ -255,7 +71,7 @@ contract EchidnaE2E3 is Addresses{
         bool fromMargin
     ) public {
         AllocateCall memory allocate;
-        allocate.poolId = retrieve_created_pool(randomId);
+        allocate.poolId = Addresses.retrieve_created_pool(randomId);
         retrieve_current_pool_data(allocate.poolId, true);
         intendedLiquidity = one_to_max_uint64(intendedLiquidity);
         allocate.delRisky = (intendedLiquidity * precall.reserve.reserveRisky) / precall.reserve.liquidity;
@@ -286,7 +102,7 @@ contract EchidnaE2E3 is Addresses{
             delRisky = one_to_max_uint64(delRisky);
             delStable = one_to_max_uint64(delStable);
         }
-        bytes32 poolId = retrieve_created_pool(randomId);
+        bytes32 poolId = Addresses.retrieve_created_pool(randomId);
         AllocateCall memory args = AllocateCall({
             delRisky: delRisky,
             delStable: delStable,
@@ -358,7 +174,7 @@ contract EchidnaE2E3 is Addresses{
 
     function remove_with_safe_range(uint256 id, uint256 delLiquidity) public returns (uint256, uint256) {
         delLiquidity = one_to_max_uint64(delLiquidity);
-        bytes32 poolId = retrieve_created_pool(id);
+        bytes32 poolId = Addresses.retrieve_created_pool(id);
         remove_should_succeed(poolId, delLiquidity);
     }
 
@@ -559,14 +375,6 @@ contract EchidnaE2E3 is Addresses{
         }
     }
 
-    function createCallback(
-        uint256 delRisky,
-        uint256 delStable,
-        bytes calldata data
-    ) external {
-        executeCallback(delRisky, delStable);
-    }
-
     function allocateCallback(
         uint256 delRisky,
         uint256 delStable,
@@ -591,12 +399,4 @@ contract EchidnaE2E3 is Addresses{
         executeCallback(delRisky, delStable);
     }
 
-    function executeCallback(uint256 delRisky, uint256 delStable) internal {
-        if (delRisky > 0) {
-            risky.transfer(address(engine), delRisky);
-        }
-        if (delStable > 0) {
-            stable.transfer(address(engine), delStable);
-        }
-    }
 }
