@@ -1,7 +1,7 @@
 pragma solidity 0.8.6;
 import "./E2E_Helper.sol";
 
-contract E2E_Create is Addresses,E2E_Helper{
+contract E2E_Create is Addresses, E2E_Helper {
     function create_new_pool_should_not_revert(
         uint128 _strike,
         uint32 _sigma,
@@ -95,6 +95,7 @@ contract E2E_Create is Addresses,E2E_Helper{
             assert(false);
         }
     }
+
     function calculate_del_risky_and_stable(
         uint256 riskyPerLp,
         uint256 delLiquidity,
@@ -114,6 +115,7 @@ contract E2E_Create is Addresses,E2E_Helper{
         require(delStable > 0);
         mint_tokens(delRisky, delStable);
     }
+
     function createCallback(
         uint256 delRisky,
         uint256 delStable,

@@ -1,7 +1,7 @@
 pragma solidity 0.8.6;
 import "./E2E_Helper.sol";
 
-contract E2E_Global is E2E_Helper{
+contract E2E_Global is E2E_Helper {
     // Check proper deployments
     function check_precision_and_liquidity() public {
         uint256 precision = engine.PRECISION();
