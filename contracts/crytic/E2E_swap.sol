@@ -1,8 +1,21 @@
 pragma solidity 0.8.6;
-import "./E2E_Helper.sol";
+import "../test/engine/MockEngine.sol";
+import "../PrimitiveFactory.sol";
+import "../interfaces/IERC20.sol";
+import "../test/TestRouter.sol";
+import "../test/TestToken.sol";
 
 // npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract E2E_swap --config contracts/crytic/E2E_swap.yaml
-contract E2E_swap is E2E_Helper {
+contract E2E_swap {
+    TestToken risky = TestToken(0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48);
+    TestToken stable = TestToken(0x1D7022f5B17d2F8B695918FB48fa1089C9f85401);
+
+    address manager = 0x1E2F9E10D02a6b8F8f69fcBf515e75039D2EA30d;
+    TestRouter router = TestRouter(0x0B1ba0af832d7C05fD64161E0Db78E85978E8082);
+    MockEngine engine = MockEngine(0x871DD7C2B4b25E1Aa18728e9D5f2Af4C4e431f5c);
+    // WETH = 0xcdb594a32b1cc3479d8746279712c39d18a07fc0
+    bytes32[] poolIds;
+
     bool inited;
     PoolParams params;
     CreateArgs createArgs;
@@ -15,7 +28,7 @@ contract E2E_swap is E2E_Helper {
     // Tests
 
     // just to stay sane
-    function test_init(uint128 _seed) internal {
+    function test_init(uint128 _seed) public {
         if (!inited) _init(_seed);
 
         // Step 1
@@ -399,7 +412,7 @@ contract E2E_swap is E2E_Helper {
         );
 
         // Step 3
-        E2E_Helper.mint_tokens(delRisky, delStable);
+        _mint_tokens(delRisky, delStable);
 
         // Step 4
         _create_helper(createArgs.riskyPerLp, createArgs.delLiquidity, abi.encode(0));
@@ -491,6 +504,12 @@ contract E2E_swap is E2E_Helper {
         args.delLiquidity = bounds.min_liquidity + (_seed % (bounds.max_liquidity - bounds.min_liquidity));
         args.delLiquidity += min_liquidity_override; // for swaps, seed inital liquidity beyond min
         require(args.riskyPerLp <= engine.PRECISION() / engine.scaleFactorRisky());
+    }
+
+    function retrieve_created_pool(uint256 id) private returns (bytes32) {
+        require(poolIds.length > 0);
+        uint256 index = id % (poolIds.length);
+        return poolIds[index];
     }
 
     // Helper
@@ -636,6 +655,45 @@ contract E2E_swap is E2E_Helper {
         } catch {
             emit FailedCreating(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity);
             assert(false);
+        }
+    }
+
+    function _mint_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
+        risky.mint(address(this), riskyAmt);
+        stable.mint(address(this), stableAmt);
+    }
+
+    function createCallback(
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) external {
+        executeCallback(delRisky, delStable);
+    }
+
+    function allocateCallback(
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) external {
+        executeCallback(delRisky, delStable);
+    }
+
+    function swapCallback(
+        uint256 delRisky,
+        uint256 delStable,
+        bytes calldata data
+    ) external {
+        executeCallback(delRisky, delStable);
+    }
+
+    // requires tokens to be minted prior to reaching the callback
+    function executeCallback(uint256 delRisky, uint256 delStable) internal {
+        if (delRisky > 0) {
+            risky.transfer(address(engine), delRisky);
+        }
+        if (delStable > 0) {
+            stable.transfer(address(engine), delStable);
         }
     }
 
