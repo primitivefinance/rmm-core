@@ -63,7 +63,9 @@ contract E2E_Allocate_Remove is E2E_Helper {
     function allocate_helper(AllocateCall memory params) internal returns (uint256) {
         mint_tokens(params.delRisky, params.delStable);
         (, , uint32 maturity, , ) = engine.calibrations(params.poolId);
-        require(maturity >= engine.time()); //pool must not be expired
+        if (engine.time() > maturity) {
+            return allocate_should_revert(params);
+        }
 
         return allocate_should_succeed(params);
     }
@@ -73,7 +75,9 @@ contract E2E_Allocate_Remove is E2E_Helper {
 
     function allocate_should_succeed(AllocateCall memory params) internal returns (uint256) {
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(address(this));
-        require(marginRiskyBefore >= params.delRisky && marginStableBefore >= params.delStable);
+        if (params.fromMargin && (marginRiskyBefore < params.delRisky || marginStableBefore < params.delStable)) {
+            return allocate_should_revert(params);
+        }
         retrieve_current_pool_data(params.poolId, true);
         uint256 preCalcLiquidity;
         {
@@ -118,6 +122,24 @@ contract E2E_Allocate_Remove is E2E_Helper {
             assert(false);
         }
         clear_pre_post_call();
+    }
+
+    function allocate_should_revert(AllocateCall memory params) internal returns (uint256) {
+        try
+            engine.allocate(
+                params.poolId,
+                address(this),
+                params.delRisky,
+                params.delStable,
+                params.fromMargin,
+                abi.encode(0)
+            )
+        {
+            assert(false);
+        } catch {
+            assert(true);
+            return 0;
+        }
     }
 
     function remove_with_safe_range(uint256 id, uint256 delLiquidity) public returns (uint256, uint256) {

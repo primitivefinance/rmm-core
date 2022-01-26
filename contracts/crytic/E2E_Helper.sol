@@ -4,8 +4,18 @@ import "./Addresses.sol";
 contract E2E_Helper is Addresses {
     // requires tokens to be minted prior to reaching the callback
     function mint_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
-        risky.mint(address(this), riskyAmt);
-        stable.mint(address(this), stableAmt);
+        mint_helper(address(this), riskyAmt, stableAmt);
+    }
+    function mint_tokens_sender(uint256 riskyAmt, uint256 stableAmt) internal {
+        mint_helper(msg.sender, riskyAmt, stableAmt);
+    }
+    function approve_tokens_sender(address recipient, uint256 riskyAmt, uint256 stableAmt) internal {
+        risky.approve(recipient, riskyAmt);
+        stable.approve(recipient, stableAmt);
+    }
+    function mint_helper(address recip, uint256 riskyAmt, uint256 stableAmt) internal {
+        risky.mint(recip,riskyAmt);
+        stable.mint(recip, stableAmt);
     }
 
     function executeCallback(uint256 delRisky, uint256 delStable) internal {

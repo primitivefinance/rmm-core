@@ -30,6 +30,10 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         deposit_should_succeed(recipient, delRisky, delStable);
     }
 
+    function deposit_zero_zero(address recipient) public {
+        deposit_should_revert(recipient, 0, 0);
+    }
+
     function deposit_should_revert(
         address recipient,
         uint256 delRisky,
@@ -94,6 +98,10 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
         emit WithdrawMargins(marginRiskyBefore, marginStableBefore, delRisky, delStable);
         withdraw_should_succeed(recipient, delRisky, delStable);
+    }
+
+    function withdraw_zero_zero(address recipient) public {
+        withdraw_should_revert(recipient, 0, 0);
     }
 
     function withdraw_should_revert(
