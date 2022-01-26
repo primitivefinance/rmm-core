@@ -2,7 +2,7 @@ pragma solidity 0.8.6;
 import "../test/engine/MockEngine.sol";
 import "../test/TestRouter.sol";
 import "../test/TestToken.sol";
-// import "../PrimitiveManager.sol";
+import "../PrimitiveManager.sol";
 
 contract Addresses {
     TestToken risky_18 = TestToken(0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48);
@@ -11,8 +11,8 @@ contract Addresses {
     TestToken risky_6 = TestToken(0x871DD7C2B4b25E1Aa18728e9D5f2Af4C4e431f5c);
     TestToken stable_6 = TestToken(0x0B1ba0af832d7C05fD64161E0Db78E85978E8082);
 
-    // PrimitiveManager manager_18_18 = PrimitiveManager(0x6A4A62E5A7eD13c361b176A5F62C2eE620Ac0DF8);
-    address manager_18_18 = 0x6A4A62E5A7eD13c361b176A5F62C2eE620Ac0DF8;
+    PrimitiveManager manager_18_18 = PrimitiveManager(payable(address(0x6A4A62E5A7eD13c361b176A5F62C2eE620Ac0DF8)));
+    // address manager_18_18 = 0x6A4A62E5A7eD13c361b176A5F62C2eE620Ac0DF8;
     MockEngine engine_18_18= MockEngine(0x48BaCB9266a570d521063EF5dD96e61686DbE788);
 
     address manager_18_6 = 0x6DfFF22588BE9b3ef8cf0aD6Dc9B84796F9fB45f;
@@ -28,7 +28,7 @@ contract Addresses {
 
 	TestToken risky = risky_18;
 	TestToken stable = stable_18;
-	address manager = manager_18_18;
+	PrimitiveManager manager = manager_18_18;
 	MockEngine engine = engine_18_18;
 
 
