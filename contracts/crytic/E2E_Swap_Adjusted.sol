@@ -7,16 +7,13 @@ contract E2E_Swap_Adjusted is E2E_Helper {
     PoolParams params;
     CreateArgs createArgs;
 
-    constructor() public {
-        risky.mint(address(this), 1e11 ether);
-        stable.mint(address(this), 1e11 ether);
-    }
-
     // Tests
 
     // just to stay sane
     function test_init(uint128 _seed) internal {
-        if (!inited) _init(_seed);
+        if (!inited)  {
+            mint_tokens(1e11 ether, 1e11 ether);
+        }
 
         // Step 1
         uint32 time = uint32(engine.time());
@@ -32,7 +29,7 @@ contract E2E_Swap_Adjusted is E2E_Helper {
         assert(createArgs.delLiquidity >= engine.MIN_LIQUIDITY());
 
         // Step 4
-        assert(poolIds.length > 0);
+        assert(createdPoolIds[address(engine)].length > 0);
         assert(risky.balanceOf(address(engine)) > 0);
         assert(stable.balanceOf(address(engine)) > 0);
 
@@ -48,7 +45,7 @@ contract E2E_Swap_Adjusted is E2E_Helper {
         if (!inited) _init(_amountIn);
 
         // Step 3
-        bytes32 poolId = poolIds[0];
+        bytes32 poolId = createdPoolIds[address(engine)][0];
         (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
@@ -99,7 +96,7 @@ contract E2E_Swap_Adjusted is E2E_Helper {
         if (!inited) _init(_amountIn);
 
         // Step 3
-        bytes32 poolId = poolIds[0];
+        bytes32 poolId = createdPoolIds[address(engine)][0];
         (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
@@ -162,7 +159,7 @@ contract E2E_Swap_Adjusted is E2E_Helper {
         if (!inited) _init(_amountIn);
 
         // Step 3
-        bytes32 poolId = poolIds[0];
+        bytes32 poolId = createdPoolIds[address(engine)][0];
         (uint128 strike, uint32 sigma, uint32 maturity, , uint32 gamma) = engine.calibrations(poolId);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = engine.reserves(poolId);
         uint32 tau = uint32(engine.time()) > maturity ? 0 : maturity - uint32(engine.time());
@@ -609,7 +606,7 @@ contract E2E_Swap_Adjusted is E2E_Helper {
         );
         try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, data) {
             bytes32 poolId = keccak256(abi.encodePacked(address(engine), strike, sigma, maturity, gamma));
-            poolIds.push(poolId); // add pool
+            createdPoolIds[address(engine)].push(poolId);
 
             (
                 uint128 calibrationStrike,

@@ -70,7 +70,7 @@ contract E2E_Create is Addresses, E2E_Helper {
     ) internal {
         try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, data) {
             bytes32 poolId = keccak256(abi.encodePacked(address(engine), strike, sigma, maturity, gamma));
-            poolIds.push(poolId);
+            Addresses.add_to_created_pool(poolId);
             (
                 uint128 calibrationStrike,
                 uint32 calibrationSigma,
