@@ -2242,13 +2242,13 @@ interface IPrimitiveManager is IPrimitiveCreateCallback, IPrimitiveLiquidityCall
     ) external payable returns (uint256 delLiquidity);
 
     /// @notice              Removes liquidity from a pool
-    /// @param engine        Address of the engine
+    /// param engine        Address of the engine
     /// @param poolId        Id of the pool
     /// @param delLiquidity  Amount of liquidity to remove
     /// @return delRisky     Amount of risky tokens removed from the pool
     /// @return delStable    Amount of stable tokens removed from the pool
     function remove(
-        address engine,
+        //address engine,
         bytes32 poolId,
         uint256 delLiquidity,
         uint256 minRiskyOut,
@@ -2260,15 +2260,15 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
     using ManagerMargin for ManagerMargin.Data;
 
     /// EFFECT FUNCTIONS ///
-
-    /// @param factory_             Address of a PrimitiveFactory
+    address engine;
+    /// @param engine_             Address of a PrimitiveFactory
     /// @param WETH9_               Address of WETH9
     /// @param positionDescriptor_  Address of PositionDescriptor
     constructor(
-        address factory_,
+        address engine_,
         address WETH9_,
         address positionDescriptor_
-    ) ManagerBase(factory_, WETH9_, positionDescriptor_) {}
+    ) ManagerBase(engine_, WETH9_, positionDescriptor_) {engine = engine_;}
 
     /// @inheritdoc IPrimitiveManager
     function create(
@@ -2291,7 +2291,7 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
             uint256 delStable
         )
     {
-        address engine = EngineAddress.computeAddress(factory, risky, stable);
+        //address engine = EngineAddress.computeAddress(factory, risky, stable);
         if (EngineAddress.isContract(engine) == false) revert EngineAddress.EngineNotDeployedError();
 
         if (delLiquidity == 0) revert ZeroLiquidityError();
@@ -2327,12 +2327,12 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
         bool fromMargin,
         uint256 minLiquidityOut
     ) external payable override lock returns (uint256 delLiquidity) {
-        _engine = EngineAddress.computeAddress(factory, risky, stable);
-        if (EngineAddress.isContract(_engine) == false) revert EngineAddress.EngineNotDeployedError();
+        //_engine = EngineAddress.computeAddress(factory, risky, stable);
+        if (EngineAddress.isContract(engine) == false) revert EngineAddress.EngineNotDeployedError();
 
         if (delRisky == 0 && delStable == 0) revert ZeroLiquidityError();
 
-        (delLiquidity) = IPrimitiveEngineActions(_engine).allocate(
+        (delLiquidity) = IPrimitiveEngineActions(engine).allocate(
             poolId,
             address(this),
             delRisky,
@@ -2343,19 +2343,19 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
 
         if (delLiquidity < minLiquidityOut) revert MinLiquidityOutError();
 
-        if (fromMargin) margins[msg.sender][_engine].withdraw(delRisky, delStable);
+        if (fromMargin) margins[msg.sender][engine].withdraw(delRisky, delStable);
 
         // Mints {delLiquidity} of liquidity tokens
-        _allocate(msg.sender, _engine, poolId, delLiquidity);
+        _allocate(msg.sender, engine, poolId, delLiquidity);
 
-        emit Allocate(msg.sender, _engine, poolId, delLiquidity, delRisky, delStable, fromMargin);
+        emit Allocate(msg.sender, engine, poolId, delLiquidity, delRisky, delStable, fromMargin);
 
-        _engine = address(0);
+        //_engine = address(0);
     }
 
     /// @inheritdoc IPrimitiveManager
     function remove(
-        address engine,
+        //address engine,
         bytes32 poolId,
         uint256 delLiquidity,
         uint256 minRiskyOut,
@@ -2382,7 +2382,7 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
     ) external override {
         CallbackData memory decoded = abi.decode(data, (CallbackData));
 
-        address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
+        //address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
         if (msg.sender != engine) revert NotEngineError();
 
         if (delRisky > 0) pay(decoded.risky, decoded.payer, msg.sender, delRisky);
@@ -2397,7 +2397,7 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
     ) external override {
         CallbackData memory decoded = abi.decode(data, (CallbackData));
 
-        address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
+        //address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
         if (msg.sender != engine) revert NotEngineError();
 
         if (delRisky > 0) pay(decoded.risky, decoded.payer, msg.sender, delRisky);
