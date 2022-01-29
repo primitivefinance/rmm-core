@@ -3,10 +3,18 @@ pragma solidity 0.8.6;
 
 import "./TestBase.sol";
 import "../libraries/ReplicationMath.sol";
+import "../libraries/Units.sol";
 import "hardhat/console.sol";
 import "../interfaces/engine/IPrimitiveEngineErrors.sol";
+import "../libraries/ABDKMath64x64.sol";
+import "../libraries/CumulativeNormalDistribution.sol";
 
 contract TestRouter is TestBase {
+    using Units for uint256;
+    using Units for int128;
+    using ABDKMath64x64 for int128;
+    using CumulativeNormalDistribution for int128;
+
     constructor(address engine_) TestBase(engine_) {}
 
     string public expectedError;
@@ -257,6 +265,35 @@ contract TestRouter is TestBase {
         return deltaOut;
     }
 
+    /// @notice                 Uses stablePerLiquidity and invariant to calculate riskyPerLiquidity
+    /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
+    /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
+    /// @param   scaleFactorRisky   Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
+    /// @param   scaleFactorStable  Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
+    /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
+    /// @param   strike         Unsigned 256-bit integer value with precision equal to 10^(18 - scaleFactorStable)
+    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
+    /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
+    /// @return  riskyPerLiquidity = 1 - CDF(CDF^-1((stablePerLiquidity - invariantLastX64)/K) + sigma*sqrt(tau))
+    function getRiskyGivenStable(
+        int128 invariantLastX64,
+        uint256 scaleFactorRisky,
+        uint256 scaleFactorStable,
+        uint256 stablePerLiquidity,
+        uint256 strike,
+        uint256 sigma,
+        uint256 tau
+    ) internal pure returns (uint256 riskyPerLiquidity) {
+        int128 strikeX64 = strike.scaleToX64(scaleFactorStable);
+        int128 volX64 = ReplicationMath.getProportionalVolatility(sigma, tau);
+        int128 stableX64 = stablePerLiquidity.scaleToX64(scaleFactorStable);
+        int128 phi = stableX64.sub(invariantLastX64).div(strikeX64).getInverseCDF();
+        int128 input = phi.add(volX64);
+        int128 riskyX64 = ReplicationMath.ONE_INT.sub(input.getCDF());
+        riskyPerLiquidity = riskyX64.scalefromX64(scaleFactorRisky);
+    }
+
+    // note: this will probably revert because getRiskyGivenStable is not precise enough to return a valid swap
     function getRiskyOutGivenStableIn(bytes32 poolId, uint256 deltaIn) public view returns (uint256) {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
@@ -265,7 +302,7 @@ contract TestRouter is TestBase {
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextStable = ((uint256(reserveStable) + amountInWithFee) * lens.PRECISION()) / liquidity;
-        uint256 nextRisky = ReplicationMath.getRiskyGivenStable(
+        uint256 nextRisky = getRiskyGivenStable(
             invariant,
             lens.scaleFactorRisky(),
             lens.scaleFactorStable(),
@@ -301,6 +338,7 @@ contract TestRouter is TestBase {
         return deltaInWithFee;
     }
 
+    // note: this will probably revert because getRiskyGivenStable is not precise enough to return a valid swap
     function getRiskyInGivenStableOut(bytes32 poolId, uint256 deltaOut) public view returns (uint256) {
         IPrimitiveEngineView lens = IPrimitiveEngineView(engine);
         (uint128 reserveRisky, uint128 reserveStable, uint128 liquidity, , , , ) = lens.reserves(poolId);
@@ -308,7 +346,7 @@ contract TestRouter is TestBase {
         int128 invariant = lens.invariantOf(poolId);
 
         uint256 nextStable = ((uint256(reserveStable) - deltaOut) * lens.PRECISION()) / liquidity;
-        uint256 nextRisky = ReplicationMath.getRiskyGivenStable(
+        uint256 nextRisky = getRiskyGivenStable(
             invariant,
             lens.scaleFactorRisky(),
             lens.scaleFactorStable(),
