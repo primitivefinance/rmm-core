@@ -2,7 +2,7 @@ import { ethers } from 'hardhat'
 import { Fixture } from 'ethereum-waffle'
 import { Libraries } from '../../types'
 import * as ContractTypes from '../../typechain'
-import { TestGetStableGivenRisky, TestGetRiskyGivenStable, TestCalcInvariant } from '../../typechain'
+import { TestGetStableGivenRisky, TestCalcInvariant } from '../../typechain'
 import MockEngineArtifact from '../../artifacts/contracts/test/engine/MockEngine.sol/MockEngine.json'
 
 interface FactoryFixture {
@@ -93,7 +93,6 @@ export const librariesFixture: Fixture<LibraryFixture> = async function (): Prom
 }
 
 export interface TestStepFixture extends LibraryFixture {
-  getRiskyGivenStable: TestGetRiskyGivenStable
   getStableGivenRisky: TestGetStableGivenRisky
   calcInvariant: TestCalcInvariant
 }
@@ -104,10 +103,6 @@ export const replicationLibrariesFixture: Fixture<TestStepFixture> = async funct
 ): Promise<TestStepFixture> {
   const libraries = await librariesFixture([wallet], provider)
 
-  const riskyStableFactory = await ethers.getContractFactory('TestGetRiskyGivenStable')
-  const getRiskyGivenStable = (await riskyStableFactory.deploy()) as TestGetRiskyGivenStable
-  await getRiskyGivenStable.deployed()
-
   const stableRiskyFactory = await ethers.getContractFactory('TestGetStableGivenRisky')
   const getStableGivenRisky = (await stableRiskyFactory.deploy()) as TestGetStableGivenRisky
   await getStableGivenRisky.deployed()
@@ -116,7 +111,6 @@ export const replicationLibrariesFixture: Fixture<TestStepFixture> = async funct
   const calcInvariant = (await invariantFactory.deploy()) as TestCalcInvariant
   await calcInvariant.deployed()
   return {
-    getRiskyGivenStable,
     getStableGivenRisky,
     calcInvariant,
     ...libraries,
