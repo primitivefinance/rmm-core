@@ -48,12 +48,19 @@ library ReplicationMath {
         uint256 tau
     ) internal pure returns (uint256 stablePerLiquidity) {
         int128 strikeX64 = strike.scaleToX64(scaleFactorStable);
-        int128 volX64 = getProportionalVolatility(sigma, tau);
         int128 riskyX64 = riskyPerLiquidity.scaleToX64(scaleFactorRisky); // mul by 2^64, div by precision
-        int128 phi = ONE_INT.sub(riskyX64).getInverseCDF();
-        int128 input = phi.sub(volX64);
-        int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
-        stablePerLiquidity = stableX64.scalefromX64(scaleFactorStable);
+        int128 oneMinusRiskyX64 = ONE_INT.sub(riskyX64);
+        if (tau != 0) {
+            int128 volX64 = getProportionalVolatility(sigma, tau);
+            int128 phi = oneMinusRiskyX64.getInverseCDF();
+            int128 input = phi.sub(volX64);
+            int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
+            stablePerLiquidity = stableX64.scalefromX64(scaleFactorStable);
+        } else {
+            stablePerLiquidity = (strikeX64.mul(oneMinusRiskyX64).add(invariantLastX64)).scalefromX64(
+                scaleFactorStable
+            );
+        }
     }
 
     /// @notice                 Uses stablePerLiquidity and invariant to calculate riskyPerLiquidity
