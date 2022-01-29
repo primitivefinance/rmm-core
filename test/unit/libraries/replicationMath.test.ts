@@ -147,73 +147,6 @@ TestPools.forEach(function (pool: PoolState) {
       },
     }
 
-    // test domain and range of `getRiskyGivenStable
-    const stableSwapTests: RangeTest = {
-      ['step0']: {
-        params: [0], // value
-        min: 0,
-        max: 10000,
-        increment: 100,
-        error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses strike
-        expected: (val: Wei) => parseX64(val).parsed,
-      },
-      ['step1']: {
-        params: [0, tau.raw], // sigma, tau
-        min: 1,
-        max: 1000,
-        increment: 10,
-        error: 1e-4,
-        parse: (val: number) => parseWei(val, 4), // parses percentage
-        expected: (val: Wei) => getProportionalVol(val.float, tau.years),
-      },
-      ['step2']: {
-        params: [0], // stable
-        min: 0,
-        max: 10000,
-        increment: 100,
-        error: 1e-4,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
-        expected: (val: Wei) => parseX64(val).parsed,
-      },
-      ['testStep3']: {
-        params: [0, strike.raw], // reserve
-        min: 0.1,
-        max: 9.9,
-        increment: 0.1,
-        error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
-        expected: (val: Wei) => stableSwapStep3(val, strike),
-      },
-      ['testStep4']: {
-        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, sigma, tau
-        min: 0.1,
-        max: 9.9,
-        increment: 0.1,
-        error: maxError.centralInverseCDF,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
-        expected: (val: Wei) => stableSwapStep4(val, strike, sigma.float, tau),
-      },
-      ['testStep5']: {
-        params: [0, strike.raw, sigma.raw, tau.raw], // reserve, strike, sigma, tau
-        min: 0.1,
-        max: 9.9,
-        increment: 0.1,
-        error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
-        expected: (val: Wei) => stableSwapStep5(val, strike, sigma.float, tau),
-      },
-      ['getRiskyGivenStable']: {
-        params: [0, 1, 0, strike.raw, sigma.raw, tau.raw], // invariant, prec, risky, strike, sigma, tau
-        min: 0.1,
-        max: 9.9,
-        increment: 0.1,
-        error: maxError.cdf,
-        parse: (val: number) => parseWei(val, decimalsStable), // parses stable
-        expected: (val: Wei) => getRiskyGivenStable(val.float, strike.float, sigma.float, tau.years),
-      },
-    }
-
     const calcInvariantTests: RangeTest = {
       ['calcInvariantRisky']: {
         params: [0, strike.div(2).raw, strike.raw, sigma.raw, tau.raw],
@@ -247,7 +180,6 @@ TestPools.forEach(function (pool: PoolState) {
       fixture = await loadFixture(replicationLibrariesFixture)
 
       await fixture.calcInvariant.set(scaleFactorRisky, scaleFactorStable)
-      await fixture.getRiskyGivenStable.set(scaleFactorRisky, scaleFactorStable)
       await fixture.getStableGivenRisky.set(scaleFactorRisky, scaleFactorStable)
       this.libraries = fixture.libraries
     })
@@ -276,39 +208,6 @@ TestPools.forEach(function (pool: PoolState) {
               if (
                 DEBUG &&
                 (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getStableGivenRisky')
-              )
-                console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
-              //expect(actual).to.be.closeTo(+exp, error)
-            }
-          })
-        })
-      }
-    })
-
-    // run the tests for `getStableGivenRisky
-    describe('testGetRiskyGivenStable', function () {
-      // for each of the tests, run through its domain and range
-      for (let step in stableSwapTests) {
-        describe(`testing ${step}`, function () {
-          let { params, min, max, increment, parse, expected, error } = stableSwapTests[step]
-
-          it('stays within max error', async function () {
-            for (let i = min; i < max; i += increment) {
-              const input = parse(i) // i is a number value that must be parsed for use in the contract fns
-              const exp = expected(input) // uses the parsed value and returns the expected value of this test
-
-              if (step == 'getRiskyGivenStable') {
-                params[2] = input.raw // reserve parameter is at index of `2`
-              } else {
-                params[0] = input.raw
-              }
-
-              const result = await fixture.getRiskyGivenStable[step](...params) // smart contract call
-              const actual = new FixedPointX64(result).parsed // result is in fixed point 64x64, so it needs to be parsed
-
-              if (
-                DEBUG &&
-                (step == 'testStep3' || step == 'testStep4' || step == 'testStep5' || step == 'getRiskyGivenStable')
               )
                 console.log(`${step} w/ reserve: ${i}: expected: ${+exp}, actual: ${actual}, ae: ${actual - exp}`)
               //expect(actual).to.be.closeTo(+exp, error)
