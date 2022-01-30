@@ -167,7 +167,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
         if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);
-        if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
+        if (gamma > Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
             strike: strike,
