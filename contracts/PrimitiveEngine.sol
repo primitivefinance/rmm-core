@@ -188,7 +188,8 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
 
         calibrations[poolId] = cal; // state update
-        liquidity[msg.sender][poolId] += delLiquidity - MIN_LIQUIDITY; // burn min liquidity, at cost of msg.sender
+        uint256 amount = delLiquidity - MIN_LIQUIDITY;
+        liquidity[msg.sender][poolId] += amount; // burn min liquidity, at cost of msg.sender
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // state update
 
         (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
@@ -196,7 +197,7 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
         checkRiskyBalance(balRisky + delRisky);
         checkStableBalance(balStable + delStable);
 
-        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity, cal.gamma);
+        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity, cal.gamma, delRisky, delStable, amount);
     }
 
     // ===== Margin =====
@@ -253,7 +254,6 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
         uint256 liquidity0 = (delRisky * reserve.liquidity) / uint256(reserve.reserveRisky);
         uint256 liquidity1 = (delStable * reserve.liquidity) / uint256(reserve.reserveStable);
         delLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
-
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
         liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
@@ -268,7 +268,7 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
             checkStableBalance(balStable + delStable);
         }
 
-        emit Allocate(msg.sender, recipient, poolId, delRisky, delStable);
+        emit Allocate(msg.sender, recipient, poolId, delRisky, delStable, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -287,7 +287,7 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
         margins[msg.sender].deposit(delRisky, delStable);
 
-        emit Remove(msg.sender, poolId, delRisky, delStable);
+        emit Remove(msg.sender, poolId, delRisky, delStable, delLiquidity);
     }
 
     struct SwapDetails {
