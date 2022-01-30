@@ -7,19 +7,19 @@ interface IPrimitiveEngineActions {
     // ===== Pool Updates =====
 
     /// @notice             Updates the time until expiry of the pool by setting its last timestamp value
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of engine address, strike, sigma, maturity, and gamma
     /// @return lastTimestamp Timestamp loaded into the state of the pool's Calibration.lastTimestamp
     function updateLastTimestamp(bytes32 poolId) external returns (uint32 lastTimestamp);
 
-    /// @notice             Initializes a curve with parameters in the `settings` storage mapping in the Engine
-    /// @param  strike      Strike price of the pool to calibrate to, with the same decimals as the stable token
-    /// @param  sigma       Implied Volatility to calibrate to as an unsigned 32-bit integer w/ precision of 1e4, 10000 = 100%
-    /// @param  maturity    Maturity timestamp of the pool, in seconds
-    /// @param  gamma       Multiplied against swap in amounts to apply fee, equal to 1 - fee %, an unsigned 32-bit integer, w/ precision of 1e4, 10000 = 100%
-    /// @param  riskyPerLp  Risky reserve per liq. with risky decimals, = 1 - N(d1), d1 = (ln(S/K)+(r*sigma^2/2))/sigma*sqrt(tau)
-    /// @param  delLiquidity Amount of liquidity to allocate to the curve, wei value with 18 decimals of precision
+    /// @notice             Initializes a curve with parameters in the `calibrations` storage mapping in the Engine
+    /// @param  strike      Marginal price of the pool's risky token at maturity, with the same decimals as the stable token, valid [0, 2^128-1]
+    /// @param  sigma       AKA Implied Volatility in basis points, determines the price impact of swaps, valid for (1, 10_000_000)
+    /// @param  maturity    Timestamp which starts the BUFFER countdown until swaps will cease, in seconds, valid for (block.timestamp, 2^32-1]
+    /// @param  gamma       Multiplied against swap in amounts to apply fee, equal to 1 - fee % but units are in basis points, valid for (9_000, 10_000)
+    /// @param  riskyPerLp  Risky reserve per liq. with risky decimals, = 1 - N(d1), d1 = (ln(S/K)+(r*σ^2/2))/σ√τ, valid for [0, 1e^(risky token decimals))
+    /// @param  delLiquidity Amount of liquidity units to allocate to the curve, wei value with 18 decimals of precision
     /// @param  data        Arbitrary data that is passed to the createCallback function
-    /// @return poolId      Pool Identifier
+    /// @return poolId      Keccak256 hash of engine address, strike, sigma, maturity, and gamma
     /// @return delRisky    Total amount of risky tokens provided to reserves
     /// @return delStable   Total amount of stable tokens provided to reserves
     function create(
@@ -65,7 +65,7 @@ interface IPrimitiveEngineActions {
     // ===== Liquidity =====
 
     /// @notice             Allocates risky and stable tokens to a specific curve with `poolId`
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of engine address, strike, sigma, maturity, and gamma
     /// @param  recipient   Address to give the allocated liquidity to
     /// @param  delRisky    Amount of risky tokens to add
     /// @param  delStable   Amount of stable tokens to add
@@ -82,7 +82,7 @@ interface IPrimitiveEngineActions {
     ) external returns (uint256 delLiquidity);
 
     /// @notice               Unallocates risky and stable tokens from a specific curve with `poolId`
-    /// @param  poolId        Pool Identifier
+    /// @param  poolId        Keccak256 hash of engine address, strike, sigma, maturity, and gamma
     /// @param  delLiquidity  Amount of liquidity to remove
     /// @return delRisky      Amount of risky tokens received from removed liquidity
     /// @return delStable     Amount of stable tokens received from removed liquidity
@@ -92,7 +92,7 @@ interface IPrimitiveEngineActions {
 
     /// @notice             Swaps between `risky` and `stable` tokens
     /// @param  recipient   Address that receives output token `deltaOut` amount
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of engine address, strike, sigma, maturity, and gamma
     /// @param  riskyForStable If true, swap risky to stable, else swap stable to risky
     /// @param  deltaIn     Amount of tokens to swap in
     /// @param  deltaOut    Amount of tokens to swap out
