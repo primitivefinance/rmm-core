@@ -11,7 +11,19 @@ interface IPrimitiveEngineEvents {
     /// @param  sigma       Implied Volatility of the pool
     /// @param  maturity    Maturity timestamp of the pool
     /// @param  gamma       1 - Fee % of the pool, as an integer with precision of 1e4
-    event Create(address indexed from, uint128 indexed strike, uint32 sigma, uint32 indexed maturity, uint32 gamma);
+    /// @param  delRisky    Amount of risky tokens deposited
+    /// @param  delStable   Amount of stable tokens deposited
+    /// @param  delLiquidity Amount of liquidity granted to `recipient`
+    event Create(
+        address indexed from,
+        uint128 strike,
+        uint32 sigma,
+        uint32 indexed maturity,
+        uint32 indexed gamma,
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity
+    );
 
     /// @notice             Updates the time until expiry of the pool with `poolId`
     /// @param  poolId      Pool Identifier
@@ -41,12 +53,14 @@ interface IPrimitiveEngineEvents {
     /// @param  poolId      Pool Identifier
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
+    /// @param  delLiquidity Amount of liquidity granted to `recipient`
     event Allocate(
         address indexed from,
         address indexed recipient,
         bytes32 indexed poolId,
         uint256 delRisky,
-        uint256 delStable
+        uint256 delStable,
+        uint256 delLiquidity
     );
 
     /// @notice             Adds liquidity of risky and stable tokens to a specified `poolId`
@@ -54,7 +68,14 @@ interface IPrimitiveEngineEvents {
     /// @param  poolId      Pool Identifier
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
-    event Remove(address indexed from, bytes32 indexed poolId, uint256 delRisky, uint256 delStable);
+    /// @param  delLiquidity Amount of liquidity decreased from `from`
+    event Remove(
+        address indexed from,
+        bytes32 indexed poolId,
+        uint256 delRisky,
+        uint256 delStable,
+        uint256 delLiquidity
+    );
 
     // ===== Swaps =====
 
