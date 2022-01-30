@@ -5,12 +5,12 @@ pragma solidity >=0.5.0;
 /// @author Primitive
 interface IPrimitiveEngineEvents {
     /// @notice             Creates a pool with liquidity
-    /// @dev                Keccak256 hash of the engine address and the parameters is the `poolId`
+    /// @dev                Keccak256 hash of the engine address, strike, sigma, maturity, and gamma
     /// @param  from        Calling `msg.sender` of the create function
-    /// @param  strike      Strike price of the pool, with precision of stable token
-    /// @param  sigma       Implied Volatility of the pool
-    /// @param  maturity    Maturity timestamp of the pool
-    /// @param  gamma       1 - Fee % of the pool, as an integer with precision of 1e4
+    /// @param  strike      Marginal price of the pool's risky token at maturity, with the same decimals as the stable token, valid [0, 2^128-1]
+    /// @param  sigma       AKA Implied Volatility in basis points, determines the price impact of swaps, valid for (1, 10_000_000)
+    /// @param  maturity    Timestamp which starts the BUFFER countdown until swaps will cease, in seconds, valid for (block.timestamp, 2^32-1]
+    /// @param  gamma       Multiplied against swap in amounts to apply fee, equal to 1 - fee % but units are in basis points, valid for (9000, 10_000)
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
     /// @param  delLiquidity Amount of liquidity granted to `recipient`
@@ -26,7 +26,7 @@ interface IPrimitiveEngineEvents {
     );
 
     /// @notice             Updates the time until expiry of the pool with `poolId`
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of the engine address, strike, sigma, maturity, and gamma
     event UpdateLastTimestamp(bytes32 indexed poolId);
 
     // ===== Margin ====
@@ -50,7 +50,7 @@ interface IPrimitiveEngineEvents {
     /// @notice             Adds liquidity of risky and stable tokens to a specified `poolId`
     /// @param  from        Method caller `msg.sender`
     /// @param  recipient   Address that receives liquidity
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of the engine address, strike, sigma, maturity, and gamma
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
     /// @param  delLiquidity Amount of liquidity granted to `recipient`
@@ -65,7 +65,7 @@ interface IPrimitiveEngineEvents {
 
     /// @notice             Adds liquidity of risky and stable tokens to a specified `poolId`
     /// @param  from        Method caller `msg.sender`
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of the engine address, strike, sigma, maturity, and gamma
     /// @param  delRisky    Amount of risky tokens deposited
     /// @param  delStable   Amount of stable tokens deposited
     /// @param  delLiquidity Amount of liquidity decreased from `from`
@@ -82,7 +82,7 @@ interface IPrimitiveEngineEvents {
     /// @notice             Swaps between `risky` and `stable` assets
     /// @param  from        Method caller `msg.sender`
     /// @param  recipient   Address that receives `deltaOut` amount of tokens
-    /// @param  poolId      Pool Identifier
+    /// @param  poolId      Keccak256 hash of the engine address, strike, sigma, maturity, and gamma
     /// @param  riskyForStable  If true, swaps risky to stable, else swaps stable to risky
     /// @param  deltaIn     Amount of tokens added to reserves
     /// @param  deltaOut    Amount of tokens removed from reserves
