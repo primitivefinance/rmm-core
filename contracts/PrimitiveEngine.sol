@@ -246,11 +246,11 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[poolId];
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         uint32 timestamp = _blockTimestamp();
-        if (timestamp > calibrations[poolId].maturity) revert PoolExpiredError();
 
         uint256 liquidity0 = (delRisky * reserve.liquidity) / uint256(reserve.reserveRisky);
         uint256 liquidity1 = (delStable * reserve.liquidity) / uint256(reserve.reserveStable);
         delLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
+
         if (delLiquidity == 0) revert ZeroLiquidityError();
 
         liquidity[recipient][poolId] += delLiquidity; // increase position liquidity
