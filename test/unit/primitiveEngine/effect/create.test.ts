@@ -319,14 +319,14 @@ TestPools.forEach(function (pool: PoolState) {
         ).to.reverted
       })
 
-      it('reverts if gamma is greater or equal to 10000', async function () {
-        const tenThousand = 1e4
+      it('reverts if gamma is greater than 10000', async function () {
+        const tenThousand = 10_000
         await expect(
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
             maturity.raw,
-            tenThousand,
+            tenThousand + 1,
             parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero
