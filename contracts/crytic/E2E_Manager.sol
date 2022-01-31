@@ -237,5 +237,74 @@ contract E2E_Manager is E2E_Helper {
         assert(postRemoveReserve.liquidity == preRemoveReserve.liquidity - delLiquidity);
     }
 
+    function user_mint_approve_tokens(uint256 riskyAmt, uint256 stableAmt) internal {
+        mint_tokens_sender(riskyAmt, stableAmt);
+        approve_tokens_sender(address(manager), riskyAmt, stableAmt);
+    }
 
+    function check_manager() public {
+        assert(manager.WETH9() == weth9);
+        assert(manager.positionDescriptor() != address(0));
+    }
+
+    event DepositManager(uint128 riskyBefore, uint128 stableBefore, uint128 riskyAfter, uint128 stableAfter);
+
+    function check_deposit_manager_safe(
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) public {
+        delRisky = E2E_Helper.one_to_max_uint64(delRisky);
+        delStable = E2E_Helper.one_to_max_uint64(delStable);
+        user_mint_approve_tokens(delRisky, delStable);
+        manager_deposit_should_succeed(recipient, delRisky, delStable);
+    }
+
+    function check_manager_deposit_zero_zero(address recipient) public {
+        manager_deposit_should_revert(recipient, 0, 0);
+    }
+
+    event Failed(string reason);
+
+    function manager_deposit_should_succeed(
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) internal {
+        (uint128 marginRiskyBefore, uint128 marginStableBefore) = manager.margins(recipient, address(engine));
+        try manager.deposit(recipient, address(risky), address(stable), delRisky, delStable) {
+            (uint128 marginRiskyAfter, uint128 marginStableAfter) = manager.margins(recipient, address(engine));
+            emit DepositManager(marginRiskyBefore, marginStableBefore, marginRiskyAfter, marginStableAfter);
+            assert(marginRiskyAfter == marginRiskyBefore + delRisky);
+            assert(marginStableAfter == marginStableBefore + delStable);
+		} catch {
+			bytes memory payload = abi.encodeWithSignature("deposit(address,address,address,uint256,uint256)", recipient, address(risky), address(stable), delRisky, delStable);
+			(bool success, bytes memory result) = address(manager).call(payload);
+            string memory revertReason = abi.decode(result, (string));
+            emit Failed(revertReason);
+			assert(false);
+		}
+        // } catch Error(string memory reason) {
+        //     //
+        //     emit Failed(reason);
+        //     assert(false);
+        // } catch (bytes memory reason) {
+        //     emit DepositManager(marginRiskyBefore, marginStableBefore, 0, 0);
+        //     string memory revertReason = abi.decode(reason, (string));
+        //     emit Failed(revertReason);
+        //     assert(false);
+		// }
+    }
+
+    function manager_deposit_should_revert(
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) internal {
+        try manager.deposit(recipient, address(risky), address(stable), delRisky, delStable) {
+            assert(false);
+        } catch {
+            assert(true);
+        }
+    }
 }

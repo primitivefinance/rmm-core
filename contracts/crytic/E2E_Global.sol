@@ -19,7 +19,7 @@ contract E2E_Global is E2E_Helper {
         assert(engineRisky == address(risky));
     }
 
-    function check_proper_timestamp(uint256 id) public {
+    function check_created_pool_timestamp_greater_zero(uint256 id) public {
         bytes32 poolId = Addresses.retrieve_created_pool(id);
 
         (, , , uint32 calibrationTimestamp, ) = engine.calibrations(poolId);

@@ -8,13 +8,13 @@ import "./E2E_Allocate_Remove.sol";
 import "./E2E_Swap_Adjusted.sol";
 import "./E2E_Manager.sol";
 
-// npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2E.yaml
-contract EchidnaE2E is E2E_Create, 
+// npx hardhat clean && npx hardhat compile && echidna-test-2.0 . --contract EchidnaE2E --config contracts/crytic/E2ECore.yaml
+contract EchidnaE2E is E2E_Manager, 
+    E2E_Create,
+    E2E_Allocate_Remove,
+    E2E_Deposit_Withdraw,
     E2E_Global,
-    E2E_Allocate_Remove, 
-    E2E_Deposit_Withdraw, 
-    E2E_Swap_Adjusted,
-    E2E_Manager
+    E2E_Swap_Adjusted
     {
     // function changeTargetDeployment(uint256 id) public {
     //     uint256 toTest = id % 4;

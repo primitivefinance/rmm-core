@@ -2,6 +2,15 @@ pragma solidity 0.8.6;
 import "./E2E_Helper.sol";
 
 contract E2E_Create is Addresses, E2E_Helper {
+    struct CreateHelper {
+        uint128 strike;
+        uint32 sigma;
+        uint32 maturity;
+        uint256 riskyPerLp;
+        uint256 delLiquidity;
+        uint32 gamma;
+    }
+
     function create_new_pool_should_not_revert(
         uint128 _strike,
         uint32 _sigma,
@@ -16,15 +25,17 @@ contract E2E_Create is Addresses, E2E_Helper {
         uint256 delLiquidity = (engine.MIN_LIQUIDITY() + 1 + (_delLiquidity % (10 ether - engine.MIN_LIQUIDITY())));
         uint32 maturity = (31556952 + _maturity);
         require(maturity >= uint32(engine.time()));
-        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(
-            riskyPerLp,
-            delLiquidity,
-            strike,
-            sigma,
-            maturity
-        );
+        CreateHelper memory args = CreateHelper({
+            strike: strike,
+            sigma: sigma,
+            maturity: maturity,
+            delLiquidity: delLiquidity,
+            riskyPerLp: riskyPerLp,
+            gamma: gamma
+        });
+        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(args);
 
-        create_helper(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, abi.encode(0));
+        create_helper(args, abi.encode(0));
     }
 
     function create_new_pool_with_wrong_gamma_should_revert(
@@ -40,36 +51,46 @@ contract E2E_Create is Addresses, E2E_Helper {
         uint256 delLiquidity = (engine.MIN_LIQUIDITY() + 1 + (_delLiquidity % (10 ether - engine.MIN_LIQUIDITY())));
         uint32 maturity = (31556952 + _maturity);
         require(maturity >= uint32(engine.time()));
-        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(
-            riskyPerLp,
-            delLiquidity,
-            strike,
-            sigma,
-            maturity
-        );
+        CreateHelper memory args = CreateHelper({
+            strike: strike,
+            sigma: sigma,
+            maturity: maturity,
+            delLiquidity: delLiquidity,
+            riskyPerLp: riskyPerLp,
+            gamma: gamma
+        });
+        (uint256 delRisky, uint256 delStable) = calculate_del_risky_and_stable(args);
 
         if (gamma > 10000 || gamma < 9000) {
-            try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, abi.encode(0)) {
-                assert(false);
-            } catch {
-                assert(true);
-            }
+            create_should_revert(args, abi.encode(0));
         }
     }
 
-    event AddedPool(bytes32 poolId, uint128 strike, uint32 sigma, uint32 maturity, uint32 gamma, uint32 timestamp);
+    function create_should_revert(CreateHelper memory params, bytes memory data) internal {
+        try
+            engine.create(
+                params.strike,
+                params.sigma,
+                params.maturity,
+                params.gamma,
+                params.riskyPerLp,
+                params.delLiquidity,
+                abi.encode(0)
+            )
+        {
+            assert(false);
+        } catch {
+            assert(true);
+        }
+    }
 
     function create_helper(
-        uint128 strike,
-        uint32 sigma,
-        uint32 maturity,
-        uint32 gamma,
-        uint256 riskyPerLp,
-        uint256 delLiquidity,
+        CreateHelper memory params,
         bytes memory data
+
     ) internal {
-        try engine.create(strike, sigma, maturity, gamma, riskyPerLp, delLiquidity, data) {
-            bytes32 poolId = keccak256(abi.encodePacked(address(engine), strike, sigma, maturity, gamma));
+        try engine.create(params.strike, params.sigma, params.maturity, params.gamma, params.riskyPerLp, params.delLiquidity, data) {
+            bytes32 poolId = keccak256(abi.encodePacked(address(engine), params.strike, params.sigma, params.maturity, params.gamma));
             Addresses.add_to_created_pool(poolId);
             (
                 uint128 calibrationStrike,
@@ -79,39 +100,36 @@ contract E2E_Create is Addresses, E2E_Helper {
                 uint32 calibrationGamma
             ) = engine.calibrations(poolId);
             assert(calibrationTimestamp == engine.time());
-            assert(calibrationGamma == gamma);
-            assert(calibrationStrike == strike);
-            assert(calibrationSigma == sigma);
-            assert(calibrationMaturity == maturity);
-            emit AddedPool(
-                poolId,
-                calibrationStrike,
-                calibrationSigma,
-                calibrationMaturity,
-                calibrationGamma,
-                calibrationTimestamp
-            );
+            assert(calibrationGamma == params.gamma);
+            assert(calibrationStrike == params.strike);
+            assert(calibrationSigma == params.sigma);
+            assert(calibrationMaturity == params.maturity);
         } catch {
             assert(false);
         }
     }
 
-    function calculate_del_risky_and_stable(
-        uint256 riskyPerLp,
-        uint256 delLiquidity,
-        uint128 _strike,
-        uint32 _sigma,
-        uint32 _maturity
-    ) internal returns (uint256 delRisky, uint256 delStable) {
+    function calculate_del_risky_and_stable(CreateHelper memory params)
+        internal
+        returns (uint256 delRisky, uint256 delStable)
+    {
         uint256 factor0 = engine.scaleFactorRisky();
         uint256 factor1 = engine.scaleFactorStable();
-        uint32 tau = _maturity - uint32(engine.time()); // time until expiry
-        require(riskyPerLp <= engine.PRECISION() / factor0);
+        uint32 tau = params.maturity - uint32(engine.time()); // time until expiry
+        require(params.riskyPerLp <= engine.PRECISION() / factor0);
 
-        delStable = ReplicationMath.getStableGivenRisky(0, factor0, factor1, riskyPerLp, _strike, _sigma, tau);
-        delRisky = (riskyPerLp * delLiquidity) / engine.PRECISION(); // riskyDecimals * 1e18 decimals / 1e18 = riskyDecimals
+        delStable = ReplicationMath.getStableGivenRisky(
+            0,
+            factor0,
+            factor1,
+            params.riskyPerLp,
+            params.strike,
+            params.sigma,
+            tau
+        );
+        delRisky = (params.riskyPerLp * params.delLiquidity) / engine.PRECISION(); // riskyDecimals * 1e18 decimals / 1e18 = riskyDecimals
         require(delRisky > 0);
-        delStable = (delStable * delLiquidity) / engine.PRECISION();
+        delStable = (delStable * params.delLiquidity) / engine.PRECISION();
         require(delStable > 0);
         mint_tokens(delRisky, delStable);
     }
