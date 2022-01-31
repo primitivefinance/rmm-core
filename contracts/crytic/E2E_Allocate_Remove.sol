@@ -46,10 +46,8 @@ contract E2E_Allocate_Remove is E2E_Helper {
         uint256 delStable,
         bool fromMargin
     ) public {
-        if (fromMargin) {
-            delRisky = E2E_Helper.one_to_max_uint64(delRisky);
-            delStable = E2E_Helper.one_to_max_uint64(delStable);
-        }
+        delRisky = E2E_Helper.one_to_max_uint64(delRisky);
+        delStable = E2E_Helper.one_to_max_uint64(delStable);
         bytes32 poolId = Addresses.retrieve_created_pool(randomId);
         AllocateCall memory args = AllocateCall({
             delRisky: delRisky,
@@ -75,10 +73,10 @@ contract E2E_Allocate_Remove is E2E_Helper {
 
     function allocate_should_succeed(AllocateCall memory params) internal returns (uint256) {
         (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(address(this));
+        retrieve_current_pool_data(params.poolId, true);
         if (params.fromMargin && (marginRiskyBefore < params.delRisky || marginStableBefore < params.delStable)) {
             return allocate_should_revert(params);
         }
-        retrieve_current_pool_data(params.poolId, true);
         uint256 preCalcLiquidity;
         {
             uint256 liquidity0 = (params.delRisky * precall.reserve.liquidity) / uint256(precall.reserve.reserveRisky);
@@ -100,6 +98,7 @@ contract E2E_Allocate_Remove is E2E_Helper {
         returns (uint256 delLiquidity) {
             {
                 retrieve_current_pool_data(params.poolId, false);
+                assert(postcall.liquidity == precall.liquidity + delLiquidity);
                 assert(postcall.reserve.blockTimestamp == engine.time());
                 assert(postcall.reserve.blockTimestamp >= postcall.reserve.blockTimestamp);
                 // reserves increase by allocated amount
@@ -121,7 +120,6 @@ contract E2E_Allocate_Remove is E2E_Helper {
         } catch {
             assert(false);
         }
-        clear_pre_post_call();
     }
 
     function allocate_should_revert(AllocateCall memory params) internal returns (uint256) {
@@ -163,7 +161,6 @@ contract E2E_Allocate_Remove is E2E_Helper {
                 {
                     retrieve_current_pool_data(poolId, false);
                     // check liquidity decreased
-                    uint256 liquidityAmountAfter = engine.liquidity(address(this), poolId);
                     assert(postcall.liquidity == precall.liquidity - delLiquidity);
 
                     // check margins for recipient increased
@@ -180,7 +177,6 @@ contract E2E_Allocate_Remove is E2E_Helper {
                 assert(false);
             }
         }
-        clear_pre_post_call();
     }
 
     function remove_should_revert(bytes32 poolId, uint256 delLiquidity) internal returns (uint256, uint256) {
@@ -244,11 +240,6 @@ contract E2E_Allocate_Remove is E2E_Helper {
 
         uint256 engineLiquidity = engine.liquidity(address(this), poolId);
         data.liquidity = engineLiquidity;
-    }
-
-    function clear_pre_post_call() internal {
-        delete precall;
-        delete postcall;
     }
 
     struct PoolData {
