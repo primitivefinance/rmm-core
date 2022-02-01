@@ -21,7 +21,7 @@ import "./interfaces/IPrimitiveFactory.sol";
 /// @author  Primitive
 /// @notice  Replicating Market Maker
 /// @dev     RMM-01
-contract EchidnaPrimitiveEngine is IPrimitiveEngine {
+contract PrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
     using SafeCast for uint256;
@@ -56,7 +56,7 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override scaleFactorStable;
     /// @inheritdoc IPrimitiveEngineView
-    //address public immutable override factory;
+    address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
@@ -81,12 +81,9 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
-    constructor(address _risky, address _stable, uint256 _scaleFactorRisky, uint256 _scaleFactorStable, uint256 _min_liquidity) {
-        risky = _risky;
-        stable = _stable;
-        scaleFactorRisky = _scaleFactorRisky;
-        scaleFactorStable = _scaleFactorStable;
-        MIN_LIQUIDITY = _min_liquidity;
+    constructor() {
+        (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
+            .args();
     }
 
     /// @return Risky token balance of this contract
