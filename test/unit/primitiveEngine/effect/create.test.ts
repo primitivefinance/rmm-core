@@ -148,9 +148,7 @@ TestPools.forEach(function (pool: PoolState) {
             delLiquidity.raw,
             HashZero
           )
-        )
-          .to.emit(this.contracts.engine, 'Create')
-          .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw, gamma.raw)
+        ).to.emit(this.contracts.engine, 'Create')
       })
 
       it('updates the reserves of the engine with create, but not cumulative reserves', async function () {

@@ -2,7 +2,7 @@ pragma solidity 0.8.6;
 import "../test/engine/MockEngine.sol";
 import "../test/TestRouter.sol";
 import "../test/TestToken.sol";
-import "../PrimitiveManager.sol";
+import "./PrimitiveManager.sol";
 
 contract Addresses {
     TestToken risky_18 = TestToken(0x1dC4c1cEFEF38a777b15aA20260a54E584b16C48);
