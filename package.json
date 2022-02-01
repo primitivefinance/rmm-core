@@ -18,12 +18,12 @@
     "smart contracts"
   ],
   "files": [
-    "contracts",
+    "contracts/interfaces",
+    "contracts/libraries",
     "artifacts/contracts/PrimitiveEngine.sol/PrimitiveEngine.json",
     "artifacts/contracts/PrimitiveFactory.sol/PrimitiveFactory.json",
     "artifacts/contracts/interfaces/**/*.json",
-    "!artifacts/contracts/interfaces/**/*.dbg.json",
-    "typechain"
+    "!artifacts/contracts/interfaces/**/*.dbg.json"
   ],
   "scripts": {
     "clean": "hardhat clean",
