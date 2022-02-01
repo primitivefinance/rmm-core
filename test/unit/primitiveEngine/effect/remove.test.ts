@@ -119,7 +119,7 @@ TestPools.forEach(function (pool: PoolState) {
 
           await expect(this.contracts.router.removeToMargin(poolId, delLiquidity.raw, HashZero))
             .to.emit(this.contracts.engine, 'Remove')
-            .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw)
+            .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw, delLiquidity.raw)
         })
       })
 
@@ -219,7 +219,7 @@ TestPools.forEach(function (pool: PoolState) {
 
           await expect(this.contracts.router.removeToExternal(poolId, delLiquidity.raw, HashZero))
             .to.emit(this.contracts.engine, 'Remove')
-            .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw)
+            .withArgs(this.contracts.router.address, poolId, delRisky.raw, delStable.raw, delLiquidity.raw)
         })
       })
 
