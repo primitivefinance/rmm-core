@@ -1,15 +1,15 @@
 pragma solidity 0.8.6;
-import "./interfaces/IERC20.sol";
-import "./interfaces/callback/IPrimitiveDepositCallback.sol";
-import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveSwapCallback.sol";
-import "./interfaces/engine/IPrimitiveEngineActions.sol";
-import "./interfaces/engine/IPrimitiveEngineErrors.sol";
-import "./interfaces/engine/IPrimitiveEngineEvents.sol";
-import "./interfaces/engine/IPrimitiveEngineView.sol";
-import "./interfaces/IPrimitiveEngine.sol";
-import "./libraries/SafeCast.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/callback/IPrimitiveDepositCallback.sol";
+import "../interfaces/callback/IPrimitiveCreateCallback.sol";
+import "../interfaces/callback/IPrimitiveLiquidityCallback.sol";
+import "../interfaces/callback/IPrimitiveSwapCallback.sol";
+import "../interfaces/engine/IPrimitiveEngineActions.sol";
+import "../interfaces/engine/IPrimitiveEngineErrors.sol";
+import "../interfaces/engine/IPrimitiveEngineEvents.sol";
+import "../interfaces/engine/IPrimitiveEngineView.sol";
+import "../interfaces/IPrimitiveEngine.sol";
+import "../libraries/SafeCast.sol";
 
 contract Reentrancy {
     /// @notice  Thrown when a call to the contract is made during a locked state
