@@ -55,17 +55,6 @@ contract LibraryMathEchidna {
         assert(scaledDownValue == value);
     }
 
-    function scalePercentages(uint256 value) public {
-        require(value > Units.PERCENTAGE);
-        int128 signedPercentage = value.percentage();
-        uint256 unsignedPercentage = signedPercentage.percentage();
-
-        if (unsignedPercentage != value) {
-            emit AssertionFailed("scalePercentages", signedPercentage, unsignedPercentage);
-            assert(false);
-        }
-    }
-
     // --------------------- CumulativeNormalDistribution.sol -----------------------
 
     function getCDFPaper(int128 x) internal pure returns (int128) {

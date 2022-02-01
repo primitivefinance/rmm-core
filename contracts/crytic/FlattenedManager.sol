@@ -1,15 +1,25 @@
 pragma solidity 0.8.6;
-import "./interfaces/IERC20.sol";
-import "./interfaces/callback/IPrimitiveDepositCallback.sol";
-import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveSwapCallback.sol";
-import "./interfaces/engine/IPrimitiveEngineActions.sol";
-import "./interfaces/engine/IPrimitiveEngineErrors.sol";
-import "./interfaces/engine/IPrimitiveEngineEvents.sol";
-import "./interfaces/engine/IPrimitiveEngineView.sol";
-import "./interfaces/IPrimitiveEngine.sol";
-import "./libraries/SafeCast.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/callback/IPrimitiveDepositCallback.sol";
+import "../interfaces/callback/IPrimitiveCreateCallback.sol";
+import "../interfaces/callback/IPrimitiveLiquidityCallback.sol";
+import "../interfaces/callback/IPrimitiveSwapCallback.sol";
+import "../interfaces/engine/IPrimitiveEngineActions.sol";
+import "../interfaces/engine/IPrimitiveEngineErrors.sol";
+import "../interfaces/engine/IPrimitiveEngineEvents.sol";
+import "../interfaces/engine/IPrimitiveEngineView.sol";
+import "../interfaces/IPrimitiveEngine.sol";
+import "../libraries/SafeCast.sol";
+
+/// @title   ERC20 Interface with metadata
+/// @author  Primitive
+interface IERC20WithMetadata is IERC20 {
+    function symbol() external view returns (string memory);
+
+    function name() external view returns (string memory);
+
+    function decimals() external view override returns (uint8);
+}
 
 contract Reentrancy {
     /// @notice  Thrown when a call to the contract is made during a locked state
@@ -26,6 +36,7 @@ contract Reentrancy {
         _unlocked = 1;
     }
 }
+
 interface IManagerBase {
     /// ERRORS ///
 
@@ -46,6 +57,7 @@ interface IManagerBase {
     /// @notice Returns the address of the PositionDescriptor
     function positionDescriptor() external view returns (address);
 }
+
 abstract contract ManagerBase is IManagerBase, Reentrancy {
     /// @notice Data struct reused by callbacks
     struct CallbackData {
@@ -79,6 +91,7 @@ abstract contract ManagerBase is IManagerBase, Reentrancy {
         positionDescriptor = positionDescriptor_;
     }
 }
+
 interface ICashManager {
     /// ERRORS ///
 
@@ -118,7 +131,7 @@ interface ICashManager {
 /// @author  Primitive
 /// @notice  Utils functions to manage margins
 /// @dev     Uses a data struct with two uint128s to optimize for one storage slot
-library ManagerMargin{
+library ManagerMargin {
     using SafeCast for uint256;
 
     struct Data {
@@ -216,6 +229,7 @@ library TransferHelper {
         if (success == false) revert TransferError();
     }
 }
+
 interface IWETH9 is IERC20 {
     /// @notice Wraps ETH into WETH
     function deposit() external payable;
@@ -223,6 +237,7 @@ interface IWETH9 is IERC20 {
     /// @notice Unwraps WETH into ETH
     function withdraw(uint256) external;
 }
+
 abstract contract CashManager is ICashManager, ManagerBase {
     /// @notice Only WETH9 can send ETH to this contract
     receive() external payable {
@@ -291,6 +306,7 @@ abstract contract CashManager is ICashManager, ManagerBase {
         }
     }
 }
+
 interface IMarginManager is IPrimitiveDepositCallback {
     /// ERRORS ///
 
@@ -377,6 +393,7 @@ interface IMarginManager is IPrimitiveDepositCallback {
         view
         returns (uint128 balanceRisky, uint128 balanceStable);
 }
+
 library EngineAddress {
     /// @notice Thrown when the target Engine is not deployed
     error EngineNotDeployedError();
@@ -422,6 +439,7 @@ library EngineAddress {
         return size > 0;
     }
 }
+
 abstract contract MarginManager is IMarginManager, CashManager {
     using TransferHelper for IERC20;
     using ManagerMargin for ManagerMargin.Data;
@@ -504,6 +522,7 @@ abstract contract MarginManager is IMarginManager, CashManager {
         if (delRisky > 0) pay(decoded.risky, decoded.payer, msg.sender, delRisky);
     }
 }
+
 interface ISwapManager is IPrimitiveSwapCallback {
     /// @notice                Parameters for the swap function
     /// @param recipient       Address of the recipient
@@ -565,6 +584,7 @@ interface ISwapManager is IPrimitiveSwapCallback {
     /// @param params  A struct of type SwapParameters
     function swap(SwapParams memory params) external payable;
 }
+
 abstract contract SwapManager is ISwapManager, CashManager, MarginManager {
     using TransferHelper for IERC20;
     using ManagerMargin for ManagerMargin.Data;
@@ -643,6 +663,7 @@ abstract contract SwapManager is ISwapManager, CashManager, MarginManager {
         if (delStable > 0) pay(decoded.stable, decoded.payer, msg.sender, delStable);
     }
 }
+
 library ECDSA {
     enum RecoverError {
         NoError,
@@ -929,6 +950,7 @@ abstract contract EIP712 {
         return ECDSA.toTypedDataHash(_domainSeparatorV4(), structHash);
     }
 }
+
 interface IERC165 {
     /**
      * @dev Returns true if this contract implements the interface defined by
@@ -940,6 +962,7 @@ interface IERC165 {
      */
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
+
 interface IERC1155 is IERC165 {
     /**
      * @dev Emitted when `value` tokens of token type `id` are transferred from `from` to `to` by `operator`.
@@ -1052,6 +1075,7 @@ interface IERC1155 is IERC165 {
         bytes calldata data
     ) external;
 }
+
 interface IERC1155Permit is IERC1155 {
     /// ERRORS ///
 
@@ -1093,6 +1117,7 @@ interface IERC1155Permit is IERC1155 {
     /// @return Hash of the domain separator
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
+
 interface IERC1155MetadataURI is IERC1155 {
     /**
      * @dev Returns the URI for token type `id`.
@@ -1102,6 +1127,7 @@ interface IERC1155MetadataURI is IERC1155 {
      */
     function uri(uint256 id) external view returns (string memory);
 }
+
 abstract contract ERC165 is IERC165 {
     /**
      * @dev See {IERC165-supportsInterface}.
@@ -1110,6 +1136,7 @@ abstract contract ERC165 is IERC165 {
         return interfaceId == type(IERC165).interfaceId;
     }
 }
+
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
         return msg.sender;
@@ -1119,6 +1146,7 @@ abstract contract Context {
         return msg.data;
     }
 }
+
 library Address {
     /**
      * @dev Returns true if `account` is a contract.
@@ -1328,6 +1356,7 @@ library Address {
         }
     }
 }
+
 interface IERC1155Receiver is IERC165 {
     /**
         @dev Handles the receipt of a single ERC1155 token type. This function is
@@ -1371,6 +1400,7 @@ interface IERC1155Receiver is IERC165 {
         bytes calldata data
     ) external returns (bytes4);
 }
+
 contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
     using Address for address;
 
@@ -1813,6 +1843,7 @@ contract ERC1155 is Context, ERC165, IERC1155, IERC1155MetadataURI {
         return array;
     }
 }
+
 contract ERC1155Permit is ERC1155, IERC1155Permit, EIP712 {
     /// @inheritdoc IERC1155Permit
     mapping(address => uint256) public override nonces;
@@ -1853,6 +1884,7 @@ contract ERC1155Permit is ERC1155, IERC1155Permit, EIP712 {
         return _domainSeparatorV4();
     }
 }
+
 interface IPositionDescriptor {
     /// VIEW FUNCTIONS ///
 
@@ -1865,6 +1897,7 @@ interface IPositionDescriptor {
     /// @return         Metadata as a base64 encoded JSON string
     function getMetadata(address engine, uint256 tokenId) external view returns (string memory);
 }
+
 abstract contract PositionManager is ManagerBase, ERC1155Permit {
     /// @dev  Ties together pool ids with engine addresses, this is necessary because
     ///       there is no way to get the Primitive Engine address from a pool id
@@ -1908,6 +1941,7 @@ abstract contract PositionManager is ManagerBase, ERC1155Permit {
         _burn(account, uint256(poolId), amount);
     }
 }
+
 interface ISelfPermit {
     /// @notice          Permits this contract to spend a given token from `msg.sender`
     /// @dev             `owner` is always msg.sender and the `spender` is always address(this)
@@ -1979,6 +2013,7 @@ interface ISelfPermit {
         bytes32 s
     ) external payable;
 }
+
 interface IERC20PermitAllowed {
     /// @notice         Approve the spender to spend some tokens via the holder signature
     /// @dev            This is the permit interface used by DAI and CHAI
@@ -2001,6 +2036,7 @@ interface IERC20PermitAllowed {
         bytes32 s
     ) external;
 }
+
 interface IERC20Permit {
     /**
      * @dev Sets `value` as the allowance of `spender` over ``owner``'s tokens,
@@ -2048,6 +2084,7 @@ interface IERC20Permit {
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 }
+
 abstract contract SelfPermit is ISelfPermit {
     /// @inheritdoc ISelfPermit
     function selfPermit(
@@ -2098,6 +2135,7 @@ abstract contract SelfPermit is ISelfPermit {
             selfPermitAllowed(token, nonce, expiry, v, r, s);
     }
 }
+
 interface IMulticall {
     /// @notice          Call multiple functions in the current contract and return the data from all of them if they all succeed
     /// @dev             `msg.value` should not be trusted for any method callable from Multicall
@@ -2105,6 +2143,7 @@ interface IMulticall {
     /// @return results  Results from each of the calls passed in via data
     function multicall(bytes[] calldata data) external payable returns (bytes[] memory results);
 }
+
 abstract contract Multicall is IMulticall {
     /// @inheritdoc IMulticall
     function multicall(bytes[] calldata data) external payable override returns (bytes[] memory results) {
@@ -2125,6 +2164,7 @@ abstract contract Multicall is IMulticall {
         }
     }
 }
+
 interface IPrimitiveManager is IPrimitiveCreateCallback, IPrimitiveLiquidityCallback {
     /// ERRORS ///
 
@@ -2242,33 +2282,34 @@ interface IPrimitiveManager is IPrimitiveCreateCallback, IPrimitiveLiquidityCall
     ) external payable returns (uint256 delLiquidity);
 
     /// @notice              Removes liquidity from a pool
-    /// param engine        Address of the engine
+    /// @param engine        Address of the engine
     /// @param poolId        Id of the pool
     /// @param delLiquidity  Amount of liquidity to remove
     /// @return delRisky     Amount of risky tokens removed from the pool
     /// @return delStable    Amount of stable tokens removed from the pool
     function remove(
-        //address engine,
+        address engine,
         bytes32 poolId,
         uint256 delLiquidity,
         uint256 minRiskyOut,
         uint256 minStableOut
     ) external returns (uint256 delRisky, uint256 delStable);
 }
-contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPermit, PositionManager, SwapManager {
+
+contract FlattenedManager is IPrimitiveManager, Multicall, CashManager, SelfPermit, PositionManager, SwapManager {
     using TransferHelper for IERC20;
     using ManagerMargin for ManagerMargin.Data;
 
     /// EFFECT FUNCTIONS ///
-    address engine;
-    /// @param engine_             Address of a PrimitiveFactory
+
+    /// @param factory_             Address of a PrimitiveFactory
     /// @param WETH9_               Address of WETH9
     /// @param positionDescriptor_  Address of PositionDescriptor
     constructor(
-        address engine_,
+        address factory_,
         address WETH9_,
         address positionDescriptor_
-    ) ManagerBase(engine_, WETH9_, positionDescriptor_) {engine = engine_;}
+    ) ManagerBase(factory_, WETH9_, positionDescriptor_) {}
 
     /// @inheritdoc IPrimitiveManager
     function create(
@@ -2291,7 +2332,7 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
             uint256 delStable
         )
     {
-        //address engine = EngineAddress.computeAddress(factory, risky, stable);
+        address engine = EngineAddress.computeAddress(factory, risky, stable);
         if (EngineAddress.isContract(engine) == false) revert EngineAddress.EngineNotDeployedError();
 
         if (delLiquidity == 0) revert ZeroLiquidityError();
@@ -2327,12 +2368,12 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
         bool fromMargin,
         uint256 minLiquidityOut
     ) external payable override lock returns (uint256 delLiquidity) {
-        //_engine = EngineAddress.computeAddress(factory, risky, stable);
-        if (EngineAddress.isContract(engine) == false) revert EngineAddress.EngineNotDeployedError();
+        _engine = EngineAddress.computeAddress(factory, risky, stable);
+        if (EngineAddress.isContract(_engine) == false) revert EngineAddress.EngineNotDeployedError();
 
         if (delRisky == 0 && delStable == 0) revert ZeroLiquidityError();
 
-        (delLiquidity) = IPrimitiveEngineActions(engine).allocate(
+        (delLiquidity) = IPrimitiveEngineActions(_engine).allocate(
             poolId,
             address(this),
             delRisky,
@@ -2343,19 +2384,19 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
 
         if (delLiquidity < minLiquidityOut) revert MinLiquidityOutError();
 
-        if (fromMargin) margins[msg.sender][engine].withdraw(delRisky, delStable);
+        if (fromMargin) margins[msg.sender][_engine].withdraw(delRisky, delStable);
 
         // Mints {delLiquidity} of liquidity tokens
-        _allocate(msg.sender, engine, poolId, delLiquidity);
+        _allocate(msg.sender, _engine, poolId, delLiquidity);
 
-        emit Allocate(msg.sender, engine, poolId, delLiquidity, delRisky, delStable, fromMargin);
+        emit Allocate(msg.sender, _engine, poolId, delLiquidity, delRisky, delStable, fromMargin);
 
-        //_engine = address(0);
+        _engine = address(0);
     }
 
     /// @inheritdoc IPrimitiveManager
     function remove(
-        //address engine,
+        address engine,
         bytes32 poolId,
         uint256 delLiquidity,
         uint256 minRiskyOut,
@@ -2382,7 +2423,7 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
     ) external override {
         CallbackData memory decoded = abi.decode(data, (CallbackData));
 
-        //address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
+        address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
         if (msg.sender != engine) revert NotEngineError();
 
         if (delRisky > 0) pay(decoded.risky, decoded.payer, msg.sender, delRisky);
@@ -2397,10 +2438,427 @@ contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPerm
     ) external override {
         CallbackData memory decoded = abi.decode(data, (CallbackData));
 
-        //address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
+        address engine = EngineAddress.computeAddress(factory, decoded.risky, decoded.stable);
         if (msg.sender != engine) revert NotEngineError();
 
         if (delRisky > 0) pay(decoded.risky, decoded.payer, msg.sender, delRisky);
         if (delStable > 0) pay(decoded.stable, decoded.payer, msg.sender, delStable);
+    }
+}
+
+interface IPositionRenderer {
+    /// @notice         Returns a SVG representation of a position token
+    /// @param engine   Address of the PrimitiveEngine contract
+    /// @param tokenId  Id of the position token (pool id)
+    /// @return         SVG image as a base64 encoded string
+    function render(address engine, uint256 tokenId) external view returns (string memory);
+}
+
+contract PositionRenderer is IPositionRenderer {
+    /// @inheritdoc IPositionRenderer
+    function render(address engine, uint256 tokenId) external pure override returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "data:image/svg+xml;base64,",
+                    Base64.encode(
+                        bytes(
+                            '<svg width="512" height="512" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#000" d="M0 0h512v512H0z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M339.976 134.664h41.048L256 340.586 130.976 134.664h41.047V98H64.143L256 414 447.857 98H339.976v36.664Zm-38.759 0V98h-90.436v36.664h90.436Z" fill="#fff"/></svg>'
+                        )
+                    )
+                )
+            );
+    }
+}
+
+/**
+ * @dev String operations.
+ */
+library Strings {
+    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` decimal representation.
+     */
+    function toString(uint256 value) internal pure returns (string memory) {
+        // Inspired by OraclizeAPI's implementation - MIT licence
+        // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
+     */
+    function toHexString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0x00";
+        }
+        uint256 temp = value;
+        uint256 length = 0;
+        while (temp != 0) {
+            length++;
+            temp >>= 8;
+        }
+        return toHexString(value, length);
+    }
+
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
+     */
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        for (uint256 i = 2 * length + 1; i > 1; --i) {
+            buffer[i] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
+    }
+}
+
+/// @title Base64
+/// @author Brecht Devos - <brecht@loopring.org>
+/// @notice Provides functions for encoding/decoding base64
+library Base64 {
+    string internal constant TABLE_ENCODE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    bytes internal constant TABLE_DECODE =
+        hex"0000000000000000000000000000000000000000000000000000000000000000"
+        hex"00000000000000000000003e0000003f3435363738393a3b3c3d000000000000"
+        hex"00000102030405060708090a0b0c0d0e0f101112131415161718190000000000"
+        hex"001a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132330000000000";
+
+    function encode(bytes memory data) internal pure returns (string memory) {
+        if (data.length == 0) return "";
+
+        // load the table into memory
+        string memory table = TABLE_ENCODE;
+
+        // multiply by 4/3 rounded up
+        uint256 encodedLen = 4 * ((data.length + 2) / 3);
+
+        // add some extra buffer at the end required for the writing
+        string memory result = new string(encodedLen + 32);
+
+        assembly {
+            // set the actual output length
+            mstore(result, encodedLen)
+
+            // prepare the lookup table
+            let tablePtr := add(table, 1)
+
+            // input ptr
+            let dataPtr := data
+            let endPtr := add(dataPtr, mload(data))
+
+            // result ptr, jump over length
+            let resultPtr := add(result, 32)
+
+            // run over the input, 3 bytes at a time
+            for {
+
+            } lt(dataPtr, endPtr) {
+
+            } {
+                // read 3 bytes
+                dataPtr := add(dataPtr, 3)
+                let input := mload(dataPtr)
+
+                // write 4 characters
+                mstore8(resultPtr, mload(add(tablePtr, and(shr(18, input), 0x3F))))
+                resultPtr := add(resultPtr, 1)
+                mstore8(resultPtr, mload(add(tablePtr, and(shr(12, input), 0x3F))))
+                resultPtr := add(resultPtr, 1)
+                mstore8(resultPtr, mload(add(tablePtr, and(shr(6, input), 0x3F))))
+                resultPtr := add(resultPtr, 1)
+                mstore8(resultPtr, mload(add(tablePtr, and(input, 0x3F))))
+                resultPtr := add(resultPtr, 1)
+            }
+
+            // padding with '='
+            switch mod(mload(data), 3)
+            case 1 {
+                mstore(sub(resultPtr, 2), shl(240, 0x3d3d))
+            }
+            case 2 {
+                mstore(sub(resultPtr, 1), shl(248, 0x3d))
+            }
+        }
+
+        return result;
+    }
+
+    function decode(string memory _data) internal pure returns (bytes memory) {
+        bytes memory data = bytes(_data);
+
+        if (data.length == 0) return new bytes(0);
+        require(data.length % 4 == 0, "invalid base64 decoder input");
+
+        // load the table into memory
+        bytes memory table = TABLE_DECODE;
+
+        // every 4 characters represent 3 bytes
+        uint256 decodedLen = (data.length / 4) * 3;
+
+        // add some extra buffer at the end required for the writing
+        bytes memory result = new bytes(decodedLen + 32);
+
+        assembly {
+            // padding with '='
+            let lastBytes := mload(add(data, mload(data)))
+            if eq(and(lastBytes, 0xFF), 0x3d) {
+                decodedLen := sub(decodedLen, 1)
+                if eq(and(lastBytes, 0xFFFF), 0x3d3d) {
+                    decodedLen := sub(decodedLen, 1)
+                }
+            }
+
+            // set the actual output length
+            mstore(result, decodedLen)
+
+            // prepare the lookup table
+            let tablePtr := add(table, 1)
+
+            // input ptr
+            let dataPtr := data
+            let endPtr := add(dataPtr, mload(data))
+
+            // result ptr, jump over length
+            let resultPtr := add(result, 32)
+
+            // run over the input, 4 characters at a time
+            for {
+
+            } lt(dataPtr, endPtr) {
+
+            } {
+                // read 4 characters
+                dataPtr := add(dataPtr, 4)
+                let input := mload(dataPtr)
+
+                // write 3 bytes
+                let output := add(
+                    add(
+                        shl(18, and(mload(add(tablePtr, and(shr(24, input), 0xFF))), 0xFF)),
+                        shl(12, and(mload(add(tablePtr, and(shr(16, input), 0xFF))), 0xFF))
+                    ),
+                    add(
+                        shl(6, and(mload(add(tablePtr, and(shr(8, input), 0xFF))), 0xFF)),
+                        and(mload(add(tablePtr, and(input, 0xFF))), 0xFF)
+                    )
+                )
+                mstore(resultPtr, shl(232, output))
+                resultPtr := add(resultPtr, 3)
+            }
+        }
+
+        return result;
+    }
+}
+
+/// @title   PositionDescriptor contract
+/// @author  Primitive
+/// @notice  Manages the metadata of the Primitive protocol position tokens
+contract PositionDescriptor is IPositionDescriptor {
+    using Strings for uint256;
+
+    /// STATE VARIABLES ///
+
+    /// @inheritdoc IPositionDescriptor
+    address public override positionRenderer;
+
+    /// EFFECT FUNCTIONS ///
+
+    /// @param positionRenderer_  Address of the PositionRenderer contract
+    constructor(address positionRenderer_) {
+        positionRenderer = positionRenderer_;
+    }
+
+    /// VIEW FUNCTIONS ///
+
+    /// @inheritdoc IPositionDescriptor
+    function getMetadata(address engine, uint256 tokenId) external view override returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(
+                        bytes(
+                            abi.encodePacked(
+                                '{"name":"',
+                                getName(IPrimitiveEngineView(engine)),
+                                '","image":"',
+                                IPositionRenderer(positionRenderer).render(engine, tokenId),
+                                '","license":"MIT","creator":"primitive.eth",',
+                                '"description":"Concentrated liquidity tokens of a two-token AMM",',
+                                '"properties":{',
+                                getProperties(IPrimitiveEngineView(engine), tokenId),
+                                "}}"
+                            )
+                        )
+                    )
+                )
+            );
+    }
+
+    /// @dev           Returns the name of a position token
+    /// @param engine  Address of the PrimitiveEngine contract
+    /// @return        Name of the position token as a string
+    function getName(IPrimitiveEngineView engine) private view returns (string memory) {
+        address risky = engine.risky();
+        address stable = engine.stable();
+
+        return
+            string(
+                abi.encodePacked(
+                    "Primitive RMM-01 LP ",
+                    IERC20WithMetadata(risky).symbol(),
+                    "-",
+                    IERC20WithMetadata(stable).symbol()
+                )
+            );
+    }
+
+    /// @dev            Returns the properties of a position token
+    /// @param engine   Address of the PrimitiveEngine contract
+    /// @param tokenId  Id of the position token (pool id)
+    /// @return         Properties of the position token as a JSON object
+    function getProperties(IPrimitiveEngineView engine, uint256 tokenId) private view returns (string memory) {
+        int128 invariant = engine.invariantOf(bytes32(tokenId));
+
+        return
+            string(
+                abi.encodePacked(
+                    '"factory":"',
+                    uint256(uint160(engine.factory())).toHexString(),
+                    '",',
+                    getTokenMetadata(engine.risky(), true),
+                    ",",
+                    getTokenMetadata(engine.stable(), false),
+                    ',"invariant":"',
+                    invariant < 0 ? "-" : "",
+                    uint256((uint128(invariant < 0 ? ~invariant + 1 : invariant))).toString(),
+                    '",',
+                    getCalibration(engine, tokenId),
+                    ",",
+                    getReserve(engine, tokenId),
+                    ',"chainId":',
+                    block.chainid.toString(),
+                    ""
+                )
+            );
+    }
+
+    /// @dev            Returns the metadata of an ERC20 token
+    /// @param token    Address of the ERC20 token
+    /// @param isRisky  True if the token is the risky
+    /// @return         Metadata of the ERC20 token as a JSON object
+    function getTokenMetadata(address token, bool isRisky) private view returns (string memory) {
+        string memory prefix = isRisky ? "risky" : "stable";
+        string memory metadata;
+
+        {
+            metadata = string(
+                abi.encodePacked(
+                    '"',
+                    prefix,
+                    'Name":"',
+                    IERC20WithMetadata(token).name(),
+                    '","',
+                    prefix,
+                    'Symbol":"',
+                    IERC20WithMetadata(token).symbol(),
+                    '","',
+                    prefix,
+                    'Decimals":"',
+                    uint256(IERC20WithMetadata(token).decimals()).toString(),
+                    '"'
+                )
+            );
+        }
+
+        return
+            string(abi.encodePacked(metadata, ',"', prefix, 'Address":"', uint256(uint160(token)).toHexString(), '"'));
+    }
+
+    /// @dev            Returns the calibration of a pool
+    /// @param engine   Address of the PrimitiveEngine contract
+    /// @param tokenId  Id of the position token (pool id)
+    /// @return         Calibration of the pool as a JSON object
+    function getCalibration(IPrimitiveEngineView engine, uint256 tokenId) private view returns (string memory) {
+        (uint128 strike, uint64 sigma, uint32 maturity, uint32 lastTimestamp, uint32 gamma) = engine.calibrations(
+            bytes32(tokenId)
+        );
+
+        return
+            string(
+                abi.encodePacked(
+                    '"strike":"',
+                    uint256(strike).toString(),
+                    '","sigma":"',
+                    uint256(sigma).toString(),
+                    '","maturity":"',
+                    uint256(maturity).toString(),
+                    '","lastTimestamp":"',
+                    uint256(lastTimestamp).toString(),
+                    '","gamma":"',
+                    uint256(gamma).toString(),
+                    '"'
+                )
+            );
+    }
+
+    /// @notice         Returns the reserves of a pool
+    /// @param engine   Address of the PrimitiveEngine contract
+    /// @param tokenId  Id of the position token (pool id)
+    /// @return         Reserves of the pool as a JSON object
+    function getReserve(IPrimitiveEngineView engine, uint256 tokenId) private view returns (string memory) {
+        (
+            uint128 reserveRisky,
+            uint128 reserveStable,
+            uint128 liquidity,
+            uint32 blockTimestamp,
+            uint256 cumulativeRisky,
+            uint256 cumulativeStable,
+            uint256 cumulativeLiquidity
+        ) = engine.reserves(bytes32(tokenId));
+
+        return
+            string(
+                abi.encodePacked(
+                    '"reserveRisky":"',
+                    uint256(reserveRisky).toString(),
+                    '","reserveStable":"',
+                    uint256(reserveStable).toString(),
+                    '","liquidity":"',
+                    uint256(liquidity).toString(),
+                    '","blockTimestamp":"',
+                    uint256(blockTimestamp).toString(),
+                    '","cumulativeRisky":"',
+                    uint256(cumulativeRisky).toString(),
+                    '","cumulativeStable":"',
+                    uint256(cumulativeStable).toString(),
+                    '","cumulativeLiquidity":"',
+                    uint256(cumulativeLiquidity).toString(),
+                    '"'
+                )
+            );
     }
 }

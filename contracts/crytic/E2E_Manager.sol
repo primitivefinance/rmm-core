@@ -2,7 +2,6 @@ pragma solidity 0.8.6;
 import "./E2E_Helper.sol";
 
 contract E2E_Manager is E2E_Helper {
-
     event ManagerAllocateMarginBalance(uint128 riskyBefore, uint128 stableBefore, uint256 delRisky, uint256 delStable);
     event ManagerRevertAllocateMarginBalance(uint256 delRisky, uint256 delStable);
     event ManagerReserveStatus(string functionName, uint256 liquidity, uint256 reserveRisky, uint256 reserveStable);
@@ -21,8 +20,8 @@ contract E2E_Manager is E2E_Helper {
         uint256 randomId,
         uint256 delRisky,
         uint256 delStable
-        //bool fromMargin
-    ) public {
+    ) public //bool fromMargin
+    {
         // For now we only want not fromMargin
         //if (fromMargin) {
         //    delRisky = E2E_Helper.one_to_max_uint64(delRisky);
@@ -59,8 +58,10 @@ contract E2E_Manager is E2E_Helper {
         uint256 erc1155_preBalance = manager.balanceOf(address(this), uint256(params.poolId));
         uint256 preCalcLiquidity;
         {
-            uint256 liquidity0 = (params.delRisky * manager_precall.reserve.liquidity) / uint256(manager_precall.reserve.reserveRisky);
-            uint256 liquidity1 = (params.delStable * manager_precall.reserve.liquidity) / uint256(manager_precall.reserve.reserveStable);
+            uint256 liquidity0 = (params.delRisky * manager_precall.reserve.liquidity) /
+                uint256(manager_precall.reserve.reserveRisky);
+            uint256 liquidity1 = (params.delStable * manager_precall.reserve.liquidity) /
+                uint256(manager_precall.reserve.reserveStable);
             preCalcLiquidity = liquidity0 < liquidity1 ? liquidity0 : liquidity1;
             require(preCalcLiquidity > 0);
         }
@@ -82,7 +83,9 @@ contract E2E_Manager is E2E_Helper {
                 assert(manager_postcall.reserve.blockTimestamp >= manager_postcall.reserve.blockTimestamp);
                 // reserves increase by allocated amount
                 assert(manager_postcall.reserve.reserveRisky - manager_precall.reserve.reserveRisky == params.delRisky);
-                assert(manager_postcall.reserve.reserveStable - manager_precall.reserve.reserveStable == params.delStable);
+                assert(
+                    manager_postcall.reserve.reserveStable - manager_precall.reserve.reserveStable == params.delStable
+                );
                 assert(manager_postcall.reserve.liquidity - manager_precall.reserve.liquidity == delLiquidity);
                 // save delLiquidity
                 assert(preCalcLiquidity == delLiquidity);
@@ -103,9 +106,10 @@ contract E2E_Manager is E2E_Helper {
         }
         manager_clear_pre_post_call();
     }
+
     function allocate_should_revert(ManagerAllocateCall memory params) internal returns (uint256) {
         emit ManagerRevertAllocateMarginBalance(params.delRisky, params.delStable);
-        
+
         try
             manager.allocate(
                 params.poolId,
@@ -161,14 +165,20 @@ contract E2E_Manager is E2E_Helper {
         delete manager_precall;
         delete manager_postcall;
     }
-    
+
     struct ManagerPoolData {
         Reserve.Data reserve;
         Margin.Data margin;
         uint256 liquidity;
     }
 
-    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes calldata data) external returns (bytes4) {
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes4) {
         return 0xf23a6e61;
     }
 
@@ -181,7 +191,7 @@ contract E2E_Manager is E2E_Helper {
     function manager_remove_should_succeed(bytes32 poolId, uint256 delLiquidity) internal returns (uint256, uint256) {
         manager_retrieve_current_pool_data(poolId, true);
         (uint256 calcRisky, uint256 calcStable) = Reserve.getAmounts(manager_precall.reserve, delLiquidity);
-        uint256 erc1155_preBalance = manager.balanceOf(address(this), uint256(poolId));        
+        uint256 erc1155_preBalance = manager.balanceOf(address(this), uint256(poolId));
         if (
             delLiquidity == 0 ||
             delLiquidity > manager_precall.liquidity ||
@@ -191,7 +201,10 @@ contract E2E_Manager is E2E_Helper {
         ) {
             return manager_remove_should_revert(poolId, delLiquidity);
         } else {
-            try manager.remove(poolId, delLiquidity, 0, 0) returns (uint256 delRisky, uint256 delStable) {
+            try manager.remove(address(engine), poolId, delLiquidity, 0, 0) returns (
+                uint256 delRisky,
+                uint256 delStable
+            ) {
                 {
                     manager_retrieve_current_pool_data(poolId, false);
                     // check liquidity decreased
@@ -205,7 +218,13 @@ contract E2E_Manager is E2E_Helper {
 
                     assert(calibrationTimestamp == engine.time());
                     // check decrease in reserves
-                    manager_assert_remove_postconditions(manager_precall.reserve, manager_postcall.reserve, delRisky, delStable, delLiquidity);
+                    manager_assert_remove_postconditions(
+                        manager_precall.reserve,
+                        manager_postcall.reserve,
+                        delRisky,
+                        delStable,
+                        delLiquidity
+                    );
                 }
                 return (delRisky, delStable);
             } catch {
@@ -217,7 +236,7 @@ contract E2E_Manager is E2E_Helper {
 
     function manager_remove_should_revert(bytes32 poolId, uint256 delLiquidity) internal returns (uint256, uint256) {
         uint256 liquidityAmountBefore = engine.liquidity(address(this), poolId);
-        try manager.remove(poolId, delLiquidity, 0, 0) returns (uint256 delRisky, uint256 delStable) {
+        try manager.remove(address(engine), poolId, delLiquidity, 0, 0) returns (uint256 delRisky, uint256 delStable) {
             assert(false);
         } catch {
             assert(liquidityAmountBefore == engine.liquidity(address(this), poolId));
@@ -277,13 +296,20 @@ contract E2E_Manager is E2E_Helper {
             emit DepositManager(marginRiskyBefore, marginStableBefore, marginRiskyAfter, marginStableAfter);
             assert(marginRiskyAfter == marginRiskyBefore + delRisky);
             assert(marginStableAfter == marginStableBefore + delStable);
-		} catch {
-			bytes memory payload = abi.encodeWithSignature("deposit(address,address,address,uint256,uint256)", recipient, address(risky), address(stable), delRisky, delStable);
-			(bool success, bytes memory result) = address(manager).call(payload);
+        } catch {
+            bytes memory payload = abi.encodeWithSignature(
+                "deposit(address,address,address,uint256,uint256)",
+                recipient,
+                address(risky),
+                address(stable),
+                delRisky,
+                delStable
+            );
+            (bool success, bytes memory result) = address(manager).call(payload);
             string memory revertReason = abi.decode(result, (string));
             emit Failed(revertReason);
-			assert(false);
-		}
+            assert(false);
+        }
         // } catch Error(string memory reason) {
         //     //
         //     emit Failed(reason);
@@ -293,7 +319,7 @@ contract E2E_Manager is E2E_Helper {
         //     string memory revertReason = abi.decode(reason, (string));
         //     emit Failed(revertReason);
         //     assert(false);
-		// }
+        // }
     }
 
     function manager_deposit_should_revert(
