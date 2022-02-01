@@ -3,7 +3,7 @@ import "./E2E_Helper.sol";
 
 contract E2E_Deposit_Withdraw is E2E_Helper {
     event DepositFailed(string reason, uint256 risky, uint256 stable);
-    event DepositRevert(bytes reason, uint256 risky, uint256 stable);
+    event DepositRevert(uint256 risky, uint256 stable);
 
     struct MarginHelper {
         uint128 marginRisky;
@@ -17,7 +17,7 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
     }
 
     function check_deposit_withdraw_safe(uint256 riskyAmount, uint256 stableAmount) public {
-        address recipient = msg.sender;
+        address recipient = address(this);
         MarginHelper memory precall = populate_margin_helper(recipient);
         //ensures that delRisky and delStable are at least 1 and not too large to overflow the deposit
         uint256 delRisky = E2E_Helper.one_to_max_uint64(riskyAmount);
@@ -64,7 +64,7 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         uint256 delRisky,
         uint256 delStable
     ) internal {
-        (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(recipient);
+        MarginHelper memory precall = populate_margin_helper(recipient);
         uint256 balanceSenderRiskyBefore = risky.balanceOf(address(this));
         uint256 balanceSenderStableBefore = stable.balanceOf(address(this));
         uint256 balanceEngineRiskyBefore = risky.balanceOf(address(engine));
@@ -72,9 +72,9 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
 
         try engine.deposit(recipient, delRisky, delStable, abi.encode(0)) {
             // check margins
-            (uint128 marginRiskyAfter, uint128 marginStableAfter) = engine.margins(recipient);
-            assert(marginRiskyAfter == marginRiskyBefore + delRisky);
-            assert(marginStableAfter == marginStableBefore + delStable);
+            MarginHelper memory postcall = populate_margin_helper(recipient);
+            assert(postcall.marginRisky == precall.marginRisky + delRisky);
+            assert(postcall.marginStable == precall.marginStable + delStable);
             // check token balances
             uint256 balanceSenderRiskyAfter = risky.balanceOf(address(this));
             uint256 balanceSenderStableAfter = stable.balanceOf(address(this));
@@ -84,37 +84,38 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
             assert(balanceSenderStableAfter == balanceSenderStableBefore - delStable);
             assert(balanceEngineRiskyAfter == balanceEngineRiskyBefore + delRisky);
             assert(balanceEngineStableAfter == balanceEngineStableBefore + delStable);
-        } catch Error(string memory reason) {
+        } catch {
             uint256 balanceOfThisRisky = risky.balanceOf(address(this));
             uint256 balanceOfThisStable = stable.balanceOf(address(this));
-            emit DepositFailed(reason, balanceOfThisRisky, balanceOfThisStable);
-            assert(false);
-        } catch (bytes memory lowLevelData) {
-            uint256 balanceOfThisRisky = risky.balanceOf(address(this));
-            uint256 balanceOfThisStable = stable.balanceOf(address(this));
-            emit DepositRevert(lowLevelData, balanceOfThisRisky, balanceOfThisStable);
+            emit DepositRevert(balanceOfThisRisky, balanceOfThisStable);
             assert(false);
         }
     }
-
-    event WithdrawMargins(uint128 risky, uint128 stable, uint256 delRisky, uint256 delStable);
 
     function withdraw_with_safe_range(
         address recipient,
         uint256 delRisky,
         uint256 delStable
     ) public {
+        require(recipient != address(0));
         //ensures that delRisky and delStable are at least 1 and not too large to overflow the deposit
         delRisky = E2E_Helper.one_to_max_uint64(delRisky);
         delStable = E2E_Helper.one_to_max_uint64(delStable);
-        (uint128 marginRiskyBefore, uint128 marginStableBefore) = engine.margins(recipient);
-        require(marginRiskyBefore >= delRisky && marginStableBefore >= delStable);
-        emit WithdrawMargins(marginRiskyBefore, marginStableBefore, delRisky, delStable);
-        withdraw_should_succeed(recipient, delRisky, delStable);
+        MarginHelper memory senderMargins = populate_margin_helper(address(this));
+        if (senderMargins.marginRisky < delRisky || senderMargins.marginStable < delStable) {
+            withdraw_should_revert(recipient, delRisky, delStable);
+        } else {
+            withdraw_should_succeed(recipient, delRisky, delStable);
+        }
     }
 
     function withdraw_zero_zero(address recipient) public {
         withdraw_should_revert(recipient, 0, 0);
+    }
+    function withdraw_zero_address_recipient(uint256 delRisky, uint256 delStable) public {
+        delRisky = E2E_Helper.one_to_max_uint64(delRisky);
+        delStable = E2E_Helper.one_to_max_uint64(delStable);
+        withdraw_should_revert(address(0), 0, 0);
     }
 
     function withdraw_should_revert(
@@ -137,7 +138,6 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         address sender, 
         address originator
     );
-    event WithdrawDifference(uint128 riskyBefore, uint128 stableBefore, uint128 riskyAfter, uint128 stableAfter);
     event FailureReason(string reason);
 
     function withdraw_should_succeed(
@@ -145,24 +145,22 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         uint256 delRisky,
         uint256 delStable
     ) internal {
-        address originator = msg.sender;
+        address originator = address(this);
         MarginHelper memory precallSender = populate_margin_helper(originator);
         MarginHelper memory precallRecipient = populate_margin_helper(recipient);
         uint256 balanceRecipientRiskyBefore = risky.balanceOf(recipient);
         uint256 balanceRecipientStableBefore = stable.balanceOf(recipient);
         uint256 balanceEngineRiskyBefore = risky.balanceOf(address(engine));
         uint256 balanceEngineStableBefore = stable.balanceOf(address(engine));
-        emit Withdraw(precallSender.marginRisky, precallSender.marginStable, delRisky, delStable, msg.sender, address(this));
+        emit Withdraw(precallSender.marginRisky, precallSender.marginStable, delRisky, delStable, msg.sender, originator);
 
         try engine.withdraw(recipient, delRisky, delStable) {
             // check margins on msg.sender
             MarginHelper memory postcallThis = populate_margin_helper(originator);
-            emit WithdrawDifference(precallSender.marginRisky,precallSender.marginStable, postcallThis.marginRisky, postcallThis.marginStable);
             assert(postcallThis.marginRisky == precallSender.marginRisky - delRisky);
             assert(postcallThis.marginStable == precallSender.marginStable - delStable);
             // check margins on recipient
             MarginHelper memory postCallRecipient = populate_margin_helper(recipient);
-            emit WithdrawDifference(precallRecipient.marginRisky,precallRecipient.marginStable, postCallRecipient.marginRisky, postCallRecipient.marginStable);
             assert(postCallRecipient.marginRisky == precallRecipient.marginRisky);
             assert(postCallRecipient.marginStable == precallRecipient.marginStable);
             //check token balances
