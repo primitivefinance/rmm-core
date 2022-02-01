@@ -44,7 +44,7 @@ contract LibraryMathEchidna {
         uint256 scaledFactor = 10**factor;
 
         int128 scaledUpValue = value.scaleToX64(scaledFactor);
-        uint256 scaledDownValue = scaledUpValue.scalefromX64(scaledFactor);
+        uint256 scaledDownValue = scaledUpValue.scaleFromX64(scaledFactor);
 
         assert(scaledDownValue == value);
     }
