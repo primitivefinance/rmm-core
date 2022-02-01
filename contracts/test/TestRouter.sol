@@ -290,7 +290,7 @@ contract TestRouter is TestBase {
         int128 phi = stableX64.sub(invariantLastX64).div(strikeX64).getInverseCDF();
         int128 input = phi.add(volX64);
         int128 riskyX64 = ReplicationMath.ONE_INT.sub(input.getCDF());
-        riskyPerLiquidity = riskyX64.scalefromX64(scaleFactorRisky);
+        riskyPerLiquidity = riskyX64.scaleFromX64(scaleFactorRisky);
     }
 
     // note: this will probably revert because getRiskyGivenStable is not precise enough to return a valid swap
