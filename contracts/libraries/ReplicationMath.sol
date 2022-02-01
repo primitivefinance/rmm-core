@@ -24,7 +24,7 @@ library ReplicationMath {
     /// @return  vol    Signed fixed point 64.64 number equal to sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
         int128 sqrtTauX64 = tau.toYears().sqrt();
-        int128 sigmaX64 = sigma.percentage();
+        int128 sigmaX64 = sigma.percentageToX64();
         vol = sigmaX64.mul(sqrtTauX64);
     }
 
@@ -55,9 +55,9 @@ library ReplicationMath {
             int128 phi = oneMinusRiskyX64.getInverseCDF();
             int128 input = phi.sub(volX64);
             int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
-            stablePerLiquidity = stableX64.scalefromX64(scaleFactorStable);
+            stablePerLiquidity = stableX64.scaleFromX64(scaleFactorStable);
         } else {
-            stablePerLiquidity = (strikeX64.mul(oneMinusRiskyX64).add(invariantLastX64)).scalefromX64(
+            stablePerLiquidity = (strikeX64.mul(oneMinusRiskyX64).add(invariantLastX64)).scaleFromX64(
                 scaleFactorStable
             );
         }
