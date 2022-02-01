@@ -45,7 +45,7 @@ library Units {
     /// @param   value      Signed fixed point 64.64 number to convert from precision of 10^18
     /// @param   factor     Scaling factor for `value`, used to calculate decimals of `value`
     /// @return  y          Unsigned 256-bit wei amount scaled to native precision of 10^(18 - factor)
-    function scalefromX64(int128 value, uint256 factor) internal pure returns (uint256 y) {
+    function scaleFromX64(int128 value, uint256 factor) internal pure returns (uint256 y) {
         uint256 scaleFactor = PRECISION / factor;
         y = value.mulu(scaleFactor);
     }
@@ -54,7 +54,7 @@ library Units {
     /// @dev            Convert unsigned 256-bit integer number into signed 64.64 fixed point number
     /// @param denorm   Unsigned percentage integer with precision of 1e4
     /// @return         Signed 64.64 fixed point percentage with precision of 1e4
-    function percentage(uint256 denorm) internal pure returns (int128) {
+    function percentageToX64(uint256 denorm) internal pure returns (int128) {
         return denorm.divu(PERCENTAGE);
     }
 
