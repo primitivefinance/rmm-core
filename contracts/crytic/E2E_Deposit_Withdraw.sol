@@ -17,16 +17,22 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
     }
 
     function check_deposit_withdraw_safe(uint256 riskyAmount, uint256 stableAmount) public {
-        address recipient = address(this);
-        MarginHelper memory precall = populate_margin_helper(recipient);
+        MarginHelper memory precall = populate_margin_helper(address(this));
         //ensures that delRisky and delStable are at least 1 and not too large to overflow the deposit
         uint256 delRisky = E2E_Helper.one_to_max_uint64(riskyAmount);
         uint256 delStable = E2E_Helper.one_to_max_uint64(stableAmount);
         mint_tokens(delRisky, delStable);
-        deposit_should_succeed(recipient, delRisky, delStable);
-        withdraw_should_succeed(recipient, delRisky, delStable);
+        deposit_should_succeed(address(this), delRisky, delStable);
+        withdraw_should_succeed(address(this), delRisky, delStable);
 
-        MarginHelper memory postcall = populate_margin_helper(recipient);
+        MarginHelper memory postcall = populate_margin_helper(address(this));
+        emit DepositWithdraw("pre/post deposit-withdraw risky", precall.marginRisky, postcall.marginRisky, delRisky);
+        emit DepositWithdraw(
+            "pre/post deposit-withdraw stable",
+            precall.marginStable,
+            postcall.marginStable,
+            delStable
+        );
         assert(precall.marginRisky == postcall.marginRisky);
         assert(precall.marginStable == postcall.marginStable);
     }
@@ -98,6 +104,23 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         uint256 delStable
     ) public {
         require(recipient != address(0));
+        require(recipient != address(engine));
+        //ensures that delRisky and delStable are at least 1 and not too large to overflow the deposit
+        delRisky = E2E_Helper.one_to_max_uint64(delRisky);
+        delStable = E2E_Helper.one_to_max_uint64(delStable);
+        MarginHelper memory senderMargins = populate_margin_helper(address(this));
+        if (senderMargins.marginRisky < delRisky || senderMargins.marginStable < delStable) {
+            withdraw_should_revert(recipient, delRisky, delStable);
+        } else {
+            withdraw_should_succeed(recipient, delRisky, delStable);
+        }
+    }
+    function withdraw_with_only_non_zero_addr(
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) public {
+        require(recipient != address(0));
         //ensures that delRisky and delStable are at least 1 and not too large to overflow the deposit
         delRisky = E2E_Helper.one_to_max_uint64(delRisky);
         delStable = E2E_Helper.one_to_max_uint64(delStable);
@@ -112,6 +135,7 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
     function withdraw_zero_zero(address recipient) public {
         withdraw_should_revert(recipient, 0, 0);
     }
+
     function withdraw_zero_address_recipient(uint256 delRisky, uint256 delStable) public {
         delRisky = E2E_Helper.one_to_max_uint64(delRisky);
         delStable = E2E_Helper.one_to_max_uint64(delStable);
@@ -135,7 +159,7 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         uint128 marginStableBefore,
         uint256 delRisky,
         uint256 delStable,
-        address sender, 
+        address sender,
         address originator
     );
     event FailureReason(string reason);
@@ -145,35 +169,58 @@ contract E2E_Deposit_Withdraw is E2E_Helper {
         uint256 delRisky,
         uint256 delStable
     ) internal {
-        address originator = address(this);
-        MarginHelper memory precallSender = populate_margin_helper(originator);
+        MarginHelper memory precallSender = populate_margin_helper(address(this));
         MarginHelper memory precallRecipient = populate_margin_helper(recipient);
         uint256 balanceRecipientRiskyBefore = risky.balanceOf(recipient);
         uint256 balanceRecipientStableBefore = stable.balanceOf(recipient);
         uint256 balanceEngineRiskyBefore = risky.balanceOf(address(engine));
         uint256 balanceEngineStableBefore = stable.balanceOf(address(engine));
-        emit Withdraw(precallSender.marginRisky, precallSender.marginStable, delRisky, delStable, msg.sender, originator);
 
-        try engine.withdraw(recipient, delRisky, delStable) {
-            // check margins on msg.sender
-            MarginHelper memory postcallThis = populate_margin_helper(originator);
-            assert(postcallThis.marginRisky == precallSender.marginRisky - delRisky);
-            assert(postcallThis.marginStable == precallSender.marginStable - delStable);
-            // check margins on recipient
-            MarginHelper memory postCallRecipient = populate_margin_helper(recipient);
-            assert(postCallRecipient.marginRisky == precallRecipient.marginRisky);
-            assert(postCallRecipient.marginStable == precallRecipient.marginStable);
+        (bool success, ) = address(engine).call(
+            abi.encodeWithSignature("withdraw(address,uint256,uint256)", recipient, delRisky, delStable)
+        );
+        if (!success) {
+            assert(false);
+            return;
+        }
+
+        {
+            assert_post_withdrawal(precallSender, precallRecipient, recipient, delRisky, delStable);
             //check token balances
             uint256 balanceRecipientRiskyAfter = risky.balanceOf(recipient);
             uint256 balanceRecipientStableAfter = stable.balanceOf(recipient);
             uint256 balanceEngineRiskyAfter = risky.balanceOf(address(engine));
             uint256 balanceEngineStableAfter = stable.balanceOf(address(engine));
+            emit DepositWithdraw("balance recip risky", balanceRecipientRiskyBefore, balanceRecipientRiskyAfter, delRisky);
+            emit DepositWithdraw("balance recip stable", balanceRecipientStableBefore, balanceRecipientStableAfter, delStable);
+            emit DepositWithdraw("balance engine risky", balanceEngineRiskyBefore, balanceEngineRiskyAfter, delRisky);
+            emit DepositWithdraw("balance engine stable", balanceEngineStableBefore, balanceEngineStableAfter, delStable);
             assert(balanceRecipientRiskyAfter == balanceRecipientRiskyBefore + delRisky);
             assert(balanceRecipientStableAfter == balanceRecipientStableBefore + delStable);
             assert(balanceEngineRiskyAfter == balanceEngineRiskyBefore - delRisky);
             assert(balanceEngineStableAfter == balanceEngineStableBefore - delStable);
-        } catch {
-            assert(false);
+        }
+    }
+
+    event DepositWithdraw(string, uint256 before, uint256 aft, uint256 delta);
+
+    function assert_post_withdrawal(
+        MarginHelper memory precallThis,
+        MarginHelper memory precallRecipient,
+        address recipient,
+        uint256 delRisky,
+        uint256 delStable
+    ) internal {
+        // check margins on msg.sender should decrease
+        MarginHelper memory postcallThis = populate_margin_helper(address(this));
+
+        assert(postcallThis.marginRisky == precallThis.marginRisky - delRisky);
+        assert(postcallThis.marginStable == precallThis.marginStable - delStable);
+        // check margins on recipient should have no change if recipient is not addr(this)
+        if (address(this) != recipient) {
+            MarginHelper memory postCallRecipient = populate_margin_helper(recipient);
+            assert(postCallRecipient.marginRisky == precallRecipient.marginRisky);
+            assert(postCallRecipient.marginStable == precallRecipient.marginStable);
         }
     }
 
