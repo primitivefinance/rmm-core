@@ -89,7 +89,6 @@ contract LibraryMathEchidna {
 	}
 
 	function realisticCDFInput(uint128 x, uint128 neg) internal returns (int128) {
-		x = x % 184467440737095516161; // 10 = 10 * 2 ^ 64
 		if (neg % 2 == 0) {
 			return -int128(x); 
 		}
@@ -114,12 +113,12 @@ contract LibraryMathEchidna {
 		assert(diff <= 1);
 	}
 
-	function CDFAlwaysGreaterThan0(uint128 x, uint128 neg) public {
+	function CDFCheckRange(uint128 x, uint128 neg) public {
 		int128 x_x = realisticCDFInput(x, neg);
 			
 		int128 res = x_x.getCDF();
 		emit P(x_x, res, res.toInt());
-		assert(res > 0 && res.toInt() <= 1);
+		assert(res > 0 && res.toInt() < 1);
 	}
 
 }
