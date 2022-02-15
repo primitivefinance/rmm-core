@@ -2255,7 +2255,7 @@ interface IPrimitiveManager is IPrimitiveCreateCallback, IPrimitiveLiquidityCall
         uint256 minStableOut
     ) external returns (uint256 delRisky, uint256 delStable);
 }
-contract PrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPermit, PositionManager, SwapManager {
+contract EchidnaPrimitiveManager is IPrimitiveManager, Multicall, CashManager, SelfPermit, PositionManager, SwapManager {
     using TransferHelper for IERC20;
     using ManagerMargin for ManagerMargin.Data;
 

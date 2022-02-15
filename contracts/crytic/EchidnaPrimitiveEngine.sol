@@ -21,7 +21,7 @@ import "./interfaces/IPrimitiveFactory.sol";
 /// @author  Primitive
 /// @notice  Replicating Market Maker
 /// @dev     RMM-01
-contract PrimitiveEngine is IPrimitiveEngine {
+contract EchidnaPrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
     using SafeCast for uint256;
@@ -56,7 +56,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override scaleFactorStable;
     /// @inheritdoc IPrimitiveEngineView
-    address public immutable override factory;
+    //address public immutable override factory;
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
@@ -81,9 +81,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
-    constructor() {
-        (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
-            .args();
+    constructor(address _risky, address _stable, uint256 _scaleFactorRisky, uint256 _scaleFactorStable, uint256 _min_liquidity) {
+        risky = _risky;
+        stable = _stable;
+        scaleFactorRisky = _scaleFactorRisky;
+        scaleFactorStable = _scaleFactorStable;
+        MIN_LIQUIDITY = _min_liquidity;
     }
 
     /// @return Risky token balance of this contract
@@ -167,7 +170,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (strike == 0) revert StrikeError(strike);
         if (delLiquidity <= MIN_LIQUIDITY) revert MinLiquidityError(delLiquidity);
         if (riskyPerLp > PRECISION / factor0 || riskyPerLp == 0) revert RiskyPerLpError(riskyPerLp);
-        if (gamma >= Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
+        if (gamma > Units.PERCENTAGE || gamma < 9000) revert GammaError(gamma);
 
         Calibration memory cal = Calibration({
             strike: strike,
@@ -185,7 +188,8 @@ contract PrimitiveEngine is IPrimitiveEngine {
         if (delRisky == 0 || delStable == 0) revert CalibrationError(delRisky, delStable);
 
         calibrations[poolId] = cal; // state update
-        liquidity[msg.sender][poolId] += delLiquidity - MIN_LIQUIDITY; // burn min liquidity, at cost of msg.sender
+        uint256 amount = delLiquidity - MIN_LIQUIDITY;
+        liquidity[msg.sender][poolId] += amount; // burn min liquidity, at cost of msg.sender
         reserves[poolId].allocate(delRisky, delStable, delLiquidity, cal.lastTimestamp); // state update
 
         (uint256 balRisky, uint256 balStable) = (balanceRisky(), balanceStable());
@@ -193,7 +197,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         checkRiskyBalance(balRisky + delRisky);
         checkStableBalance(balStable + delStable);
 
-        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity, cal.gamma);
+        emit Create(msg.sender, cal.strike, cal.sigma, cal.maturity, cal.gamma, delRisky, delStable, amount);
     }
 
     // ===== Margin =====
@@ -246,7 +250,6 @@ contract PrimitiveEngine is IPrimitiveEngine {
         Reserve.Data storage reserve = reserves[poolId];
         if (reserve.blockTimestamp == 0) revert UninitializedError();
         uint32 timestamp = _blockTimestamp();
-        if (timestamp > calibrations[poolId].maturity) revert PoolExpiredError();
 
         uint256 liquidity0 = (delRisky * reserve.liquidity) / uint256(reserve.reserveRisky);
         uint256 liquidity1 = (delStable * reserve.liquidity) / uint256(reserve.reserveStable);
@@ -265,7 +268,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
             checkStableBalance(balStable + delStable);
         }
 
-        emit Allocate(msg.sender, recipient, poolId, delRisky, delStable);
+        emit Allocate(msg.sender, recipient, poolId, delRisky, delStable, delLiquidity);
     }
 
     /// @inheritdoc IPrimitiveEngineActions
@@ -284,7 +287,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
         reserve.remove(delRisky, delStable, delLiquidity, _blockTimestamp());
         margins[msg.sender].deposit(delRisky, delStable);
 
-        emit Remove(msg.sender, poolId, delRisky, delStable);
+        emit Remove(msg.sender, poolId, delRisky, delStable, delLiquidity);
     }
 
     struct SwapDetails {
