@@ -3,11 +3,8 @@ pragma solidity 0.8.6;
 
 import "../../PrimitiveEngine.sol";
 
-contract MockEngine is EchidnaPrimitiveEngine {
+contract MockEngine is PrimitiveEngine {
     uint256 public time = 1;
-
-    constructor(address _risky, address _stable, uint256 _scaleFactorRisky, uint256 _scaleFactorStable, uint256 _min_liquidity) public EchidnaPrimitiveEngine(_risky, _stable, _scaleFactorRisky, _scaleFactorStable, _min_liquidity)
-            {}
 
     function advanceTime(uint256 by) external {
         time += by;
