@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-import "./libraries/Margin.sol";
-import "./libraries/ReplicationMath.sol";
-import "./libraries/Reserve.sol";
-import "./libraries/SafeCast.sol";
-import "./libraries/Transfers.sol";
-import "./libraries/Units.sol";
+import "../libraries/Margin.sol";
+import "../libraries/ReplicationMath.sol";
+import "../libraries/Reserve.sol";
+import "../libraries/SafeCast.sol";
+import "../libraries/Transfers.sol";
+import "../libraries/Units.sol";
 
-import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveDepositCallback.sol";
-import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveSwapCallback.sol";
+import "../interfaces/callback/IPrimitiveCreateCallback.sol";
+import "../interfaces/callback/IPrimitiveDepositCallback.sol";
+import "../interfaces/callback/IPrimitiveLiquidityCallback.sol";
+import "../interfaces/callback/IPrimitiveSwapCallback.sol";
 
-import "./interfaces/IERC20.sol";
-import "./interfaces/IPrimitiveEngine.sol";
-import "./interfaces/IPrimitiveFactory.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveFactory.sol";
 
 /// @title   Primitive Engine
 /// @author  Primitive
@@ -56,7 +56,7 @@ contract EchidnaPrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override scaleFactorStable;
     /// @inheritdoc IPrimitiveEngineView
-    //address public immutable override factory;
+    address public override factory; // immutable in main engine
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView

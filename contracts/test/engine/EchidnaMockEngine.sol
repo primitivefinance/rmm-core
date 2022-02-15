@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-import "../../PrimitiveEngine.sol";
+import "../../crytic/EchidnaPrimitiveEngine.sol";
 
-contract MockEngine is PrimitiveEngine {
+contract EchidnaMockEngine is EchidnaPrimitiveEngine {
     uint256 public time = 1;
+
+    constructor(address _risky, address _stable, uint256 _scaleFactorRisky, uint256 _scaleFactorStable, uint256 _min_liquidity) public EchidnaPrimitiveEngine(_risky, _stable, _scaleFactorRisky, _scaleFactorStable, _min_liquidity)
+            {}
 
     function advanceTime(uint256 by) external {
         time += by;
