@@ -24,7 +24,7 @@ library ReplicationMath {
     /// @return  vol    Signed fixed point 64.64 number equal to sigma * sqrt(tau)
     function getProportionalVolatility(uint256 sigma, uint256 tau) internal pure returns (int128 vol) {
         int128 sqrtTauX64 = tau.toYears().sqrt();
-        int128 sigmaX64 = sigma.percentage();
+        int128 sigmaX64 = sigma.percentageToX64();
         vol = sigmaX64.mul(sqrtTauX64);
     }
 
@@ -48,40 +48,19 @@ library ReplicationMath {
         uint256 tau
     ) internal pure returns (uint256 stablePerLiquidity) {
         int128 strikeX64 = strike.scaleToX64(scaleFactorStable);
-        int128 volX64 = getProportionalVolatility(sigma, tau);
         int128 riskyX64 = riskyPerLiquidity.scaleToX64(scaleFactorRisky); // mul by 2^64, div by precision
-        int128 phi = ONE_INT.sub(riskyX64).getInverseCDF();
-        int128 input = phi.sub(volX64);
-        int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
-        stablePerLiquidity = stableX64.scalefromX64(scaleFactorStable);
-    }
-
-    /// @notice                 Uses stablePerLiquidity and invariant to calculate riskyPerLiquidity
-    /// @dev                    Converts unsigned 256-bit values to fixed point 64.64 numbers w/ decimals of precision
-    /// @param   invariantLastX64   Signed 64.64 fixed point number. Calculated w/ same `tau` as the parameter `tau`
-    /// @param   scaleFactorRisky   Unsigned 256-bit integer scaling factor for `risky`, 10^(18 - risky.decimals())
-    /// @param   scaleFactorStable  Unsigned 256-bit integer scaling factor for `stable`, 10^(18 - stable.decimals())
-    /// @param   stablePerLiquidity Unsigned 256-bit integer of Pool's stable reserves *per liquidity*, 0 <= x <= strike
-    /// @param   strike         Unsigned 256-bit integer value with precision equal to 10^(18 - scaleFactorStable)
-    /// @param   sigma          Volatility of the Pool as an unsigned 256-bit integer w/ precision of 1e4, 10000 = 100%
-    /// @param   tau            Time until expiry in seconds as an unsigned 256-bit integer
-    /// @return  riskyPerLiquidity = 1 - CDF(CDF^-1((stablePerLiquidity - invariantLastX64)/K) + sigma*sqrt(tau))
-    function getRiskyGivenStable(
-        int128 invariantLastX64,
-        uint256 scaleFactorRisky,
-        uint256 scaleFactorStable,
-        uint256 stablePerLiquidity,
-        uint256 strike,
-        uint256 sigma,
-        uint256 tau
-    ) internal pure returns (uint256 riskyPerLiquidity) {
-        int128 strikeX64 = strike.scaleToX64(scaleFactorStable);
-        int128 volX64 = getProportionalVolatility(sigma, tau);
-        int128 stableX64 = stablePerLiquidity.scaleToX64(scaleFactorStable);
-        int128 phi = stableX64.sub(invariantLastX64).div(strikeX64).getInverseCDF();
-        int128 input = phi.add(volX64);
-        int128 riskyX64 = ONE_INT.sub(input.getCDF());
-        riskyPerLiquidity = riskyX64.scalefromX64(scaleFactorRisky);
+        int128 oneMinusRiskyX64 = ONE_INT.sub(riskyX64);
+        if (tau != 0) {
+            int128 volX64 = getProportionalVolatility(sigma, tau);
+            int128 phi = oneMinusRiskyX64.getInverseCDF();
+            int128 input = phi.sub(volX64);
+            int128 stableX64 = strikeX64.mul(input.getCDF()).add(invariantLastX64);
+            stablePerLiquidity = stableX64.scaleFromX64(scaleFactorStable);
+        } else {
+            stablePerLiquidity = (strikeX64.mul(oneMinusRiskyX64).add(invariantLastX64)).scaleFromX64(
+                scaleFactorStable
+            );
+        }
     }
 
     /// @notice                 Calculates the invariant of a curve

@@ -36,19 +36,6 @@ contract TestReplicationMath {
             .scaleToX64(scaleFactorStable);
     }
 
-    /// @return reserveRisky The calculated risky reserve, using the stable reserve
-    function getRiskyGivenStable(
-        int128 invariantLast,
-        uint256 reserveStable,
-        uint256 strike,
-        uint256 sigma,
-        uint256 tau
-    ) public view returns (int128 reserveRisky) {
-        reserveRisky = ReplicationMath
-            .getRiskyGivenStable(invariantLast, scaleFactorRisky, scaleFactorStable, reserveStable, strike, sigma, tau)
-            .scaleToX64(scaleFactorRisky);
-    }
-
     /// @return invariant Uses the trading function to calculate the invariant, which starts at 0 and grows with fees
     function calcInvariant(
         uint256 reserveRisky,

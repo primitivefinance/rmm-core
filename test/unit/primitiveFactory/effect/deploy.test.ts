@@ -1,11 +1,12 @@
+import { ethers } from 'hardhat'
 import { constants, Wallet } from 'ethers'
-import { deployMockContract } from 'ethereum-waffle'
+import { createFixtureLoader, deployMockContract } from 'ethereum-waffle'
 
 import expect from '../../.../../../shared/expect'
 import { computeEngineAddress } from '../../../shared'
 import { testContext } from '../../.../../../shared/testContext'
 import { PoolState, TestPools } from '../../.../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../.../../../shared/fixtures'
+import { engineFixture } from '../../.../../../shared/fixtures'
 import { usePool, useLiquidity, useTokens, useApproveAll } from '../../.../../../shared/hooks'
 
 import { abi as TestToken } from '../../../../artifacts/contracts/test/TestToken.sol/TestToken.json'
@@ -15,14 +16,18 @@ TestPools.forEach(function (pool: PoolState) {
   testContext(`deploy engines`, function () {
     const { decimalsRisky, decimalsStable } = pool.calibration
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       await usePool(this.signers[0], this.contracts, pool.calibration)

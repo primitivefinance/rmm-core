@@ -5,6 +5,8 @@ import { Fixture } from '@ethereum-waffle/provider'
 import { SwapTestCase } from '../test/unit/primitiveEngine/effect/swap.test'
 import { Wei } from 'web3-units'
 
+export type Awaited<T> = T extends PromiseLike<infer U> ? U : T
+
 export interface Libraries {
   testReserve: ContractTypes.TestReserve
   testMargin: ContractTypes.TestMargin
@@ -54,7 +56,7 @@ export type EngineTypes = ContractTypes.PrimitiveEngine | ContractTypes.MockEngi
 declare global {
   export namespace Chai {
     interface Assertion {
-      revertWithCustomError(errorName: string, params: any[]): AsyncAssertion
+      revertWithCustomError(errorName: string, params?: any[], chainId?: number): AsyncAssertion
       increaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       decreaseMargin(engine: EngineTypes, account: string, risky: BigNumber, stable: BigNumber): AsyncAssertion
       increasePositionLiquidity(
