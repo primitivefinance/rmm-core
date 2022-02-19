@@ -1,0 +1,14 @@
+corpusDir: 'corpus'
+initialize: contracts/crytic/init.json
+# testMode: benchmark
+# testMode: optimization
+testMode: assertion 
+testLimit: 5000
+shrinkLimit: 500
+propMaxGas: 800003000
+testMaxGas: 800003000
+# sender: ["0x10000"]
+sender: ["0x6A4A62E5A7eD13c361b176A5F62C2eE620Ac0DF8"]
+filterFunctions: ["EchidnaE2E.createCallback(uint256,uint256,bytes)", "EchidnaE2E.allocateCallback(uint256,uint256,bytes)", "EchidnaE2E.depositCallback(uint256,uint256,bytes)", "EchidnaE2E.swapCallback(uint256,uint256,bytes)","Addresses.d18_d18()", "Addresses.d18_d6()","Addresses.d6()_d18()", "Addresses.d6_d6()"]
+timeout: 3600 # 1 hour
+codeSize: 0xfffffffffff

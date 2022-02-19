@@ -1,0 +1,17 @@
+corpusDir: 'e2e_swap_corpus'
+initialize: contracts/crytic/init.json
+# testMode: benchmark
+# testMode: optimization
+testMode: assertion
+testLimit: 1000
+shrinkLimit: 500
+propMaxGas: 800003000
+testMaxGas: 800003000
+sender: ['0x1e2f9e10d02a6b8f8f69fcbf515e75039d2ea30d']
+filterFunctions:
+  [
+    'E2E_swap.createCallback(uint256,uint256,bytes)',
+    'E2E_swap.swapCallback(uint256,uint256,bytes)',
+    'E2E_swap.allocateCallback(uint256,uint256,bytes)',
+  ]
+timeout: 3600 # 1 hour

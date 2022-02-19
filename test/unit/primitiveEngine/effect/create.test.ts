@@ -1,13 +1,16 @@
+import hre, { ethers } from 'hardhat'
 import { parseWei } from 'web3-units'
 import { constants, BigNumber, Wallet } from 'ethers'
 import { getStableGivenRisky } from '@primitivefi/rmm-math'
 
 import expect from '../../../shared/expect'
-import { Calibration, parseCalibration } from '../../../shared'
+import { parseCalibration } from '../../../shared'
 import { testContext } from '../../../shared/testContext'
 import { useTokens, useApproveAll } from '../../../shared/hooks'
 import { PoolState, TestPools } from '../../../shared/poolConfigs'
-import { customDecimalsFixture, PrimitiveFixture } from '../../../shared/fixtures'
+import { engineFixture } from '../../../shared/fixtures'
+import { createFixtureLoader } from 'ethereum-waffle'
+import { Interface } from 'ethers/lib/utils'
 
 const { HashZero } = constants
 
@@ -17,15 +20,22 @@ TestPools.forEach(function (pool: PoolState) {
       pool.calibration
     let poolId: string
     const delLiquidity = parseWei('1', 18)
+    let chainId: number
 
-    let fixtureToLoad: ([wallet]: Wallet[], provider: any) => Promise<PrimitiveFixture>
+    let loadFixture: ReturnType<typeof createFixtureLoader>
+    let signer: Wallet, other: Wallet
     before(async function () {
-      fixtureToLoad = customDecimalsFixture(decimalsRisky, decimalsStable)
+      ;[signer, other] = await (ethers as any).getSigners()
+      loadFixture = createFixtureLoader([signer, other])
+      chainId = +(await hre.network.provider.send('eth_chainId')).toString()
     })
 
     beforeEach(async function () {
-      const fixture = await this.loadFixture(fixtureToLoad)
-      this.contracts = fixture.contracts
+      const fixture = await loadFixture(engineFixture)
+      const { factory, factoryDeploy, router } = fixture
+      const { engine, risky, stable } = await fixture.createEngine(decimalsRisky, decimalsStable)
+      this.contracts = { factory, factoryDeploy, router, engine, risky, stable }
+
       await useTokens(this.signers[0], this.contracts, pool.calibration)
       await useApproveAll(this.signers[0], this.contracts)
       poolId = pool.calibration.poolId(this.contracts.engine.address)
@@ -47,7 +57,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('res.allocate: increases reserve liquidity', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -62,7 +72,7 @@ TestPools.forEach(function (pool: PoolState) {
 
       it('res.allocate: increases reserve risky', async function () {
         const delRisky = parseWei(1 - delta, decimalsRisky)
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -81,7 +91,7 @@ TestPools.forEach(function (pool: PoolState) {
           getStableGivenRisky(delRisky.float, strike.float, sigma.float, maturity.sub(lastTimestamp).years),
           decimalsStable
         )
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -95,7 +105,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('res.allocate: update block timestamp', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -109,7 +119,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('pos.allocate: increase liquidity & burn 1000 wei from position', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -138,9 +148,7 @@ TestPools.forEach(function (pool: PoolState) {
             delLiquidity.raw,
             HashZero
           )
-        )
-          .to.emit(this.contracts.engine, 'Create')
-          .withArgs(this.contracts.router.address, strike.raw, sigma.raw, maturity.raw, gamma.raw)
+        ).to.emit(this.contracts.engine, 'Create')
       })
 
       it('updates the reserves of the engine with create, but not cumulative reserves', async function () {
@@ -168,7 +176,7 @@ TestPools.forEach(function (pool: PoolState) {
       })
 
       it('initializes the calibration struct', async function () {
-        await expect(
+        await expect(() =>
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
@@ -197,6 +205,9 @@ TestPools.forEach(function (pool: PoolState) {
           delLiquidity.raw,
           HashZero
         )
+
+        // set the contract to expect this error string
+        await this.contracts.router.expect('PoolDuplicateError()')
         await expect(
           this.contracts.router.create(
             strike.raw,
@@ -207,7 +218,7 @@ TestPools.forEach(function (pool: PoolState) {
             delLiquidity.raw,
             HashZero
           )
-        ).to.be.revertedWith('PoolDuplicateError()')
+        ).to.be.revertWithCustomError('PoolDuplicateError()', undefined, chainId)
       })
 
       it('reverts if strike is 0', async function () {
@@ -306,14 +317,14 @@ TestPools.forEach(function (pool: PoolState) {
         ).to.reverted
       })
 
-      it('reverts if gamma is greater or equal to 10000', async function () {
-        const tenThousand = 1e4
+      it('reverts if gamma is greater than 10000', async function () {
+        const tenThousand = 10_000
         await expect(
           this.contracts.router.create(
             strike.raw,
             sigma.raw,
             maturity.raw,
-            tenThousand,
+            tenThousand + 1,
             parseWei(1, decimalsRisky).sub(parseWei(delta, decimalsRisky)).raw,
             delLiquidity.raw,
             HashZero

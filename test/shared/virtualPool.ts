@@ -1,5 +1,11 @@
 import { Wei, Time, FixedPointX64, parseFixedPointX64, parseWei, toBN, Percentage } from 'web3-units'
-import { quantilePrime, std_n_pdf, inverse_std_n_cdf, nonNegative } from '@primitivefi/rmm-math'
+import {
+  quantilePrime,
+  std_n_pdf,
+  inverse_std_n_cdf,
+  nonNegative,
+  getSpotPriceApproximation,
+} from '@primitivefi/rmm-math'
 import { getStableGivenRisky, getRiskyGivenStable, calcInvariant } from '@primitivefi/rmm-math'
 import { Calibration } from './calibration'
 
@@ -304,7 +310,7 @@ export class VirtualPool {
     const strike = this.cal.strike.float
     const sigma = this.cal.sigma.float
     const tau = this.tau.years
-    const spot = getStableGivenRisky(risky, strike, sigma, tau) * quantilePrime(1 - risky)
+    const spot = getSpotPriceApproximation(risky, strike, sigma, tau)
     return parseWei(spot)
   }
 

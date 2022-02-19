@@ -3,14 +3,16 @@ pragma solidity >=0.8.4;
 
 /// @title  Errors for the Primitive Engine contract
 /// @author Primitive
+/// @notice Custom errors are encoded with their selector and arguments
+/// @dev    Peripheral smart contracts should try catch and check if data matches another custom error
 interface IPrimitiveEngineErrors {
-    /// @notice Thrown when a callback function calls the engine __again__
+    /// @notice Thrown on attempted re-entrancy on a function with a re-entrancy guard
     error LockedError();
 
     /// @notice Thrown when the balanceOf function is not successful and does not return data
     error BalanceError();
 
-    /// @notice Thrown when a pool with poolId already exists
+    /// @notice Thrown in create when a pool with computed poolId already exists
     error PoolDuplicateError();
 
     /// @notice Thrown when calling an expired pool, where block.timestamp > maturity, + BUFFER if swap
@@ -19,7 +21,7 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when liquidity is lower than or equal to the minimum amount of liquidity
     error MinLiquidityError(uint256 value);
 
-    /// @notice Thrown when riskyPerLp is outside the range of acceptable values, 0 < riskyPerLp < 1eRiskyDecimals
+    /// @notice Thrown when riskyPerLp is outside the range of acceptable values, 0 < riskyPerLp <= 1eRiskyDecimals
     error RiskyPerLpError(uint256 value);
 
     /// @notice Thrown when sigma is outside the range of acceptable values, 1 <= sigma <= 1e7 with 4 precision
@@ -28,7 +30,7 @@ interface IPrimitiveEngineErrors {
     /// @notice Thrown when strike is not valid, i.e. equal to 0 or greater than 2^128
     error StrikeError(uint256 value);
 
-    /// @notice Thrown when gamma, equal to 1 - fee %, is outside its bounds: 9000 <= gamma < 10000; 1000 = 10% fee
+    /// @notice Thrown when gamma, equal to 1 - fee %, is outside its bounds: 9_000 <= gamma <= 10_000; 1_000 = 10% fee
     error GammaError(uint256 value);
 
     /// @notice Thrown when the parameters of a new pool are invalid, causing initial reserves to be 0
@@ -60,7 +62,8 @@ interface IPrimitiveEngineErrors {
     error DeltaOutError();
 
     /// @notice                 Thrown when the invariant check fails
+    /// @dev                    Most important check as it verifies the validity of a desired swap
     /// @param  invariant       Pre-swap invariant updated with new tau
-    /// @param  nextInvariant   Post-swap invariant
+    /// @param  nextInvariant   Post-swap invariant after the swap amounts are applied to reserves
     error InvariantError(int128 invariant, int128 nextInvariant);
 }

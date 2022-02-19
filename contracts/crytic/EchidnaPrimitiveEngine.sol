@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.6;
 
-import "./libraries/Margin.sol";
-import "./libraries/ReplicationMath.sol";
-import "./libraries/Reserve.sol";
-import "./libraries/SafeCast.sol";
-import "./libraries/Transfers.sol";
-import "./libraries/Units.sol";
+import "../libraries/Margin.sol";
+import "../libraries/ReplicationMath.sol";
+import "../libraries/Reserve.sol";
+import "../libraries/SafeCast.sol";
+import "../libraries/Transfers.sol";
+import "../libraries/Units.sol";
 
-import "./interfaces/callback/IPrimitiveCreateCallback.sol";
-import "./interfaces/callback/IPrimitiveDepositCallback.sol";
-import "./interfaces/callback/IPrimitiveLiquidityCallback.sol";
-import "./interfaces/callback/IPrimitiveSwapCallback.sol";
+import "../interfaces/callback/IPrimitiveCreateCallback.sol";
+import "../interfaces/callback/IPrimitiveDepositCallback.sol";
+import "../interfaces/callback/IPrimitiveLiquidityCallback.sol";
+import "../interfaces/callback/IPrimitiveSwapCallback.sol";
 
-import "./interfaces/IERC20.sol";
-import "./interfaces/IPrimitiveEngine.sol";
-import "./interfaces/IPrimitiveFactory.sol";
+import "../interfaces/IERC20.sol";
+import "../interfaces/IPrimitiveEngine.sol";
+import "../interfaces/IPrimitiveFactory.sol";
 
 /// @title   Primitive Engine
 /// @author  Primitive
 /// @notice  Replicating Market Maker
 /// @dev     RMM-01
-contract PrimitiveEngine is IPrimitiveEngine {
+contract EchidnaPrimitiveEngine is IPrimitiveEngine {
     using ReplicationMath for int128;
     using Units for uint256;
     using SafeCast for uint256;
@@ -56,7 +56,7 @@ contract PrimitiveEngine is IPrimitiveEngine {
     /// @inheritdoc IPrimitiveEngineView
     uint256 public immutable override scaleFactorStable;
     /// @inheritdoc IPrimitiveEngineView
-    address public immutable override factory;
+    address public override factory; // immutable in main engine
     /// @inheritdoc IPrimitiveEngineView
     address public immutable override risky;
     /// @inheritdoc IPrimitiveEngineView
@@ -81,9 +81,12 @@ contract PrimitiveEngine is IPrimitiveEngine {
     }
 
     /// @notice Deploys an Engine with two tokens, a 'Risky' and 'Stable'
-    constructor() {
-        (factory, risky, stable, scaleFactorRisky, scaleFactorStable, MIN_LIQUIDITY) = IPrimitiveFactory(msg.sender)
-            .args();
+    constructor(address _risky, address _stable, uint256 _scaleFactorRisky, uint256 _scaleFactorStable, uint256 _min_liquidity) {
+        risky = _risky;
+        stable = _stable;
+        scaleFactorRisky = _scaleFactorRisky;
+        scaleFactorStable = _scaleFactorStable;
+        MIN_LIQUIDITY = _min_liquidity;
     }
 
     /// @return Risky token balance of this contract
