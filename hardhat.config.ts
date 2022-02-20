@@ -8,30 +8,12 @@ import '@primitivefi/hardhat-dodoc'
 
 const config: HardhatUserConfig = {
   dodoc: {
-    runOnCompile: true,
-    outputDir: 'docs',
+    runOnCompile: false,
+    freshOutput: true,
+    keepFileStructure: true,
     templatePath: './docusaurus.sqrl',
-    include: [
-      'PrimitiveEngine',
-      'PrimitiveFactory',
-      'IPrimitiveEngine',
-      'IPrimitiveFactory',
-      'IPrimitiveCreateCallback',
-      'IPrimitiveDepositCallback',
-      'IPrimitiveLiquidityCallback',
-      'IPrimitiveSwapCallback',
-      'IPrimitiveEngineActions',
-      'IPrimitiveEngineErrors',
-      'IPrimitiveEngineEvents',
-      'IPrimitiveEngineView',
-      'CumulativeNormalDistribution',
-      'Margin',
-      'ReplicationMath',
-      'Reserve',
-      'SafeCast',
-      'Transfers',
-      'Units',
-    ],
+    outputDir: 'docs',
+    exclude: ['crytic', 'test', 'console'],
   },
   networks: {
     hardhat: {
