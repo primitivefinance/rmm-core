@@ -39,7 +39,7 @@
     "@commitlint/config-conventional": "^12.1.4",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@primitivefi/hardhat-dodoc": "^0.1.3",
+    "@primitivefi/hardhat-dodoc": "^0.2.1",
     "@primitivefi/rmm-math": "^2.0.0-beta.3",
     "@typechain/ethers-v5": "^7.0.1",
     "@typechain/hardhat": "^2.2.0",
