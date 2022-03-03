@@ -38,6 +38,7 @@
     "@commitlint/cli": "^12.1.4",
     "@commitlint/config-conventional": "^12.1.4",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^3.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@primitivefi/hardhat-dodoc": "^0.2.1",
     "@primitivefi/rmm-math": "^2.0.0-beta.3",
