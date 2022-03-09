@@ -42,11 +42,9 @@ function createTestnetConfig(network: keyof typeof chainIds): NetworkUserConfig 
 const config: HardhatUserConfig = {
   dodoc: {
     runOnCompile: false,
-    freshOutput: true,
-    keepFileStructure: true,
     templatePath: './docusaurus.sqrl',
     outputDir: 'docs',
-    exclude: ['crytic', 'test', 'console'],
+    exclude: ['crytic', 'libraries', 'test', 'console'],
   },
   networks: {
     hardhat: {
