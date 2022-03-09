@@ -690,10 +690,10 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
-"@primitivefi/hardhat-dodoc@^0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@primitivefi/hardhat-dodoc/-/hardhat-dodoc-0.2.1.tgz#b90ce9e3c40d285820d411e680dd4e920aab077d"
-  integrity sha512-9d133lUF8g4TClP4vFlQvw+kKGWJbeALg9VpqPM9B0G7JoYE0o4OiyIARWQ52gXswaqB5d3aWWjFm8jlgrGpAQ==
+"@primitivefi/hardhat-dodoc@^0.2.3":
+  version "0.2.3"
+  resolved "https://registry.yarnpkg.com/@primitivefi/hardhat-dodoc/-/hardhat-dodoc-0.2.3.tgz#76aebbfa70de2d6454af29e166b1430583b54c5c"
+  integrity sha512-ver9uHa79LTDTeebOKZ/eOVRL/FP1k0s0x/5Bo/8ZaDdLWFVClKqZyZYVjjW4CJqTPCt8uU9b9p71P2vzH4O9A==
   dependencies:
     squirrelly "^8.0.8"
 
