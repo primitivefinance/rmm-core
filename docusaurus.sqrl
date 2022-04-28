@@ -5,7 +5,7 @@ description: {{@if(it.title)}}{{it.title}}{{#else}}{{it.name}}{{/if}}
 
 {{@if (it.name)}}# {{it.name}}.sol{{/if}}
 
-> [Read code on GitHub](https://github.com/primitivefinance/rmm-manager/tree/develop/contracts{{it.path}}/{{it.name}}.sol)
+> [Read code on GitHub](https://github.com/primitivefinance/rmm-core/blob/main/contracts{{it.path}}/{{it.name}}.sol)
 
 {{@if (it.notice)}}{{it.notice}}{{/if}}
 
