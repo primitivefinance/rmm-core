@@ -4,7 +4,6 @@
 
 [![](https://img.shields.io/github/stars/primitivefinance/rmm-core?style=social)](https://img.shields.io/github/stars/primitivefinance/rmm-core?style=social)
 ![Twitter Follow](https://img.shields.io/twitter/follow/primitivefi?style=social)
-[![Discord](https://img.shields.io/discord/168831573876015105.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/primitive)
 [![Tests](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yaml/badge.svg)](https://github.com/primitivefinance/rmm-core/actions/workflows/ci.yaml)
 [![npm version](https://img.shields.io/npm/v/@primitivefi/rmm-core/latest.svg)](https://www.npmjs.com/package/@primitivefi/rmm-core/v/latest)
 
