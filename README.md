@@ -11,7 +11,7 @@ Core contracts of Primitive RMM protocol.
 
 # Bug Bounty
 
-This repository has a **$1,000,000** bug bounty through Immunefi. Details are on their website [https://immunefi.com/bounty/primitive](https://immunefi.com/bounty/primitive/).
+This repository has a **$100,000** bug bounty through Immunefi. Details are on their website [https://immunefi.com/bounty/primitive](https://immunefi.com/bounty/primitive/).
 
 # Documentation
 
